@@ -6,9 +6,9 @@ interface LocationInputProps {
 }
 
 const recentLocations = [
-  { name: "Aéroport HDA", address: "Aéroport International", icon: Star },
-  { name: "Gare Centrale", address: "Avenue Mohammed V", icon: Clock },
-  { name: "Centre Commercial", address: "Boulevard Principal", icon: Clock },
+  { name: "Velana International Airport", address: "Hulhulé Island, Malé", icon: Star },
+  { name: "Malé City Centre", address: "Majeedhee Magu, Malé", icon: Clock },
+  { name: "Hulhumalé Ferry Terminal", address: "Hulhumalé, Malé Atoll", icon: Clock },
 ];
 
 const LocationInput = ({ onSearch }: LocationInputProps) => {
@@ -27,8 +27,8 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
 
         {/* Greeting */}
         <div>
-          <h2 className="text-xl font-bold text-foreground">Où allez-vous ?</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Réservez votre course HDA TAXI</p>
+          <h2 className="text-xl font-bold text-foreground">Where to?</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Book your HDA TAXI ride</p>
         </div>
 
         {/* Search Input */}
@@ -37,7 +37,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
           className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3.5 text-left transition-colors hover:bg-muted"
         >
           <Navigation className="w-5 h-5 text-primary shrink-0" />
-          <span className="text-muted-foreground text-sm">Rechercher une destination</span>
+          <span className="text-muted-foreground text-sm">Search destination</span>
         </button>
 
         {/* Pickup location */}
@@ -49,22 +49,22 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
           </div>
           <div className="flex-1 space-y-3">
             <div className="bg-surface rounded-xl px-4 py-3">
-              <p className="text-xs text-muted-foreground">Point de départ</p>
-              <p className="text-sm font-medium text-foreground">Ma position actuelle</p>
+              <p className="text-xs text-muted-foreground">Pickup</p>
+              <p className="text-sm font-medium text-foreground">My current location</p>
             </div>
             <div
               onClick={onSearch}
               className="bg-surface rounded-xl px-4 py-3 cursor-pointer hover:bg-muted transition-colors"
             >
               <p className="text-xs text-muted-foreground">Destination</p>
-              <p className="text-sm text-muted-foreground">Choisir la destination</p>
+              <p className="text-sm text-muted-foreground">Choose destination</p>
             </div>
           </div>
         </div>
 
         {/* Recent locations */}
         <div className="space-y-1 pt-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Récents</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Recent</p>
           {recentLocations.map((loc) => (
             <button
               key={loc.name}

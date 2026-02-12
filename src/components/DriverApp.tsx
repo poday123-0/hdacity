@@ -31,7 +31,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
             onClick={onSwitchToPassenger}
             className="px-3 py-2 rounded-full bg-card shadow-md text-xs font-semibold text-muted-foreground"
           >
-            Mode Passager
+            Passenger Mode
           </button>
           <div className="flex items-center gap-2">
             <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
@@ -46,7 +46,6 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
       {/* Map placeholder */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-surface to-surface" />
 
-      {/* Content based on screen */}
       {screen === "offline" && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <motion.div
@@ -58,14 +57,14 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               <Power className="w-10 h-10 text-muted-foreground" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">Vous êtes hors ligne</h2>
-              <p className="text-muted-foreground text-sm mt-1">Activez-vous pour recevoir des courses</p>
+              <h2 className="text-xl font-bold text-foreground">You're offline</h2>
+              <p className="text-muted-foreground text-sm mt-1">Go online to start receiving rides</p>
             </div>
             <button
               onClick={() => setScreen("online")}
               className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98]"
             >
-              Commencer à conduire
+              Start driving
             </button>
           </motion.div>
         </div>
@@ -83,29 +82,27 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               <div className="w-10 h-1 rounded-full bg-border" />
             </div>
 
-            {/* Status */}
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-primary animate-pulse-dot" />
-                  <span className="font-semibold text-foreground">En ligne</span>
+                  <span className="font-semibold text-foreground">Online</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">En attente de courses...</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Waiting for ride requests...</p>
               </div>
               <button
                 onClick={() => setScreen("offline")}
                 className="px-4 py-2 bg-surface rounded-lg text-sm font-medium text-foreground"
               >
-                Se déconnecter
+                Go offline
               </button>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Courses", value: "12", icon: Navigation },
-                { label: "Gains", value: "480 DH", icon: DollarSign },
-                { label: "Heures", value: "6h30", icon: Clock },
+                { label: "Rides", value: "12", icon: Navigation },
+                { label: "Earnings", value: "960 MVR", icon: DollarSign },
+                { label: "Hours", value: "6h30", icon: Clock },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface rounded-xl p-3 text-center">
                   <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
@@ -115,12 +112,11 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               ))}
             </div>
 
-            {/* Simulate ride request */}
             <button
               onClick={() => setScreen("ride-request")}
               className="w-full bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm"
             >
-              Simuler une demande de course
+              Simulate ride request
             </button>
           </div>
         </motion.div>
@@ -139,54 +135,51 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
             className="bg-card rounded-2xl shadow-2xl mx-6 w-full max-w-sm overflow-hidden"
           >
             <div className="bg-primary p-5 text-center">
-              <p className="text-primary-foreground/80 text-sm">Nouvelle course</p>
-              <p className="text-3xl font-bold text-primary-foreground mt-1">35 DH</p>
+              <p className="text-primary-foreground/80 text-sm">New ride</p>
+              <p className="text-3xl font-bold text-primary-foreground">70 MVR</p>
               <p className="text-primary-foreground/70 text-xs mt-1">~4.2 km • ~12 min</p>
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Passenger info */}
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground">
-                  SK
+                  AN
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">Sara Khali</p>
+                  <p className="font-semibold text-foreground">Ahmed Naseem</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Star className="w-3 h-3 text-primary fill-primary" />
-                    4.8 • 45 courses
+                    4.8 • 45 rides
                   </div>
                 </div>
               </div>
 
-              {/* Route */}
               <div className="bg-surface rounded-xl p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <p className="text-sm text-foreground">Rue Mohammed V, Centre</p>
+                  <p className="text-sm text-foreground">Majeedhee Magu, Malé</p>
                 </div>
                 <div className="ml-1 w-0.5 h-3 bg-border" />
                 <div className="flex items-center gap-2">
                   <MapPin className="w-2.5 h-2.5 text-foreground" />
-                  <p className="text-sm text-foreground">Aéroport HDA</p>
+                  <p className="text-sm text-foreground">Velana International Airport</p>
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-3">
                 <button
                   onClick={() => setScreen("online")}
                   className="flex-1 flex items-center justify-center gap-2 bg-surface text-foreground rounded-xl py-3.5 font-semibold"
                 >
                   <X className="w-4 h-4" />
-                  Refuser
+                  Decline
                 </button>
                 <button
                   onClick={() => setScreen("navigating")}
                   className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-3.5 font-semibold"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Accepter
+                  Accept
                 </button>
               </div>
             </div>
@@ -206,24 +199,22 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               <div className="w-10 h-1 rounded-full bg-border" />
             </div>
 
-            {/* ETA Bar */}
             <div className="bg-primary rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-primary-foreground/80 text-xs">En route vers le passager</p>
+                <p className="text-primary-foreground/80 text-xs">Heading to passenger</p>
                 <p className="text-2xl font-bold text-primary-foreground">3 min</p>
               </div>
               <Navigation className="w-8 h-8 text-primary-foreground" />
             </div>
 
-            {/* Passenger info */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground">
-                  SK
+                  AN
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">Sara Khali</p>
-                  <p className="text-xs text-muted-foreground">Rue Mohammed V, Centre</p>
+                  <p className="font-semibold text-foreground">Ahmed Naseem</p>
+                  <p className="text-xs text-muted-foreground">Majeedhee Magu, Malé</p>
                 </div>
               </div>
               <button className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
@@ -231,25 +222,23 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               </button>
             </div>
 
-            {/* Route */}
             <div className="bg-surface rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                <p className="text-sm text-foreground">Rue Mohammed V, Centre</p>
+                <p className="text-sm text-foreground">Majeedhee Magu, Malé</p>
               </div>
               <div className="ml-1 w-0.5 h-3 bg-border" />
               <div className="flex items-center gap-2">
                 <MapPin className="w-2.5 h-2.5 text-foreground" />
-                <p className="text-sm text-foreground">Aéroport HDA</p>
+                <p className="text-sm text-foreground">Velana International Airport</p>
               </div>
             </div>
 
-            {/* Complete button */}
             <button
               onClick={() => setScreen("complete")}
               className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98]"
             >
-              Course terminée
+              Complete ride
             </button>
           </div>
         </motion.div>
@@ -276,20 +265,20 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
             </motion.div>
 
             <div>
-              <h3 className="text-xl font-bold text-foreground">Course terminée !</h3>
-              <p className="text-muted-foreground text-sm mt-1">Bien joué, Ahmed</p>
+              <h3 className="text-xl font-bold text-foreground">Ride complete!</h3>
+              <p className="text-muted-foreground text-sm mt-1">Well done, Ibrahim</p>
             </div>
 
             <div className="bg-surface rounded-xl p-4">
-              <p className="text-3xl font-bold text-primary">35 DH</p>
-              <p className="text-xs text-muted-foreground mt-1">Gain de cette course</p>
+              <p className="text-3xl font-bold text-primary">70 MVR</p>
+              <p className="text-xs text-muted-foreground mt-1">Earnings from this ride</p>
             </div>
 
             <div className="flex gap-3">
               {[
                 { label: "Distance", value: "4.2 km" },
-                { label: "Durée", value: "12 min" },
-                { label: "Note", value: "⭐ 5.0" },
+                { label: "Duration", value: "12 min" },
+                { label: "Rating", value: "⭐ 5.0" },
               ].map((s) => (
                 <div key={s.label} className="flex-1 bg-surface rounded-lg p-2">
                   <p className="text-sm font-bold text-foreground">{s.value}</p>
@@ -302,7 +291,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               onClick={() => setScreen("online")}
               className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl"
             >
-              Continuer
+              Continue
             </button>
           </motion.div>
         </motion.div>
