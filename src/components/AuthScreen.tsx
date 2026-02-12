@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Phone, ArrowRight } from "lucide-react";
+import { Phone, ArrowRight, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import hdaLogo from "@/assets/hda-logo.png";
 
 interface AuthScreenProps {
@@ -10,12 +12,74 @@ interface AuthScreenProps {
 const AuthScreen = ({ onLogin }: AuthScreenProps) => {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handlePhoneSubmit = () => {
-    if (phone.length >= 7) {
+  const handlePhoneSubmit = async () => {
+    if (phone.length < 7) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("send-otp", {
+        body: { phone_number: phone },
+      });
+
+      if (fnError) throw new Error(fnError.message);
+      if (data?.error) throw new Error(data.error);
+
       setStep("otp");
+      toast({ title: "OTP sent!", description: `Code sent to +960 ${phone}` });
+    } catch (err: any) {
+      console.error("Send OTP failed:", err);
+      setError(err.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (code: string) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("verify-otp", {
+        body: { phone_number: phone, code },
+      });
+
+      if (fnError) throw new Error(fnError.message);
+      if (!data?.success) throw new Error(data?.error || "Invalid code");
+
+      toast({ title: "Verified!", description: "Login successful" });
+      onLogin();
+    } catch (err: any) {
+      console.error("Verify OTP failed:", err);
+      setError(err.message || "Invalid code. Please try again.");
+      setOtp(["", "", "", "", "", ""]);
+      otpRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setOtp(["", "", "", "", "", ""]);
+    setError("");
+    setLoading(true);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("send-otp", {
+        body: { phone_number: phone },
+      });
+      if (fnError) throw new Error(fnError.message);
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Code resent!", description: `New code sent to +960 ${phone}` });
+    } catch (err: any) {
+      setError(err.message || "Failed to resend. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -25,12 +89,13 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
     newOtp[index] = value;
     setOtp(newOtp);
 
-    if (value && index < 3) {
+    if (value && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
 
     if (newOtp.every((d) => d !== "")) {
-      setTimeout(onLogin, 500);
+      const code = newOtp.join("");
+      setTimeout(() => handleVerify(code), 300);
     }
   };
 
@@ -60,6 +125,12 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
             </div>
           </div>
 
+          {error && (
+            <div className="bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-xl">
+              {error}
+            </div>
+          )}
+
           {step === "phone" ? (
             <motion.div
               key="phone"
@@ -86,16 +157,23 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
                   placeholder="7XX XXXX"
                   className="w-full pl-24 pr-4 py-4 bg-surface rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base font-medium"
                   autoFocus
+                  disabled={loading}
                 />
               </div>
 
               <button
                 onClick={handlePhoneSubmit}
-                disabled={phone.length < 7}
+                disabled={phone.length < 7 || loading}
                 className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Continue
-                <ArrowRight className="w-4 h-4" />
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </motion.div>
           ) : (
@@ -122,17 +200,32 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
                     maxLength={1}
-                    className="w-16 h-16 text-center text-2xl font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-12 h-14 text-center text-2xl font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     autoFocus={i === 0}
+                    disabled={loading}
                   />
                 ))}
               </div>
 
+              {loading && (
+                <div className="flex justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+
               <button
-                onClick={() => setStep("phone")}
-                className="w-full text-center text-sm text-primary font-medium py-2"
+                onClick={handleResend}
+                disabled={loading}
+                className="w-full text-center text-sm text-primary font-medium py-2 disabled:opacity-40"
               >
                 Resend code
+              </button>
+
+              <button
+                onClick={() => { setStep("phone"); setError(""); setOtp(["", "", "", "", "", ""]); }}
+                className="w-full text-center text-sm text-muted-foreground font-medium py-1"
+              >
+                Change number
               </button>
             </motion.div>
           )}
