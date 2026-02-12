@@ -11,6 +11,8 @@ import {
   X,
   Phone,
   User,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -21,6 +23,7 @@ interface DriverAppProps {
 
 const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
+  const [showEarnings, setShowEarnings] = useState(true);
 
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-surface">
@@ -98,15 +101,27 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
               </button>
             </div>
 
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stats</p>
+              <button
+                onClick={() => setShowEarnings(!showEarnings)}
+                className="flex items-center gap-1 text-xs text-muted-foreground"
+              >
+                {showEarnings ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                {showEarnings ? "Hide" : "Show"}
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Rides", value: "12", icon: Navigation },
-                { label: "Earnings", value: "960 MVR", icon: DollarSign },
-                { label: "Hours", value: "6h30", icon: Clock },
+                { label: "Rides", value: "12", icon: Navigation, mask: false },
+                { label: "Earnings", value: "960 MVR", icon: DollarSign, mask: true },
+                { label: "Hours", value: "6h30", icon: Clock, mask: false },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface rounded-xl p-3 text-center">
                   <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
-                  <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {stat.mask && !showEarnings ? "•••" : stat.value}
+                  </p>
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
