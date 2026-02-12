@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,10 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    const MSGOWL_API_KEY = Deno.env.get("MSGOWL_API_KEY");
-    if (!MSGOWL_API_KEY) {
-      throw new Error("MSGOWL_API_KEY is not configured");
-    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { phone_number, code } = await req.json();
     if (!phone_number || !code) {
@@ -27,27 +27,33 @@ serve(async (req) => {
 
     const fullNumber = phone_number.startsWith("960") ? phone_number : `960${phone_number}`;
 
-    const response = await fetch("https://otp.msgowl.com/verify", {
-      method: "POST",
-      headers: {
-        Authorization: `AccessKey ${MSGOWL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        phone_number: fullNumber,
-        code,
-      }),
-    });
+    // Find the latest unexpired, unverified OTP for this number
+    const { data: otpRecord, error: dbError } = await supabase
+      .from("otp_codes")
+      .select("*")
+      .eq("phone_number", fullNumber)
+      .eq("verified", false)
+      .gte("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("MSG Owl verify error:", data);
+    if (dbError || !otpRecord) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid OTP code", details: data }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "No valid OTP found. Please request a new code." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    if (otpRecord.code !== code) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid code" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Mark as verified
+    await supabase.from("otp_codes").update({ verified: true }).eq("id", otpRecord.id);
 
     return new Response(
       JSON.stringify({ success: true }),
