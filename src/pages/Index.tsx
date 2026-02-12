@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
-import mapBg from "@/assets/map-bg.png";
+import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
 import AuthScreen from "@/components/AuthScreen";
 import TopBar from "@/components/TopBar";
@@ -37,14 +37,17 @@ const Index = () => {
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-background">
       {/* Map Background */}
       <div className="absolute inset-0">
-        <img src={mapBg} alt="Carte" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60" />
+        <MaldivesMap />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
       {/* Top Bar */}
-      <TopBar onDriverMode={() => setPhase("driver")} />
+      <div className="relative z-[500]">
+        <TopBar onDriverMode={() => setPhase("driver")} />
+      </div>
 
       {/* Bottom Sheets */}
+      <div className="relative z-[500]">
       <AnimatePresence mode="wait">
         {passengerScreen === "home" && (
           <LocationInput key="home" onSearch={() => setPassengerScreen("ride-options")} />
@@ -69,6 +72,7 @@ const Index = () => {
           />
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };
