@@ -60,7 +60,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         recipients: fullNumber,
-        sender_id: "HDA Taxi",
+        sender_id: "HDA",
         body: `Your HDA Taxi verification code is: ${code}`,
       }),
     });
