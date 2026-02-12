@@ -3,9 +3,10 @@ import hdaLogo from "@/assets/hda-logo.png";
 
 interface TopBarProps {
   onDriverMode?: () => void;
+  userName?: string;
 }
 
-const TopBar = ({ onDriverMode }: TopBarProps) => {
+const TopBar = ({ onDriverMode, userName }: TopBarProps) => {
   return (
     <div className="absolute top-0 left-0 right-0 z-20 p-4">
       <div className="flex items-center justify-between">
@@ -24,7 +25,7 @@ const TopBar = ({ onDriverMode }: TopBarProps) => {
             <button
               onClick={onDriverMode}
               className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center"
-              title="Mode Chauffeur"
+              title="Driver Mode"
             >
               <Car className="w-5 h-5 text-foreground" />
             </button>
