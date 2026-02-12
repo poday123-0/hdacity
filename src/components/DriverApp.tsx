@@ -41,7 +41,7 @@ const DriverMap = () => {
     };
   }, []);
 
-  return <div ref={mapRef} className="absolute inset-0" />;
+  return <div ref={mapRef} className="absolute inset-0 z-0" />;
 };
 import { motion } from "framer-motion";
 import {
@@ -72,7 +72,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-surface">
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4">
+      <div className="absolute top-0 left-0 right-0 z-[500] p-4">
         <div className="flex items-center justify-between">
           <button
             onClick={onSwitchToPassenger}
@@ -94,7 +94,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
       <DriverMap />
 
       {screen === "offline" && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
+        <div className="absolute inset-0 flex items-center justify-center z-[450]">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -122,7 +122,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-10"
+          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-[450]"
         >
           <div className="p-5 space-y-5">
             <div className="flex justify-center">
@@ -186,7 +186,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 20 }}
-          className="absolute inset-0 z-30 flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm"
+          className="absolute inset-0 z-[500] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm"
         >
           <motion.div
             initial={{ y: 100 }}
@@ -251,7 +251,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-10"
+          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-[450]"
         >
           <div className="p-5 space-y-4">
             <div className="flex justify-center">
@@ -307,7 +307,7 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute inset-0 z-30 flex items-center justify-center bg-foreground/50 backdrop-blur-sm"
+          className="absolute inset-0 z-[500] flex items-center justify-center bg-foreground/50 backdrop-blur-sm"
         >
           <motion.div
             initial={{ y: 30 }}
