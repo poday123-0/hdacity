@@ -7,91 +7,97 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 220 30% 10%;
+    --foreground: 210 30% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 30% 10%;
+    --card-foreground: 210 30% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 10%;
+    --popover-foreground: 210 30% 10%;
 
-    --primary: 142 71% 45%;
+    --primary: 200 68% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 30% 10%;
+    --secondary: 210 14% 96%;
+    --secondary-foreground: 210 30% 10%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 210 14% 96%;
+    --muted-foreground: 210 10% 50%;
 
-    --accent: 142 71% 45%;
+    --accent: 200 68% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 142 71% 45%;
+    --border: 210 13% 91%;
+    --input: 210 13% 91%;
+    --ring: 200 68% 55%;
 
     --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 142 71% 45%;
+    --sidebar-primary: 200 68% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 220 30% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 142 71% 45%;
+    --sidebar-accent: 210 14% 96%;
+    --sidebar-accent-foreground: 210 30% 10%;
+    --sidebar-border: 210 13% 91%;
+    --sidebar-ring: 200 68% 55%;
 
-    /* Custom HDA tokens */
-    --surface: 220 20% 97%;
-    --surface-foreground: 220 30% 10%;
+    --surface: 210 20% 97%;
+    --surface-foreground: 210 30% 10%;
     --success: 142 71% 45%;
     --warning: 38 92% 50%;
     --map-bg: 200 20% 95%;
+
+    --primary-dark: 200 68% 42%;
+    --primary-light: 200 68% 90%;
   }
 
   .dark {
-    --background: 220 30% 6%;
+    --background: 210 30% 6%;
     --foreground: 0 0% 95%;
 
-    --card: 220 25% 10%;
+    --card: 210 25% 10%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 220 25% 10%;
+    --popover: 210 25% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 142 71% 45%;
+    --primary: 200 68% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 15%;
+    --secondary: 210 20% 15%;
     --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 20% 15%;
-    --muted-foreground: 220 10% 60%;
+    --muted: 210 20% 15%;
+    --muted-foreground: 210 10% 60%;
 
-    --accent: 142 71% 45%;
+    --accent: 200 68% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 95%;
 
-    --border: 220 20% 18%;
-    --input: 220 20% 18%;
-    --ring: 142 71% 45%;
-    --sidebar-background: 220 30% 6%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 142 71% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 15%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 142 71% 45%;
+    --border: 210 20% 18%;
+    --input: 210 20% 18%;
+    --ring: 200 68% 55%;
 
-    --surface: 220 25% 12%;
+    --sidebar-background: 210 30% 6%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 200 68% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 210 20% 18%;
+    --sidebar-ring: 200 68% 55%;
+
+    --surface: 210 25% 12%;
     --surface-foreground: 0 0% 95%;
+
+    --primary-dark: 200 68% 42%;
+    --primary-light: 200 30% 20%;
   }
 }
 
