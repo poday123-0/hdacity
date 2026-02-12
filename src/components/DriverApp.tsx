@@ -127,56 +127,56 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 20 }}
-          className="absolute inset-0 z-30 flex items-center justify-center bg-foreground/50 backdrop-blur-sm"
+          className="absolute inset-0 z-30 flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm"
         >
           <motion.div
-            initial={{ y: 50 }}
+            initial={{ y: 100 }}
             animate={{ y: 0 }}
-            className="bg-card rounded-2xl shadow-2xl mx-6 w-full max-w-sm overflow-hidden"
+            className="bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden"
           >
-            <div className="bg-primary p-5 text-center">
-              <p className="text-primary-foreground/80 text-sm">New ride</p>
-              <p className="text-3xl font-bold text-primary-foreground">70 MVR</p>
-              <p className="text-primary-foreground/70 text-xs mt-1">~4.2 km • ~12 min</p>
+            <div className="bg-primary px-4 py-4 text-center">
+              <p className="text-primary-foreground/80 text-xs">New ride</p>
+              <p className="text-2xl font-bold text-primary-foreground">70 MVR</p>
+              <p className="text-primary-foreground/70 text-xs mt-0.5">~4.2 km • ~12 min</p>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="px-4 py-4 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground">
+                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0">
                   AN
                 </div>
-                <div>
-                  <p className="font-semibold text-foreground">Ahmed Naseem</p>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-foreground truncate">Ahmed Naseem</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Star className="w-3 h-3 text-primary fill-primary" />
+                    <Star className="w-3 h-3 text-primary fill-primary shrink-0" />
                     4.8 • 45 rides
                   </div>
                 </div>
               </div>
 
-              <div className="bg-surface rounded-xl p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <p className="text-sm text-foreground">Majeedhee Magu, Malé</p>
+              <div className="bg-surface rounded-xl p-3 space-y-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                  <p className="text-xs text-foreground truncate">Majeedhee Magu, Malé</p>
                 </div>
-                <div className="ml-1 w-0.5 h-3 bg-border" />
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-2.5 h-2.5 text-foreground" />
-                  <p className="text-sm text-foreground">Velana International Airport</p>
+                <div className="ml-1 w-0.5 h-2.5 bg-border" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <MapPin className="w-2 h-2 text-foreground shrink-0" />
+                  <p className="text-xs text-foreground truncate">Velana International Airport</p>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setScreen("online")}
-                  className="flex-1 flex items-center justify-center gap-2 bg-surface text-foreground rounded-xl py-3.5 font-semibold"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-surface text-foreground rounded-xl py-3 text-sm font-semibold"
                 >
                   <X className="w-4 h-4" />
                   Decline
                 </button>
                 <button
                   onClick={() => setScreen("navigating")}
-                  className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-3.5 font-semibold"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-3 text-sm font-semibold"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Accept
