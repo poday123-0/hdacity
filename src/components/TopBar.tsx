@@ -1,4 +1,5 @@
 import { Menu, Bell, Car } from "lucide-react";
+import hdaLogo from "@/assets/hda-logo.png";
 
 interface TopBarProps {
   onDriverMode?: () => void;
@@ -12,7 +13,8 @@ const TopBar = ({ onDriverMode }: TopBarProps) => {
           <Menu className="w-5 h-5 text-foreground" />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
           <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
           <span className="text-lg font-extrabold tracking-tight text-primary">TAXI</span>
         </div>
