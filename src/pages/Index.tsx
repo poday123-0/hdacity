@@ -35,7 +35,7 @@ const Index = () => {
   }
 
   if (phase === "driver") {
-    return <DriverApp onSwitchToPassenger={() => setPhase("passenger")} />;
+    return <DriverApp onSwitchToPassenger={() => setPhase("passenger")} userProfile={userProfile} />;
   }
 
   // Passenger mode
@@ -52,6 +52,7 @@ const Index = () => {
         <TopBar 
           onDriverMode={isDriver ? () => setPhase("driver") : undefined} 
           userName={userProfile?.first_name}
+          userProfile={userProfile}
         />
       </div>
 

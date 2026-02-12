@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { UserProfile } from "@/components/AuthScreen";
 
 const MALE_CENTER: [number, number] = [4.1755, 73.5093];
 
@@ -63,11 +64,13 @@ type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "comp
 
 interface DriverAppProps {
   onSwitchToPassenger: () => void;
+  userProfile?: UserProfile | null;
 }
 
-const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
+const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
   const [showEarnings, setShowEarnings] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
 
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-surface">
@@ -84,9 +87,12 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
             <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
             <span className="text-lg font-extrabold tracking-tight text-primary">DRIVER</span>
           </div>
-          <div className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center">
+          <button
+            onClick={() => setShowProfile(true)}
+            className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center"
+          >
             <User className="w-5 h-5 text-foreground" />
-          </div>
+          </button>
         </div>
       </div>
 
@@ -352,6 +358,63 @@ const DriverApp = ({ onSwitchToPassenger }: DriverAppProps) => {
             >
               Continue
             </button>
+          </motion.div>
+        </motion.div>
+      )}
+      {/* Profile Panel */}
+      {showProfile && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
+          onClick={() => setShowProfile(false)}
+        >
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="bg-card rounded-t-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 space-y-5">
+              <div className="flex justify-center">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
+                  {userProfile?.first_name?.[0]}{userProfile?.last_name?.[0]}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    {userProfile?.first_name} {userProfile?.last_name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">Driver</p>
+                </div>
+              </div>
+
+              <div className="bg-surface rounded-xl divide-y divide-border">
+                {[
+                  { label: "Phone", value: `+960 ${userProfile?.phone_number || "—"}` },
+                  { label: "Email", value: userProfile?.email || "Not set" },
+                  { label: "Gender", value: userProfile?.gender === "1" ? "Male" : userProfile?.gender === "2" ? "Female" : userProfile?.gender || "—" },
+                  { label: "Status", value: userProfile?.status || "—" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                    <span className="text-sm font-medium text-foreground">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowProfile(false)}
+                className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm"
+              >
+                Close
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       )}
