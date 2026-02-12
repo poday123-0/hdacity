@@ -13,7 +13,7 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handlePhoneSubmit = () => {
-    if (phone.length >= 9) {
+    if (phone.length >= 7) {
       setStep("otp");
     }
   };
@@ -41,7 +41,6 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
 
   return (
     <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-md mx-auto">
-      {/* Header */}
       <div className="flex-1 flex flex-col justify-center px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -69,21 +68,21 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
               className="space-y-4"
             >
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Bienvenue</h2>
-                <p className="text-muted-foreground mt-1">Entrez votre numéro de téléphone pour continuer</p>
+                <h2 className="text-2xl font-bold text-foreground">Welcome</h2>
+                <p className="text-muted-foreground mt-1">Enter your phone number to continue</p>
               </div>
 
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-muted-foreground">
                   <Phone className="w-4 h-4" />
-                  <span className="text-sm font-semibold">+212</span>
+                  <span className="text-sm font-semibold">+960</span>
                   <div className="w-px h-5 bg-border" />
                 </div>
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="6XX XXX XXX"
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                  placeholder="7XX XXXX"
                   className="w-full pl-24 pr-4 py-4 bg-surface rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base font-medium"
                   autoFocus
                 />
@@ -91,10 +90,10 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
 
               <button
                 onClick={handlePhoneSubmit}
-                disabled={phone.length < 9}
+                disabled={phone.length < 7}
                 className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Continuer
+                Continue
                 <ArrowRight className="w-4 h-4" />
               </button>
             </motion.div>
@@ -106,9 +105,9 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
               className="space-y-4"
             >
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Vérification</h2>
+                <h2 className="text-2xl font-bold text-foreground">Verification</h2>
                 <p className="text-muted-foreground mt-1">
-                  Code envoyé au <span className="font-semibold text-foreground">+212 {phone}</span>
+                  Code sent to <span className="font-semibold text-foreground">+960 {phone}</span>
                 </p>
               </div>
 
@@ -132,17 +131,16 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
                 onClick={() => setStep("phone")}
                 className="w-full text-center text-sm text-primary font-medium py-2"
               >
-                Renvoyer le code
+                Resend code
               </button>
             </motion.div>
           )}
         </motion.div>
       </div>
 
-      {/* Footer */}
       <div className="px-8 pb-8">
         <p className="text-xs text-muted-foreground text-center">
-          En continuant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité
+          By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
       </div>
     </div>

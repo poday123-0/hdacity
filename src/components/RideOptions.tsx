@@ -10,18 +10,18 @@ interface RideOptionsProps {
 const rides = [
   {
     id: "economy",
-    name: "Économique",
-    description: "Abordable et quotidien",
-    price: "25 DH",
+    name: "Economy",
+    description: "Affordable everyday rides",
+    price: "50 MVR",
     eta: "3 min",
     icon: Car,
     capacity: "4",
   },
   {
     id: "comfort",
-    name: "Confort",
-    description: "Plus d'espace, voiture récente",
-    price: "40 DH",
+    name: "Comfort",
+    description: "More space, newer car",
+    price: "80 MVR",
     eta: "5 min",
     icon: Users,
     capacity: "4",
@@ -29,8 +29,8 @@ const rides = [
   {
     id: "premium",
     name: "Premium",
-    description: "Véhicule haut de gamme",
-    price: "65 DH",
+    description: "Luxury vehicle",
+    price: "130 MVR",
     eta: "7 min",
     icon: Crown,
     capacity: "3",
@@ -54,8 +54,8 @@ const RideOptions = ({ onBack, onConfirm }: RideOptionsProps) => {
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Choisir votre course</h2>
-            <p className="text-xs text-muted-foreground">Centre Ville → Aéroport HDA</p>
+            <h2 className="text-lg font-bold text-foreground">Choose your ride</h2>
+            <p className="text-xs text-muted-foreground">Malé City → Velana Airport</p>
           </div>
         </div>
 
@@ -100,7 +100,7 @@ const RideOptions = ({ onBack, onConfirm }: RideOptionsProps) => {
           onClick={onConfirm}
           className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-transform active:scale-[0.98] hover:opacity-90"
         >
-          Confirmer {rides.find((r) => r.id === selected)?.name} — {rides.find((r) => r.id === selected)?.price}
+          Confirm {rides.find((r) => r.id === selected)?.name} — {rides.find((r) => r.id === selected)?.price}
         </button>
       </div>
     </motion.div>
