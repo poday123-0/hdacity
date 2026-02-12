@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
-import AuthScreen from "@/components/AuthScreen";
+import AuthScreen, { UserProfile } from "@/components/AuthScreen";
 import TopBar from "@/components/TopBar";
 import LocationInput from "@/components/LocationInput";
 import RideOptions from "@/components/RideOptions";
@@ -16,9 +16,15 @@ type PassengerScreen = "home" | "ride-options" | "searching" | "driver-matching"
 const Index = () => {
   const [phase, setPhase] = useState<AppPhase>("splash");
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isDriver, setIsDriver] = useState(false);
 
   const handleSplashComplete = useCallback(() => setPhase("auth"), []);
-  const handleLogin = useCallback(() => setPhase("passenger"), []);
+  const handleLogin = useCallback((profile: UserProfile | null, isDriverUser: boolean) => {
+    setUserProfile(profile);
+    setIsDriver(isDriverUser);
+    setPhase("passenger");
+  }, []);
 
   if (phase === "splash") {
     return <SplashScreen onComplete={handleSplashComplete} />;
@@ -41,9 +47,12 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
-      {/* Top Bar */}
+      {/* Top Bar - only show driver mode button if user is also a driver */}
       <div className="relative z-[500]">
-        <TopBar onDriverMode={() => setPhase("driver")} />
+        <TopBar 
+          onDriverMode={isDriver ? () => setPhase("driver") : undefined} 
+          userName={userProfile?.first_name}
+        />
       </div>
 
       {/* Bottom Sheets */}

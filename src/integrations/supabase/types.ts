@@ -41,6 +41,51 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          country_code: string
+          created_at: string
+          email: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          last_name: string
+          legacy_id: number | null
+          phone_number: string
+          status: string
+          updated_at: string
+          user_type: string
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          last_name?: string
+          legacy_id?: number | null
+          phone_number: string
+          status?: string
+          updated_at?: string
+          user_type?: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          last_name?: string
+          legacy_id?: number | null
+          phone_number?: string
+          status?: string
+          updated_at?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

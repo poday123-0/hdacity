@@ -5,8 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import hdaLogo from "@/assets/hda-logo.png";
 
+export interface UserProfile {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone_number: string;
+  gender: string;
+  status: string;
+}
+
 interface AuthScreenProps {
-  onLogin: () => void;
+  onLogin: (profile: UserProfile | null, isDriver: boolean) => void;
 }
 
 const AuthScreen = ({ onLogin }: AuthScreenProps) => {
@@ -52,8 +61,26 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
       if (fnError) throw new Error(fnError.message);
       if (!data?.success) throw new Error(data?.error || "Invalid code");
 
-      toast({ title: "Verified!", description: "Login successful" });
-      onLogin();
+      // After OTP verified, look up the user profile
+      const { data: profileData, error: profileError } = await supabase.functions.invoke("lookup-profile", {
+        body: { phone_number: phone },
+      });
+
+      if (profileError) {
+        console.error("Profile lookup failed:", profileError);
+      }
+
+      const profile = profileData?.found ? profileData.profile : null;
+      const isDriver = profileData?.is_driver || false;
+
+      toast({ 
+        title: "Verified!", 
+        description: profile 
+          ? `Welcome back, ${profile.first_name}!` 
+          : "Login successful" 
+      });
+      
+      onLogin(profile, isDriver);
     } catch (err: any) {
       console.error("Verify OTP failed:", err);
       setError(err.message || "Invalid code. Please try again.");
