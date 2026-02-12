@@ -1,6 +1,6 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Car } from "lucide-react";
+import hdaLogo from "@/assets/hda-logo.png";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -35,9 +35,9 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
         transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.2 }}
         className="mb-6"
       >
-        <div className="w-24 h-24 rounded-3xl bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm">
-          <Car className="w-14 h-14 text-primary-foreground" />
-        </div>
+        <div className="w-28 h-28 rounded-3xl bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm p-3">
+            <img src={hdaLogo} alt="HDA Taxi" className="w-full h-full object-contain" />
+          </div>
       </motion.div>
 
       <motion.div

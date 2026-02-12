@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Phone, ArrowRight, Car } from "lucide-react";
+import { Phone, ArrowRight } from "lucide-react";
+import hdaLogo from "@/assets/hda-logo.png";
 
 interface AuthScreenProps {
   onLogin: () => void;
@@ -49,8 +50,8 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
         >
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center">
-              <Car className="w-8 h-8 text-primary-foreground" />
+            <div className="w-16 h-16 rounded-2xl overflow-hidden">
+              <img src={hdaLogo} alt="HDA Taxi" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
