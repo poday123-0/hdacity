@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      fare_zones: {
+        Row: {
+          created_at: string
+          fixed_fare: number
+          from_area: string
+          id: string
+          is_active: boolean
+          name: string
+          to_area: string
+          vehicle_type_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          fixed_fare: number
+          from_area: string
+          id?: string
+          is_active?: boolean
+          name: string
+          to_area: string
+          vehicle_type_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          fixed_fare?: number
+          from_area?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          to_area?: string
+          vehicle_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fare_zones_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       otp_codes: {
         Row: {
           code: string
@@ -86,15 +127,294 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          accepted_at: string | null
+          actual_fare: number | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          distance_km: number | null
+          driver_id: string | null
+          dropoff_address: string
+          dropoff_lat: number | null
+          dropoff_lng: number | null
+          duration_minutes: number | null
+          estimated_fare: number | null
+          fare_type: string
+          fare_zone_id: string | null
+          id: string
+          passenger_id: string | null
+          pickup_address: string
+          pickup_lat: number | null
+          pickup_lng: number | null
+          rating: number | null
+          requested_at: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_type_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          actual_fare?: number | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          distance_km?: number | null
+          driver_id?: string | null
+          dropoff_address?: string
+          dropoff_lat?: number | null
+          dropoff_lng?: number | null
+          duration_minutes?: number | null
+          estimated_fare?: number | null
+          fare_type?: string
+          fare_zone_id?: string | null
+          id?: string
+          passenger_id?: string | null
+          pickup_address?: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          rating?: number | null
+          requested_at?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          actual_fare?: number | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          distance_km?: number | null
+          driver_id?: string | null
+          dropoff_address?: string
+          dropoff_lat?: number | null
+          dropoff_lng?: number | null
+          duration_minutes?: number | null
+          estimated_fare?: number | null
+          fare_type?: string
+          fare_zone_id?: string | null
+          id?: string
+          passenger_id?: string | null
+          pickup_address?: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          rating?: number | null
+          requested_at?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_fare_zone_id_fkey"
+            columns: ["fare_zone_id"]
+            isOneToOne: false
+            referencedRelation: "fare_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicle_types: {
+        Row: {
+          base_fare: number
+          capacity: number
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          minimum_fare: number
+          name: string
+          per_km_rate: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          base_fare?: number
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          minimum_fare?: number
+          name: string
+          per_km_rate?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          base_fare?: number
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          minimum_fare?: number
+          name?: string
+          per_km_rate?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          color: string | null
+          created_at: string
+          driver_id: string | null
+          id: string
+          is_active: boolean
+          make: string | null
+          model: string | null
+          plate_number: string
+          updated_at: string
+          vehicle_type_id: string | null
+          year: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          plate_number: string
+          updated_at?: string
+          vehicle_type_id?: string | null
+          year?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          plate_number?: string
+          updated_at?: string
+          vehicle_type_id?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -221,6 +541,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
