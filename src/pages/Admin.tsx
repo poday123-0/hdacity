@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -15,17 +16,19 @@ import {
   DollarSign,
   Settings,
   MapPin,
+  Navigation,
   LogOut,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "drivers" | "vehicles" | "fares" | "trips" | "settings";
+type Tab = "dashboard" | "drivers" | "vehicles" | "fares" | "locations" | "trips" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "drivers", label: "Drivers", icon: Users },
   { id: "vehicles", label: "Vehicles", icon: Car },
   { id: "fares", label: "Fares", icon: DollarSign },
+  { id: "locations", label: "Locations", icon: Navigation },
   { id: "trips", label: "Trips", icon: MapPin },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -161,6 +164,7 @@ const Admin = () => {
           {activeTab === "drivers" && <AdminDrivers />}
           {activeTab === "vehicles" && <AdminVehicles />}
           {activeTab === "fares" && <AdminFares />}
+          {activeTab === "locations" && <AdminLocations />}
           {activeTab === "trips" && <AdminTrips />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
