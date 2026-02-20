@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Pencil, Trash2 } from "lucide-react";
+
+const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "" };
 
 const AdminVehicles = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -9,7 +11,8 @@ const AdminVehicles = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -26,9 +29,29 @@ const AdminVehicles = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
+  const openEdit = (v: any) => {
+    setForm({
+      plate_number: v.plate_number || "",
+      make: v.make || "",
+      model: v.model || "",
+      color: v.color || "",
+      year: v.year?.toString() || "",
+      driver_id: v.driver_id || "",
+      vehicle_type_id: v.vehicle_type_id || "",
+    });
+    setEditingId(v.id);
+    setShowForm(true);
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+    setShowForm(false);
+  };
+
   const handleSubmit = async () => {
     if (!form.plate_number) return;
-    const { error } = await supabase.from("vehicles").insert({
+    const payload = {
       plate_number: form.plate_number,
       make: form.make,
       model: form.model,
@@ -36,13 +59,28 @@ const AdminVehicles = () => {
       year: form.year ? parseInt(form.year) : null,
       driver_id: form.driver_id || null,
       vehicle_type_id: form.vehicle_type_id || null,
-    });
+    };
+
+    const { error } = editingId
+      ? await supabase.from("vehicles").update(payload).eq("id", editingId)
+      : await supabase.from("vehicles").insert(payload);
+
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Vehicle added!" });
-      setShowForm(false);
-      setForm({ plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "" });
+      toast({ title: editingId ? "Vehicle updated!" : "Vehicle added!" });
+      resetForm();
+      fetchAll();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this vehicle?")) return;
+    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Vehicle deleted" });
       fetchAll();
     }
   };
@@ -53,11 +91,19 @@ const AdminVehicles = () => {
     fetchAll();
   };
 
+  const formFields = [
+    { key: "plate_number", label: "Plate Number", placeholder: "P-1234" },
+    { key: "make", label: "Make", placeholder: "Toyota" },
+    { key: "model", label: "Model", placeholder: "Yaris" },
+    { key: "color", label: "Color", placeholder: "White" },
+    { key: "year", label: "Year", placeholder: "2023" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Vehicles</h2>
-        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+        <button onClick={() => { showForm ? resetForm() : setShowForm(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? "Cancel" : "Add Vehicle"}
         </button>
@@ -65,15 +111,9 @@ const AdminVehicles = () => {
 
       {showForm && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-          <h3 className="font-semibold text-foreground">New Vehicle</h3>
+          <h3 className="font-semibold text-foreground">{editingId ? "Edit Vehicle" : "New Vehicle"}</h3>
           <div className="grid grid-cols-2 gap-4">
-            {[
-              { key: "plate_number", label: "Plate Number", placeholder: "P-1234" },
-              { key: "make", label: "Make", placeholder: "Toyota" },
-              { key: "model", label: "Model", placeholder: "Yaris" },
-              { key: "color", label: "Color", placeholder: "White" },
-              { key: "year", label: "Year", placeholder: "2023" },
-            ].map((f) => (
+            {formFields.map((f) => (
               <div key={f.key}>
                 <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
                 <input
@@ -86,33 +126,21 @@ const AdminVehicles = () => {
             ))}
             <div>
               <label className="text-xs font-medium text-muted-foreground">Vehicle Type</label>
-              <select
-                value={form.vehicle_type_id}
-                onChange={(e) => setForm({ ...form, vehicle_type_id: e.target.value })}
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
+              <select value={form.vehicle_type_id} onChange={(e) => setForm({ ...form, vehicle_type_id: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="">Select type</option>
-                {vehicleTypes.map((vt) => (
-                  <option key={vt.id} value={vt.id}>{vt.name}</option>
-                ))}
+                {vehicleTypes.map((vt) => (<option key={vt.id} value={vt.id}>{vt.name}</option>))}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Assign Driver</label>
-              <select
-                value={form.driver_id}
-                onChange={(e) => setForm({ ...form, driver_id: e.target.value })}
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
+              <select value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="">Unassigned</option>
-                {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
-                ))}
+                {drivers.map((d) => (<option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>))}
               </select>
             </div>
           </div>
           <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-            Save Vehicle
+            {editingId ? "Update Vehicle" : "Save Vehicle"}
           </button>
         </div>
       )}
@@ -149,9 +177,17 @@ const AdminVehicles = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => toggleActive(v.id, v.is_active)} className="text-xs font-medium text-primary hover:underline">
-                      {v.is_active ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleActive(v.id, v.is_active)} className="text-xs font-medium text-primary hover:underline">
+                        {v.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button onClick={() => openEdit(v)} className="text-muted-foreground hover:text-primary">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(v.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
