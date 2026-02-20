@@ -127,6 +127,39 @@ export type Database = {
         }
         Relationships: []
       }
+      service_locations: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          is_active: boolean
+          lat: number
+          lng: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lat: number
+          lng: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lat?: number
+          lng?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           description: string | null
