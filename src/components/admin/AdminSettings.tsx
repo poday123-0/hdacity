@@ -13,6 +13,8 @@ const settingsConfig = [
   { key: "max_search_radius_km", label: "Max Search Radius (km)", type: "number" },
   { key: "driver_accept_timeout_seconds", label: "Driver Accept Timeout (seconds)", type: "number" },
   { key: "default_trip_radius_km", label: "Default Driver Trip Radius (km)", type: "number" },
+  { key: "privacy_notice", label: "Privacy Notice", type: "textarea" },
+  { key: "terms_of_service", label: "Terms of Service", type: "textarea" },
 ];
 
 const AdminSettings = () => {
@@ -43,7 +45,7 @@ const AdminSettings = () => {
 
       <div className="bg-card border border-border rounded-xl divide-y divide-border">
         {settingsConfig.map((cfg) => (
-          <div key={cfg.key} className="flex items-center justify-between px-5 py-4">
+          <div key={cfg.key} className={`px-5 py-4 ${cfg.type === "textarea" ? "space-y-3" : "flex items-center justify-between"}`}>
             <div>
               <p className="text-sm font-medium text-foreground">{cfg.label}</p>
               <p className="text-xs text-muted-foreground">{cfg.key}</p>
@@ -62,6 +64,22 @@ const AdminSettings = () => {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+            ) : cfg.type === "textarea" ? (
+              <div className="flex-1 max-w-xl space-y-2">
+                <textarea
+                  value={typeof settings[cfg.key] === "string" ? settings[cfg.key] : (settings[cfg.key] ?? "")}
+                  onChange={(e) => setSettings({ ...settings, [cfg.key]: e.target.value })}
+                  rows={6}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                  placeholder={`Enter ${cfg.label}...`}
+                />
+                <button
+                  onClick={() => updateSetting(cfg.key, settings[cfg.key] || "")}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+                >
+                  <Save className="w-4 h-4" /> Save
+                </button>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <input
