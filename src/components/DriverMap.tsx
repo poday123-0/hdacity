@@ -1,35 +1,42 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const MALE_CENTER: [number, number] = [4.1755, 73.5093];
 
-// Sample locations in Malé
-const PICKUP_LOCATION: [number, number] = [4.1745, 73.5088]; // Majeedhee Magu
-const DROPOFF_LOCATION: [number, number] = [4.1912, 73.5291]; // Velana Airport area
+const createCarIcon = (color: string, size: number = 22) =>
+  L.divIcon({
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+      <svg width="${size * 0.55}" height="${size * 0.55}" viewBox="0 0 24 24" fill="white"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+    </div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    className: "",
+  });
 
-const driverIcon = L.divIcon({
-  html: `<div style="width:22px;height:22px;border-radius:50%;background:#40A3DB;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
-  </div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-  className: "",
-});
+const driverIcon = createCarIcon("#40A3DB", 28);
 
 const pickupIcon = L.divIcon({
-  html: `<div style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
+  html: `<div style="width:18px;height:18px;border-radius:50%;background:#22c55e;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+  </div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
   className: "",
 });
 
 const dropoffIcon = L.divIcon({
-  html: `<div style="width:14px;height:14px;border-radius:7px;background:#ef4444;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
+  html: `<div style="width:18px;height:18px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M5 11l1.5-4.5h11L19 11H5zm12.5 5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-11 0c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zM18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z"/></svg>
+  </div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
   className: "",
 });
+
+// Sample ride locations (would come from real trip data)
+const PICKUP_LOCATION: [number, number] = [4.1745, 73.5088];
+const DROPOFF_LOCATION: [number, number] = [4.1912, 73.5291];
 
 interface DriverMapProps {
   isNavigating: boolean;
@@ -42,12 +49,46 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
   const routeLayer = useRef<L.Polyline | null>(null);
   const radiusCircle = useRef<L.Circle | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const driverMarkerRef = useRef<L.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
 
+  // Get current position
+  const getPosition = useCallback(() => {
+    if (!navigator.geolocation) return;
+
+    // Get initial position
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setCurrentPos(coords);
+      },
+      () => {
+        // Fallback to Malé center if geolocation denied
+        setCurrentPos(MALE_CENTER);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+
+    // Watch position for live updates
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setCurrentPos(coords);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+  }, []);
+
+  // Initialize map
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    getPosition();
+
     const map = L.map(mapRef.current, {
-      center: MALE_CENTER,
+      center: currentPos || MALE_CENTER,
       zoom: 16,
       zoomControl: false,
       attributionControl: false,
@@ -55,17 +96,32 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    L.marker(MALE_CENTER, { icon: driverIcon })
+    // Driver marker
+    const marker = L.marker(currentPos || MALE_CENTER, { icon: driverIcon, zIndexOffset: 1000 })
       .addTo(map)
       .bindPopup("<b>Your location</b>");
+    driverMarkerRef.current = marker;
 
     mapInstance.current = map;
 
     return () => {
       map.remove();
       mapInstance.current = null;
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
     };
   }, []);
+
+  // Update driver marker position in real-time
+  useEffect(() => {
+    if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
+    driverMarkerRef.current.setLatLng(currentPos);
+    // Only re-center if not navigating (navigating uses fitBounds)
+    if (!isNavigating) {
+      mapInstance.current.setView(currentPos, mapInstance.current.getZoom(), { animate: true });
+    }
+  }, [currentPos, isNavigating]);
 
   // Draw route when navigating
   useEffect(() => {
@@ -82,6 +138,8 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
 
     if (!isNavigating) return;
 
+    const driverPos = currentPos || MALE_CENTER;
+
     // Add pickup & dropoff markers
     const pMarker = L.marker(PICKUP_LOCATION, { icon: pickupIcon })
       .addTo(map)
@@ -91,8 +149,8 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
       .bindPopup("<b>Dropoff</b><br/>Velana Airport");
     markersRef.current = [pMarker, dMarker];
 
-    // Fetch route from OSRM
-    const from = `${MALE_CENTER[1]},${MALE_CENTER[0]}`;
+    // Fetch route from OSRM using current position
+    const from = `${driverPos[1]},${driverPos[0]}`;
     const pickup = `${PICKUP_LOCATION[1]},${PICKUP_LOCATION[0]}`;
     const dropoff = `${DROPOFF_LOCATION[1]},${DROPOFF_LOCATION[0]}`;
 
@@ -109,16 +167,15 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
           routeLayer.current = L.polyline(coords, {
             color: "#40A3DB",
             weight: 5,
-            opacity: 0.8,
+            opacity: 0.85,
             dashArray: "10, 6",
           }).addTo(map);
 
-          // Fit the map to the route
           map.fitBounds(routeLayer.current.getBounds(), { padding: [60, 60] });
         }
       })
       .catch((err) => console.error("OSRM route error:", err));
-  }, [isNavigating]);
+  }, [isNavigating, currentPos]);
 
   // Radius circle
   useEffect(() => {
@@ -130,8 +187,10 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
       radiusCircle.current = null;
     }
 
+    const center = currentPos || MALE_CENTER;
+
     if (radiusKm && radiusKm > 0 && !isNavigating) {
-      radiusCircle.current = L.circle(MALE_CENTER, {
+      radiusCircle.current = L.circle(center, {
         radius: radiusKm * 1000,
         color: "#40A3DB",
         fillColor: "#40A3DB",
@@ -141,7 +200,7 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
         interactive: false,
       }).addTo(map);
     }
-  }, [radiusKm, isNavigating]);
+  }, [radiusKm, isNavigating, currentPos]);
 
   return <div ref={mapRef} className="absolute inset-0 z-0" />;
 };
