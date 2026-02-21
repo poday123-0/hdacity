@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/components/AuthScreen";
 import DriverMap from "@/components/DriverMap";
 import { motion } from "framer-motion";
@@ -15,6 +16,7 @@ import {
   User,
   Eye,
   EyeOff,
+  Radar,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -28,6 +30,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
   const [showEarnings, setShowEarnings] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const [tripRadius, setTripRadius] = useState(10);
+
+  // Load saved radius from profile
+  useEffect(() => {
+    if (userProfile?.id) {
+      supabase.from("profiles").select("trip_radius_km").eq("id", userProfile.id).single().then(({ data }) => {
+        if (data?.trip_radius_km) setTripRadius(data.trip_radius_km);
+      });
+    }
+  }, [userProfile?.id]);
+
+  const updateRadius = async (val: number) => {
+    setTripRadius(val);
+    if (userProfile?.id) {
+      await supabase.from("profiles").update({ trip_radius_km: val }).eq("id", userProfile.id);
+    }
+  };
 
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-surface">
@@ -132,6 +151,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Trip Radius */}
+            <div className="bg-surface rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Radar className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Trip Radius</span>
+                </div>
+                <span className="text-sm font-bold text-primary">{tripRadius} km</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={50}
+                value={tripRadius}
+                onChange={(e) => updateRadius(Number(e.target.value))}
+                className="w-full h-2 bg-border rounded-full appearance-none cursor-pointer accent-primary"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 km</span>
+                <span>50 km</span>
+              </div>
             </div>
 
             <button
