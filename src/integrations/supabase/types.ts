@@ -112,6 +112,67 @@ export type Database = {
           },
         ]
       }
+      driver_locations: {
+        Row: {
+          driver_id: string
+          heading: number | null
+          id: string
+          is_on_trip: boolean
+          is_online: boolean
+          lat: number
+          lng: number
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_type_id: string | null
+        }
+        Insert: {
+          driver_id: string
+          heading?: number | null
+          id?: string
+          is_on_trip?: boolean
+          is_online?: boolean
+          lat: number
+          lng: number
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type_id?: string | null
+        }
+        Update: {
+          driver_id?: string
+          heading?: number | null
+          id?: string
+          is_on_trip?: boolean
+          is_online?: boolean
+          lat?: number
+          lng?: number
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_locations_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_locations_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_locations_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_contacts: {
         Row: {
           created_at: string
