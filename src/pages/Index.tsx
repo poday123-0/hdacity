@@ -50,33 +50,7 @@ const Index = () => {
   const [estimatedFare, setEstimatedFare] = useState(0);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Simulate driver approaching during searching/driver-matching
-  useEffect(() => {
-    if (passengerScreen !== "searching" && passengerScreen !== "driver-matching") {
-      setDriverLocation(null);
-      return;
-    }
-    if (!pickup) return;
-
-    // Simulate driver starting nearby and moving toward pickup
-    const startLat = pickup.lat + 0.005;
-    const startLng = pickup.lng + 0.003;
-    setDriverLocation({ lat: startLat, lng: startLng });
-
-    const steps = 20;
-    let step = 0;
-    const interval = setInterval(() => {
-      step++;
-      if (step >= steps) { clearInterval(interval); return; }
-      const progress = step / steps;
-      setDriverLocation({
-        lat: startLat + (pickup.lat - startLat) * progress,
-        lng: startLng + (pickup.lng - startLng) * progress,
-      });
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [passengerScreen, pickup]);
+  // Driver location will be fetched from realtime when a driver accepts
 
   // Build ride data for the map
   const rideMapData = useMemo(() => {
@@ -166,6 +140,19 @@ const Index = () => {
 
   const handleConfirmRide = useCallback(async () => {
     if (!pickup || !dropoff || !selectedVehicleType) return;
+
+    // Guard: check if any drivers are online
+    const { count } = await supabase
+      .from("driver_locations")
+      .select("id", { count: "exact", head: true })
+      .eq("is_online", true)
+      .eq("is_on_trip", false);
+
+    if (!count || count === 0) {
+      toast({ title: "No drivers available", description: "There are no drivers online right now. Please try again later.", variant: "destructive" });
+      return;
+    }
+
     try {
       const { data, error } = await supabase.from("trips").insert({
         pickup_address: pickup.name,
