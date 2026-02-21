@@ -191,6 +191,43 @@ const Index = () => {
     }
   }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id]);
 
+  // Subscribe to trip status changes for passenger notifications
+  useEffect(() => {
+    if (!currentTripId) return;
+
+    const channel = supabase
+      .channel(`passenger-trip-${currentTripId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "trips",
+        filter: `id=eq.${currentTripId}`,
+      }, (payload) => {
+        const trip = payload.new as any;
+        const status = trip.status;
+
+        const notifications: Record<string, { title: string; description: string }> = {
+          accepted: { title: "🎉 Driver Accepted!", description: "Your driver is on the way to pick you up." },
+          arrived: { title: "📍 Driver Arrived!", description: "Your driver has arrived at the pickup location." },
+          in_progress: { title: "🚗 Trip Started!", description: "Your trip is now in progress. Enjoy the ride!" },
+          completed: { title: "✅ Trip Completed!", description: `Fare: ${trip.actual_fare || trip.estimated_fare} MVR. Thank you for riding!` },
+          cancelled: { title: "❌ Trip Cancelled", description: trip.cancel_reason || "The trip has been cancelled." },
+        };
+
+        const notif = notifications[status];
+        if (notif) {
+          toast({ title: notif.title, description: notif.description });
+        }
+
+        if (status === "completed") {
+          setPassengerScreen("feedback");
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentTripId]);
+
   const handleRideComplete = useCallback(() => {
     setPassengerScreen("feedback");
   }, []);

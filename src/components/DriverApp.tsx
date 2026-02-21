@@ -153,6 +153,55 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
     };
   }, [screen, userProfile?.id]);
 
+  // Listen for new trip requests and play sound when online
+  const tripSoundRef = useRef<HTMLAudioElement | null>(null);
+  const [tripRequestSoundUrl, setTripRequestSoundUrl] = useState<string>("");
+
+  useEffect(() => {
+    // Fetch the configured sound URL
+    supabase.from("system_settings").select("value").eq("key", "trip_request_sound_url").single()
+      .then(({ data }) => {
+        if (data?.value) {
+          const url = typeof data.value === "string" ? data.value : String(data.value);
+          setTripRequestSoundUrl(url);
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    if (screen !== "online" || !userProfile?.id) return;
+
+    const channel = supabase
+      .channel("driver-trip-requests")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "trips",
+        filter: "status=eq.requested",
+      }, (payload) => {
+        // Play sound
+        if (tripRequestSoundUrl) {
+          try {
+            if (tripSoundRef.current) {
+              tripSoundRef.current.pause();
+              tripSoundRef.current.currentTime = 0;
+            }
+            tripSoundRef.current = new Audio(tripRequestSoundUrl);
+            tripSoundRef.current.play().catch(() => {});
+          } catch {}
+        }
+        // Show toast notification
+        const trip = payload.new as any;
+        toast({
+          title: "🚗 New Ride Request!",
+          description: `${trip.pickup_address} → ${trip.dropoff_address}`,
+        });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [screen, userProfile?.id, tripRequestSoundUrl]);
+
   useEffect(() => {
     const load = async () => {
       const { data: settingData } = await supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").single();
