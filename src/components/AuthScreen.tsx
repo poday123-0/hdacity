@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import hdaLogo from "@/assets/hda-logo.png";
 
 export interface UserProfile {
+  id: string;
   first_name: string;
   last_name: string;
   email: string | null;

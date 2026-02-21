@@ -198,6 +198,7 @@ export type Database = {
           monthly_fee: number
           phone_number: string
           status: string
+          trip_radius_km: number
           updated_at: string
           user_type: string
         }
@@ -223,6 +224,7 @@ export type Database = {
           monthly_fee?: number
           phone_number: string
           status?: string
+          trip_radius_km?: number
           updated_at?: string
           user_type?: string
         }
@@ -248,6 +250,7 @@ export type Database = {
           monthly_fee?: number
           phone_number?: string
           status?: string
+          trip_radius_km?: number
           updated_at?: string
           user_type?: string
         }
