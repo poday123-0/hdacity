@@ -65,6 +65,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
+  const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h" });
 
   useEffect(() => {
     const load = async () => {
@@ -102,6 +103,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         if (vehicle) setVehicleInfo(vehicle);
         else issues.push("No vehicle assigned");
         setVerificationIssues([...issues]);
+
+        // Fetch today's stats
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const { data: trips } = await supabase
+          .from("trips")
+          .select("actual_fare, estimated_fare, duration_minutes, completed_at, accepted_at, status")
+          .eq("driver_id", userProfile.id)
+          .gte("created_at", todayStart.toISOString());
+
+        if (trips) {
+          const completedTrips = trips.filter(t => t.status === "completed");
+          const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
+          const totalMinutes = completedTrips.reduce((sum, t) => sum + (Number(t.duration_minutes) || 0), 0);
+          const h = Math.floor(totalMinutes / 60);
+          const m = Math.round(totalMinutes % 60);
+          setDriverStats({
+            rides: completedTrips.length,
+            earnings: totalEarnings,
+            hours: h > 0 ? `${h}h${m > 0 ? m.toString().padStart(2, "0") : ""}` : `${m}m`,
+          });
+        }
       } else {
         setTripRadius(defaultRadius);
       }
@@ -297,9 +320,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Rides", value: "12", icon: Navigation, mask: false },
-                { label: "Earnings", value: "960 MVR", icon: DollarSign, mask: true },
-                { label: "Hours", value: "6h30", icon: Clock, mask: false },
+                { label: "Rides", value: String(driverStats.rides), icon: Navigation, mask: false },
+                { label: "Earnings", value: `${driverStats.earnings.toFixed(0)} MVR`, icon: DollarSign, mask: true },
+                { label: "Hours", value: driverStats.hours, icon: Clock, mask: false },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface rounded-xl p-3 text-center">
                   <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
