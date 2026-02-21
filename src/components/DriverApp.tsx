@@ -542,9 +542,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                     </div>
                   </div>
 
-                  <button onClick={() => setScreen("ride-request")} className="w-full bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform">
-                    Simulate ride request
-                  </button>
+
+
                 </motion.div>
               )}
             </AnimatePresence>
