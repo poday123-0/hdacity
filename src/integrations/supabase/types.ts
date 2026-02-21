@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      banks: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       fare_surcharges: {
         Row: {
           amount: number
@@ -122,7 +170,9 @@ export type Database = {
         Row: {
           bank_account_name: string | null
           bank_account_number: string | null
+          bank_id: string | null
           bank_name: string | null
+          company_id: string | null
           company_name: string | null
           country_code: string
           created_at: string
@@ -130,8 +180,12 @@ export type Database = {
           first_name: string
           gender: string | null
           id: string
+          id_card_back_url: string | null
+          id_card_front_url: string | null
           last_name: string
           legacy_id: number | null
+          license_back_url: string | null
+          license_front_url: string | null
           monthly_fee: number
           phone_number: string
           status: string
@@ -141,7 +195,9 @@ export type Database = {
         Insert: {
           bank_account_name?: string | null
           bank_account_number?: string | null
+          bank_id?: string | null
           bank_name?: string | null
+          company_id?: string | null
           company_name?: string | null
           country_code?: string
           created_at?: string
@@ -149,8 +205,12 @@ export type Database = {
           first_name?: string
           gender?: string | null
           id?: string
+          id_card_back_url?: string | null
+          id_card_front_url?: string | null
           last_name?: string
           legacy_id?: number | null
+          license_back_url?: string | null
+          license_front_url?: string | null
           monthly_fee?: number
           phone_number: string
           status?: string
@@ -160,7 +220,9 @@ export type Database = {
         Update: {
           bank_account_name?: string | null
           bank_account_number?: string | null
+          bank_id?: string | null
           bank_name?: string | null
+          company_id?: string | null
           company_name?: string | null
           country_code?: string
           created_at?: string
@@ -168,15 +230,34 @@ export type Database = {
           first_name?: string
           gender?: string | null
           id?: string
+          id_card_back_url?: string | null
+          id_card_front_url?: string | null
           last_name?: string
           legacy_id?: number | null
+          license_back_url?: string | null
+          license_front_url?: string | null
           monthly_fee?: number
           phone_number?: string
           status?: string
           updated_at?: string
           user_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_locations: {
         Row: {
