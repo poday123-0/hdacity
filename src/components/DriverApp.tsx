@@ -27,6 +27,8 @@ import {
   CreditCard,
   IdCard,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -48,6 +50,7 @@ interface DriverAppProps {
 const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
   const [showEarnings, setShowEarnings] = useState(true);
+  const [panelMinimized, setPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileTab, setProfileTab] = useState<ProfileTab>("info");
   const [tripRadius, setTripRadius] = useState(10);
@@ -297,76 +300,104 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
 
       {/* Online */}
       {screen === "online" && (
-        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450]">
-          <div className="p-4 pb-6 space-y-4">
-            <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-primary animate-pulse-dot" />
-                  <span className="font-semibold text-foreground">Online</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Waiting for ride requests...</p>
-              </div>
-              <button onClick={() => setScreen("offline")} className="px-4 py-2 bg-surface rounded-lg text-sm font-medium text-foreground active:scale-95 transition-transform">Go offline</button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stats</p>
-              <button onClick={() => setShowEarnings(!showEarnings)} className="flex items-center gap-1 text-xs text-muted-foreground">
-                {showEarnings ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {showEarnings ? "Hide" : "Show"}
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: "Rides", value: String(driverStats.rides), icon: Navigation, mask: false },
-                { label: "Earnings", value: `${driverStats.earnings.toFixed(0)} MVR`, icon: DollarSign, mask: true },
-                { label: "Hours", value: driverStats.hours, icon: Clock, mask: false },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-surface rounded-xl p-3 text-center">
-                  <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
-                  <p className="text-lg font-bold text-foreground">{stat.mask && !showEarnings ? "•••" : stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Vehicle info */}
-            {vehicleInfo && (
-              <div className="bg-surface rounded-xl p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Navigation className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
-                  <p className="text-xs text-muted-foreground">{vehicleInfo.plate_number} {vehicleInfo.color ? `• ${vehicleInfo.color}` : ""}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Trip Radius */}
-            <div className="bg-surface rounded-2xl p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Radar className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">Trip Radius</span>
-                </div>
-                <div className="bg-primary/10 px-2.5 py-1 rounded-lg">
-                  <span className="text-sm font-bold text-primary tabular-nums">{tripRadius} km</span>
-                </div>
-              </div>
-              <div className="px-1">
-                <input type="range" min={1} max={50} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>1 km</span><span>25 km</span><span>50 km</span></div>
-              </div>
-            </div>
-
-            <button onClick={() => setScreen("ride-request")} className="w-full bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform">
-              Simulate ride request
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450]"
+        >
+          <div className="p-4 pb-6 space-y-3">
+            {/* Drag handle — tap to toggle */}
+            <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center py-1">
+              <div className="w-10 h-1 rounded-full bg-border" />
             </button>
+
+            {/* Always visible: status bar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary animate-pulse-dot" />
+                <span className="font-semibold text-foreground">Online</span>
+                {panelMinimized && (
+                  <span className="text-xs text-muted-foreground ml-1">• {driverStats.rides} rides today</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+                  {panelMinimized ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                <button onClick={() => setScreen("offline")} className="px-3 py-1.5 bg-surface rounded-lg text-xs font-medium text-foreground active:scale-95 transition-transform">Go offline</button>
+              </div>
+            </div>
+
+            {/* Collapsible content */}
+            <AnimatePresence>
+              {!panelMinimized && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-3 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Today's Stats</p>
+                    <button onClick={() => setShowEarnings(!showEarnings)} className="flex items-center gap-1 text-xs text-muted-foreground">
+                      {showEarnings ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showEarnings ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Rides", value: String(driverStats.rides), icon: Navigation, mask: false },
+                      { label: "Earnings", value: `${driverStats.earnings.toFixed(0)} MVR`, icon: DollarSign, mask: true },
+                      { label: "Hours", value: driverStats.hours, icon: Clock, mask: false },
+                    ].map((stat) => (
+                      <div key={stat.label} className="bg-surface rounded-xl p-2.5 text-center">
+                        <stat.icon className="w-4 h-4 text-primary mx-auto mb-1" />
+                        <p className="text-base font-bold text-foreground">{stat.mask && !showEarnings ? "•••" : stat.value}</p>
+                        <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Vehicle info */}
+                  {vehicleInfo && (
+                    <div className="bg-surface rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Navigation className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
+                        <p className="text-xs text-muted-foreground">{vehicleInfo.plate_number} {vehicleInfo.color ? `• ${vehicleInfo.color}` : ""}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Trip Radius */}
+                  <div className="bg-surface rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Radar className="w-4 h-4 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium text-foreground">Trip Radius</span>
+                      </div>
+                      <div className="bg-primary/10 px-2.5 py-1 rounded-lg">
+                        <span className="text-sm font-bold text-primary tabular-nums">{tripRadius} km</span>
+                      </div>
+                    </div>
+                    <div className="px-1">
+                      <input type="range" min={1} max={50} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
+                      <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>1 km</span><span>25 km</span><span>50 km</span></div>
+                    </div>
+                  </div>
+
+                  <button onClick={() => setScreen("ride-request")} className="w-full bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform">
+                    Simulate ride request
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       )}
