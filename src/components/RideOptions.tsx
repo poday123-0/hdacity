@@ -90,10 +90,14 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff }: RideOptionsProps) =
                       : "bg-surface border-2 border-transparent hover:bg-muted"
                   }`}
                 >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ${
                     selected === vt.id ? "bg-primary" : "bg-muted"
                   }`}>
-                    <Icon className={`w-6 h-6 ${selected === vt.id ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                    {vt.image_url ? (
+                      <img src={vt.image_url} alt={vt.name} className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <Icon className={`w-6 h-6 ${selected === vt.id ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                    )}
                   </div>
                   <div className="flex-1 text-left">
                     <div className="flex items-center justify-between">

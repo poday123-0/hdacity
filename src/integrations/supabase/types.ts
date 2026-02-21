@@ -346,7 +346,9 @@ export type Database = {
           driver_tax_pct: number
           icon: string | null
           id: string
+          image_url: string | null
           is_active: boolean
+          map_icon_url: string | null
           minimum_fare: number
           name: string
           passenger_tax_pct: number
@@ -363,7 +365,9 @@ export type Database = {
           driver_tax_pct?: number
           icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
+          map_icon_url?: string | null
           minimum_fare?: number
           name: string
           passenger_tax_pct?: number
@@ -380,7 +384,9 @@ export type Database = {
           driver_tax_pct?: number
           icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
+          map_icon_url?: string | null
           minimum_fare?: number
           name?: string
           passenger_tax_pct?: number
