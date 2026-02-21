@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2 } from "lucide-react";
 
-const emptyZoneForm = { name: "", from_area: "", to_area: "", vehicle_type_id: "", fixed_fare: "" };
+const emptyZoneForm = { from_area: "", to_area: "", vehicle_type_id: "", fixed_fare: "" };
 
 const AdminFares = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [fareZones, setFareZones] = useState<any[]>([]);
+  const [serviceLocations, setServiceLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showZoneForm, setShowZoneForm] = useState(false);
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
@@ -15,12 +16,14 @@ const AdminFares = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [vt, fz] = await Promise.all([
+    const [vt, fz, sl] = await Promise.all([
       supabase.from("vehicle_types").select("*").order("sort_order"),
-      supabase.from("fare_zones").select("*, vehicle_types(name)").order("created_at", { ascending: false }),
+      supabase.from("fare_zones").select("*, vehicle_types(name)").order("from_area"),
+      supabase.from("service_locations").select("*").eq("is_active", true).order("name"),
     ]);
     setVehicleTypes(vt.data || []);
     setFareZones(fz.data || []);
+    setServiceLocations(sl.data || []);
     setLoading(false);
   };
 
@@ -34,7 +37,6 @@ const AdminFares = () => {
 
   const openEditZone = (fz: any) => {
     setZoneForm({
-      name: fz.name || "",
       from_area: fz.from_area || "",
       to_area: fz.to_area || "",
       vehicle_type_id: fz.vehicle_type_id || "",
@@ -51,9 +53,9 @@ const AdminFares = () => {
   };
 
   const saveZone = async () => {
-    if (!zoneForm.name || !zoneForm.from_area || !zoneForm.to_area || !zoneForm.fixed_fare) return;
+    if (!zoneForm.from_area || !zoneForm.to_area || !zoneForm.fixed_fare) return;
     const payload = {
-      name: zoneForm.name,
+      name: `${zoneForm.from_area} to ${zoneForm.to_area}`,
       from_area: zoneForm.from_area,
       to_area: zoneForm.to_area,
       vehicle_type_id: zoneForm.vehicle_type_id || null,
@@ -67,29 +69,22 @@ const AdminFares = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: editingZoneId ? "Zone updated!" : "Zone fare added!" });
+      toast({ title: editingZoneId ? "Route updated!" : "Route fare added!" });
       resetZoneForm();
       fetchAll();
     }
   };
 
   const deleteZone = async (id: string) => {
-    if (!confirm("Delete this fare zone?")) return;
+    if (!confirm("Delete this route fare?")) return;
     const { error } = await supabase.from("fare_zones").delete().eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Zone deleted" });
+      toast({ title: "Route deleted" });
       fetchAll();
     }
   };
-
-  const zoneFields = [
-    { key: "name", label: "Zone Name", placeholder: "Malé to Airport" },
-    { key: "from_area", label: "From", placeholder: "Malé" },
-    { key: "to_area", label: "To", placeholder: "Velana Airport" },
-    { key: "fixed_fare", label: "Fixed Fare (MVR)", placeholder: "70" },
-  ];
 
   return (
     <div className="space-y-8">
@@ -132,31 +127,44 @@ const AdminFares = () => {
         </div>
       </div>
 
-      {/* Zone-based fares */}
+      {/* Zone-based / Route fares */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Zone-Based Fares (fixed routes)</h3>
+          <h3 className="text-lg font-semibold text-foreground">Route-Based Fares (fixed prices)</h3>
           <button onClick={() => { showZoneForm ? resetZoneForm() : setShowZoneForm(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
             {showZoneForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {showZoneForm ? "Cancel" : "Add Zone"}
+            {showZoneForm ? "Cancel" : "Add Route"}
           </button>
         </div>
 
         {showZoneForm && (
           <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <h3 className="font-semibold text-foreground">{editingZoneId ? "Edit Zone" : "New Zone"}</h3>
+            <h3 className="font-semibold text-foreground">{editingZoneId ? "Edit Route" : "New Route"}</h3>
             <div className="grid grid-cols-2 gap-4">
-              {zoneFields.map((f) => (
-                <div key={f.key}>
-                  <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
-                  <input
-                    value={(zoneForm as any)[f.key]}
-                    onChange={(e) => setZoneForm({ ...zoneForm, [f.key]: e.target.value })}
-                    placeholder={f.placeholder}
-                    className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              ))}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">From</label>
+                <select value={zoneForm.from_area} onChange={(e) => setZoneForm({ ...zoneForm, from_area: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">Select area</option>
+                  {serviceLocations.map((loc) => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">To</label>
+                <select value={zoneForm.to_area} onChange={(e) => setZoneForm({ ...zoneForm, to_area: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">Select area</option>
+                  {serviceLocations.map((loc) => (<option key={loc.id} value={loc.name}>{loc.name}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Fixed Fare (MVR)</label>
+                <input
+                  type="number"
+                  value={zoneForm.fixed_fare}
+                  onChange={(e) => setZoneForm({ ...zoneForm, fixed_fare: e.target.value })}
+                  placeholder="70"
+                  className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Vehicle Type (optional)</label>
                 <select value={zoneForm.vehicle_type_id} onChange={(e) => setZoneForm({ ...zoneForm, vehicle_type_id: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
@@ -166,7 +174,7 @@ const AdminFares = () => {
               </div>
             </div>
             <button onClick={saveZone} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-              {editingZoneId ? "Update Zone" : "Save Zone"}
+              {editingZoneId ? "Update Route" : "Save Route"}
             </button>
           </div>
         )}
@@ -175,25 +183,23 @@ const AdminFares = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-surface">
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Zone</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">From</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">To</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Type</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Route</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicle Type</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Fare (MVR)</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {fareZones.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No zone fares configured</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No route fares configured</td></tr>
               ) : (
                 fareZones.map((fz) => (
                   <tr key={fz.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{fz.name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{fz.from_area}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{fz.to_area}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">
+                      {fz.from_area} → {fz.to_area}
+                    </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{fz.vehicle_types?.name || "All"}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{fz.fixed_fare} MVR</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-foreground">{fz.fixed_fare} MVR</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button onClick={() => openEditZone(fz)} className="text-muted-foreground hover:text-primary">
