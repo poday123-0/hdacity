@@ -332,42 +332,38 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
             {/* Passenger & Luggage counters */}
             {!selecting && (
               <div className="flex gap-3">
-                <div className="flex-1 bg-surface rounded-2xl px-3.5 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-primary" />
+                <div className="flex-1 bg-surface rounded-2xl p-3 flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Users className="w-4.5 h-4.5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Passengers</p>
-                      <p className="text-sm font-bold text-foreground">{passengerCount}</p>
-                    </div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Passengers</p>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-8 h-8 rounded-xl bg-card border border-border/50 flex items-center justify-center active:scale-90 transition-transform">
-                      <Minus className="w-3.5 h-3.5 text-foreground" />
+                  <div className="flex items-center justify-between w-full bg-card rounded-xl px-1 py-1">
+                    <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-9 h-9 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount <= 1}>
+                      <Minus className="w-4 h-4 text-foreground" />
                     </button>
-                    <button onClick={() => setPassengerCount(Math.min(10, passengerCount + 1))} className="w-8 h-8 rounded-xl bg-card border border-border/50 flex items-center justify-center active:scale-90 transition-transform">
-                      <Plus className="w-3.5 h-3.5 text-foreground" />
+                    <span className="text-lg font-bold text-foreground tabular-nums min-w-[2ch] text-center">{passengerCount}</span>
+                    <button onClick={() => setPassengerCount(Math.min(10, passengerCount + 1))} className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount >= 10}>
+                      <Plus className="w-4 h-4 text-primary" />
                     </button>
                   </div>
                 </div>
 
-                <div className="flex-1 bg-surface rounded-2xl px-3.5 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Luggage className="w-4 h-4 text-primary" />
+                <div className="flex-1 bg-surface rounded-2xl p-3 flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Luggage className="w-4.5 h-4.5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Luggage</p>
-                      <p className="text-sm font-bold text-foreground">{luggageCount}</p>
-                    </div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Luggage</p>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-8 h-8 rounded-xl bg-card border border-border/50 flex items-center justify-center active:scale-90 transition-transform">
-                      <Minus className="w-3.5 h-3.5 text-foreground" />
+                  <div className="flex items-center justify-between w-full bg-card rounded-xl px-1 py-1">
+                    <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-9 h-9 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount <= 0}>
+                      <Minus className="w-4 h-4 text-foreground" />
                     </button>
-                    <button onClick={() => setLuggageCount(Math.min(20, luggageCount + 1))} className="w-8 h-8 rounded-xl bg-card border border-border/50 flex items-center justify-center active:scale-90 transition-transform">
-                      <Plus className="w-3.5 h-3.5 text-foreground" />
+                    <span className="text-lg font-bold text-foreground tabular-nums min-w-[2ch] text-center">{luggageCount}</span>
+                    <button onClick={() => setLuggageCount(Math.min(20, luggageCount + 1))} className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount >= 20}>
+                      <Plus className="w-4 h-4 text-primary" />
                     </button>
                   </div>
                 </div>
