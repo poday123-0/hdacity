@@ -6,6 +6,8 @@ const ImportUsers = () => {
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [vehicleStatus, setVehicleStatus] = useState("");
+  const [vehicleImporting, setVehicleImporting] = useState(false);
 
   const parseUsersFromSQL = (sql: string) => {
     const users: any[] = [];
@@ -85,6 +87,50 @@ const ImportUsers = () => {
     setImporting(false);
   };
 
+  const parseVehiclesFromSQL = (sql: string) => {
+    const vehicles: any[] = [];
+    const regex = /\((\d+),\s*(\d+),\s*(?:(\d+)|NULL),\s*\d+,\s*\d+,\s*'[^']*',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*(\d+),\s*'([^']*)',\s*'([^']*)',\s*'[^']*',\s*'([^']*)'\)/g;
+    let match;
+    while ((match = regex.exec(sql)) !== null) {
+      vehicles.push({
+        id: parseInt(match[1]),
+        user_id: parseInt(match[2]),
+        company_id: match[3] ? parseInt(match[3]) : null,
+        vehicle_type: match[4],
+        vehicle_name: match[5],
+        vehicle_number: match[6],
+        is_active: parseInt(match[7]),
+        year: match[8],
+        color: match[9],
+        status: match[10],
+      });
+    }
+    return vehicles;
+  };
+
+  const handleVehicleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVehicleImporting(true);
+    setVehicleStatus("Reading file...");
+    const text = await file.text();
+    const vehicles = parseVehiclesFromSQL(text);
+    setVehicleStatus(`Found ${vehicles.length} vehicles. Importing...`);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("import-vehicles", {
+        body: { vehicles },
+      });
+      if (error) {
+        setVehicleStatus(`❌ Error: ${error.message}`);
+      } else {
+        setVehicleStatus(`✅ Done! Inserted: ${data.inserted}, Skipped: ${data.skipped}${data.drivers_not_found?.length ? `. Drivers not found (legacy IDs): ${data.drivers_not_found.join(", ")}` : ""}`);
+      }
+    } catch (err: any) {
+      setVehicleStatus(`❌ Error: ${err.message}`);
+    }
+    setVehicleImporting(false);
+  };
   return (
     <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center p-8">
       <div className="max-w-md w-full space-y-6">
@@ -112,6 +158,27 @@ const ImportUsers = () => {
                 />
               </div>
             )}
+          </div>
+        )}
+
+        <hr className="border-border" />
+
+        <h2 className="text-xl font-bold text-foreground">Import Vehicles</h2>
+        <p className="text-muted-foreground text-sm">
+          Upload the MySQL SQL dump for vehicles. Vehicles will be matched to drivers via legacy user IDs.
+        </p>
+
+        <input
+          type="file"
+          accept=".sql"
+          onChange={handleVehicleUpload}
+          disabled={vehicleImporting}
+          className="w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-primary-foreground file:font-semibold hover:file:opacity-90"
+        />
+
+        {vehicleStatus && (
+          <div className="bg-surface rounded-xl p-4">
+            <p className="text-sm text-foreground">{vehicleStatus}</p>
           </div>
         )}
 
