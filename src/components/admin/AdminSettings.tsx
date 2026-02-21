@@ -13,7 +13,12 @@ const settingsConfig = [
   { key: "max_search_radius_km", label: "Max Search Radius (km)", type: "number" },
   { key: "driver_accept_timeout_seconds", label: "Driver Accept Timeout (seconds)", type: "number" },
   { key: "default_trip_radius_km", label: "Default Driver Trip Radius (km)", type: "number" },
-  { key: "trip_request_sound_url", label: "Trip Request Sound URL", type: "text" },
+  { key: "trip_request_sound_url", label: "Driver: Trip Request Sound URL", type: "text" },
+  { key: "passenger_sound_accepted", label: "Passenger: Driver Accepted Sound", type: "text" },
+  { key: "passenger_sound_arrived", label: "Passenger: Driver Arrived Sound", type: "text" },
+  { key: "passenger_sound_started", label: "Passenger: Trip Started Sound", type: "text" },
+  { key: "passenger_sound_completed", label: "Passenger: Trip Completed Sound", type: "text" },
+  { key: "passenger_sound_cancelled", label: "Passenger: Trip Cancelled Sound", type: "text" },
   { key: "privacy_notice", label: "Privacy Notice", type: "textarea" },
   { key: "terms_of_service", label: "Terms of Service", type: "textarea" },
 ];
