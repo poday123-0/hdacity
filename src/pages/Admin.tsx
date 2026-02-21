@@ -10,6 +10,8 @@ import AdminVehicleTypes from "@/components/admin/AdminVehicleTypes";
 import AdminFares from "@/components/admin/AdminFares";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminTrips from "@/components/admin/AdminTrips";
+import AdminBanks from "@/components/admin/AdminBanks";
+import AdminCompanies from "@/components/admin/AdminCompanies";
 import {
   LayoutDashboard,
   Users,
@@ -20,10 +22,12 @@ import {
   Navigation,
   LogOut,
   Layers,
+  Building2,
+  Building,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "drivers" | "vehicles" | "vehicle_types" | "fares" | "locations" | "trips" | "settings";
+type Tab = "dashboard" | "drivers" | "vehicles" | "vehicle_types" | "fares" | "locations" | "trips" | "banks" | "companies" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -31,6 +35,8 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
   { id: "vehicles", label: "Vehicles", icon: Car },
   { id: "fares", label: "Fares", icon: DollarSign },
+  { id: "banks", label: "Banks", icon: Building2 },
+  { id: "companies", label: "Companies", icon: Building },
   { id: "locations", label: "Service Areas", icon: Navigation },
   { id: "trips", label: "Trips", icon: MapPin },
   { id: "settings", label: "Settings", icon: Settings },
@@ -168,6 +174,8 @@ const Admin = () => {
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
           {activeTab === "vehicles" && <AdminVehicles />}
           {activeTab === "fares" && <AdminFares />}
+          {activeTab === "banks" && <AdminBanks />}
+          {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}
           {activeTab === "trips" && <AdminTrips />}
           {activeTab === "settings" && <AdminSettings />}
