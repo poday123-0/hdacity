@@ -343,12 +343,15 @@ export type Database = {
           capacity: number
           created_at: string
           description: string | null
+          driver_tax_pct: number
           icon: string | null
           id: string
           is_active: boolean
           minimum_fare: number
           name: string
+          passenger_tax_pct: number
           per_km_rate: number
+          per_minute_rate: number
           sort_order: number
           updated_at: string
         }
@@ -357,12 +360,15 @@ export type Database = {
           capacity?: number
           created_at?: string
           description?: string | null
+          driver_tax_pct?: number
           icon?: string | null
           id?: string
           is_active?: boolean
           minimum_fare?: number
           name: string
+          passenger_tax_pct?: number
           per_km_rate?: number
+          per_minute_rate?: number
           sort_order?: number
           updated_at?: string
         }
@@ -371,12 +377,15 @@ export type Database = {
           capacity?: number
           created_at?: string
           description?: string | null
+          driver_tax_pct?: number
           icon?: string | null
           id?: string
           is_active?: boolean
           minimum_fare?: number
           name?: string
+          passenger_tax_pct?: number
           per_km_rate?: number
+          per_minute_rate?: number
           sort_order?: number
           updated_at?: string
         }
