@@ -201,29 +201,29 @@ const AdminLocations = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Service Locations</h2>
+        <h2 className="text-2xl font-bold text-foreground">Service Areas</h2>
         <button
           onClick={() => { showForm ? resetForm() : setShowForm(true); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? "Cancel" : "Add Location"}
+          {showForm ? "Cancel" : "Add Area"}
         </button>
       </div>
 
       {showForm && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-          <h3 className="font-semibold text-foreground">{editingId ? "Edit Location" : "New Location"}</h3>
+          <h3 className="font-semibold text-foreground">{editingId ? "Edit Service Area" : "New Service Area"}</h3>
 
           {/* Map */}
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
             <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
           </div>
-          <p className="text-xs text-muted-foreground">Click on the map to select location, or drag the marker to adjust</p>
+          <p className="text-xs text-muted-foreground">Click on the map to select area, or drag the marker to adjust</p>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Location Name *</label>
+              <label className="text-xs font-medium text-muted-foreground">Area Name *</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -264,7 +264,7 @@ const AdminLocations = () => {
             </div>
           </div>
           <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-            {editingId ? "Update Location" : "Save Location"}
+            {editingId ? "Update Area" : "Save Area"}
           </button>
         </div>
       )}
@@ -285,7 +285,7 @@ const AdminLocations = () => {
             {loading ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : locations.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No service locations</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No service areas</td></tr>
             ) : (
               locations.map((loc) => (
                 <tr key={loc.id} className="border-b border-border last:border-0">

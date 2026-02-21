@@ -1,4 +1,4 @@
-import { Car, Users, Crown, ArrowLeft, Clock, Loader2 } from "lucide-react";
+import { Car, Users, Crown, ArrowLeft, Clock, Loader2, Bike, Truck, Bus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,8 +10,10 @@ interface RideOptionsProps {
 
 const iconMap: Record<string, typeof Car> = {
   car: Car,
-  truck: Users,
+  truck: Truck,
   premium: Crown,
+  cycle: Bike,
+  van: Bus,
 };
 
 const RideOptions = ({ onBack, onConfirm }: RideOptionsProps) => {
