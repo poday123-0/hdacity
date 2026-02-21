@@ -53,7 +53,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
   }, []);
 
   useEffect(() => {
-    detectCurrentLocation();
+    if (!pickup) detectCurrentLocation();
   }, [locations.length]);
 
   // Nominatim search with debounce
@@ -94,38 +94,33 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
   }, [locations]);
 
   const detectCurrentLocation = () => {
-    if (!navigator.geolocation || locations.length === 0) return;
+    if (!navigator.geolocation) return;
     setDetectingLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         const nearest = findNearestServiceArea(latitude, longitude);
-        if (!nearest) {
-          setDetectingLocation(false);
-          return;
-        }
 
         // Reverse geocode for precise address
+        let name = nearest?.name || "Current Location";
+        let address = nearest?.address || "";
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
             { headers: { "Accept-Language": "en" } }
           );
           const data = await res.json();
-          const address = data.display_name?.split(",").slice(0, 3).join(", ") || nearest.address;
-          const name = data.name || data.address?.road || data.address?.neighbourhood || nearest.name;
+          address = data.display_name?.split(",").slice(0, 3).join(", ") || address;
+          name = data.name || data.address?.road || data.address?.neighbourhood || name;
+        } catch {}
 
-          setPickup({
-            ...nearest,
-            name,
-            address,
-            lat: latitude,
-            lng: longitude,
-          });
-        } catch {
-          // Fallback to nearest service area
-          setPickup({ ...nearest, lat: latitude, lng: longitude });
-        }
+        setPickup({
+          id: nearest?.id || "current-location",
+          name,
+          address,
+          lat: latitude,
+          lng: longitude,
+        });
         setDetectingLocation(false);
       },
       () => setDetectingLocation(false),
