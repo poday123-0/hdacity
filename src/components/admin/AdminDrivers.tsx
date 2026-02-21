@@ -39,8 +39,19 @@ const AdminDrivers = () => {
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+    
+    // If activating, check that all 4 docs are uploaded
+    if (newStatus === "Active") {
+      const driver = drivers.find(d => d.id === id);
+      const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
+      if (docCount < 4) {
+        toast({ title: "Cannot approve", description: `Driver has only ${docCount}/4 documents uploaded. All documents are required.`, variant: "destructive" });
+        return;
+      }
+    }
+
     await supabase.from("profiles").update({ status: newStatus }).eq("id", id);
-    toast({ title: `Driver ${newStatus === "Active" ? "activated" : "deactivated"}` });
+    toast({ title: `Driver ${newStatus === "Active" ? "approved ✅" : "deactivated"}` });
     fetchAll();
   };
 
@@ -254,21 +265,38 @@ const AdminDrivers = () => {
                     <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{d.monthly_fee > 0 ? `${d.monthly_fee} MVR` : "—"}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
-                        {docCount}/4
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                          {docCount}/4
+                        </span>
+                        {docCount > 0 && (
+                          <button onClick={() => openEdit(d)} className="text-xs text-primary hover:underline ml-1">View</button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${d.status === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+                        d.status === "Active" ? "bg-green-100 text-green-700" : 
+                        d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : 
+                        "bg-red-100 text-red-700"
+                      }`}>
                         {d.status === "Active" ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
                         {d.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-medium text-primary hover:underline">
-                          {d.status === "Active" ? "Deactivate" : "Activate"}
-                        </button>
+                        {d.status !== "Active" && docCount === 4 ? (
+                          <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-lg hover:opacity-90">
+                            Approve
+                          </button>
+                        ) : d.status === "Active" ? (
+                          <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-medium text-destructive hover:underline">
+                            Deactivate
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Docs incomplete</span>
+                        )}
                         <button onClick={() => openEdit(d)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
                         <button onClick={() => deleteDriver(d.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
                       </div>

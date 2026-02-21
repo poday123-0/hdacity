@@ -470,13 +470,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
               <button onClick={() => setScreen("online")} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98]">
                 Start driving
               </button>
+            ) : profileStatus !== "Active" && verificationIssues.length === 0 ? (
+              <div className="bg-card rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-2 justify-center">
+                  <Clock className="w-4 h-4 text-primary animate-pulse" />
+                  <p className="text-sm font-semibold text-foreground">Pending Admin Approval</p>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Your documents have been submitted. An admin will review and approve your profile shortly.</p>
+              </div>
             ) : profileStatus !== "Active" ? (
               <div className="bg-card rounded-xl p-4">
                 <div className="flex items-center gap-2 justify-center">
                   <Clock className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-muted-foreground">Waiting for admin verification</p>
+                  <p className="text-sm font-medium text-muted-foreground">Complete requirements above to request approval</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Status: <span className="font-semibold text-foreground">{profileStatus}</span></p>
               </div>
             ) : null}
           </motion.div>
