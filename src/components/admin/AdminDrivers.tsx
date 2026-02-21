@@ -74,7 +74,7 @@ const AdminDrivers = () => {
     if (!editingId) return;
     const bankObj = banks.find((b) => b.id === editForm.bank_id);
     const { error } = await supabase.from("profiles").update({
-      first_name: editForm.first_name, last_name: editForm.last_name, email: editForm.email || null,
+      first_name: editForm.first_name, last_name: editForm.last_name, email: editForm.email || null, phone_number: editForm.phone_number,
       company_id: editForm.company_id || null, company_name: companies.find((c) => c.id === editForm.company_id)?.name || "",
       monthly_fee: parseFloat(editForm.monthly_fee) || 0,
       bank_id: editForm.bank_id || null, bank_name: bankObj?.name || "",
@@ -165,8 +165,8 @@ const AdminDrivers = () => {
               <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Phone (read-only)</label>
-              <input value={editForm.phone_number} disabled className={inputCls} />
+              <label className="text-xs font-medium text-muted-foreground">Phone</label>
+              <input value={editForm.phone_number} onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })} className={inputCls} />
             </div>
           </div>
 
