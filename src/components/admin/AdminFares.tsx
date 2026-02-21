@@ -105,14 +105,17 @@ const AdminFares = () => {
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Type</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Base Fare (MVR)</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Per KM (MVR)</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Per Min (MVR)</th>
                 <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Minimum (MVR)</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Passenger Tax %</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Driver Tax %</th>
               </tr>
             </thead>
             <tbody>
               {vehicleTypes.map((vt) => (
                 <tr key={vt.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-sm font-medium text-foreground">{vt.name}</td>
-                  {["base_fare", "per_km_rate", "minimum_fare"].map((field) => (
+                  {["base_fare", "per_km_rate", "per_minute_rate", "minimum_fare", "passenger_tax_pct", "driver_tax_pct"].map((field) => (
                     <td key={field} className="px-4 py-3">
                       <input
                         type="number"
