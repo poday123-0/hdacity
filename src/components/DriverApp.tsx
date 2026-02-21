@@ -78,6 +78,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showAddBank, setShowAddBank] = useState(false);
   const [newBank, setNewBank] = useState({ bank_name: "", account_number: "", account_name: "" });
+  const [availableBanks, setAvailableBanks] = useState<Array<{ id: string; name: string; logo_url: string | null }>>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [vehicleInfo, setVehicleInfo] = useState<{ make: string; model: string; plate_number: string; color: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -228,6 +229,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
 
     return () => { supabase.removeChannel(channel); };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
+
+  // Fetch available banks from admin-configured banks table
+  useEffect(() => {
+    supabase.from("banks").select("id, name, logo_url").eq("is_active", true).order("name").then(({ data }) => {
+      if (data) setAvailableBanks(data);
+    });
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -839,7 +847,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                       <div key={bank.id} className="bg-surface rounded-xl p-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <CreditCard className="w-4 h-4 text-primary" />
+                            {(() => {
+                              const bankInfo = availableBanks.find(b => b.name === bank.bank_name);
+                              return bankInfo?.logo_url ? (
+                                <img src={bankInfo.logo_url} alt={bank.bank_name} className="w-6 h-6 rounded object-contain" />
+                              ) : (
+                                <CreditCard className="w-4 h-4 text-primary" />
+                              );
+                            })()}
                             <span className="text-sm font-semibold text-foreground">{bank.bank_name}</span>
                           </div>
                           <div className="flex items-center gap-1">
@@ -864,12 +879,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                     {showAddBank ? (
                       <div className="bg-surface rounded-xl p-3 space-y-2">
                         <p className="text-xs font-semibold text-foreground">Add bank account</p>
-                        <input
-                          placeholder="Bank name"
-                          value={newBank.bank_name}
-                          onChange={(e) => setNewBank({ ...newBank, bank_name: e.target.value })}
-                          className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
+                        <div className="relative">
+                          <select
+                            value={newBank.bank_name}
+                            onChange={(e) => setNewBank({ ...newBank, bank_name: e.target.value })}
+                            className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                          >
+                            <option value="">Select bank</option>
+                            {availableBanks.map((bank) => (
+                              <option key={bank.id} value={bank.name}>{bank.name}</option>
+                            ))}
+                          </select>
+                          {newBank.bank_name && (() => {
+                            const selected = availableBanks.find(b => b.name === newBank.bank_name);
+                            return selected?.logo_url ? (
+                              <img src={selected.logo_url} alt="" className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded object-contain" />
+                            ) : null;
+                          })()}
+                        </div>
                         <input
                           placeholder="Account number"
                           value={newBank.account_number}
