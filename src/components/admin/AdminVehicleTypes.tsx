@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Car, Bike, Truck, Bus } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Car, Bike, Truck, Bus, Upload, Image } from "lucide-react";
 
 const ICON_OPTIONS = [
   { value: "car", label: "Car", Icon: Car },
@@ -28,12 +28,21 @@ const emptyForm = {
   sort_order: "0",
 };
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
 const AdminVehicleTypes = () => {
   const [types, setTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [mapIconFile, setMapIconFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mapIconPreview, setMapIconPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const mapIconInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -43,6 +52,19 @@ const AdminVehicleTypes = () => {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  const getPublicUrl = (path: string) =>
+    `${SUPABASE_URL}/storage/v1/object/public/vehicle-images/${path}`;
+
+  const uploadFile = async (file: File, prefix: string, id: string): Promise<string> => {
+    const ext = file.name.split(".").pop() || "png";
+    const filePath = `${prefix}/${id}.${ext}`;
+    const { error } = await supabase.storage
+      .from("vehicle-images")
+      .upload(filePath, file, { upsert: true });
+    if (error) throw error;
+    return getPublicUrl(filePath);
+  };
 
   const openEdit = (vt: any) => {
     setForm({
@@ -55,6 +77,10 @@ const AdminVehicleTypes = () => {
       minimum_fare: vt.minimum_fare?.toString() || "25",
       sort_order: vt.sort_order?.toString() || "0",
     });
+    setImagePreview(vt.image_url || null);
+    setMapIconPreview(vt.map_icon_url || null);
+    setImageFile(null);
+    setMapIconFile(null);
     setEditingId(vt.id);
     setShowForm(true);
   };
@@ -63,31 +89,70 @@ const AdminVehicleTypes = () => {
     setForm(emptyForm);
     setEditingId(null);
     setShowForm(false);
+    setImageFile(null);
+    setMapIconFile(null);
+    setImagePreview(null);
+    setMapIconPreview(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "mapIcon") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    if (type === "image") {
+      setImageFile(file);
+      setImagePreview(url);
+    } else {
+      setMapIconFile(file);
+      setMapIconPreview(url);
+    }
   };
 
   const handleSubmit = async () => {
     if (!form.name) return;
-    const payload = {
-      name: form.name,
-      description: form.description,
-      icon: form.icon,
-      capacity: parseInt(form.capacity) || 4,
-      base_fare: parseFloat(form.base_fare) || 25,
-      per_km_rate: parseFloat(form.per_km_rate) || 10,
-      minimum_fare: parseFloat(form.minimum_fare) || 25,
-      sort_order: parseInt(form.sort_order) || 0,
-    };
+    setUploading(true);
 
-    const { error } = editingId
-      ? await supabase.from("vehicle_types").update(payload).eq("id", editingId)
-      : await supabase.from("vehicle_types").insert(payload);
+    try {
+      const payload: any = {
+        name: form.name,
+        description: form.description,
+        icon: form.icon,
+        capacity: parseInt(form.capacity) || 4,
+        base_fare: parseFloat(form.base_fare) || 25,
+        per_km_rate: parseFloat(form.per_km_rate) || 10,
+        minimum_fare: parseFloat(form.minimum_fare) || 25,
+        sort_order: parseInt(form.sort_order) || 0,
+      };
 
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
+      // If creating new, insert first to get the ID
+      let recordId = editingId;
+      if (!editingId) {
+        const { data, error } = await supabase.from("vehicle_types").insert(payload).select("id").single();
+        if (error) throw error;
+        recordId = data.id;
+      }
+
+      // Upload images if provided
+      if (imageFile && recordId) {
+        payload.image_url = await uploadFile(imageFile, "app-images", recordId);
+      }
+      if (mapIconFile && recordId) {
+        payload.map_icon_url = await uploadFile(mapIconFile, "map-icons", recordId);
+      }
+
+      // Update with image URLs (or just update if editing)
+      if (editingId || imageFile || mapIconFile) {
+        const { error } = await supabase.from("vehicle_types").update(payload).eq("id", recordId!);
+        if (error) throw error;
+      }
+
       toast({ title: editingId ? "Vehicle type updated!" : "Vehicle type added!" });
       resetForm();
       fetchAll();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -137,7 +202,7 @@ const AdminVehicleTypes = () => {
 
           {/* Icon Picker */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Map Icon / Vehicle Icon</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Fallback Icon (used if no image uploaded)</label>
             <div className="flex gap-3 flex-wrap">
               {ICON_OPTIONS.map((opt) => (
                 <button
@@ -159,6 +224,79 @@ const AdminVehicleTypes = () => {
             </div>
           </div>
 
+          {/* Image Uploads */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* App Image */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Vehicle Image (shown in app)</label>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, "image")}
+              />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full h-32 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors overflow-hidden"
+              >
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Vehicle" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Upload vehicle image</span>
+                  </>
+                )}
+              </button>
+              {imagePreview && (
+                <button
+                  type="button"
+                  onClick={() => { setImageFile(null); setImagePreview(null); }}
+                  className="text-xs text-destructive mt-1 hover:underline"
+                >
+                  Remove image
+                </button>
+              )}
+            </div>
+
+            {/* Map Icon */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Map Icon (shown on map)</label>
+              <input
+                ref={mapIconInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, "mapIcon")}
+              />
+              <button
+                type="button"
+                onClick={() => mapIconInputRef.current?.click()}
+                className="w-full h-32 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors overflow-hidden"
+              >
+                {mapIconPreview ? (
+                  <img src={mapIconPreview} alt="Map icon" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <>
+                    <Image className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Upload map icon</span>
+                  </>
+                )}
+              </button>
+              {mapIconPreview && (
+                <button
+                  type="button"
+                  onClick={() => { setMapIconFile(null); setMapIconPreview(null); }}
+                  className="text-xs text-destructive mt-1 hover:underline"
+                >
+                  Remove icon
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             {textFields.map((f) => (
               <div key={f.key}>
@@ -173,8 +311,12 @@ const AdminVehicleTypes = () => {
               </div>
             ))}
           </div>
-          <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-            {editingId ? "Update Type" : "Save Type"}
+          <button
+            onClick={handleSubmit}
+            disabled={uploading}
+            className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+          >
+            {uploading ? "Uploading..." : editingId ? "Update Type" : "Save Type"}
           </button>
         </div>
       )}
@@ -183,11 +325,11 @@ const AdminVehicleTypes = () => {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-surface">
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Icon</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Image</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Map Icon</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Capacity</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Base Fare</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Per KM</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
             </tr>
@@ -203,17 +345,27 @@ const AdminVehicleTypes = () => {
                 return (
                   <tr key={vt.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <IconComp className="w-5 h-5 text-primary" />
-                      </div>
+                      {vt.image_url ? (
+                        <img src={vt.image_url} alt={vt.name} className="w-12 h-12 rounded-lg object-contain bg-surface" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <IconComp className="w-6 h-6 text-primary" />
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-foreground">{vt.name}</p>
                       <p className="text-xs text-muted-foreground">{vt.description}</p>
                     </td>
+                    <td className="px-4 py-3">
+                      {vt.map_icon_url ? (
+                        <img src={vt.map_icon_url} alt="Map icon" className="w-8 h-8 object-contain" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Default</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{vt.capacity} seats</td>
                     <td className="px-4 py-3 text-sm text-foreground">{vt.base_fare} MVR</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{vt.per_km_rate} MVR</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${vt.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {vt.is_active ? "Active" : "Inactive"}
