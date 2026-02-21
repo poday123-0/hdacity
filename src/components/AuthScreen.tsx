@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Phone, ArrowRight, Loader2 } from "lucide-react";
+import { Phone, ArrowRight, Loader2, X, Shield, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import hdaLogo from "@/assets/hda-logo.png";
@@ -26,6 +26,18 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
+  const [legalContent, setLegalContent] = useState<{ privacy: string; terms: string }>({ privacy: "", terms: "" });
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from("system_settings").select("key, value").in("key", ["privacy_notice", "terms_of_service"]);
+      const privacy = data?.find((s: any) => s.key === "privacy_notice")?.value || "";
+      const terms = data?.find((s: any) => s.key === "terms_of_service")?.value || "";
+      setLegalContent({ privacy: typeof privacy === "string" ? privacy : JSON.stringify(privacy), terms: typeof terms === "string" ? terms : JSON.stringify(terms) });
+    };
+    load();
+  }, []);
 
   const handlePhoneSubmit = async () => {
     if (phone.length < 7) return;
@@ -262,9 +274,42 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
 
       <div className="px-8 pb-8">
         <p className="text-xs text-muted-foreground text-center">
-          By continuing, you agree to our Terms of Service and Privacy Policy
+          By continuing, you agree to our{" "}
+          <button onClick={() => setLegalModal("terms")} className="text-primary underline">Terms of Service</button>
+          {" "}and{" "}
+          <button onClick={() => setLegalModal("privacy")} className="text-primary underline">Privacy Policy</button>
         </p>
       </div>
+
+      {/* Legal Modal */}
+      {legalModal && (
+        <div className="fixed inset-0 z-[999] bg-foreground/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setLegalModal(null)}>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                {legalModal === "privacy" ? <Shield className="w-5 h-5 text-primary" /> : <FileText className="w-5 h-5 text-primary" />}
+                <h3 className="font-semibold text-foreground">{legalModal === "privacy" ? "Privacy Notice" : "Terms of Service"}</h3>
+              </div>
+              <button onClick={() => setLegalModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                {legalModal === "privacy" ? legalContent.privacy : legalContent.terms}
+              </p>
+            </div>
+            <div className="p-4 border-t border-border">
+              <button onClick={() => setLegalModal(null)} className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl text-sm">
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
