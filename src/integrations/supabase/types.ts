@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      fare_surcharges: {
+        Row: {
+          amount: number
+          created_at: string
+          end_time: string | null
+          id: string
+          is_active: boolean
+          luggage_threshold: number | null
+          name: string
+          start_time: string | null
+          surcharge_type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          is_active?: boolean
+          luggage_threshold?: number | null
+          name: string
+          start_time?: string | null
+          surcharge_type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          is_active?: boolean
+          luggage_threshold?: number | null
+          name?: string
+          start_time?: string | null
+          surcharge_type?: string
+        }
+        Relationships: []
+      }
       fare_zones: {
         Row: {
           created_at: string
@@ -352,6 +388,7 @@ export type Database = {
           minimum_fare: number
           name: string
           passenger_tax_pct: number
+          per_hour_rate: number
           per_km_rate: number
           per_minute_rate: number
           sort_order: number
@@ -371,6 +408,7 @@ export type Database = {
           minimum_fare?: number
           name: string
           passenger_tax_pct?: number
+          per_hour_rate?: number
           per_km_rate?: number
           per_minute_rate?: number
           sort_order?: number
@@ -390,6 +428,7 @@ export type Database = {
           minimum_fare?: number
           name?: string
           passenger_tax_pct?: number
+          per_hour_rate?: number
           per_km_rate?: number
           per_minute_rate?: number
           sort_order?: number
