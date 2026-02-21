@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
@@ -25,11 +25,22 @@ interface SelectedLocation {
   lng: number;
 }
 
+const SESSION_KEY = "hda_user_session";
+
 const Index = () => {
-  const [phase, setPhase] = useState<AppPhase>("splash");
+  // Restore persisted session
+  const savedSession = (() => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) return JSON.parse(raw) as { profile: UserProfile; isDriver: boolean };
+    } catch {}
+    return null;
+  })();
+
+  const [phase, setPhase] = useState<AppPhase>(savedSession ? "passenger" : "splash");
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isDriver, setIsDriver] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
+  const [isDriver, setIsDriver] = useState(savedSession?.isDriver || false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
@@ -38,11 +49,22 @@ const Index = () => {
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
 
-  const handleSplashComplete = useCallback(() => setPhase("auth"), []);
+  const handleSplashComplete = useCallback(() => {
+    if (savedSession) {
+      setPhase("passenger");
+    } else {
+      setPhase("auth");
+    }
+  }, [savedSession]);
+
   const handleLogin = useCallback((profile: UserProfile | null, isDriverUser: boolean) => {
     setUserProfile(profile);
     setIsDriver(isDriverUser);
     setPhase("passenger");
+    // Persist session
+    if (profile) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: isDriverUser }));
+    }
   }, []);
 
   const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number) => {
@@ -101,6 +123,17 @@ const Index = () => {
     setPassengerScreen("home");
   }, []);
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    setUserProfile(null);
+    setIsDriver(false);
+    setPhase("auth");
+    setPassengerScreen("home");
+    setCurrentTripId(null);
+    setPickup(null);
+    setDropoff(null);
+  }, []);
+
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} />;
   if (phase === "driver") return <DriverApp onSwitchToPassenger={() => setPhase("passenger")} userProfile={userProfile} />;
@@ -115,6 +148,7 @@ const Index = () => {
       <div className="relative z-[500]">
         <TopBar 
           onDriverMode={isDriver ? () => setPhase("driver") : undefined} 
+          onLogout={handleLogout}
           userName={userProfile?.first_name}
           userProfile={userProfile}
         />
