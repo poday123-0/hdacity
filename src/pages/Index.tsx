@@ -31,6 +31,8 @@ const Index = () => {
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
+  const [passengerCount, setPassengerCount] = useState(1);
+  const [luggageCount, setLuggageCount] = useState(0);
 
   const handleSplashComplete = useCallback(() => setPhase("auth"), []);
   const handleLogin = useCallback((profile: UserProfile | null, isDriverUser: boolean) => {
@@ -39,13 +41,15 @@ const Index = () => {
     setPhase("passenger");
   }, []);
 
-  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation) => {
+  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number) => {
     setPickup(p);
     setDropoff(d);
+    setPassengerCount(passengers);
+    setLuggageCount(luggage);
     setPassengerScreen("ride-options");
   }, []);
 
-  const handleConfirmRide = useCallback(async (vehicleType: any) => {
+  const handleConfirmRide = useCallback(async (vehicleType: any, estimatedFare: number) => {
     if (!pickup || !dropoff) return;
     try {
       const { data, error } = await supabase.from("trips").insert({
@@ -56,9 +60,11 @@ const Index = () => {
         dropoff_lat: dropoff.lat,
         dropoff_lng: dropoff.lng,
         vehicle_type_id: vehicleType.id,
-        estimated_fare: vehicleType.base_fare,
+        estimated_fare: estimatedFare,
         fare_type: "distance",
         status: "requested",
+        passenger_count: passengerCount,
+        luggage_count: luggageCount,
       }).select().single();
 
       if (error) throw error;
@@ -67,7 +73,7 @@ const Index = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-  }, [pickup, dropoff]);
+  }, [pickup, dropoff, passengerCount, luggageCount]);
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} />;
@@ -100,6 +106,8 @@ const Index = () => {
               onConfirm={handleConfirmRide}
               pickup={pickup}
               dropoff={dropoff}
+              passengerCount={passengerCount}
+              luggageCount={luggageCount}
             />
           )}
           {passengerScreen === "searching" && (

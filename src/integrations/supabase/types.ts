@@ -352,6 +352,8 @@ export type Database = {
           fare_type: string
           fare_zone_id: string | null
           id: string
+          luggage_count: number
+          passenger_count: number
           passenger_id: string | null
           pickup_address: string
           pickup_lat: number | null
@@ -381,6 +383,8 @@ export type Database = {
           fare_type?: string
           fare_zone_id?: string | null
           id?: string
+          luggage_count?: number
+          passenger_count?: number
           passenger_id?: string | null
           pickup_address?: string
           pickup_lat?: number | null
@@ -410,6 +414,8 @@ export type Database = {
           fare_type?: string
           fare_zone_id?: string | null
           id?: string
+          luggage_count?: number
+          passenger_count?: number
           passenger_id?: string | null
           pickup_address?: string
           pickup_lat?: number | null
