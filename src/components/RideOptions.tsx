@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 interface RideOptionsProps {
   onBack: () => void;
   onConfirm: (vehicleType: any) => void;
+  pickup?: { name: string } | null;
+  dropoff?: { name: string } | null;
 }
 
 const iconMap: Record<string, typeof Car> = {
@@ -16,7 +18,7 @@ const iconMap: Record<string, typeof Car> = {
   van: Bus,
 };
 
-const RideOptions = ({ onBack, onConfirm }: RideOptionsProps) => {
+const RideOptions = ({ onBack, onConfirm, pickup, dropoff }: RideOptionsProps) => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [selected, setSelected] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,21 @@ const RideOptions = ({ onBack, onConfirm }: RideOptionsProps) => {
             <p className="text-xs text-muted-foreground">Select vehicle type</p>
           </div>
         </div>
+
+        {/* Route summary */}
+        {pickup && dropoff && (
+          <div className="bg-surface rounded-xl p-3 flex items-center gap-3">
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <div className="w-0.5 h-5 bg-border" />
+              <div className="w-2 h-2 rounded-sm bg-foreground" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <p className="text-xs text-foreground font-medium">{pickup.name}</p>
+              <p className="text-xs text-foreground font-medium">{dropoff.name}</p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-8">

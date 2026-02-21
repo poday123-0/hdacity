@@ -4,9 +4,11 @@ import { useEffect } from "react";
 
 interface SearchingDriverProps {
   onDriverFound: () => void;
+  pickupName?: string;
+  dropoffName?: string;
 }
 
-const SearchingDriver = ({ onDriverFound }: SearchingDriverProps) => {
+const SearchingDriver = ({ onDriverFound, pickupName = "Pickup", dropoffName = "Destination" }: SearchingDriverProps) => {
   useEffect(() => {
     const timer = setTimeout(onDriverFound, 4000);
     return () => clearTimeout(timer);
@@ -62,7 +64,7 @@ const SearchingDriver = ({ onDriverFound }: SearchingDriverProps) => {
             <div className="w-3 h-3 rounded-full bg-primary" />
             <div>
               <p className="text-xs text-muted-foreground">Pickup</p>
-              <p className="text-sm font-medium text-foreground">Malé City Centre</p>
+              <p className="text-sm font-medium text-foreground">{pickupName}</p>
             </div>
           </div>
           <div className="ml-1.5 w-0.5 h-4 bg-border" />
@@ -70,7 +72,7 @@ const SearchingDriver = ({ onDriverFound }: SearchingDriverProps) => {
             <MapPin className="w-3 h-3 text-foreground shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Destination</p>
-              <p className="text-sm font-medium text-foreground">Velana International Airport</p>
+              <p className="text-sm font-medium text-foreground">{dropoffName}</p>
             </div>
           </div>
         </div>
