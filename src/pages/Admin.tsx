@@ -6,6 +6,7 @@ import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminDrivers from "@/components/admin/AdminDrivers";
 import AdminVehicles from "@/components/admin/AdminVehicles";
+import AdminVehicleTypes from "@/components/admin/AdminVehicleTypes";
 import AdminFares from "@/components/admin/AdminFares";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminTrips from "@/components/admin/AdminTrips";
@@ -18,17 +19,19 @@ import {
   MapPin,
   Navigation,
   LogOut,
+  Layers,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "drivers" | "vehicles" | "fares" | "locations" | "trips" | "settings";
+type Tab = "dashboard" | "drivers" | "vehicles" | "vehicle_types" | "fares" | "locations" | "trips" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "drivers", label: "Drivers", icon: Users },
+  { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
   { id: "vehicles", label: "Vehicles", icon: Car },
   { id: "fares", label: "Fares", icon: DollarSign },
-  { id: "locations", label: "Locations", icon: Navigation },
+  { id: "locations", label: "Service Areas", icon: Navigation },
   { id: "trips", label: "Trips", icon: MapPin },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -162,6 +165,7 @@ const Admin = () => {
         <div className="p-8">
           {activeTab === "dashboard" && <AdminDashboard />}
           {activeTab === "drivers" && <AdminDrivers />}
+          {activeTab === "vehicle_types" && <AdminVehicleTypes />}
           {activeTab === "vehicles" && <AdminVehicles />}
           {activeTab === "fares" && <AdminFares />}
           {activeTab === "locations" && <AdminLocations />}
