@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -41,9 +41,10 @@ const DROPOFF_LOCATION: [number, number] = [4.1912, 73.5291];
 interface DriverMapProps {
   isNavigating: boolean;
   radiusKm?: number;
+  gpsEnabled: boolean;
 }
 
-const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, radiusKm, gpsEnabled }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const routeLayer = useRef<L.Polyline | null>(null);
@@ -53,39 +54,46 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
   const watchIdRef = useRef<number | null>(null);
   const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
 
-  // Get current position
-  const getPosition = useCallback(() => {
-    if (!navigator.geolocation) return;
+  // Start/stop GPS tracking based on gpsEnabled
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setCurrentPos(MALE_CENTER);
+      return;
+    }
 
-    // Get initial position
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        setCurrentPos(coords);
-      },
-      () => {
-        // Fallback to Malé center if geolocation denied
-        setCurrentPos(MALE_CENTER);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    if (gpsEnabled) {
+      // Get initial position
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCurrentPos([pos.coords.latitude, pos.coords.longitude]),
+        () => setCurrentPos(MALE_CENTER),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
 
-    // Watch position for live updates
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        setCurrentPos(coords);
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 5000 }
-    );
-  }, []);
+      // Watch for live updates
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => setCurrentPos([pos.coords.latitude, pos.coords.longitude]),
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      );
+    } else {
+      // Stop watching
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    }
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [gpsEnabled]);
 
   // Initialize map
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
-
-    getPosition();
 
     const map = L.map(mapRef.current, {
       center: currentPos || MALE_CENTER,
@@ -107,9 +115,6 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
     return () => {
       map.remove();
       mapInstance.current = null;
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
     };
   }, []);
 

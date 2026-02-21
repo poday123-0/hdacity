@@ -29,6 +29,8 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
+  Locate,
+  LocateOff,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -69,6 +71,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [profileStatus, setProfileStatus] = useState<string>("Active");
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
   const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h" });
+  const [gpsEnabled, setGpsEnabled] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -244,7 +247,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         </div>
       </div>
 
-      <DriverMap isNavigating={screen === "navigating"} radiusKm={screen === "online" ? tripRadius : undefined} />
+      <DriverMap isNavigating={screen === "navigating"} radiusKm={screen === "online" ? tripRadius : undefined} gpsEnabled={gpsEnabled} />
+
+      {/* GPS Toggle */}
+      <button
+        onClick={() => setGpsEnabled(!gpsEnabled)}
+        className={`absolute bottom-4 right-4 z-[460] w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all duration-300 ${
+          gpsEnabled ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+        }`}
+      >
+        {gpsEnabled ? <Locate className="w-5 h-5" /> : <LocateOff className="w-5 h-5" />}
+      </button>
 
       {/* Offline */}
       {screen === "offline" && (
