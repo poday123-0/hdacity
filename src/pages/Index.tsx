@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
@@ -48,6 +48,48 @@ const Index = () => {
   const [luggageCount, setLuggageCount] = useState(0);
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Simulate driver approaching during searching/driver-matching
+  useEffect(() => {
+    if (passengerScreen !== "searching" && passengerScreen !== "driver-matching") {
+      setDriverLocation(null);
+      return;
+    }
+    if (!pickup) return;
+
+    // Simulate driver starting nearby and moving toward pickup
+    const startLat = pickup.lat + 0.005;
+    const startLng = pickup.lng + 0.003;
+    setDriverLocation({ lat: startLat, lng: startLng });
+
+    const steps = 20;
+    let step = 0;
+    const interval = setInterval(() => {
+      step++;
+      if (step >= steps) { clearInterval(interval); return; }
+      const progress = step / steps;
+      setDriverLocation({
+        lat: startLat + (pickup.lat - startLat) * progress,
+        lng: startLng + (pickup.lng - startLng) * progress,
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [passengerScreen, pickup]);
+
+  // Build ride data for the map
+  const rideMapData = useMemo(() => {
+    const isRiding = ["searching", "driver-matching", "feedback"].includes(passengerScreen);
+    if (!isRiding || !pickup || !dropoff) return undefined;
+    return {
+      pickup: { lat: pickup.lat, lng: pickup.lng, name: pickup.name },
+      dropoff: { lat: dropoff.lat, lng: dropoff.lng, name: dropoff.name },
+      driverLat: driverLocation?.lat,
+      driverLng: driverLocation?.lng,
+      showRoute: true,
+    };
+  }, [passengerScreen, pickup, dropoff, driverLocation]);
 
   const handleSplashComplete = useCallback(() => {
     if (savedSession) {
@@ -141,7 +183,7 @@ const Index = () => {
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-background">
       <div className="absolute inset-0">
-        <MaldivesMap />
+        <MaldivesMap rideData={rideMapData} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
