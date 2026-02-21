@@ -199,9 +199,9 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10"
+      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 max-h-[85vh] flex flex-col"
     >
-      <div className="px-5 pt-3 pb-8 space-y-4">
+      <div className="px-5 pt-3 pb-8 space-y-3 overflow-y-auto flex-1 overscroll-contain">
         {/* Handle — tap to toggle */}
         <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
           <div className="w-12 h-1.5 rounded-full bg-border/60" />
@@ -309,7 +309,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                     )}
                   </div>
 
-                  <div className="max-h-52 overflow-y-auto space-y-0.5 -mx-1 px-1">
+                  <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1 px-1">
                     {/* OSM Results */}
                     {osmResults.length > 0 && (
                       <>
@@ -368,7 +368,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
 
             {/* Passenger & Luggage counters */}
             {!selecting && (
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <div className="flex-1 bg-surface rounded-2xl p-3 flex flex-col items-center gap-2">
                   <div className="flex items-center gap-2 w-full">
                     <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -411,7 +411,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
             <button
               onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount)}
               disabled={!canConfirm}
-              className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
+              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
             >
               {canConfirm ? "Find a ride" : "Select pickup & destination"}
             </button>
