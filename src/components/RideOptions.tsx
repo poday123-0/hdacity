@@ -106,53 +106,42 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10"
     >
-      <div className="px-5 pt-3 pb-8 space-y-4">
+      <div className="px-4 pt-2.5 pb-6 space-y-3">
         {/* Handle */}
         <div className="flex justify-center">
-          <div className="w-12 h-1.5 rounded-full bg-border/60" />
+          <div className="w-10 h-1 rounded-full bg-border/60" />
         </div>
 
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center active:scale-90 transition-transform">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+        {/* Header + route summary inline */}
+        <div className="flex items-center gap-2.5">
+          <button onClick={onBack} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform shrink-0">
+            <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
-          <div>
-            <h2 className="text-xl font-bold text-foreground tracking-tight">Choose your ride</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Select vehicle type</p>
-          </div>
-        </div>
-
-        {/* Route + passenger info summary */}
-        <div className="bg-surface rounded-2xl p-3.5 space-y-2.5">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-              <div className="w-0.5 h-4 bg-gradient-to-b from-primary/40 to-foreground/30" />
-              <div className="w-2.5 h-2.5 rounded-sm bg-foreground" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <p className="text-xs text-foreground font-medium truncate max-w-[5.5rem]">{pickup?.name}</p>
+              </div>
+              <span className="text-muted-foreground text-xs">→</span>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-sm bg-foreground" />
+                <p className="text-xs text-foreground font-medium truncate max-w-[5.5rem]">{dropoff?.name}</p>
+              </div>
             </div>
-            <div className="flex-1 space-y-1 min-w-0">
-              <p className="text-xs text-foreground font-medium truncate">{pickup?.name}</p>
-              <p className="text-xs text-foreground font-medium truncate">{dropoff?.name}</p>
-            </div>
-          </div>
-          <div className="flex gap-4 pt-2 border-t border-border/50">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Users className="w-3.5 h-3.5 text-primary" />
-              <span className="font-semibold text-foreground">{passengerCount}</span> passenger{passengerCount > 1 ? "s" : ""}
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Luggage className="w-3.5 h-3.5 text-primary" />
-              <span className="font-semibold text-foreground">{luggageCount}</span> luggage
+            <div className="flex gap-3 mt-0.5">
+              <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{passengerCount}</span> pax</span>
+              <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{luggageCount}</span> bags</span>
             </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-6">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
             {sortedTypes.map((vt, index) => {
               const Icon = iconMap[vt.icon] || Car;
               const fare = calcFare(vt);
@@ -163,61 +152,59 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                 <button
                   key={vt.id}
                   onClick={() => setSelected(vt.id)}
-                  className={`relative flex flex-col items-center gap-2 p-3.5 rounded-2xl transition-all snap-start shrink-0 w-[7.5rem] ${
+                  className={`relative flex flex-col items-center gap-1 p-2.5 pb-3 rounded-xl transition-all snap-start shrink-0 w-[5.5rem] ${
                     isSelected
-                      ? "bg-primary/10 ring-2 ring-primary shadow-md scale-[1.02]"
+                      ? "bg-primary/10 ring-2 ring-primary shadow-sm"
                       : fits
-                        ? "bg-surface hover:bg-muted"
-                        : "bg-surface/50 opacity-60"
+                        ? "bg-surface active:bg-muted"
+                        : "bg-surface/50 opacity-50"
                   }`}
                 >
                   {isBestMatch && (
-                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-2 py-0.5 rounded-full whitespace-nowrap">
-                      Best match
+                    <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
+                      Best
                     </span>
                   )}
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden ${
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden ${
                     isSelected ? "bg-primary" : "bg-muted"
                   }`}>
                     {vt.image_url ? (
-                      <img src={vt.image_url} alt={vt.name} className="w-full h-full object-contain p-1.5" />
+                      <img src={vt.image_url} alt={vt.name} className="w-full h-full object-contain p-1" />
                     ) : (
-                      <Icon className={`w-6 h-6 ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                      <Icon className={`w-5 h-5 ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`} />
                     )}
                   </div>
-                  <div className="text-center w-full">
-                    <p className="font-bold text-xs text-foreground truncate">{vt.name}</p>
-                    <p className="text-lg font-bold text-primary mt-0.5">{fare.toFixed(0)}<span className="text-[10px] font-semibold text-muted-foreground ml-0.5">MVR</span></p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{vt.capacity} seats</p>
-                  </div>
+                  <p className="font-semibold text-[11px] text-foreground truncate w-full text-center leading-tight">{vt.name}</p>
+                  <p className="text-sm font-bold text-primary leading-none">{fare.toFixed(0)}<span className="text-[9px] font-medium text-muted-foreground ml-px">MVR</span></p>
+                  <p className="text-[9px] text-muted-foreground leading-none">{vt.capacity} seats</p>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* Selected vehicle details */}
+        {/* Selected vehicle detail strip */}
         {selectedType && (
-          <div className="bg-surface rounded-2xl p-3.5 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center overflow-hidden shrink-0">
+          <div className="bg-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden shrink-0">
               {selectedType.image_url ? (
-                <img src={selectedType.image_url} alt={selectedType.name} className="w-full h-full object-contain p-1.5" />
+                <img src={selectedType.image_url} alt={selectedType.name} className="w-full h-full object-contain p-0.5" />
               ) : (
-                <Car className="w-6 h-6 text-primary-foreground" />
+                <Car className="w-4.5 h-4.5 text-primary-foreground" />
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-foreground">{selectedType.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats available`}</p>
+              <p className="font-bold text-xs text-foreground">{selectedType.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats`}</p>
             </div>
-            <p className="text-xl font-bold text-primary shrink-0">{selectedFare.toFixed(0)} <span className="text-xs font-semibold text-muted-foreground">MVR</span></p>
+            <p className="text-base font-bold text-primary shrink-0">{selectedFare.toFixed(0)} <span className="text-[10px] font-semibold text-muted-foreground">MVR</span></p>
           </div>
         )}
 
         <button
           onClick={() => selectedType && onConfirm(selectedType, selectedFare)}
           disabled={!selectedType}
-          className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
+          className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
         >
           {selectedType ? `Confirm ${selectedType.name} — ${selectedFare.toFixed(0)} MVR` : "Select a ride"}
         </button>
