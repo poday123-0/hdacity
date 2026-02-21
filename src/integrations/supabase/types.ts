@@ -41,23 +41,32 @@ export type Database = {
       companies: {
         Row: {
           created_at: string
+          discount_pct: number
+          fee_free: boolean
           id: string
           is_active: boolean
           logo_url: string | null
+          monthly_fee: number
           name: string
         }
         Insert: {
           created_at?: string
+          discount_pct?: number
+          fee_free?: boolean
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          monthly_fee?: number
           name: string
         }
         Update: {
           created_at?: string
+          discount_pct?: number
+          fee_free?: boolean
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          monthly_fee?: number
           name?: string
         }
         Relationships: []
