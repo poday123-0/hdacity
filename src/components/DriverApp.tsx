@@ -32,13 +32,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [showProfile, setShowProfile] = useState(false);
   const [tripRadius, setTripRadius] = useState(10);
 
-  // Load saved radius from profile
+  // Load saved radius from profile, fallback to admin default
   useEffect(() => {
-    if (userProfile?.id) {
-      supabase.from("profiles").select("trip_radius_km").eq("id", userProfile.id).single().then(({ data }) => {
-        if (data?.trip_radius_km) setTripRadius(data.trip_radius_km);
-      });
-    }
+    const load = async () => {
+      // Get admin default
+      const { data: settingData } = await supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").single();
+      const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
+
+      if (userProfile?.id) {
+        const { data } = await supabase.from("profiles").select("trip_radius_km").eq("id", userProfile.id).single();
+        setTripRadius(data?.trip_radius_km ?? defaultRadius);
+      } else {
+        setTripRadius(defaultRadius);
+      }
+    };
+    load();
   }, [userProfile?.id]);
 
   const updateRadius = async (val: number) => {

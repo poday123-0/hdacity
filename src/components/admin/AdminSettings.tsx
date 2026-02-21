@@ -12,6 +12,7 @@ const settingsConfig = [
   { key: "surge_multiplier", label: "Surge Multiplier", type: "number" },
   { key: "max_search_radius_km", label: "Max Search Radius (km)", type: "number" },
   { key: "driver_accept_timeout_seconds", label: "Driver Accept Timeout (seconds)", type: "number" },
+  { key: "default_trip_radius_km", label: "Default Driver Trip Radius (km)", type: "number" },
 ];
 
 const AdminSettings = () => {
