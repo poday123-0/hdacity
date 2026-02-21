@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
@@ -191,6 +191,29 @@ const Index = () => {
     }
   }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id]);
 
+  // Fetch passenger notification sounds from settings
+  const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});
+  const passengerAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const fetchSounds = async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("key, value")
+        .in("key", ["passenger_sound_accepted", "passenger_sound_arrived", "passenger_sound_started", "passenger_sound_completed", "passenger_sound_cancelled"]);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((s: any) => {
+          const status = s.key.replace("passenger_sound_", "");
+          const url = typeof s.value === "string" ? s.value : String(s.value);
+          if (url) map[status] = url;
+        });
+        setPassengerSounds(map);
+      }
+    };
+    fetchSounds();
+  }, []);
+
   // Subscribe to trip status changes for passenger notifications
   useEffect(() => {
     if (!currentTripId) return;
@@ -214,6 +237,20 @@ const Index = () => {
           cancelled: { title: "❌ Trip Cancelled", description: trip.cancel_reason || "The trip has been cancelled." },
         };
 
+        // Map status to sound key
+        const soundKey = status === "in_progress" ? "started" : status;
+        const soundUrl = passengerSounds[soundKey];
+        if (soundUrl) {
+          try {
+            if (passengerAudioRef.current) {
+              passengerAudioRef.current.pause();
+              passengerAudioRef.current.currentTime = 0;
+            }
+            passengerAudioRef.current = new Audio(soundUrl);
+            passengerAudioRef.current.play().catch(() => {});
+          } catch {}
+        }
+
         const notif = notifications[status];
         if (notif) {
           toast({ title: notif.title, description: notif.description });
@@ -226,7 +263,7 @@ const Index = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [currentTripId]);
+  }, [currentTripId, passengerSounds]);
 
   const handleRideComplete = useCallback(() => {
     setPassengerScreen("feedback");
