@@ -9,7 +9,7 @@ const AdminCompanies = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", logo_url: "" });
+  const [form, setForm] = useState({ name: "", logo_url: "", monthly_fee: "0", discount_pct: "0", fee_free: false });
   const [uploading, setUploading] = useState(false);
 
   const fetchCompanies = async () => {
@@ -39,13 +39,13 @@ const AdminCompanies = () => {
   };
 
   const openEdit = (c: any) => {
-    setForm({ name: c.name, logo_url: c.logo_url || "" });
+    setForm({ name: c.name, logo_url: c.logo_url || "", monthly_fee: c.monthly_fee?.toString() || "0", discount_pct: c.discount_pct?.toString() || "0", fee_free: c.fee_free || false });
     setEditingId(c.id);
     setShowForm(true);
   };
 
   const openNew = () => {
-    setForm({ name: "", logo_url: "" });
+    setForm({ name: "", logo_url: "", monthly_fee: "0", discount_pct: "0", fee_free: false });
     setEditingId(null);
     setShowForm(true);
   };
@@ -55,12 +55,13 @@ const AdminCompanies = () => {
       toast({ title: "Name required", variant: "destructive" });
       return;
     }
+    const payload = { name: form.name, logo_url: form.logo_url || null, monthly_fee: parseFloat(form.monthly_fee) || 0, discount_pct: parseFloat(form.discount_pct) || 0, fee_free: form.fee_free };
     if (editingId) {
-      const { error } = await supabase.from("companies").update({ name: form.name, logo_url: form.logo_url || null }).eq("id", editingId);
+      const { error } = await supabase.from("companies").update(payload).eq("id", editingId);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Company updated" });
     } else {
-      const { error } = await supabase.from("companies").insert({ name: form.name, logo_url: form.logo_url || null });
+      const { error } = await supabase.from("companies").insert(payload);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Company added" });
     }
@@ -116,6 +117,20 @@ const AdminCompanies = () => {
                 </label>
               </div>
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Monthly Fee (MVR)</label>
+              <input type="number" value={form.monthly_fee} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} className={inputCls} placeholder="0" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Discount %</label>
+              <input type="number" min="0" max="100" value={form.discount_pct} onChange={(e) => setForm({ ...form, discount_pct: e.target.value })} className={inputCls} placeholder="0" />
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={form.fee_free} onChange={(e) => setForm({ ...form, fee_free: e.target.checked })} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
+                <span className="text-sm font-medium text-foreground">Fee Free (no monthly fee for drivers in this company)</span>
+              </label>
+            </div>
           </div>
           <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">Save</button>
         </div>
@@ -133,6 +148,16 @@ const AdminCompanies = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-foreground truncate">{c.name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {c.fee_free ? (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Fee Free</span>
+                ) : c.monthly_fee > 0 ? (
+                  <span className="text-xs text-muted-foreground">{c.monthly_fee} MVR/mo</span>
+                ) : null}
+                {c.discount_pct > 0 && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{c.discount_pct}% discount</span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => openEdit(c)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
