@@ -96,13 +96,39 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
     if (!navigator.geolocation || locations.length === 0) return;
     setDetectingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const nearest = findNearestServiceArea(pos.coords.latitude, pos.coords.longitude);
-        if (nearest) setPickup(nearest);
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const nearest = findNearestServiceArea(latitude, longitude);
+        if (!nearest) {
+          setDetectingLocation(false);
+          return;
+        }
+
+        // Reverse geocode for precise address
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await res.json();
+          const address = data.display_name?.split(",").slice(0, 3).join(", ") || nearest.address;
+          const name = data.name || data.address?.road || data.address?.neighbourhood || nearest.name;
+
+          setPickup({
+            ...nearest,
+            name,
+            address,
+            lat: latitude,
+            lng: longitude,
+          });
+        } catch {
+          // Fallback to nearest service area
+          setPickup({ ...nearest, lat: latitude, lng: longitude });
+        }
         setDetectingLocation(false);
       },
       () => setDetectingLocation(false),
-      { timeout: 5000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
