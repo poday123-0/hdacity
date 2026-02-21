@@ -63,6 +63,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [vehicleInfo, setVehicleInfo] = useState<{ make: string; model: string; plate_number: string; color: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>("");
+  const [profileStatus, setProfileStatus] = useState<string>("Active");
+  const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -70,21 +72,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
 
       if (userProfile?.id) {
-        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url").eq("id", userProfile.id).single();
+        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, status").eq("id", userProfile.id).single();
         setTripRadius(data?.trip_radius_km ?? defaultRadius);
         setAvatarUrl(data?.avatar_url || null);
         setIdCardFrontUrl(data?.id_card_front_url || null);
         setIdCardBackUrl(data?.id_card_back_url || null);
         setLicenseFrontUrl(data?.license_front_url || null);
         setLicenseBackUrl(data?.license_back_url || null);
+        setProfileStatus(data?.status || "Pending");
+
+        // Check verification issues
+        const issues: string[] = [];
+        if (data?.status !== "Active") issues.push("Profile not verified by admin");
+        if (!data?.avatar_url) issues.push("Profile photo required");
+        if (!data?.id_card_front_url || !data?.id_card_back_url) issues.push("ID card (front & back) required");
+        if (!data?.license_front_url || !data?.license_back_url) issues.push("Driving license (front & back) required");
+        setVerificationIssues(issues);
 
         // Fetch bank accounts
         const { data: banks } = await supabase.from("driver_bank_accounts").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("is_primary", { ascending: false });
         setBankAccounts(banks || []);
 
+        // Check if no bank accounts
+        if (!banks || banks.length === 0) issues.push("At least one bank account required");
+        setVerificationIssues(issues);
+
         // Fetch vehicle
         const { data: vehicle } = await supabase.from("vehicles").select("make, model, plate_number, color").eq("driver_id", userProfile.id).eq("is_active", true).limit(1).single();
         if (vehicle) setVehicleInfo(vehicle);
+        else issues.push("No vehicle assigned");
+        setVerificationIssues([...issues]);
       } else {
         setTripRadius(defaultRadius);
       }
@@ -206,17 +223,51 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
       {/* Offline */}
       {screen === "offline" && (
         <div className="absolute inset-0 flex items-center justify-center z-[450]">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-6 px-8">
-            <div className="w-20 h-20 rounded-full bg-muted mx-auto flex items-center justify-center">
-              <Power className="w-10 h-10 text-muted-foreground" />
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-5 px-6 w-full max-w-sm">
+            <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center ${verificationIssues.length > 0 ? "bg-destructive/10" : "bg-muted"}`}>
+              <Power className={`w-10 h-10 ${verificationIssues.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-foreground">You're offline</h2>
-              <p className="text-muted-foreground text-sm mt-1">Go online to start receiving rides</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                {verificationIssues.length > 0 ? "Complete your profile to go online" : "Go online to start receiving rides"}
+              </p>
             </div>
-            <button onClick={() => setScreen("online")} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98]">
-              Start driving
-            </button>
+
+            {/* Verification checklist */}
+            {verificationIssues.length > 0 && (
+              <div className="bg-card rounded-xl p-4 text-left space-y-2.5">
+                <p className="text-xs font-semibold text-destructive uppercase tracking-wider">Action required</p>
+                {verificationIssues.map((issue, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <X className="w-3 h-3 text-destructive" />
+                    </div>
+                    <p className="text-sm text-foreground">{issue}</p>
+                  </div>
+                ))}
+                <button
+                  onClick={() => { setShowProfile(true); setProfileTab(verificationIssues.some(i => i.includes("bank")) ? "banks" : verificationIssues.some(i => i.includes("ID") || i.includes("license") || i.includes("photo")) ? "documents" : "info"); }}
+                  className="w-full mt-2 bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform"
+                >
+                  Complete profile
+                </button>
+              </div>
+            )}
+
+            {profileStatus === "Active" && verificationIssues.length === 0 ? (
+              <button onClick={() => setScreen("online")} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98]">
+                Start driving
+              </button>
+            ) : profileStatus !== "Active" ? (
+              <div className="bg-card rounded-xl p-4">
+                <div className="flex items-center gap-2 justify-center">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm font-medium text-muted-foreground">Waiting for admin verification</p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Status: <span className="font-semibold text-foreground">{profileStatus}</span></p>
+              </div>
+            ) : null}
           </motion.div>
         </div>
       )}
