@@ -247,7 +247,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         </div>
       </div>
 
-      <DriverMap isNavigating={screen === "navigating"} radiusKm={screen === "online" ? tripRadius : undefined} gpsEnabled={gpsEnabled} />
+      <DriverMap
+        isNavigating={screen === "navigating"}
+        radiusKm={screen === "online" ? tripRadius : undefined}
+        gpsEnabled={gpsEnabled}
+        pickupCoords={[4.1745, 73.5088]}
+        dropoffCoords={[4.1912, 73.5291]}
+        pickupLabel="Majeedhee Magu, Malé"
+        dropoffLabel="Velana International Airport"
+      />
 
       {/* GPS Toggle */}
       <button
