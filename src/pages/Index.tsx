@@ -15,12 +15,22 @@ import { toast } from "@/hooks/use-toast";
 type AppPhase = "splash" | "auth" | "passenger" | "driver";
 type PassengerScreen = "home" | "ride-options" | "searching" | "driver-matching";
 
+interface SelectedLocation {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 const Index = () => {
   const [phase, setPhase] = useState<AppPhase>("splash");
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isDriver, setIsDriver] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
+  const [pickup, setPickup] = useState<SelectedLocation | null>(null);
+  const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
 
   const handleSplashComplete = useCallback(() => setPhase("auth"), []);
   const handleLogin = useCallback((profile: UserProfile | null, isDriverUser: boolean) => {
@@ -29,16 +39,22 @@ const Index = () => {
     setPhase("passenger");
   }, []);
 
+  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation) => {
+    setPickup(p);
+    setDropoff(d);
+    setPassengerScreen("ride-options");
+  }, []);
+
   const handleConfirmRide = useCallback(async (vehicleType: any) => {
-    // Create a trip in the database
+    if (!pickup || !dropoff) return;
     try {
       const { data, error } = await supabase.from("trips").insert({
-        pickup_address: "Malé City Centre",
-        dropoff_address: "Velana International Airport",
-        pickup_lat: 4.1755,
-        pickup_lng: 73.5093,
-        dropoff_lat: 4.1918,
-        dropoff_lng: 73.5291,
+        pickup_address: pickup.name,
+        dropoff_address: dropoff.name,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
         vehicle_type_id: vehicleType.id,
         estimated_fare: vehicleType.base_fare,
         fare_type: "distance",
@@ -51,7 +67,7 @@ const Index = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-  }, []);
+  }, [pickup, dropoff]);
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} />;
@@ -75,19 +91,23 @@ const Index = () => {
       <div className="relative z-[500]">
         <AnimatePresence mode="wait">
           {passengerScreen === "home" && (
-            <LocationInput key="home" onSearch={() => setPassengerScreen("ride-options")} />
+            <LocationInput key="home" onSearch={handleLocationSearch} />
           )}
           {passengerScreen === "ride-options" && (
             <RideOptions
               key="ride-options"
               onBack={() => setPassengerScreen("home")}
               onConfirm={handleConfirmRide}
+              pickup={pickup}
+              dropoff={dropoff}
             />
           )}
           {passengerScreen === "searching" && (
             <SearchingDriver
               key="searching"
               onDriverFound={() => setPassengerScreen("driver-matching")}
+              pickupName={pickup?.name || "Pickup"}
+              dropoffName={dropoff?.name || "Destination"}
             />
           )}
           {passengerScreen === "driver-matching" && (
