@@ -6,14 +6,16 @@ import AuthScreen, { UserProfile } from "@/components/AuthScreen";
 import TopBar from "@/components/TopBar";
 import LocationInput from "@/components/LocationInput";
 import RideOptions from "@/components/RideOptions";
+import RideConfirmation from "@/components/RideConfirmation";
 import SearchingDriver from "@/components/SearchingDriver";
 import DriverMatching from "@/components/DriverMatching";
+import RideFeedback from "@/components/RideFeedback";
 import DriverApp from "@/components/DriverApp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 type AppPhase = "splash" | "auth" | "passenger" | "driver";
-type PassengerScreen = "home" | "ride-options" | "searching" | "driver-matching";
+type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
 
 interface SelectedLocation {
   id: string;
@@ -33,6 +35,8 @@ const Index = () => {
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
+  const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
+  const [estimatedFare, setEstimatedFare] = useState(0);
 
   const handleSplashComplete = useCallback(() => setPhase("auth"), []);
   const handleLogin = useCallback((profile: UserProfile | null, isDriverUser: boolean) => {
@@ -49,8 +53,14 @@ const Index = () => {
     setPassengerScreen("ride-options");
   }, []);
 
-  const handleConfirmRide = useCallback(async (vehicleType: any, estimatedFare: number) => {
-    if (!pickup || !dropoff) return;
+  const handleSelectVehicle = useCallback((vehicleType: any, fare: number) => {
+    setSelectedVehicleType(vehicleType);
+    setEstimatedFare(fare);
+    setPassengerScreen("confirmation");
+  }, []);
+
+  const handleConfirmRide = useCallback(async () => {
+    if (!pickup || !dropoff || !selectedVehicleType) return;
     try {
       const { data, error } = await supabase.from("trips").insert({
         pickup_address: pickup.name,
@@ -59,12 +69,13 @@ const Index = () => {
         pickup_lng: pickup.lng,
         dropoff_lat: dropoff.lat,
         dropoff_lng: dropoff.lng,
-        vehicle_type_id: vehicleType.id,
+        vehicle_type_id: selectedVehicleType.id,
         estimated_fare: estimatedFare,
         fare_type: "distance",
         status: "requested",
         passenger_count: passengerCount,
         luggage_count: luggageCount,
+        passenger_id: userProfile?.id || null,
       }).select().single();
 
       if (error) throw error;
@@ -73,7 +84,22 @@ const Index = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-  }, [pickup, dropoff, passengerCount, luggageCount]);
+  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id]);
+
+  const handleRideComplete = useCallback(() => {
+    setPassengerScreen("feedback");
+  }, []);
+
+  const handleFeedbackComplete = useCallback(() => {
+    setCurrentTripId(null);
+    setPickup(null);
+    setDropoff(null);
+    setPassengerCount(1);
+    setLuggageCount(0);
+    setSelectedVehicleType(null);
+    setEstimatedFare(0);
+    setPassengerScreen("home");
+  }, []);
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} />;
@@ -103,17 +129,31 @@ const Index = () => {
             <RideOptions
               key="ride-options"
               onBack={() => setPassengerScreen("home")}
-              onConfirm={handleConfirmRide}
+              onConfirm={handleSelectVehicle}
               pickup={pickup}
               dropoff={dropoff}
               passengerCount={passengerCount}
               luggageCount={luggageCount}
             />
           )}
+          {passengerScreen === "confirmation" && pickup && dropoff && selectedVehicleType && (
+            <RideConfirmation
+              key="confirmation"
+              pickup={pickup}
+              dropoff={dropoff}
+              vehicleType={selectedVehicleType}
+              estimatedFare={estimatedFare}
+              passengerCount={passengerCount}
+              luggageCount={luggageCount}
+              userId={userProfile?.id}
+              onConfirm={handleConfirmRide}
+              onBack={() => setPassengerScreen("ride-options")}
+            />
+          )}
           {passengerScreen === "searching" && (
             <SearchingDriver
               key="searching"
-              onDriverFound={() => setPassengerScreen("driver-matching")}
+              onDriverFound={handleRideComplete}
               pickupName={pickup?.name || "Pickup"}
               dropoffName={dropoff?.name || "Destination"}
             />
@@ -125,6 +165,15 @@ const Index = () => {
             />
           )}
         </AnimatePresence>
+
+        {/* Feedback overlay */}
+        {passengerScreen === "feedback" && currentTripId && (
+          <RideFeedback
+            tripId={currentTripId}
+            fare={estimatedFare}
+            onComplete={handleFeedbackComplete}
+          />
+        )}
       </div>
     </div>
   );

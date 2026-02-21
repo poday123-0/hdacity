@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Menu, Bell, Car, X } from "lucide-react";
+import { Menu, Bell, Car, X, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
+import RideHistory from "@/components/RideHistory";
 
 interface TopBarProps {
   onDriverMode?: () => void;
@@ -12,6 +13,7 @@ interface TopBarProps {
 
 const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
   const [showProfile, setShowProfile] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <>
@@ -19,7 +21,7 @@ const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
         <div className="flex items-center justify-between">
           <button
             onClick={() => setShowProfile(true)}
-            className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center"
+            className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center active:scale-95 transition-transform"
           >
             <Menu className="w-5 h-5 text-foreground" />
           </button>
@@ -34,13 +36,13 @@ const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
             {onDriverMode && (
               <button
                 onClick={onDriverMode}
-                className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center active:scale-95 transition-transform"
                 title="Driver Mode"
               >
                 <Car className="w-5 h-5 text-foreground" />
               </button>
             )}
-            <button className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative">
+            <button className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative active:scale-95 transition-transform">
               <Bell className="w-5 h-5 text-foreground" />
               <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
             </button>
@@ -63,19 +65,21 @@ const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="bg-card rounded-t-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-5 space-y-5">
+              <div className="p-4 pb-6 space-y-4">
+                <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
+
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-foreground">My Profile</h3>
-                  <button onClick={() => setShowProfile(false)}>
-                    <X className="w-5 h-5 text-muted-foreground" />
+                  <button onClick={() => setShowProfile(false)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center">
+                    <X className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
                     {userProfile?.first_name?.[0]}{userProfile?.last_name?.[0]}
                   </div>
                   <div>
@@ -100,15 +104,36 @@ const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
                   ))}
                 </div>
 
+                {/* Ride History button */}
+                <button
+                  onClick={() => { setShowProfile(false); setShowHistory(true); }}
+                  className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-foreground">Ride History</p>
+                    <p className="text-xs text-muted-foreground">View past trips & receipts</p>
+                  </div>
+                </button>
+
                 <button
                   onClick={() => setShowProfile(false)}
-                  className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm"
+                  className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform"
                 >
                   Close
                 </button>
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Ride History */}
+      <AnimatePresence>
+        {showHistory && (
+          <RideHistory userId={userProfile?.id} onClose={() => setShowHistory(false)} />
         )}
       </AnimatePresence>
     </>
