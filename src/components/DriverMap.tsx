@@ -34,17 +34,21 @@ const dropoffIcon = L.divIcon({
   className: "",
 });
 
-// Sample ride locations (would come from real trip data)
-const PICKUP_LOCATION: [number, number] = [4.1745, 73.5088];
-const DROPOFF_LOCATION: [number, number] = [4.1912, 73.5291];
+// Default sample locations (used when no trip coords provided)
+const DEFAULT_PICKUP: [number, number] = [4.1745, 73.5088];
+const DEFAULT_DROPOFF: [number, number] = [4.1912, 73.5291];
 
 interface DriverMapProps {
   isNavigating: boolean;
   radiusKm?: number;
   gpsEnabled: boolean;
+  pickupCoords?: [number, number];
+  dropoffCoords?: [number, number];
+  pickupLabel?: string;
+  dropoffLabel?: string;
 }
 
-const DriverMap = ({ isNavigating, radiusKm, gpsEnabled }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const routeLayer = useRef<L.Polyline | null>(null);
@@ -52,6 +56,7 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled }: DriverMapProps) => {
   const markersRef = useRef<L.Marker[]>([]);
   const driverMarkerRef = useRef<L.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
 
   // Start/stop GPS tracking based on gpsEnabled
@@ -128,43 +133,23 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled }: DriverMapProps) => {
     }
   }, [currentPos, isNavigating]);
 
-  // Draw route when navigating
-  useEffect(() => {
-    const map = mapInstance.current;
-    if (!map) return;
-
-    // Clear previous route and markers
-    if (routeLayer.current) {
-      map.removeLayer(routeLayer.current);
-      routeLayer.current = null;
-    }
-    markersRef.current.forEach((m) => map.removeLayer(m));
-    markersRef.current = [];
-
-    if (!isNavigating) return;
-
-    const driverPos = currentPos || MALE_CENTER;
-
-    // Add pickup & dropoff markers
-    const pMarker = L.marker(PICKUP_LOCATION, { icon: pickupIcon })
-      .addTo(map)
-      .bindPopup("<b>Pickup</b><br/>Majeedhee Magu");
-    const dMarker = L.marker(DROPOFF_LOCATION, { icon: dropoffIcon })
-      .addTo(map)
-      .bindPopup("<b>Dropoff</b><br/>Velana Airport");
-    markersRef.current = [pMarker, dMarker];
-
-    // Fetch route from OSRM using current position
+  // Fetch route helper
+  const fetchRoute = (map: L.Map, driverPos: [number, number], pickup: [number, number], dropoff: [number, number], fitBounds: boolean) => {
     const from = `${driverPos[1]},${driverPos[0]}`;
-    const pickup = `${PICKUP_LOCATION[1]},${PICKUP_LOCATION[0]}`;
-    const dropoff = `${DROPOFF_LOCATION[1]},${DROPOFF_LOCATION[0]}`;
+    const p = `${pickup[1]},${pickup[0]}`;
+    const d = `${dropoff[1]},${dropoff[0]}`;
 
     fetch(
-      `https://router.project-osrm.org/route/v1/driving/${from};${pickup};${dropoff}?overview=full&geometries=geojson`
+      `https://router.project-osrm.org/route/v1/driving/${from};${p};${d}?overview=full&geometries=geojson`
     )
       .then((res) => res.json())
       .then((data) => {
         if (data.routes && data.routes[0]) {
+          // Remove old route line
+          if (routeLayer.current) {
+            try { map.removeLayer(routeLayer.current); } catch {}
+          }
+
           const coords = data.routes[0].geometry.coordinates.map(
             (c: [number, number]) => [c[1], c[0]] as [number, number]
           );
@@ -176,11 +161,62 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled }: DriverMapProps) => {
             dashArray: "10, 6",
           }).addTo(map);
 
-          map.fitBounds(routeLayer.current.getBounds(), { padding: [60, 60] });
+          if (fitBounds) {
+            map.fitBounds(routeLayer.current.getBounds(), { padding: [60, 60] });
+          }
         }
       })
       .catch((err) => console.error("OSRM route error:", err));
-  }, [isNavigating, currentPos]);
+  };
+
+  // Draw route when navigating + live refresh every 10s
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    // Clear previous route and markers
+    if (routeLayer.current) {
+      map.removeLayer(routeLayer.current);
+      routeLayer.current = null;
+    }
+    markersRef.current.forEach((m) => map.removeLayer(m));
+    markersRef.current = [];
+    if (routeRefreshRef.current) {
+      clearInterval(routeRefreshRef.current);
+      routeRefreshRef.current = null;
+    }
+
+    if (!isNavigating) return;
+
+    const driverPos = currentPos || MALE_CENTER;
+    const pickup = pickupCoords || DEFAULT_PICKUP;
+    const dropoff = dropoffCoords || DEFAULT_DROPOFF;
+
+    // Add pickup & dropoff markers with vehicle icons
+    const pMarker = L.marker(pickup, { icon: pickupIcon })
+      .addTo(map)
+      .bindPopup(`<b>Pickup</b><br/>${pickupLabel || "Pickup location"}`);
+    const dMarker = L.marker(dropoff, { icon: dropoffIcon })
+      .addTo(map)
+      .bindPopup(`<b>Dropoff</b><br/>${dropoffLabel || "Dropoff location"}`);
+    markersRef.current = [pMarker, dMarker];
+
+    // Initial route fetch
+    fetchRoute(map, driverPos, pickup, dropoff, true);
+
+    // Live refresh route every 10 seconds while navigating
+    routeRefreshRef.current = setInterval(() => {
+      const pos = currentPos || MALE_CENTER;
+      fetchRoute(map, pos, pickup, dropoff, false);
+    }, 10000);
+
+    return () => {
+      if (routeRefreshRef.current) {
+        clearInterval(routeRefreshRef.current);
+        routeRefreshRef.current = null;
+      }
+    };
+  }, [isNavigating, pickupCoords, dropoffCoords]);
 
   // Radius circle with animated fade-out after setting
   const radiusFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
