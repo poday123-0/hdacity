@@ -71,6 +71,47 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at: string
+          driver_id: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+        }
+        Insert: {
+          account_name?: string
+          account_number: string
+          bank_name: string
+          created_at?: string
+          driver_id: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          driver_id?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_bank_accounts_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fare_surcharges: {
         Row: {
           amount: number
@@ -177,6 +218,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           bank_account_name: string | null
           bank_account_number: string | null
           bank_id: string | null
@@ -203,6 +245,7 @@ export type Database = {
           user_type: string
         }
         Insert: {
+          avatar_url?: string | null
           bank_account_name?: string | null
           bank_account_number?: string | null
           bank_id?: string | null
@@ -229,6 +272,7 @@ export type Database = {
           user_type?: string
         }
         Update: {
+          avatar_url?: string | null
           bank_account_name?: string | null
           bank_account_number?: string | null
           bank_id?: string | null
