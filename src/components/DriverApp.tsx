@@ -218,7 +218,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         </div>
       </div>
 
-      <DriverMap isNavigating={screen === "navigating"} />
+      <DriverMap isNavigating={screen === "navigating"} radiusKm={screen === "online" ? tripRadius : undefined} />
 
       {/* Offline */}
       {screen === "offline" && (
@@ -323,16 +323,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
             )}
 
             {/* Trip Radius */}
-            <div className="bg-surface rounded-xl p-3 space-y-2">
+            <div className="bg-surface rounded-2xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Radar className="w-4 h-4 text-primary" />
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Radar className="w-4 h-4 text-primary" />
+                  </div>
                   <span className="text-sm font-medium text-foreground">Trip Radius</span>
                 </div>
-                <span className="text-sm font-bold text-primary">{tripRadius} km</span>
+                <div className="bg-primary/10 px-2.5 py-1 rounded-lg">
+                  <span className="text-sm font-bold text-primary tabular-nums">{tripRadius} km</span>
+                </div>
               </div>
-              <input type="range" min={1} max={50} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-2 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
-              <div className="flex justify-between text-xs text-muted-foreground"><span>1 km</span><span>50 km</span></div>
+              <div className="px-1">
+                <input type="range" min={1} max={50} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>1 km</span><span>25 km</span><span>50 km</span></div>
+              </div>
             </div>
 
             <button onClick={() => setScreen("ride-request")} className="w-full bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform">

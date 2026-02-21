@@ -33,12 +33,14 @@ const dropoffIcon = L.divIcon({
 
 interface DriverMapProps {
   isNavigating: boolean;
+  radiusKm?: number;
 }
 
-const DriverMap = ({ isNavigating }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const routeLayer = useRef<L.Polyline | null>(null);
+  const radiusCircle = useRef<L.Circle | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
   useEffect(() => {
@@ -117,6 +119,29 @@ const DriverMap = ({ isNavigating }: DriverMapProps) => {
       })
       .catch((err) => console.error("OSRM route error:", err));
   }, [isNavigating]);
+
+  // Radius circle
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    if (radiusCircle.current) {
+      map.removeLayer(radiusCircle.current);
+      radiusCircle.current = null;
+    }
+
+    if (radiusKm && radiusKm > 0 && !isNavigating) {
+      radiusCircle.current = L.circle(MALE_CENTER, {
+        radius: radiusKm * 1000,
+        color: "#40A3DB",
+        fillColor: "#40A3DB",
+        fillOpacity: 0.08,
+        weight: 2,
+        dashArray: "6, 4",
+        interactive: false,
+      }).addTo(map);
+    }
+  }, [radiusKm, isNavigating]);
 
   return <div ref={mapRef} className="absolute inset-0 z-0" />;
 };
