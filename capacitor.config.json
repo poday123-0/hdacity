@@ -1,0 +1,9 @@
+{
+  "appId": "app.lovable.8e370f055df142beabbfef376d3b58b5",
+  "appName": "apphdataxi",
+  "webDir": "dist",
+  "server": {
+    "url": "https://8e370f05-5df1-42be-abbf-ef376d3b58b5.lovableproject.com?forceHideBadge=true",
+    "cleartext": true
+  }
+}
