@@ -59,34 +59,26 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCo
   const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
 
-  // Start/stop GPS tracking based on gpsEnabled
+  // Always track GPS — gpsEnabled just controls whether map re-centers
   useEffect(() => {
     if (!navigator.geolocation) {
       setCurrentPos(MALE_CENTER);
       return;
     }
 
-    if (gpsEnabled) {
-      // Get initial position
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCurrentPos([pos.coords.latitude, pos.coords.longitude]),
-        () => setCurrentPos(MALE_CENTER),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
+    // Get initial position immediately
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCurrentPos([pos.coords.latitude, pos.coords.longitude]),
+      () => setCurrentPos(MALE_CENTER),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
 
-      // Watch for live updates
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => setCurrentPos([pos.coords.latitude, pos.coords.longitude]),
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 5000 }
-      );
-    } else {
-      // Stop watching
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-    }
+    // Always watch for live updates
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => setCurrentPos([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 3000 }
+    );
 
     return () => {
       if (watchIdRef.current !== null) {
@@ -94,7 +86,7 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCo
         watchIdRef.current = null;
       }
     };
-  }, [gpsEnabled]);
+  }, []);
 
   // Initialize map
   useEffect(() => {
