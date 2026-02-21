@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, Bell, Car, X, Clock } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
@@ -7,11 +7,12 @@ import RideHistory from "@/components/RideHistory";
 
 interface TopBarProps {
   onDriverMode?: () => void;
+  onLogout?: () => void;
   userName?: string;
   userProfile?: UserProfile | null;
 }
 
-const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
+const TopBar = ({ onDriverMode, onLogout, userName, userProfile }: TopBarProps) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -117,6 +118,16 @@ const TopBar = ({ onDriverMode, userName, userProfile }: TopBarProps) => {
                     <p className="text-xs text-muted-foreground">View past trips & receipts</p>
                   </div>
                 </button>
+
+                {onLogout && (
+                  <button
+                    onClick={() => { setShowProfile(false); onLogout(); }}
+                    className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                )}
 
                 <button
                   onClick={() => setShowProfile(false)}
