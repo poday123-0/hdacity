@@ -120,7 +120,7 @@ const Index = () => {
         />
       </div>
 
-      <div className="relative z-[500]">
+      <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto">
         <AnimatePresence mode="wait">
           {passengerScreen === "home" && (
             <LocationInput key="home" onSearch={handleLocationSearch} />
