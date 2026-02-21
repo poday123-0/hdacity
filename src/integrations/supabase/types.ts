@@ -112,6 +112,44 @@ export type Database = {
           },
         ]
       }
+      emergency_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          phone_number: string
+          relationship: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone_number: string
+          relationship?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone_number?: string
+          relationship?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fare_surcharges: {
         Row: {
           amount: number
@@ -395,6 +433,7 @@ export type Database = {
           estimated_fare: number | null
           fare_type: string
           fare_zone_id: string | null
+          feedback_text: string | null
           id: string
           luggage_count: number
           passenger_count: number
@@ -426,6 +465,7 @@ export type Database = {
           estimated_fare?: number | null
           fare_type?: string
           fare_zone_id?: string | null
+          feedback_text?: string | null
           id?: string
           luggage_count?: number
           passenger_count?: number
@@ -457,6 +497,7 @@ export type Database = {
           estimated_fare?: number | null
           fare_type?: string
           fare_zone_id?: string | null
+          feedback_text?: string | null
           id?: string
           luggage_count?: number
           passenger_count?: number
