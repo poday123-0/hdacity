@@ -177,11 +177,44 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
       .catch((err) => console.error("OSRM route error:", err));
   }, [isNavigating, currentPos]);
 
-  // Radius circle
+  // Radius circle with animated fade-out after setting
+  const radiusFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showRadius, setShowRadius] = useState(false);
+  const prevRadiusRef = useRef<number | undefined>(radiusKm);
+
+  useEffect(() => {
+    if (radiusKm !== prevRadiusRef.current) {
+      setShowRadius(true);
+      prevRadiusRef.current = radiusKm;
+      if (radiusFadeTimer.current) clearTimeout(radiusFadeTimer.current);
+      radiusFadeTimer.current = setTimeout(() => setShowRadius(false), 2000);
+    }
+    return () => { if (radiusFadeTimer.current) clearTimeout(radiusFadeTimer.current); };
+  }, [radiusKm]);
+
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
 
+    // Fade out existing circle
+    if (!showRadius && radiusCircle.current) {
+      const el = radiusCircle.current.getElement() as HTMLElement | null;
+      const circle = radiusCircle.current;
+      if (el) {
+        el.style.transition = "opacity 0.6s ease-out";
+        el.style.opacity = "0";
+        setTimeout(() => {
+          if (map && circle) { try { map.removeLayer(circle); } catch {} }
+          if (radiusCircle.current === circle) radiusCircle.current = null;
+        }, 600);
+      } else {
+        map.removeLayer(circle);
+        radiusCircle.current = null;
+      }
+      return;
+    }
+
+    // Remove old and draw new
     if (radiusCircle.current) {
       map.removeLayer(radiusCircle.current);
       radiusCircle.current = null;
@@ -189,7 +222,7 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
 
     const center = currentPos || MALE_CENTER;
 
-    if (radiusKm && radiusKm > 0 && !isNavigating) {
+    if (radiusKm && radiusKm > 0 && !isNavigating && showRadius) {
       radiusCircle.current = L.circle(center, {
         radius: radiusKm * 1000,
         color: "#40A3DB",
@@ -199,8 +232,16 @@ const DriverMap = ({ isNavigating, radiusKm }: DriverMapProps) => {
         dashArray: "6, 4",
         interactive: false,
       }).addTo(map);
+
+      // Fade in
+      const el = radiusCircle.current.getElement() as HTMLElement | null;
+      if (el) {
+        el.style.opacity = "0";
+        el.style.transition = "opacity 0.4s ease-in";
+        requestAnimationFrame(() => { el.style.opacity = "1"; });
+      }
     }
-  }, [radiusKm, isNavigating, currentPos]);
+  }, [radiusKm, isNavigating, currentPos, showRadius]);
 
   return <div ref={mapRef} className="absolute inset-0 z-0" />;
 };
