@@ -1,19 +1,13 @@
 import { motion } from "framer-motion";
 import { Car, MapPin } from "lucide-react";
-import { useEffect } from "react";
 
 interface SearchingDriverProps {
-  onDriverFound: () => void;
+  onCancel: () => void;
   pickupName?: string;
   dropoffName?: string;
 }
 
-const SearchingDriver = ({ onDriverFound, pickupName = "Pickup", dropoffName = "Destination" }: SearchingDriverProps) => {
-  useEffect(() => {
-    const timer = setTimeout(onDriverFound, 4000);
-    return () => clearTimeout(timer);
-  }, [onDriverFound]);
-
+const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Destination" }: SearchingDriverProps) => {
   return (
     <motion.div
       initial={{ y: "100%" }}
@@ -55,7 +49,7 @@ const SearchingDriver = ({ onDriverFound, pickupName = "Pickup", dropoffName = "
           >
             Finding your driver...
           </motion.h3>
-          <p className="text-sm text-muted-foreground mt-1">This will only take a moment</p>
+          <p className="text-sm text-muted-foreground mt-1">Waiting for a driver to accept</p>
         </div>
 
         {/* Route info */}
@@ -78,7 +72,7 @@ const SearchingDriver = ({ onDriverFound, pickupName = "Pickup", dropoffName = "
         </div>
 
         <button
-          onClick={onDriverFound}
+          onClick={onCancel}
           className="w-full py-3 text-sm font-medium text-destructive hover:bg-destructive/5 rounded-xl transition-colors"
         >
           Cancel search

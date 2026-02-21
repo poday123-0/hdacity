@@ -256,8 +256,14 @@ const Index = () => {
           toast({ title: notif.title, description: notif.description });
         }
 
-        if (status === "completed") {
+        // Transition screens based on real trip status
+        if (status === "accepted") {
+          setPassengerScreen("driver-matching");
+        } else if (status === "completed") {
           setPassengerScreen("feedback");
+        } else if (status === "cancelled") {
+          setPassengerScreen("home");
+          setCurrentTripId(null);
         }
       })
       .subscribe();
@@ -265,9 +271,8 @@ const Index = () => {
     return () => { supabase.removeChannel(channel); };
   }, [currentTripId, passengerSounds]);
 
-  const handleRideComplete = useCallback(() => {
-    setPassengerScreen("feedback");
-  }, []);
+
+
 
   const handleFeedbackComplete = useCallback(() => {
     setCurrentTripId(null);
@@ -344,7 +349,14 @@ const Index = () => {
           {passengerScreen === "searching" && (
             <SearchingDriver
               key="searching"
-              onDriverFound={handleRideComplete}
+              onCancel={() => {
+                // Cancel the trip in the database
+                if (currentTripId) {
+                  supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
+                }
+                setCurrentTripId(null);
+                setPassengerScreen("home");
+              }}
               pickupName={pickup?.name || "Pickup"}
               dropoffName={dropoff?.name || "Destination"}
             />
