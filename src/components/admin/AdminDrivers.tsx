@@ -8,7 +8,10 @@ const AdminDrivers = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", phone_number: "" });
+  const [editForm, setEditForm] = useState({
+    first_name: "", last_name: "", email: "", phone_number: "",
+    company_name: "", monthly_fee: "", bank_name: "", bank_account_number: "", bank_account_name: "",
+  });
 
   const fetchDrivers = async () => {
     setLoading(true);
@@ -34,6 +37,11 @@ const AdminDrivers = () => {
       last_name: d.last_name || "",
       email: d.email || "",
       phone_number: d.phone_number || "",
+      company_name: d.company_name || "",
+      monthly_fee: d.monthly_fee?.toString() || "0",
+      bank_name: d.bank_name || "",
+      bank_account_number: d.bank_account_number || "",
+      bank_account_name: d.bank_account_name || "",
     });
     setEditingId(d.id);
   };
@@ -44,6 +52,11 @@ const AdminDrivers = () => {
       first_name: editForm.first_name,
       last_name: editForm.last_name,
       email: editForm.email || null,
+      company_name: editForm.company_name || "",
+      monthly_fee: parseFloat(editForm.monthly_fee) || 0,
+      bank_name: editForm.bank_name || "",
+      bank_account_number: editForm.bank_account_number || "",
+      bank_account_name: editForm.bank_account_name || "",
     }).eq("id", editingId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -64,6 +77,8 @@ const AdminDrivers = () => {
       fetchDrivers();
     }
   };
+
+  const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
 
   return (
     <div className="space-y-6">
@@ -92,15 +107,36 @@ const AdminDrivers = () => {
               { key: "first_name", label: "First Name" },
               { key: "last_name", label: "Last Name" },
               { key: "email", label: "Email" },
-              { key: "phone_number", label: "Phone (read-only)" },
+              { key: "phone_number", label: "Phone (read-only)", disabled: true },
+              { key: "company_name", label: "Company" },
+              { key: "monthly_fee", label: "Monthly Fee (MVR)", type: "number" },
+            ].map((f) => (
+              <div key={f.key}>
+                <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+                <input
+                  type={f.type || "text"}
+                  value={(editForm as any)[f.key]}
+                  onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
+                  disabled={f.disabled}
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+          <h4 className="text-sm font-semibold text-foreground pt-2">Bank Account Details</h4>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { key: "bank_name", label: "Bank Name", placeholder: "BML / MIB" },
+              { key: "bank_account_number", label: "Account Number", placeholder: "7730000000000" },
+              { key: "bank_account_name", label: "Account Name", placeholder: "Full name on account" },
             ].map((f) => (
               <div key={f.key}>
                 <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
                 <input
                   value={(editForm as any)[f.key]}
                   onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
-                  disabled={f.key === "phone_number"}
-                  className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                  placeholder={f.placeholder}
+                  className={inputCls}
                 />
               </div>
             ))}
@@ -117,22 +153,24 @@ const AdminDrivers = () => {
             <tr className="border-b border-border bg-surface">
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Email</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : drivers.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
             ) : (
               drivers.map((d) => (
                 <tr key={d.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{d.email || "—"}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{d.company_name || "—"}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{d.monthly_fee > 0 ? `${d.monthly_fee} MVR` : "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
                       d.status === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
