@@ -130,7 +130,7 @@ const AdminFares = () => {
                   <td className="px-4 py-3 text-sm font-medium text-foreground">{vt.name}</td>
                   {["base_fare", "per_km_rate", "per_minute_rate", "per_hour_rate", "minimum_fare", "passenger_tax_pct", "driver_tax_pct"].map((field) => (
                     <td key={field} className="px-4 py-3">
-                      <input type="number" defaultValue={vt[field]} onBlur={(e) => updateVehicleType(vt.id, field, e.target.value)}
+                      <input type="number" key={`${vt.id}-${field}-${vt[field]}`} defaultValue={vt[field]} onBlur={(e) => updateVehicleType(vt.id, field, e.target.value)}
                         className="w-20 px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                     </td>
                   ))}
