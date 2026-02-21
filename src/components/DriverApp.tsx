@@ -17,6 +17,8 @@ import {
   Eye,
   EyeOff,
   Radar,
+  Users,
+  Luggage,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -235,6 +237,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                 <div className="flex items-center gap-2 min-w-0">
                   <MapPin className="w-2 h-2 text-foreground shrink-0" />
                   <p className="text-xs text-foreground truncate">Velana International Airport</p>
+                </div>
+              </div>
+
+              {/* Passenger & Luggage info */}
+              <div className="flex gap-2">
+                <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">Passengers</p>
+                    <p className="text-sm font-bold text-foreground">2</p>
+                  </div>
+                </div>
+                <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+                  <Luggage className="w-4 h-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">Luggage</p>
+                    <p className="text-sm font-bold text-foreground">3</p>
+                  </div>
                 </div>
               </div>
 
