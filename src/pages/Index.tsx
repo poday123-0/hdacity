@@ -28,16 +28,16 @@ interface SelectedLocation {
 const SESSION_KEY = "hda_user_session";
 
 const Index = () => {
-  // Restore persisted session
-  const savedSession = (() => {
+  // Restore persisted session (only once on mount)
+  const [savedSession] = useState<{ profile: UserProfile; isDriver: boolean } | null>(() => {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) return JSON.parse(raw) as { profile: UserProfile; isDriver: boolean };
     } catch {}
     return null;
-  })();
+  });
 
-  const [phase, setPhase] = useState<AppPhase>(savedSession ? "passenger" : "splash");
+  const [phase, setPhase] = useState<AppPhase>(() => savedSession ? "passenger" : "splash");
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [isDriver, setIsDriver] = useState(savedSession?.isDriver || false);
