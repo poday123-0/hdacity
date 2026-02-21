@@ -383,12 +383,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                         <span className="text-sm font-medium text-foreground">Trip Radius</span>
                       </div>
                       <div className="bg-primary/10 px-2.5 py-1 rounded-lg">
-                        <span className="text-sm font-bold text-primary tabular-nums">{tripRadius} km</span>
+                        <span className="text-sm font-bold text-primary tabular-nums">{tripRadius < 1 ? `${(tripRadius * 1000).toFixed(0)}m` : `${tripRadius} km`}</span>
                       </div>
                     </div>
                     <div className="px-1">
-                      <input type="range" min={1} max={50} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
-                      <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>1 km</span><span>25 km</span><span>50 km</span></div>
+                      <input type="range" min={0.1} max={50} step={0.1} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
+                      <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>100m</span><span>25 km</span><span>50 km</span></div>
                     </div>
                   </div>
 
