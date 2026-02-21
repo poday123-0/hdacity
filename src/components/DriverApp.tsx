@@ -36,6 +36,18 @@ import {
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type ProfileTab = "info" | "documents" | "banks";
 
+interface TripRequest {
+  id: string;
+  pickup_address: string;
+  dropoff_address: string;
+  estimated_fare: number | null;
+  passenger_count: number;
+  luggage_count: number;
+  passenger_id: string | null;
+  distance_km: number | null;
+  vehicle_type_id: string | null;
+}
+
 interface BankAccount {
   id: string;
   bank_name: string;
@@ -51,6 +63,8 @@ interface DriverAppProps {
 
 const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
+  const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
+  const [passengerProfile, setPassengerProfile] = useState<{ first_name: string; last_name: string } | null>(null);
   const [showEarnings, setShowEarnings] = useState(true);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -178,7 +192,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         schema: "public",
         table: "trips",
         filter: "status=eq.requested",
-      }, (payload) => {
+      }, async (payload) => {
+        const trip = payload.new as TripRequest;
+        
         // Play sound
         if (tripRequestSoundUrl) {
           try {
@@ -190,12 +206,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
             tripSoundRef.current.play().catch(() => {});
           } catch {}
         }
-        // Show toast notification
-        const trip = payload.new as any;
+
+        // Fetch passenger profile
+        let pProfile = null;
+        if (trip.passenger_id) {
+          const { data } = await supabase.from("profiles").select("first_name, last_name").eq("id", trip.passenger_id).single();
+          pProfile = data;
+        }
+
+        // Show toast and transition to ride-request screen
         toast({
           title: "🚗 New Ride Request!",
           description: `${trip.pickup_address} → ${trip.dropoff_address}`,
         });
+
+        setCurrentTrip(trip);
+        setPassengerProfile(pProfile);
+        setScreen("ride-request");
       })
       .subscribe();
 
@@ -552,35 +579,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
       )}
 
       {/* Ride Request */}
-      {screen === "ride-request" && (
+      {screen === "ride-request" && currentTrip && (
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[500] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm">
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden">
             <div className="bg-primary px-4 py-4 text-center">
               <p className="text-primary-foreground/80 text-xs">New ride</p>
-              <p className="text-2xl font-bold text-primary-foreground">70 MVR</p>
-              <p className="text-primary-foreground/70 text-xs mt-0.5">~4.2 km • ~12 min</p>
+              <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
+              {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
             </div>
 
             <div className="px-4 py-4 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0">AN</div>
+                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0">
+                  {passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"}
+                </div>
                 <div className="min-w-0">
-                  <p className="font-semibold text-sm text-foreground truncate">Ahmed Naseem</p>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Star className="w-3 h-3 text-primary fill-primary shrink-0" />4.8 • 45 rides
-                  </div>
+                  <p className="font-semibold text-sm text-foreground truncate">
+                    {passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger"}
+                  </p>
                 </div>
               </div>
 
               <div className="bg-surface rounded-xl p-3 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                  <p className="text-xs text-foreground truncate">Majeedhee Magu, Malé</p>
+                  <p className="text-xs text-foreground truncate">{currentTrip.pickup_address}</p>
                 </div>
                 <div className="ml-1 w-0.5 h-2.5 bg-border" />
                 <div className="flex items-center gap-2 min-w-0">
                   <MapPin className="w-2 h-2 text-foreground shrink-0" />
-                  <p className="text-xs text-foreground truncate">Velana International Airport</p>
+                  <p className="text-xs text-foreground truncate">{currentTrip.dropoff_address}</p>
                 </div>
               </div>
 
@@ -590,23 +618,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                   <Users className="w-4 h-4 text-primary shrink-0" />
                   <div>
                     <p className="text-[10px] text-muted-foreground font-semibold">Passengers</p>
-                    <p className="text-sm font-bold text-foreground">2</p>
+                    <p className="text-sm font-bold text-foreground">{currentTrip.passenger_count}</p>
                   </div>
                 </div>
                 <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
                   <Luggage className="w-4 h-4 text-primary shrink-0" />
                   <div>
                     <p className="text-[10px] text-muted-foreground font-semibold">Luggage</p>
-                    <p className="text-sm font-bold text-foreground">3</p>
+                    <p className="text-sm font-bold text-foreground">{currentTrip.luggage_count}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <button onClick={() => setScreen("online")} className="flex-1 flex items-center justify-center gap-1.5 bg-surface text-foreground rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
+                <button onClick={async () => {
+                  setScreen("online");
+                  setCurrentTrip(null);
+                  setPassengerProfile(null);
+                }} className="flex-1 flex items-center justify-center gap-1.5 bg-surface text-foreground rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
                   <X className="w-4 h-4" />Decline
                 </button>
-                <button onClick={() => setScreen("navigating")} className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
+                <button onClick={async () => {
+                  if (!currentTrip || !userProfile?.id) return;
+                  // Accept trip in database
+                  const { error } = await supabase.from("trips").update({
+                    status: "accepted",
+                    driver_id: userProfile.id,
+                    accepted_at: new Date().toISOString(),
+                  }).eq("id", currentTrip.id).eq("status", "requested");
+
+                  if (error) {
+                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                    return;
+                  }
+
+                  // Mark driver as on trip
+                  await supabase.from("driver_locations").update({ is_on_trip: true }).eq("driver_id", userProfile.id);
+
+                  setScreen("navigating");
+                }} className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
                   <CheckCircle className="w-4 h-4" />Accept
                 </button>
               </div>
@@ -616,23 +666,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
       )}
 
       {/* Navigating */}
-      {screen === "navigating" && (
+      {screen === "navigating" && currentTrip && (
         <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450]">
           <div className="p-5 space-y-4">
             <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
             <div className="bg-primary rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-primary-foreground/80 text-xs">Heading to passenger</p>
-                <p className="text-2xl font-bold text-primary-foreground">3 min</p>
+                <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
               </div>
               <Navigation className="w-8 h-8 text-primary-foreground" />
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground">AN</div>
+                <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground">
+                  {passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"}
+                </div>
                 <div>
-                  <p className="font-semibold text-foreground">Ahmed Naseem</p>
-                  <p className="text-xs text-muted-foreground">Majeedhee Magu, Malé</p>
+                  <p className="font-semibold text-foreground">{passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger"}</p>
+                  <p className="text-xs text-muted-foreground">{currentTrip.pickup_address}</p>
                 </div>
               </div>
               <button className="w-10 h-10 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform">
@@ -640,11 +692,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
               </button>
             </div>
             <div className="bg-surface rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-primary" /><p className="text-sm text-foreground">Majeedhee Magu, Malé</p></div>
+              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-primary" /><p className="text-sm text-foreground">{currentTrip.pickup_address}</p></div>
               <div className="ml-1 w-0.5 h-3 bg-border" />
-              <div className="flex items-center gap-2"><MapPin className="w-2.5 h-2.5 text-foreground" /><p className="text-sm text-foreground">Velana International Airport</p></div>
+              <div className="flex items-center gap-2"><MapPin className="w-2.5 h-2.5 text-foreground" /><p className="text-sm text-foreground">{currentTrip.dropoff_address}</p></div>
             </div>
-            <button onClick={() => setScreen("complete")} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">Complete ride</button>
+            <button onClick={async () => {
+              if (!currentTrip || !userProfile?.id) return;
+              await supabase.from("trips").update({
+                status: "completed",
+                completed_at: new Date().toISOString(),
+                actual_fare: currentTrip.estimated_fare,
+              }).eq("id", currentTrip.id);
+              await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
+              setScreen("complete");
+            }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">Complete ride</button>
           </div>
         </motion.div>
       )}
@@ -661,18 +722,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
               <p className="text-muted-foreground text-sm mt-1">Well done, {userProfile?.first_name || "Driver"}</p>
             </div>
             <div className="bg-surface rounded-xl p-4">
-              <p className="text-3xl font-bold text-primary">70 MVR</p>
+              <p className="text-3xl font-bold text-primary">{currentTrip?.estimated_fare ?? "—"} MVR</p>
               <p className="text-xs text-muted-foreground mt-1">Earnings from this ride</p>
             </div>
-            <div className="flex gap-3">
-              {[{ label: "Distance", value: "4.2 km" }, { label: "Duration", value: "12 min" }, { label: "Rating", value: "⭐ 5.0" }].map((s) => (
-                <div key={s.label} className="flex-1 bg-surface rounded-lg p-2">
-                  <p className="text-sm font-bold text-foreground">{s.value}</p>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setScreen("online")} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform">Continue</button>
+            <button onClick={() => {
+              setScreen("online");
+              setCurrentTrip(null);
+              setPassengerProfile(null);
+            }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform">Continue</button>
           </motion.div>
         </motion.div>
       )}
