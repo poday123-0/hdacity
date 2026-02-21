@@ -54,17 +54,42 @@ interface RideMapData {
   showRoute?: boolean;
 }
 
-interface MaldivesMapProps {
-  rideData?: RideMapData;
+interface VehicleMarkerData {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  imageUrl?: string;
+  icon?: string;
 }
 
-const MaldivesMap = ({ rideData }: MaldivesMapProps) => {
+interface MaldivesMapProps {
+  rideData?: RideMapData;
+  vehicleMarkers?: VehicleMarkerData[];
+}
+
+const createVehicleMapIcon = (imageUrl?: string, name?: string) => {
+  if (imageUrl) {
+    return L.divIcon({
+      html: `<div style="width:36px;height:36px;border-radius:50%;background:white;border:2px solid #40A3DB;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+        <img src="${imageUrl}" style="width:26px;height:26px;object-fit:contain;" alt="${name || ''}" />
+      </div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      className: "",
+    });
+  }
+  return driverCarIcon;
+};
+
+const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const rideMarkersRef = useRef<L.Marker[]>([]);
   const driverMarkerRef = useRef<L.Marker | null>(null);
   const routeLayerRef = useRef<L.Polyline | null>(null);
+  const vehicleMarkersRef = useRef<L.Marker[]>([]);
   const watchIdRef = useRef<number | null>(null);
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
 
@@ -213,6 +238,29 @@ const MaldivesMap = ({ rideData }: MaldivesMapProps) => {
     if (!driverMarkerRef.current || rideData?.driverLat == null || rideData?.driverLng == null) return;
     driverMarkerRef.current.setLatLng([rideData.driverLat, rideData.driverLng]);
   }, [rideData?.driverLat, rideData?.driverLng]);
+
+  // Vehicle type markers on the map
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    // Clear old vehicle markers
+    vehicleMarkersRef.current.forEach((m) => { try { map.removeLayer(m); } catch {} });
+    vehicleMarkersRef.current = [];
+
+    // Don't show during active ride
+    if (rideData?.showRoute) return;
+
+    if (vehicleMarkers && vehicleMarkers.length > 0) {
+      vehicleMarkers.forEach((v) => {
+        const icon = createVehicleMapIcon(v.imageUrl, v.name);
+        const m = L.marker([v.lat, v.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<b>${v.name}</b>`);
+        vehicleMarkersRef.current.push(m);
+      });
+    }
+  }, [vehicleMarkers, rideData?.showRoute]);
 
   return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 };

@@ -1,4 +1,4 @@
-import { MapPin, ChevronDown, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation } from "lucide-react";
+import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
   const [luggageCount, setLuggageCount] = useState(0);
   const [osmResults, setOsmResults] = useState<NominatimResult[]>([]);
   const [osmSearching, setOsmSearching] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -201,32 +202,42 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10"
     >
       <div className="px-5 pt-3 pb-8 space-y-4">
-        {/* Handle */}
-        <div className="flex justify-center">
+        {/* Handle — tap to toggle */}
+        <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
           <div className="w-12 h-1.5 rounded-full bg-border/60" />
-        </div>
+        </button>
 
-        {/* Greeting */}
+        {/* Always visible: compact bar when minimized */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-foreground tracking-tight">Where to?</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Search a place or select an area</p>
+            {!minimized && <p className="text-xs text-muted-foreground mt-0.5">Search a place or select an area</p>}
+            {minimized && pickup && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{pickup.name}{dropoff ? ` → ${dropoff.name}` : ""}</p>
+            )}
           </div>
-          <button
-            onClick={detectCurrentLocation}
-            disabled={detectingLocation}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-primary/10 text-primary text-xs font-semibold active:scale-95 transition-all hover:bg-primary/15"
-          >
-            <Locate className={`w-4 h-4 ${detectingLocation ? "animate-spin" : ""}`} />
-            {detectingLocation ? "Detecting..." : "My location"}
-          </button>
+          <div className="flex items-center gap-2">
+            {!minimized && (
+              <button
+                onClick={detectCurrentLocation}
+                disabled={detectingLocation}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-primary/10 text-primary text-xs font-semibold active:scale-95 transition-all hover:bg-primary/15"
+              >
+                <Locate className={`w-4 h-4 ${detectingLocation ? "animate-spin" : ""}`} />
+                {detectingLocation ? "Detecting..." : "My location"}
+              </button>
+            )}
+            <button onClick={() => setMinimized(!minimized)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+              {minimized ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+          </div>
         </div>
 
-        {loading ? (
+        {loading && !minimized ? (
           <div className="flex justify-center py-6">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : (
+        ) : !minimized ? (
           <>
             {/* Pickup & Dropoff selectors */}
             <div className="flex items-start gap-3">
@@ -405,7 +416,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
               {canConfirm ? "Find a ride" : "Select pickup & destination"}
             </button>
           </>
-        )}
+        ) : null}
       </div>
     </motion.div>
   );

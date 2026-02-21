@@ -91,6 +91,38 @@ const Index = () => {
     };
   }, [passengerScreen, pickup, dropoff, driverLocation]);
 
+  // Fetch vehicle types and simulate nearby available vehicles
+  const [vehicleMarkers, setVehicleMarkers] = useState<Array<{ id: string; lat: number; lng: number; name: string; imageUrl?: string; icon?: string }>>([]);
+
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      const { data } = await supabase
+        .from("vehicle_types")
+        .select("id, name, image_url, icon")
+        .eq("is_active", true)
+        .order("sort_order");
+      
+      if (data && data.length > 0) {
+        // Scatter vehicles around Malé center
+        const center = { lat: 4.1755, lng: 73.5093 };
+        const markers = data.map((vt, i) => {
+          const angle = (i / data.length) * 2 * Math.PI + Math.random() * 0.5;
+          const dist = 0.002 + Math.random() * 0.004;
+          return {
+            id: vt.id + "-map",
+            lat: center.lat + Math.sin(angle) * dist,
+            lng: center.lng + Math.cos(angle) * dist,
+            name: vt.name,
+            imageUrl: vt.image_url || undefined,
+            icon: vt.icon || undefined,
+          };
+        });
+        setVehicleMarkers(markers);
+      }
+    };
+    fetchVehicles();
+  }, []);
+
   const handleSplashComplete = useCallback(() => {
     if (savedSession) {
       setPhase("passenger");
@@ -183,7 +215,7 @@ const Index = () => {
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-background">
       <div className="absolute inset-0">
-        <MaldivesMap rideData={rideMapData} />
+        <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
