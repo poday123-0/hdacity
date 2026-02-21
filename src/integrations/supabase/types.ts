@@ -120,6 +120,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          company_name: string | null
           country_code: string
           created_at: string
           email: string | null
@@ -128,12 +132,17 @@ export type Database = {
           id: string
           last_name: string
           legacy_id: number | null
+          monthly_fee: number
           phone_number: string
           status: string
           updated_at: string
           user_type: string
         }
         Insert: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          company_name?: string | null
           country_code?: string
           created_at?: string
           email?: string | null
@@ -142,12 +151,17 @@ export type Database = {
           id?: string
           last_name?: string
           legacy_id?: number | null
+          monthly_fee?: number
           phone_number: string
           status?: string
           updated_at?: string
           user_type?: string
         }
         Update: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          company_name?: string | null
           country_code?: string
           created_at?: string
           email?: string | null
@@ -156,6 +170,7 @@ export type Database = {
           id?: string
           last_name?: string
           legacy_id?: number | null
+          monthly_fee?: number
           phone_number?: string
           status?: string
           updated_at?: string
