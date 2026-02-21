@@ -91,37 +91,46 @@ const Index = () => {
     };
   }, [passengerScreen, pickup, dropoff, driverLocation]);
 
-  // Fetch vehicle types and simulate nearby available vehicles
+  // Fetch actual online driver locations from driver_locations table
   const [vehicleMarkers, setVehicleMarkers] = useState<Array<{ id: string; lat: number; lng: number; name: string; imageUrl?: string; icon?: string }>>([]);
 
-  useEffect(() => {
-    const fetchVehicles = async () => {
-      const { data } = await supabase
-        .from("vehicle_types")
-        .select("id, name, image_url, icon")
-        .eq("is_active", true)
-        .order("sort_order");
-      
-      if (data && data.length > 0) {
-        // Scatter vehicles around Malé center
-        const center = { lat: 4.1755, lng: 73.5093 };
-        const markers = data.map((vt, i) => {
-          const angle = (i / data.length) * 2 * Math.PI + Math.random() * 0.5;
-          const dist = 0.002 + Math.random() * 0.004;
-          return {
-            id: vt.id + "-map",
-            lat: center.lat + Math.sin(angle) * dist,
-            lng: center.lng + Math.cos(angle) * dist,
-            name: vt.name,
-            imageUrl: vt.image_url || undefined,
-            icon: vt.icon || undefined,
-          };
-        });
-        setVehicleMarkers(markers);
-      }
-    };
-    fetchVehicles();
+  const fetchOnlineDrivers = useCallback(async () => {
+    // Join driver_locations with vehicle_types to get icons
+    const { data } = await supabase
+      .from("driver_locations")
+      .select(`
+        id, lat, lng, driver_id, vehicle_type_id,
+        vehicle_types:vehicle_type_id (name, image_url, icon)
+      `)
+      .eq("is_online", true)
+      .eq("is_on_trip", false);
+
+    if (data) {
+      const markers = data.map((dl: any) => ({
+        id: dl.id,
+        lat: dl.lat,
+        lng: dl.lng,
+        name: dl.vehicle_types?.name || "Driver",
+        imageUrl: dl.vehicle_types?.image_url || undefined,
+        icon: dl.vehicle_types?.icon || undefined,
+      }));
+      setVehicleMarkers(markers);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchOnlineDrivers();
+
+    // Subscribe to realtime changes on driver_locations
+    const channel = supabase
+      .channel("driver-locations-map")
+      .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
+        fetchOnlineDrivers();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchOnlineDrivers]);
 
   const handleSplashComplete = useCallback(() => {
     if (savedSession) {

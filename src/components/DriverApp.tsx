@@ -72,6 +72,86 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
   const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h" });
   const [gpsEnabled, setGpsEnabled] = useState(false);
+  const locationWatchRef = useRef<number | null>(null);
+  const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  // Push driver location to driver_locations when online
+  useEffect(() => {
+    if (screen !== "online" || !userProfile?.id) {
+      // Go offline: clear location watch and mark offline
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current);
+        locationWatchRef.current = null;
+      }
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+      // Mark driver as offline
+      if (userProfile?.id) {
+        supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
+      }
+      return;
+    }
+
+    // Fetch driver's vehicle to get vehicle_type_id
+    const startTracking = async () => {
+      const { data: vehicle } = await supabase
+        .from("vehicles")
+        .select("id, vehicle_type_id")
+        .eq("driver_id", userProfile.id)
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+
+      const vehicleId = vehicle?.id || null;
+      const vehicleTypeId = vehicle?.vehicle_type_id || null;
+
+      const upsertLocation = async (lat: number, lng: number) => {
+        lastPosRef.current = { lat, lng };
+        await supabase.from("driver_locations").upsert({
+          driver_id: userProfile.id,
+          vehicle_id: vehicleId,
+          vehicle_type_id: vehicleTypeId,
+          lat,
+          lng,
+          is_online: true,
+          is_on_trip: false,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "driver_id" });
+      };
+
+      // Watch GPS position
+      if (navigator.geolocation) {
+        locationWatchRef.current = navigator.geolocation.watchPosition(
+          (pos) => upsertLocation(pos.coords.latitude, pos.coords.longitude),
+          () => {},
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+        );
+
+        // Also push every 10s even if position hasn't changed (heartbeat)
+        locationIntervalRef.current = setInterval(() => {
+          if (lastPosRef.current) {
+            upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
+          }
+        }, 10000);
+      }
+    };
+
+    startTracking();
+
+    return () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current);
+        locationWatchRef.current = null;
+      }
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+    };
+  }, [screen, userProfile?.id]);
 
   useEffect(() => {
     const load = async () => {
