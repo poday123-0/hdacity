@@ -294,14 +294,12 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
-      <div className="relative z-[500]">
-        <TopBar 
-          onDriverMode={isDriver ? () => setPhase("driver") : undefined} 
-          onLogout={handleLogout}
-          userName={userProfile?.first_name}
-          userProfile={userProfile}
-        />
-      </div>
+      <TopBar 
+        onDriverMode={isDriver ? () => setPhase("driver") : undefined} 
+        onLogout={handleLogout}
+        userName={userProfile?.first_name}
+        userProfile={userProfile}
+      />
 
       <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto">
         <AnimatePresence mode="wait">

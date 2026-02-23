@@ -331,27 +331,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                       </>
                     )}
 
-                    {/* Service Areas */}
-                    {filteredList.length > 0 && (
-                      <>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-3 pt-2 pb-1">Service Areas</p>
-                        {filteredList.map((loc) => (
-                          <button
-                            key={loc.id}
-                            onClick={() => handleSelect(loc)}
-                            className="flex items-center gap-3 w-full px-3 py-3 rounded-2xl hover:bg-surface active:bg-muted active:scale-[0.98] transition-all"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center shrink-0 border border-border/50">
-                              <MapPin className="w-4.5 h-4.5 text-muted-foreground" />
-                            </div>
-                            <div className="text-left min-w-0">
-                              <p className="text-sm font-semibold text-foreground truncate">{loc.name}</p>
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">{loc.address}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </>
-                    )}
+                    {/* Service areas hidden - using exact location search */}
 
                     {filteredList.length === 0 && osmResults.length === 0 && !osmSearching && (
                       <p className="text-sm text-muted-foreground px-3 py-4 text-center">No places found</p>

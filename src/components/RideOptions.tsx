@@ -24,27 +24,30 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [fareZones, setFareZones] = useState<any[]>([]);
   const [surcharges, setSurcharges] = useState<any[]>([]);
+  const [onlineVehicleTypeIds, setOnlineVehicleTypeIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [vtRes, fzRes, scRes] = await Promise.all([
+      const [vtRes, fzRes, scRes, dlRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
+        supabase.from("driver_locations").select("vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
       ]);
       const types = vtRes.data || [];
       setVehicleTypes(types);
       setFareZones(fzRes.data || []);
       setSurcharges(scRes.data || []);
+      const onlineIds = new Set<string>((dlRes.data || []).map((d: any) => d.vehicle_type_id).filter(Boolean));
+      setOnlineVehicleTypeIds(onlineIds);
       setLoading(false);
     };
     fetchAll();
   }, []);
 
   const calcFare = (vt: any): number => {
-    // Check for zone-based fare first
     const zone = fareZones.find(
       (fz) =>
         fz.vehicle_type_id === vt.id &&
@@ -53,12 +56,10 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     );
     let fare = zone ? Number(zone.fixed_fare) : Number(vt.base_fare);
 
-    // Add luggage surcharge
     for (const sc of surcharges) {
       if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null && luggageCount >= sc.luggage_threshold) {
         fare += Number(sc.amount);
       }
-      // Time-based surcharges
       if (sc.surcharge_type === "time_based" && sc.start_time && sc.end_time) {
         const now = new Date();
         const h = now.getHours();
@@ -74,30 +75,32 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       }
     }
 
-    // Add passenger tax
     fare += fare * (Number(vt.passenger_tax_pct) / 100);
-
     return Math.max(fare, Number(vt.minimum_fare));
   };
 
-  // Sort: vehicles that fit passengers first (nearest capacity match)
+  // Sort: online vehicles first, then by capacity fit
   const sortedTypes = [...vehicleTypes].sort((a, b) => {
+    const aOnline = onlineVehicleTypeIds.has(a.id) ? 0 : 1;
+    const bOnline = onlineVehicleTypeIds.has(b.id) ? 0 : 1;
+    if (aOnline !== bOnline) return aOnline - bOnline;
     const aFits = a.capacity >= passengerCount ? 0 : 1;
     const bFits = b.capacity >= passengerCount ? 0 : 1;
     if (aFits !== bFits) return aFits - bFits;
-    // Among fitting, sort by closest capacity match
     return Math.abs(a.capacity - passengerCount) - Math.abs(b.capacity - passengerCount);
   });
 
-  // Auto-select nearest fitting vehicle
+  // Auto-select first online + fitting vehicle
   useEffect(() => {
     if (sortedTypes.length > 0 && !selected) {
-      setSelected(sortedTypes[0].id);
+      const firstOnline = sortedTypes.find(vt => onlineVehicleTypeIds.has(vt.id));
+      setSelected(firstOnline?.id || sortedTypes[0].id);
     }
-  }, [sortedTypes.length, selected]);
+  }, [sortedTypes.length, selected, onlineVehicleTypeIds.size]);
 
   const selectedType = vehicleTypes.find((v) => v.id === selected);
   const selectedFare = selectedType ? calcFare(selectedType) : 0;
+  const selectedIsOnline = selectedType ? onlineVehicleTypeIds.has(selectedType.id) : false;
 
   return (
     <motion.div
@@ -146,23 +149,33 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
               const Icon = iconMap[vt.icon] || Car;
               const fare = calcFare(vt);
               const isSelected = selected === vt.id;
+              const isOnline = onlineVehicleTypeIds.has(vt.id);
               const fits = vt.capacity >= passengerCount;
-              const isBestMatch = index === 0;
+              const firstOnlineIdx = sortedTypes.findIndex(v => onlineVehicleTypeIds.has(v.id));
+              const isBestMatch = index === firstOnlineIdx;
               return (
                 <button
                   key={vt.id}
-                  onClick={() => setSelected(vt.id)}
+                  onClick={() => isOnline ? setSelected(vt.id) : null}
+                  disabled={!isOnline}
                   className={`relative flex flex-col items-center gap-1 p-2.5 pb-3 rounded-xl transition-all snap-start shrink-0 w-[5.5rem] ${
-                    isSelected
-                      ? "bg-primary/10 ring-2 ring-primary shadow-sm"
-                      : fits
-                        ? "bg-surface active:bg-muted"
-                        : "bg-surface/50 opacity-50"
+                    !isOnline
+                      ? "bg-surface/30 opacity-40 cursor-not-allowed"
+                      : isSelected
+                        ? "bg-primary/10 ring-2 ring-primary shadow-sm"
+                        : fits
+                          ? "bg-surface active:bg-muted"
+                          : "bg-surface/50 opacity-60"
                   }`}
                 >
-                  {isBestMatch && (
+                  {isBestMatch && isOnline && (
                     <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
                       Best
+                    </span>
+                  )}
+                  {!isOnline && (
+                    <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
+                      Offline
                     </span>
                   )}
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden ${
@@ -202,11 +215,11 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         )}
 
         <button
-          onClick={() => selectedType && onConfirm(selectedType, selectedFare)}
-          disabled={!selectedType}
+          onClick={() => selectedType && selectedIsOnline && onConfirm(selectedType, selectedFare)}
+          disabled={!selectedType || !selectedIsOnline}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
         >
-          {selectedType ? `Confirm ${selectedType.name} — ${selectedFare.toFixed(0)} MVR` : "Select a ride"}
+          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : `Confirm ${selectedType.name} — ${selectedFare.toFixed(0)} MVR`}
         </button>
       </div>
     </motion.div>
