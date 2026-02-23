@@ -91,6 +91,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
 
+  // Default fallback location (Male, Maldives) when GPS not available
+  const FALLBACK_LAT = 4.1755;
+  const FALLBACK_LNG = 73.5093;
+
   // Push driver location to driver_locations when online
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) {
@@ -125,7 +129,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
 
       const upsertLocation = async (lat: number, lng: number) => {
         lastPosRef.current = { lat, lng };
-        await supabase.from("driver_locations").upsert({
+        const { error } = await supabase.from("driver_locations").upsert({
           driver_id: userProfile.id,
           vehicle_id: vehicleId,
           vehicle_type_id: vehicleTypeId,
@@ -135,23 +139,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
           is_on_trip: false,
           updated_at: new Date().toISOString(),
         }, { onConflict: "driver_id" });
+        if (error) {
+          console.error("Failed to upsert driver location:", error);
+        }
       };
 
-      // Watch GPS position
+      // Immediately upsert with fallback location so driver is visible right away
+      await upsertLocation(FALLBACK_LAT, FALLBACK_LNG);
+      setGpsEnabled(false);
+
+      // Try to watch GPS position — upgrade to real coords when available
       if (navigator.geolocation) {
         locationWatchRef.current = navigator.geolocation.watchPosition(
-          (pos) => upsertLocation(pos.coords.latitude, pos.coords.longitude),
-          () => {},
+          (pos) => {
+            setGpsEnabled(true);
+            upsertLocation(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err) => {
+            console.warn("GPS unavailable, using fallback location:", err.message);
+            setGpsEnabled(false);
+          },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
         );
-
-        // Also push every 10s even if position hasn't changed (heartbeat)
-        locationIntervalRef.current = setInterval(() => {
-          if (lastPosRef.current) {
-            upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
-          }
-        }, 10000);
       }
+
+      // Heartbeat every 10s
+      locationIntervalRef.current = setInterval(() => {
+        if (lastPosRef.current) {
+          upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
+        }
+      }, 10000);
     };
 
     startTracking();
@@ -183,9 +200,44 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
       });
   }, []);
 
+  const handleNewTrip = async (trip: TripRequest) => {
+    // Play sound
+    if (tripRequestSoundUrl) {
+      try {
+        if (tripSoundRef.current) {
+          tripSoundRef.current.pause();
+          tripSoundRef.current.currentTime = 0;
+        }
+        tripSoundRef.current = new Audio(tripRequestSoundUrl);
+        tripSoundRef.current.play().catch(() => {});
+      } catch {}
+    }
+
+    // Fetch passenger profile
+    let pProfile = null;
+    if (trip.passenger_id) {
+      const { data } = await supabase.from("profiles").select("first_name, last_name").eq("id", trip.passenger_id).single();
+      pProfile = data;
+    }
+
+    toast({
+      title: "🚗 New Ride Request!",
+      description: `${trip.pickup_address} → ${trip.dropoff_address}`,
+    });
+
+    setCurrentTrip(trip);
+    setPassengerProfile(pProfile);
+    setScreen("ride-request");
+  };
+
+  // Track last seen trip id to avoid duplicate handling
+  const lastSeenTripRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) return;
+    let isActive = true;
 
+    // Primary: Realtime subscription
     const channel = supabase
       .channel("driver-trip-requests")
       .on("postgres_changes", {
@@ -193,41 +245,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         schema: "public",
         table: "trips",
         filter: "status=eq.requested",
-      }, async (payload) => {
+      }, (payload) => {
         const trip = payload.new as TripRequest;
-        
-        // Play sound
-        if (tripRequestSoundUrl) {
-          try {
-            if (tripSoundRef.current) {
-              tripSoundRef.current.pause();
-              tripSoundRef.current.currentTime = 0;
-            }
-            tripSoundRef.current = new Audio(tripRequestSoundUrl);
-            tripSoundRef.current.play().catch(() => {});
-          } catch {}
+        if (trip.id !== lastSeenTripRef.current) {
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
         }
-
-        // Fetch passenger profile
-        let pProfile = null;
-        if (trip.passenger_id) {
-          const { data } = await supabase.from("profiles").select("first_name, last_name").eq("id", trip.passenger_id).single();
-          pProfile = data;
-        }
-
-        // Show toast and transition to ride-request screen
-        toast({
-          title: "🚗 New Ride Request!",
-          description: `${trip.pickup_address} → ${trip.dropoff_address}`,
-        });
-
-        setCurrentTrip(trip);
-        setPassengerProfile(pProfile);
-        setScreen("ride-request");
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Fallback: Poll every 5s for new requested trips
+    const pollInterval = setInterval(async () => {
+      if (!isActive || screen !== "online") return;
+      const { data } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("status", "requested")
+        .order("requested_at", { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const trip = data[0] as TripRequest;
+        if (trip.id !== lastSeenTripRef.current) {
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
+        }
+      }
+    }, 5000);
+
+    return () => {
+      isActive = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
   // Fetch available banks from admin-configured banks table
