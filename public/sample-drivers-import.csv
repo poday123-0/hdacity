@@ -1,0 +1,6 @@
+first_name,last_name,phone_number,email,gender,country_code,status,company,monthly_fee,plate_number,vehicle_type,make,model,color,year
+Ahmed,Mohamed,7771234,,1,960,Pending,HDA Taxi Center,500,A1B234,Car,Toyota,Corolla,White,2020
+Ibrahim,Ali,7775678,ibrahim@email.com,1,960,Pending,,0,C5D678,Car,Honda,Civic,Silver,2019
+Fathimath,Hassan,7779012,,2,960,Pending,HDA Taxi Center,500,E9F012,Van,Toyota,HiAce,Blue,2021
+Mohamed,Rasheed,7773456,,1,960,Pending,,0,G3H456,Cycle,Honda,PCX,Black,2022
+Aishath,Naseer,7776789,aishath@email.com,2,960,Pending,,0,,,,,,
