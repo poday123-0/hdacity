@@ -31,10 +31,11 @@ import {
   ChevronDown,
   Locate,
   LocateOff,
+  Car,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
-type ProfileTab = "info" | "documents" | "banks";
+type ProfileTab = "info" | "documents" | "banks" | "vehicles";
 
 interface TripRequest {
   id: string;
@@ -81,6 +82,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const [availableBanks, setAvailableBanks] = useState<Array<{ id: string; name: string; logo_url: string | null }>>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [vehicleInfo, setVehicleInfo] = useState<{ make: string; model: string; plate_number: string; color: string } | null>(null);
+  const [driverVehicles, setDriverVehicles] = useState<any[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [newVehicle, setNewVehicle] = useState({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
@@ -285,6 +290,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
     supabase.from("banks").select("id, name, logo_url").eq("is_active", true).order("name").then(({ data }) => {
       if (data) setAvailableBanks(data);
     });
+    supabase.from("vehicle_types").select("id, name, icon, image_url").eq("is_active", true).order("sort_order").then(({ data }) => {
+      if (data) setVehicleTypes(data);
+    });
   }, []);
 
   useEffect(() => {
@@ -318,9 +326,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         if (!banks || banks.length === 0) issues.push("At least one bank account required");
         setVerificationIssues(issues);
 
-        // Fetch vehicle
-        const { data: vehicle } = await supabase.from("vehicles").select("make, model, plate_number, color").eq("driver_id", userProfile.id).eq("is_active", true).limit(1).single();
-        if (vehicle) setVehicleInfo(vehicle);
+        // Fetch all driver vehicles
+        const { data: allVehicles } = await supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at");
+        setDriverVehicles(allVehicles || []);
+        const activeVehicle = allVehicles?.find(v => v.is_active) || allVehicles?.[0];
+        if (activeVehicle) setVehicleInfo({ make: activeVehicle.make || "", model: activeVehicle.model || "", plate_number: activeVehicle.plate_number, color: activeVehicle.color || "" });
         else issues.push("No vehicle assigned");
         setVerificationIssues([...issues]);
 
@@ -433,6 +443,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
     await supabase.from("driver_bank_accounts").update({ is_primary: false }).eq("driver_id", userProfile.id);
     await supabase.from("driver_bank_accounts").update({ is_primary: true }).eq("id", id);
     setBankAccounts(bankAccounts.map((b) => ({ ...b, is_primary: b.id === id })));
+  };
+
+  const addVehicle = async () => {
+    if (!userProfile?.id || !newVehicle.plate_number || !newVehicle.vehicle_type_id) return;
+    const { data, error } = await supabase.from("vehicles").insert({
+      driver_id: userProfile.id,
+      plate_number: newVehicle.plate_number,
+      make: newVehicle.make,
+      model: newVehicle.model,
+      color: newVehicle.color,
+      vehicle_type_id: newVehicle.vehicle_type_id,
+    }).select().single();
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    setDriverVehicles([...driverVehicles, data]);
+    setNewVehicle({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
+    setShowAddVehicle(false);
+    if (!vehicleInfo) setVehicleInfo({ make: data.make, model: data.model, plate_number: data.plate_number, color: data.color });
+    toast({ title: "Vehicle added" });
+  };
+
+  const deleteVehicle = async (id: string) => {
+    await supabase.from("vehicles").update({ is_active: false }).eq("id", id);
+    const remaining = driverVehicles.filter(v => v.id !== id);
+    setDriverVehicles(remaining);
+    if (remaining.length > 0) setVehicleInfo({ make: remaining[0].make, model: remaining[0].model, plate_number: remaining[0].plate_number, color: remaining[0].color });
+    else setVehicleInfo(null);
+    toast({ title: "Vehicle removed" });
   };
 
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
@@ -840,7 +880,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                 <div className="flex gap-1 bg-surface rounded-xl p-1">
                   {([
                     { key: "info", label: "Info", icon: User },
-                    { key: "documents", label: "Documents", icon: IdCard },
+                    { key: "documents", label: "Docs", icon: IdCard },
+                    { key: "vehicles", label: "Vehicles", icon: Car },
                     { key: "banks", label: "Banks", icon: Landmark },
                   ] as const).map(({ key, label, icon: Icon }) => (
                     <button
@@ -974,6 +1015,74 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                     ) : (
                       <button onClick={() => setShowAddBank(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
                         <Plus className="w-4 h-4" />Add bank account
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {profileTab === "vehicles" && (
+                  <div className="space-y-3">
+                    {driverVehicles.length === 0 && !showAddVehicle && (
+                      <div className="text-center py-6">
+                        <Car className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No vehicles added yet</p>
+                      </div>
+                    )}
+                    {driverVehicles.map((v) => {
+                      const vType = vehicleTypes.find(vt => vt.id === v.vehicle_type_id);
+                      return (
+                        <div key={v.id} className="bg-surface rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {vType?.image_url ? (
+                                <img src={vType.image_url} alt={vType.name} className="w-8 h-8 rounded-lg object-contain bg-muted p-0.5" />
+                              ) : (
+                                <Car className="w-4 h-4 text-primary" />
+                              )}
+                              <div>
+                                <span className="text-sm font-semibold text-foreground">{v.make} {v.model}</span>
+                                <p className="text-xs text-muted-foreground">{vType?.name || "Unknown type"}</p>
+                              </div>
+                            </div>
+                            <button onClick={() => deleteVehicle(v.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            <span className="bg-card px-2 py-1 rounded-lg font-medium text-foreground">{v.plate_number}</span>
+                            {v.color && <span className="bg-card px-2 py-1 rounded-lg">{v.color}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {showAddVehicle ? (
+                      <div className="bg-surface rounded-xl p-3 space-y-2">
+                        <p className="text-xs font-semibold text-foreground">Add vehicle</p>
+                        <select
+                          value={newVehicle.vehicle_type_id}
+                          onChange={(e) => setNewVehicle({ ...newVehicle, vehicle_type_id: e.target.value })}
+                          className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                        >
+                          <option value="">Select type (Car, Cycle, etc.)</option>
+                          {vehicleTypes.map((vt) => (
+                            <option key={vt.id} value={vt.id}>{vt.name}</option>
+                          ))}
+                        </select>
+                        <input placeholder="Plate number *" value={newVehicle.plate_number} onChange={(e) => setNewVehicle({ ...newVehicle, plate_number: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input placeholder="Make" value={newVehicle.make} onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          <input placeholder="Model" value={newVehicle.model} onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        </div>
+                        <input placeholder="Color" value={newVehicle.color} onChange={(e) => setNewVehicle({ ...newVehicle, color: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <div className="flex gap-2">
+                          <button onClick={() => setShowAddVehicle(false)} className="flex-1 py-2.5 rounded-xl bg-card text-sm font-semibold text-foreground active:scale-95 transition-transform">Cancel</button>
+                          <button onClick={addVehicle} disabled={!newVehicle.plate_number || !newVehicle.vehicle_type_id} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95 transition-transform">Add</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowAddVehicle(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
+                        <Plus className="w-4 h-4" />Add vehicle
                       </button>
                     )}
                   </div>

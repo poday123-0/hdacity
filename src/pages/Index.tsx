@@ -141,12 +141,14 @@ const Index = () => {
   const handleConfirmRide = useCallback(async () => {
     if (!pickup || !dropoff || !selectedVehicleType) return;
 
-    // Guard: check if any drivers are online
+    // Guard: check if any drivers are online AND fresh (updated within last 2 minutes)
+    const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     const { count } = await supabase
       .from("driver_locations")
       .select("id", { count: "exact", head: true })
       .eq("is_online", true)
-      .eq("is_on_trip", false);
+      .eq("is_on_trip", false)
+      .gte("updated_at", twoMinAgo);
 
     if (!count || count === 0) {
       toast({ title: "No drivers available", description: "There are no drivers online right now. Please try again later.", variant: "destructive" });
