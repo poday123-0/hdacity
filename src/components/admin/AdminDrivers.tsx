@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2 } from "lucide-react";
 
 const AdminDrivers = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -17,6 +17,9 @@ const AdminDrivers = () => {
   });
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResult, setCsvResult] = useState<any>(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -116,6 +119,32 @@ const AdminDrivers = () => {
   const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
   const selectCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvImporting(true);
+    setCsvResult(null);
+    try {
+      const text = await file.text();
+      const { data, error } = await supabase.functions.invoke("import-drivers-csv", {
+        body: { csv: text },
+      });
+      if (error) {
+        toast({ title: "Import failed", description: error.message, variant: "destructive" });
+        setCsvResult({ error: error.message });
+      } else {
+        setCsvResult(data);
+        toast({ title: "Import complete", description: `${data.drivers_created} drivers, ${data.vehicles_created} vehicles created` });
+        fetchAll();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+      setCsvResult({ error: err.message });
+    }
+    setCsvImporting(false);
+    e.target.value = "";
+  };
+
   const DocUpload = ({ field, label }: { field: string; label: string }) => (
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
@@ -148,11 +177,71 @@ const AdminDrivers = () => {
 
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Drivers</h2>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+            <FileUp className="w-4 h-4" />Import CSV
+          </button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
         </div>
       </div>
+
+      {/* CSV Import Panel */}
+      {showImport && (
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-foreground">Import Drivers & Vehicles from CSV</h3>
+            <button onClick={() => { setShowImport(false); setCsvResult(null); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          </div>
+          <p className="text-sm text-muted-foreground">Upload a CSV file with driver and vehicle data. Existing drivers (by phone number) will be skipped. Vehicles are linked automatically.</p>
+          
+          <div className="flex items-center gap-3">
+            <a href="/sample-drivers-import.csv" download className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors">
+              <Download className="w-4 h-4" />Download Sample CSV
+            </a>
+            <label className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all ${csvImporting ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:opacity-90"}`}>
+              {csvImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {csvImporting ? "Importing..." : "Upload CSV"}
+              <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
+            </label>
+          </div>
+
+          {/* Expected columns */}
+          <div className="bg-surface rounded-lg p-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Expected CSV columns:</p>
+            <p className="text-xs text-muted-foreground font-mono">first_name, last_name, phone_number, email, gender, country_code, status, company, monthly_fee, plate_number, vehicle_type, make, model, color, year</p>
+          </div>
+
+          {/* Results */}
+          {csvResult && !csvResult.error && (
+            <div className="bg-surface rounded-lg p-4 space-y-1">
+              <p className="text-sm font-semibold text-foreground">✅ Import Complete</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                <span className="text-muted-foreground">Total rows:</span><span className="font-medium text-foreground">{csvResult.total_rows}</span>
+                <span className="text-muted-foreground">Drivers created:</span><span className="font-medium text-foreground">{csvResult.drivers_created}</span>
+                <span className="text-muted-foreground">Drivers skipped:</span><span className="font-medium text-foreground">{csvResult.drivers_skipped}</span>
+                <span className="text-muted-foreground">Vehicles created:</span><span className="font-medium text-foreground">{csvResult.vehicles_created}</span>
+                <span className="text-muted-foreground">Vehicles skipped:</span><span className="font-medium text-foreground">{csvResult.vehicles_skipped}</span>
+              </div>
+              {csvResult.errors?.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs font-semibold text-destructive">Errors:</p>
+                  {csvResult.errors.map((err: string, i: number) => (
+                    <p key={i} className="text-xs text-destructive">{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {csvResult?.error && (
+            <div className="bg-destructive/10 rounded-lg p-3">
+              <p className="text-sm text-destructive">❌ {csvResult.error}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {editingId && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
