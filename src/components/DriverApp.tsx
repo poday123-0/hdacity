@@ -1456,8 +1456,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <div className="bg-surface rounded-xl p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Your monthly fee</span>
-                        <span className="text-lg font-bold text-foreground">{userProfile?.status === "Active" ? "Contact admin" : "—"}</span>
+                        <span className="text-lg font-bold text-foreground">
+                          {companyInfo?.fee_free ? (
+                            <span className="text-primary">FREE</span>
+                          ) : userProfile?.monthly_fee === 0 ? (
+                            <span className="text-primary">FREE</span>
+                          ) : (
+                            `${userProfile?.monthly_fee || 0} MVR`
+                          )}
+                        </span>
                       </div>
+                      {(userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date() && (
+                        <p className="text-xs text-primary mt-1">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
+                      )}
                     </div>
                   </div>
                 )}

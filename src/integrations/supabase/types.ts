@@ -357,6 +357,7 @@ export type Database = {
           country_code: string
           created_at: string
           email: string | null
+          fee_free_until: string | null
           first_name: string
           gender: string | null
           id: string
@@ -387,6 +388,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           email?: string | null
+          fee_free_until?: string | null
           first_name?: string
           gender?: string | null
           id?: string
@@ -417,6 +419,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           email?: string | null
+          fee_free_until?: string | null
           first_name?: string
           gender?: string | null
           id?: string
