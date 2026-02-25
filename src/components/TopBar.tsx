@@ -12,7 +12,7 @@ interface TopBarProps {
   userProfile?: UserProfile | null;
 }
 
-const TopBar = ({ onDriverMode, onLogout, userName, userProfile }: TopBarProps) => {
+const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -36,15 +36,6 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile }: TopBarProps) 
           </div>
 
           <div className="flex items-center gap-2">
-            {onDriverMode && (
-              <button
-                onClick={onDriverMode}
-                className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center active:scale-95 transition-transform"
-                title="Driver Mode"
-              >
-                <Car className="w-5 h-5 text-foreground" />
-              </button>
-            )}
             <button
               onClick={() => { setShowNotifications(true); setHasUnread(false); }}
               className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative active:scale-95 transition-transform"
