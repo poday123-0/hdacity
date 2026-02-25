@@ -8,6 +8,7 @@ import ImportUsers from "./pages/ImportUsers";
 import Admin from "./pages/Admin";
 import Driver from "./pages/Driver";
 import Dispatch from "./pages/Dispatch";
+import LiveMap from "./pages/LiveMap";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/import-users" element={<ImportUsers />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/dispatch" element={<Dispatch />} />
+          <Route path="/live-map" element={<LiveMap />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
