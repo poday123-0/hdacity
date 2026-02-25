@@ -625,11 +625,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* GPS Toggle */}
       <button
         onClick={() => setGpsEnabled(!gpsEnabled)}
-        className={`absolute bottom-4 right-4 z-[460] w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all duration-300 ${
+        className={`absolute top-20 right-4 z-[460] w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-90 transition-all duration-300 ${
           gpsEnabled ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
         }`}
       >
-        {gpsEnabled ? <Locate className="w-5 h-5" /> : <LocateOff className="w-5 h-5" />}
+        {gpsEnabled ? <Locate className="w-4 h-4" /> : <LocateOff className="w-4 h-4" />}
       </button>
 
       {/* Offline */}
