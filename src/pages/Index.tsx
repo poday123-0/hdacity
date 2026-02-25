@@ -27,7 +27,6 @@ interface SelectedLocation {
 const SESSION_KEY = "hda_user_session";
 
 const Index = () => {
-  // Restore persisted session (only once on mount)
   const [savedSession] = useState<{ profile: UserProfile; isDriver: boolean } | null>(() => {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -49,8 +48,7 @@ const Index = () => {
   const [estimatedFare, setEstimatedFare] = useState(0);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
-
-  // Driver location will be fetched from realtime when a driver accepts
+  const [tripStatus, setTripStatus] = useState<string>("accepted");
 
   // Build ride data for the map
   const rideMapData = useMemo(() => {
@@ -65,17 +63,13 @@ const Index = () => {
     };
   }, [passengerScreen, pickup, dropoff, driverLocation]);
 
-  // Fetch actual online driver locations from driver_locations table
+  // Fetch actual online driver locations
   const [vehicleMarkers, setVehicleMarkers] = useState<Array<{ id: string; lat: number; lng: number; name: string; imageUrl?: string; icon?: string }>>([]);
 
   const fetchOnlineDrivers = useCallback(async () => {
-    // Join driver_locations with vehicle_types to get icons
     const { data } = await supabase
       .from("driver_locations")
-      .select(`
-        id, lat, lng, driver_id, vehicle_type_id,
-        vehicle_types:vehicle_type_id (name, image_url, icon, map_icon_url)
-      `)
+      .select(`id, lat, lng, driver_id, vehicle_type_id, vehicle_types:vehicle_type_id (name, image_url, icon, map_icon_url)`)
       .eq("is_online", true)
       .eq("is_on_trip", false);
 
@@ -94,32 +88,65 @@ const Index = () => {
 
   useEffect(() => {
     fetchOnlineDrivers();
-
-    // Subscribe to realtime changes on driver_locations
     const channel = supabase
       .channel("driver-locations-map")
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
         fetchOnlineDrivers();
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchOnlineDrivers]);
 
+  // Live track driver location when trip is accepted
+  useEffect(() => {
+    if (!currentTripId || passengerScreen !== "driver-matching") return;
+
+    const trackDriver = async () => {
+      // Get trip to find driver_id
+      const { data: trip } = await supabase.from("trips").select("driver_id").eq("id", currentTripId).single();
+      if (!trip?.driver_id) return;
+
+      // Fetch current position
+      const fetchPos = async () => {
+        const { data: loc } = await supabase
+          .from("driver_locations")
+          .select("lat, lng")
+          .eq("driver_id", trip.driver_id)
+          .single();
+        if (loc) setDriverLocation({ lat: loc.lat, lng: loc.lng });
+      };
+      fetchPos();
+
+      // Subscribe to realtime updates
+      const channel = supabase
+        .channel(`driver-track-${trip.driver_id}`)
+        .on("postgres_changes", {
+          event: "UPDATE",
+          schema: "public",
+          table: "driver_locations",
+          filter: `driver_id=eq.${trip.driver_id}`,
+        }, (payload) => {
+          const loc = payload.new as any;
+          setDriverLocation({ lat: loc.lat, lng: loc.lng });
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    };
+
+    const cleanup = trackDriver();
+    return () => { cleanup.then(fn => fn?.()); };
+  }, [currentTripId, passengerScreen]);
+
   const handleSplashComplete = useCallback(() => {
-    if (savedSession) {
-      setPhase("passenger");
-    } else {
-      setPhase("auth");
-    }
+    if (savedSession) setPhase("passenger");
+    else setPhase("auth");
   }, [savedSession]);
 
   const handleLogin = useCallback((profile: UserProfile | null, _isDriverUser: boolean) => {
     setUserProfile(profile);
     setPhase("passenger");
-    if (profile) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
-    }
+    if (profile) localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
   }, []);
 
   const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number) => {
@@ -139,7 +166,6 @@ const Index = () => {
   const handleConfirmRide = useCallback(async () => {
     if (!pickup || !dropoff || !selectedVehicleType) return;
 
-    // Guard: check if any drivers are online AND fresh (updated within last 2 minutes)
     const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     const { count } = await supabase
       .from("driver_locations")
@@ -178,7 +204,7 @@ const Index = () => {
     }
   }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id]);
 
-  // Fetch passenger notification sounds from settings
+  // Passenger notification sounds
   const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});
   const passengerAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -201,7 +227,7 @@ const Index = () => {
     fetchSounds();
   }, []);
 
-  // Subscribe to trip status changes for passenger notifications
+  // Subscribe to trip status changes
   useEffect(() => {
     if (!currentTripId) return;
 
@@ -215,6 +241,7 @@ const Index = () => {
       }, async (payload) => {
         const trip = payload.new as any;
         const status = trip.status;
+        setTripStatus(status);
 
         const notifications: Record<string, { title: string; description: string }> = {
           accepted: { title: "🎉 Driver Accepted!", description: "Your driver is on the way to pick you up." },
@@ -224,33 +251,25 @@ const Index = () => {
           cancelled: { title: "❌ Trip Cancelled", description: trip.cancel_reason || "The trip has been cancelled." },
         };
 
-        // Map status to sound key
         const soundKey = status === "in_progress" ? "started" : status;
         const soundUrl = passengerSounds[soundKey];
         if (soundUrl) {
           try {
-            if (passengerAudioRef.current) {
-              passengerAudioRef.current.pause();
-              passengerAudioRef.current.currentTime = 0;
-            }
+            if (passengerAudioRef.current) { passengerAudioRef.current.pause(); passengerAudioRef.current.currentTime = 0; }
             passengerAudioRef.current = new Audio(soundUrl);
             passengerAudioRef.current.play().catch(() => {});
           } catch {}
         }
 
         const notif = notifications[status];
-        if (notif) {
-          toast({ title: notif.title, description: notif.description });
-        }
+        if (notif) toast({ title: notif.title, description: notif.description });
 
-        // Transition screens based on real trip status
         if (status === "accepted") {
-          // Fetch driver info + primary bank account
           if (trip.driver_id) {
             const [profileRes, banksRes, vehicleRes] = await Promise.all([
               supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.driver_id).single(),
               supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
-              trip.vehicle_id 
+              trip.vehicle_id
                 ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", trip.vehicle_id).single()
                 : Promise.resolve({ data: null }),
             ]);
@@ -267,6 +286,10 @@ const Index = () => {
             });
           }
           setPassengerScreen("driver-matching");
+        } else if (status === "arrived") {
+          // Stay on driver-matching but update status
+        } else if (status === "in_progress") {
+          // Stay on driver-matching, show bank details
         } else if (status === "completed") {
           setPassengerScreen("feedback");
         } else if (status === "cancelled") {
@@ -280,9 +303,6 @@ const Index = () => {
     return () => { supabase.removeChannel(channel); };
   }, [currentTripId, passengerSounds]);
 
-
-
-
   const handleFeedbackComplete = useCallback(() => {
     setCurrentTripId(null);
     setPickup(null);
@@ -292,6 +312,8 @@ const Index = () => {
     setSelectedVehicleType(null);
     setEstimatedFare(0);
     setMatchedDriver(null);
+    setTripStatus("accepted");
+    setDriverLocation(null);
     setPassengerScreen("home");
   }, []);
 
@@ -315,73 +337,39 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
-      <TopBar 
-        onLogout={handleLogout}
-        userName={userProfile?.first_name}
-        userProfile={userProfile}
-      />
+      <TopBar onLogout={handleLogout} userName={userProfile?.first_name} userProfile={userProfile} />
 
       <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto">
         <AnimatePresence mode="wait">
-          {passengerScreen === "home" && (
-            <LocationInput key="home" onSearch={handleLocationSearch} />
-          )}
+          {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} />}
           {passengerScreen === "ride-options" && (
-            <RideOptions
-              key="ride-options"
-              onBack={() => setPassengerScreen("home")}
-              onConfirm={handleSelectVehicle}
-              pickup={pickup}
-              dropoff={dropoff}
-              passengerCount={passengerCount}
-              luggageCount={luggageCount}
-            />
+            <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} />
           )}
           {passengerScreen === "confirmation" && pickup && dropoff && selectedVehicleType && (
-            <RideConfirmation
-              key="confirmation"
-              pickup={pickup}
-              dropoff={dropoff}
-              vehicleType={selectedVehicleType}
-              estimatedFare={estimatedFare}
-              passengerCount={passengerCount}
-              luggageCount={luggageCount}
-              userId={userProfile?.id}
-              onConfirm={handleConfirmRide}
-              onBack={() => setPassengerScreen("ride-options")}
-            />
+            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} />
           )}
           {passengerScreen === "searching" && (
-            <SearchingDriver
-              key="searching"
-              onCancel={() => {
-                // Cancel the trip in the database
-                if (currentTripId) {
-                  supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
-                }
-                setCurrentTripId(null);
-                setPassengerScreen("home");
-              }}
-              pickupName={pickup?.name || "Pickup"}
-              dropoffName={dropoff?.name || "Destination"}
-            />
+            <SearchingDriver key="searching" onCancel={() => {
+              if (currentTripId) supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
+              setCurrentTripId(null);
+              setPassengerScreen("home");
+            }} pickupName={pickup?.name || "Pickup"} dropoffName={dropoff?.name || "Destination"} />
           )}
           {passengerScreen === "driver-matching" && (
             <DriverMatching
               key="driver-matching"
               onCancel={() => setPassengerScreen("home")}
               driver={matchedDriver || undefined}
+              tripId={currentTripId || undefined}
+              userId={userProfile?.id}
+              tripStatus={tripStatus}
+              showBankDetails={tripStatus === "in_progress"}
             />
           )}
         </AnimatePresence>
 
-        {/* Feedback overlay */}
         {passengerScreen === "feedback" && currentTripId && (
-          <RideFeedback
-            tripId={currentTripId}
-            fare={estimatedFare}
-            onComplete={handleFeedbackComplete}
-          />
+          <RideFeedback tripId={currentTripId} fare={estimatedFare} userId={userProfile?.id} onComplete={handleFeedbackComplete} />
         )}
       </div>
     </div>
