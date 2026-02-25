@@ -66,18 +66,22 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
       zoom: 15,
       disableDefaultUI: true,
       zoomControl: false,
-      mapId: "hda_map",
       styles: isDark ? darkMapStyle : [],
       gestureHandling: "greedy",
     });
 
-    const userDot = document.createElement("div");
-    userDot.innerHTML = `<div style="width:16px;height:16px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`;
-    const userMarker = new g.maps.marker.AdvancedMarkerElement({
+    const userMarker = new g.maps.Marker({
       map,
       position: userPos || MALE_CENTER,
-      content: userDot,
       zIndex: 900,
+      icon: {
+        path: g.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: "#4285F4",
+        fillOpacity: 1,
+        strokeColor: "white",
+        strokeWeight: 3,
+      },
     });
     userMarkerRef.current = userMarker;
     mapInstance.current = map;
@@ -99,7 +103,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
   // Update user marker
   useEffect(() => {
     if (!userPos || !userMarkerRef.current || !mapInstance.current) return;
-    userMarkerRef.current.position = userPos;
+    userMarkerRef.current.setPosition(userPos);
     if (!rideData?.showRoute) {
       mapInstance.current.panTo(userPos);
     }
@@ -111,52 +115,55 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
     const g = (window as any).google;
     if (!map || !g?.maps) return;
 
-    rideMarkersRef.current.forEach((m: any) => { m.map = null; });
+    rideMarkersRef.current.forEach((m: any) => m.setMap(null));
     rideMarkersRef.current = [];
-    if (driverMarkerRef.current) { driverMarkerRef.current.map = null; driverMarkerRef.current = null; }
+    if (driverMarkerRef.current) { driverMarkerRef.current.setMap(null); driverMarkerRef.current = null; }
     if (directionsRendererRef.current) { directionsRendererRef.current.setMap(null); directionsRendererRef.current = null; }
 
     if (!rideData) return;
     const { pickup, dropoff, driverLat, driverLng, showRoute } = rideData;
 
     if (pickup) {
-      const el = createMarkerEl("#22c55e", "P");
-      const m = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: pickup.lat, lng: pickup.lng }, content: el, zIndex: 1000 });
+      const m = new g.maps.Marker({
+        map, position: { lat: pickup.lat, lng: pickup.lng }, zIndex: 1000,
+        label: { text: "P", color: "white", fontWeight: "700", fontSize: "12px" },
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
+      });
       rideMarkersRef.current.push(m);
     }
     if (dropoff) {
-      const el = createMarkerEl("#ef4444", "D");
-      const m = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: dropoff.lat, lng: dropoff.lng }, content: el, zIndex: 1000 });
+      const m = new g.maps.Marker({
+        map, position: { lat: dropoff.lat, lng: dropoff.lng }, zIndex: 1000,
+        label: { text: "D", color: "white", fontWeight: "700", fontSize: "12px" },
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
+      });
       rideMarkersRef.current.push(m);
     }
     if (driverLat != null && driverLng != null) {
-      const el = createCarEl();
-      driverMarkerRef.current = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: driverLat, lng: driverLng }, content: el, zIndex: 1100 });
+      driverMarkerRef.current = new g.maps.Marker({
+        map, position: { lat: driverLat, lng: driverLng }, zIndex: 1100,
+        icon: { path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z",
+          scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12) },
+      });
     }
 
     if (showRoute && pickup && dropoff) {
       const ds = new g.maps.DirectionsService();
       const dr = new g.maps.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
+        map, suppressMarkers: true,
         polylineOptions: { strokeColor: "#4285F4", strokeWeight: 5, strokeOpacity: 0.85 },
       });
       directionsRendererRef.current = dr;
 
       const waypoints = driverLat != null && driverLng != null
-        ? [{ location: { lat: pickup.lat, lng: pickup.lng }, stopover: true }]
-        : [];
+        ? [{ location: { lat: pickup.lat, lng: pickup.lng }, stopover: true }] : [];
       const origin = driverLat != null ? { lat: driverLat, lng: driverLng } : { lat: pickup.lat, lng: pickup.lng };
-      const destination = { lat: dropoff.lat, lng: dropoff.lng };
 
       ds.route({
-        origin,
-        destination,
-        waypoints,
-        travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => {
-        dr.setDirections(result);
-      }).catch((err: any) => console.error("Directions error:", err));
+        origin, destination: { lat: dropoff.lat, lng: dropoff.lng },
+        waypoints, travelMode: g.maps.TravelMode.DRIVING,
+      }).then((result: any) => dr.setDirections(result))
+        .catch((err: any) => console.error("Directions error:", err));
     } else if (pickup && dropoff) {
       const bounds = new g.maps.LatLngBounds();
       bounds.extend({ lat: pickup.lat, lng: pickup.lng });
@@ -169,7 +176,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
   // Smooth driver marker update
   useEffect(() => {
     if (!driverMarkerRef.current || rideData?.driverLat == null || rideData?.driverLng == null) return;
-    driverMarkerRef.current.position = { lat: rideData.driverLat, lng: rideData.driverLng };
+    driverMarkerRef.current.setPosition({ lat: rideData.driverLat, lng: rideData.driverLng });
   }, [rideData?.driverLat, rideData?.driverLng]);
 
   // Vehicle markers
@@ -177,14 +184,24 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
     const map = mapInstance.current;
     const g = (window as any).google;
     if (!map || !g?.maps) return;
-    vehicleMarkersRef.current.forEach((m: any) => { m.map = null; });
+    vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
     vehicleMarkersRef.current = [];
     if (rideData?.showRoute) return;
 
     if (vehicleMarkers && vehicleMarkers.length > 0) {
       vehicleMarkers.forEach(v => {
-        const el = v.imageUrl ? createImageMarkerEl(v.imageUrl) : createCarEl();
-        const m = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: v.lat, lng: v.lng }, content: el });
+        const markerOpts: any = {
+          map, position: { lat: v.lat, lng: v.lng },
+        };
+        if (v.imageUrl) {
+          markerOpts.icon = { url: v.imageUrl, scaledSize: new g.maps.Size(30, 30) };
+        } else {
+          markerOpts.icon = {
+            path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z",
+            scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12),
+          };
+        }
+        const m = new g.maps.Marker(markerOpts);
         vehicleMarkersRef.current.push(m);
       });
     }
@@ -199,26 +216,6 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
 
   return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 };
-
-function createMarkerEl(color: string, letter: string) {
-  const el = document.createElement("div");
-  el.innerHTML = `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;">${letter}</div>`;
-  return el;
-}
-
-function createCarEl() {
-  const el = document.createElement("div");
-  el.innerHTML = `<div style="width:28px;height:28px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
-  </div>`;
-  return el;
-}
-
-function createImageMarkerEl(imageUrl: string) {
-  const el = document.createElement("div");
-  el.innerHTML = `<img src="${imageUrl}" style="width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />`;
-  return el;
-}
 
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
