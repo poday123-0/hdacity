@@ -1081,7 +1081,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {vType?.image_url ? (
-                                <img src={vType.image_url} alt={vType.name} className="w-8 h-8 rounded-lg object-contain bg-muted p-0.5" />
+                                <img src={vType.image_url} alt={vType.name} className="w-10 h-7 rounded-lg object-cover" />
                               ) : (
                                 <Car className="w-4 h-4 text-primary" />
                               )}
