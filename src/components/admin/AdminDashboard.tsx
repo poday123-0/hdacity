@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle } from "lucide-react";
+import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
 
 interface TripRoute {
@@ -123,18 +123,33 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch recent trips
+  // Fetch recent trips (with driver/passenger info)
   useEffect(() => {
     const fetchRecent = async () => {
       const { data } = await supabase
         .from("trips")
-        .select("id, pickup_address, dropoff_address, status, created_at, actual_fare, estimated_fare")
+        .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name), driver:profiles!trips_driver_id_fkey(first_name, last_name)")
         .order("created_at", { ascending: false })
         .limit(10);
-      if (data) setRecentTrips(data as RecentTrip[]);
+      if (data) setRecentTrips(data as any[]);
     };
     fetchRecent();
   }, []);
+
+  // Trip detail state
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [tripMessages, setTripMessages] = useState<any[]>([]);
+  const [tripLostItems, setTripLostItems] = useState<any[]>([]);
+
+  const viewTripDetail = async (trip: any) => {
+    setSelectedTrip(trip);
+    const [{ data: msgs }, { data: items }] = await Promise.all([
+      supabase.from("trip_messages").select("*").eq("trip_id", trip.id).order("created_at", { ascending: true }),
+      supabase.from("lost_item_reports").select("*").eq("trip_id", trip.id).order("created_at", { ascending: false }),
+    ]);
+    setTripMessages((msgs as any[]) || []);
+    setTripLostItems((items as any[]) || []);
+  };
 
   const cards = [
     { label: "Online Drivers", value: stats.onlineDrivers, icon: Navigation, color: "text-primary" },
@@ -219,7 +234,7 @@ const AdminDashboard = () => {
             <div className="px-5 py-8 text-center text-sm text-muted-foreground">No trips yet</div>
           )}
           {recentTrips.map((trip) => (
-            <div key={trip.id} className="px-5 py-3 flex items-center gap-4">
+            <div key={trip.id} onClick={() => viewTripDetail(trip)} className="px-5 py-3 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{trip.pickup_address}</p>
                 <p className="text-xs text-muted-foreground truncate">→ {trip.dropoff_address}</p>
@@ -240,6 +255,106 @@ const AdminDashboard = () => {
           ))}
         </div>
       </div>
+
+      {/* Trip detail modal */}
+      {selectedTrip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setSelectedTrip(null)}>
+          <div className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-bold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Trip Details</h3>
+              <button onClick={() => setSelectedTrip(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Trip info */}
+              <div className="bg-surface rounded-xl p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <User className="w-3 h-3" />
+                    <span>Passenger: <span className="text-foreground font-medium">{selectedTrip.passenger ? `${selectedTrip.passenger.first_name} ${selectedTrip.passenger.last_name}` : selectedTrip.customer_name || "—"}</span></span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <User className="w-3 h-3" />
+                    <span>Driver: <span className="text-foreground font-medium">{selectedTrip.driver ? `${selectedTrip.driver.first_name} ${selectedTrip.driver.last_name}` : "—"}</span></span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{selectedTrip.pickup_address} → {selectedTrip.dropoff_address}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <DollarSign className="w-3 h-3" />
+                    <span>Fare: <span className="text-foreground font-medium">{selectedTrip.actual_fare ? `MVR ${selectedTrip.actual_fare}` : selectedTrip.estimated_fare ? `~MVR ${selectedTrip.estimated_fare}` : "—"}</span></span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>{selectedTrip.duration_minutes ? `${selectedTrip.duration_minutes} min` : "—"} • {selectedTrip.distance_km ? `${selectedTrip.distance_km} km` : "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Users className="w-3 h-3" />
+                    <span>{selectedTrip.passenger_count} pax • {selectedTrip.luggage_count} bags</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>{new Date(selectedTrip.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-border">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadge(selectedTrip.status)}`}>{selectedTrip.status.replace("_", " ")}</span>
+                  {selectedTrip.dispatch_type && <span className="text-[10px] text-muted-foreground">via {selectedTrip.dispatch_type}</span>}
+                  {selectedTrip.fare_type && <span className="text-[10px] text-muted-foreground">• {selectedTrip.fare_type}</span>}
+                </div>
+                {selectedTrip.rating && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-border">
+                    <div className="flex items-center gap-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`w-3.5 h-3.5 ${s <= selectedTrip.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
+                      ))}
+                    </div>
+                    {selectedTrip.feedback_text && <p className="text-xs text-muted-foreground italic">"{selectedTrip.feedback_text}"</p>}
+                  </div>
+                )}
+                {selectedTrip.cancel_reason && (
+                  <div className="pt-1 border-t border-border">
+                    <p className="text-xs text-destructive">Cancel reason: {selectedTrip.cancel_reason}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Lost items */}
+              {tripLostItems.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-destructive uppercase tracking-wider flex items-center gap-1"><PackageX className="w-3.5 h-3.5" /> Lost Item Reports</p>
+                  {tripLostItems.map((item: any) => (
+                    <div key={item.id} className="bg-destructive/5 border border-destructive/20 rounded-xl p-3">
+                      <p className="text-sm text-foreground">{item.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Status: <span className="font-medium">{item.status}</span> • {new Date(item.created_at).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Chat history */}
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Chat History ({tripMessages.length})</p>
+              {tripMessages.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No messages in this trip</p>
+              ) : (
+                tripMessages.map((msg: any) => (
+                  <div key={msg.id} className={`flex ${msg.sender_type === "system" ? "justify-center" : msg.sender_type === "driver" ? "justify-end" : "justify-start"}`}>
+                    {msg.sender_type === "system" ? (
+                      <span className="text-[10px] text-muted-foreground bg-surface px-3 py-1 rounded-full">{msg.message}</span>
+                    ) : (
+                      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${msg.sender_type === "driver" ? "bg-primary text-primary-foreground rounded-br-md" : "bg-surface text-foreground rounded-bl-md"}`}>
+                        <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.sender_type === "driver" ? "Driver" : "Passenger"}</p>
+                        <p className="text-sm">{msg.message}</p>
+                        <p className="text-[9px] mt-1 opacity-60">{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
