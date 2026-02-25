@@ -14,26 +14,14 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("id, user_id, role, created_at")
-      .in("role", ["admin", "dispatcher"] as any)
-      .order("created_at", { ascending: false });
-
-    if (roles && roles.length > 0) {
-      const userIds = roles.map((r: any) => r.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, phone_number, email")
-        .in("id", userIds);
-
-      const merged = roles.map((r: any) => {
-        const p = profiles?.find((p: any) => p.id === r.user_id);
-        return { ...r, profile: p };
-      });
-      setUsers(merged);
-    } else {
+    const { data, error } = await supabase.functions.invoke("manage-user-role", {
+      body: { action: "list" },
+    });
+    if (error) {
+      console.error("Fetch users error:", error);
       setUsers([]);
+    } else {
+      setUsers(data?.data || []);
     }
     setLoading(false);
   };
@@ -47,42 +35,14 @@ const AdminUsers = () => {
     }
     setAdding(true);
 
-    // Find profile by phone
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .eq("phone_number", addPhone);
+    const { data, error } = await supabase.functions.invoke("manage-user-role", {
+      body: { action: "add", phone_number: addPhone, role: addRole },
+    });
 
-    if (!profiles || profiles.length === 0) {
-      toast({ title: "Profile not found", description: "No user found with this phone number. They need to register first.", variant: "destructive" });
-      setAdding(false);
-      return;
-    }
-
-    const profile = profiles[0];
-
-    // Check if already has this role
-    const { data: existing } = await supabase
-      .from("user_roles")
-      .select("id")
-      .eq("user_id", profile.id)
-      .eq("role", addRole as any);
-
-    if (existing && existing.length > 0) {
-      toast({ title: "Already assigned", description: `${profile.first_name} already has the ${addRole} role`, variant: "destructive" });
-      setAdding(false);
-      return;
-    }
-
-    const { error } = await supabase.from("user_roles").insert({
-      user_id: profile.id,
-      role: addRole,
-    } as any);
-
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
     } else {
-      toast({ title: "User added!", description: `${profile.first_name} ${profile.last_name} is now a ${addRole}` });
+      toast({ title: "User added!", description: `${data.profile.first_name} ${data.profile.last_name} is now a ${addRole}` });
       setShowAdd(false);
       setAddPhone("");
       fetchUsers();
@@ -92,9 +52,13 @@ const AdminUsers = () => {
 
   const removeRole = async (roleId: string, userName: string) => {
     if (!confirm(`Remove role from ${userName}?`)) return;
-    const { error } = await supabase.from("user_roles").delete().eq("id", roleId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+
+    const { data, error } = await supabase.functions.invoke("manage-user-role", {
+      body: { action: "remove", role_id: roleId },
+    });
+
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
     } else {
       toast({ title: "Role removed" });
       fetchUsers();
@@ -127,7 +91,6 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {/* Add user form */}
       {showAdd && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -165,7 +128,6 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* Users table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
