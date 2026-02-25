@@ -15,6 +15,7 @@ import AdminBanks from "@/components/admin/AdminBanks";
 import AdminCompanies from "@/components/admin/AdminCompanies";
 import AdminPassengers from "@/components/admin/AdminPassengers";
 import AdminBilling from "@/components/admin/AdminBilling";
+import AdminUsers from "@/components/admin/AdminUsers";
 import {
   LayoutDashboard,
   Users,
@@ -29,10 +30,11 @@ import {
   Building,
   UserCheck,
   Receipt,
+  ShieldCheck,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "banks" | "companies" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "banks" | "companies" | "users" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -45,6 +47,7 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "companies", label: "Companies", icon: Building },
   { id: "locations", label: "Service Areas", icon: Navigation },
   { id: "trips", label: "Trips", icon: MapPin },
+  { id: "users", label: "Admins & Dispatch", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -204,6 +207,7 @@ const Admin = () => {
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}
           {activeTab === "trips" && <AdminTrips />}
+          {activeTab === "users" && <AdminUsers />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>

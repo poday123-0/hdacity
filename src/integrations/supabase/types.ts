@@ -519,6 +519,50 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_stops: {
+        Row: {
+          address: string
+          arrived_at: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          stop_order: number
+          trip_id: string
+        }
+        Insert: {
+          address?: string
+          arrived_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          stop_order?: number
+          trip_id: string
+        }
+        Update: {
+          address?: string
+          arrived_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          stop_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_stops_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           accepted_at: string | null
@@ -527,6 +571,10 @@ export type Database = {
           cancelled_at: string | null
           completed_at: string | null
           created_at: string
+          created_by: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          dispatch_type: string | null
           distance_km: number | null
           driver_id: string | null
           dropoff_address: string
@@ -559,6 +607,10 @@ export type Database = {
           cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          dispatch_type?: string | null
           distance_km?: number | null
           driver_id?: string | null
           dropoff_address?: string
@@ -591,6 +643,10 @@ export type Database = {
           cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          dispatch_type?: string | null
           distance_km?: number | null
           driver_id?: string | null
           dropoff_address?: string
@@ -809,7 +865,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "dispatcher"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -937,7 +993,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "dispatcher"],
     },
   },
 } as const
