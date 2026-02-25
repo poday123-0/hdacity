@@ -34,10 +34,13 @@ import {
   Car,
   Pencil,
   Save,
+  Volume2,
+  Play,
+  Pause,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
-type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "billing";
+type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "sounds" | "billing";
 
 interface TripRequest {
   id: string;
@@ -207,17 +210,48 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
   const [tripRequestSoundUrl, setTripRequestSoundUrl] = useState<string>("");
+  const [availableSounds, setAvailableSounds] = useState<Array<{ id: string; name: string; file_url: string; is_default: boolean }>>([]);
+  const [selectedSoundId, setSelectedSoundId] = useState<string | null>(null);
+  const [previewSoundId, setPreviewSoundId] = useState<string | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Fetch the configured sound URL
-    supabase.from("system_settings").select("value").eq("key", "trip_request_sound_url").single()
-      .then(({ data }) => {
+    const loadSounds = async () => {
+      // Fetch available trip request sounds
+      const { data: soundsData } = await supabase.from("notification_sounds").select("id, name, file_url, is_default").eq("category", "trip_request").eq("is_active", true);
+      const allSounds = (soundsData as any[]) || [];
+      setAvailableSounds(allSounds);
+
+      // Check if driver has a selected sound preference
+      if (userProfile?.id) {
+        const { data: profile } = await supabase.from("profiles").select("trip_sound_id").eq("id", userProfile.id).single();
+        const driverSoundId = (profile as any)?.trip_sound_id;
+        if (driverSoundId) {
+          const selected = allSounds.find(s => s.id === driverSoundId);
+          if (selected) {
+            setSelectedSoundId(driverSoundId);
+            setTripRequestSoundUrl(selected.file_url);
+            return;
+          }
+        }
+      }
+
+      // Fallback to default sound
+      const defaultSound = allSounds.find(s => s.is_default);
+      if (defaultSound) {
+        setTripRequestSoundUrl(defaultSound.file_url);
+        setSelectedSoundId(defaultSound.id);
+      } else {
+        // Legacy fallback to system_settings URL
+        const { data } = await supabase.from("system_settings").select("value").eq("key", "trip_request_sound_url").single();
         if (data?.value) {
           const url = typeof data.value === "string" ? data.value : String(data.value);
           setTripRequestSoundUrl(url);
         }
-      });
-  }, []);
+      }
+    };
+    loadSounds();
+  }, [userProfile?.id]);
 
   const handleNewTrip = async (trip: TripRequest) => {
     // Play sound
@@ -961,6 +995,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     { key: "documents", label: "Docs", icon: IdCard },
                     { key: "vehicles", label: "Vehicles", icon: Car },
                     { key: "banks", label: "Banks", icon: Landmark },
+                    { key: "sounds", label: "Sounds", icon: Volume2 },
                     { key: "billing", label: "Billing", icon: DollarSign },
                   ] as const).map(({ key, label, icon: Icon }) => (
                     <button
@@ -1280,6 +1315,72 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <button onClick={() => setShowAddVehicle(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
                         <Plus className="w-4 h-4" />Add vehicle
                       </button>
+                    )}
+                  </div>
+                )}
+
+                {profileTab === "sounds" && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Trip Request Sound</p>
+                    <p className="text-xs text-muted-foreground">Choose the sound you hear when a new trip request arrives</p>
+                    {availableSounds.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Volume2 className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No sounds available yet</p>
+                        <p className="text-xs text-muted-foreground">Admin needs to upload sounds first</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {availableSounds.map((sound) => (
+                          <div
+                            key={sound.id}
+                            className={`bg-surface rounded-xl p-3 flex items-center gap-3 transition-all ${
+                              selectedSoundId === sound.id ? "ring-2 ring-primary" : ""
+                            }`}
+                          >
+                            <button
+                              onClick={() => {
+                                if (previewSoundId === sound.id) {
+                                  previewAudioRef.current?.pause();
+                                  setPreviewSoundId(null);
+                                } else {
+                                  if (previewAudioRef.current) previewAudioRef.current.pause();
+                                  previewAudioRef.current = new Audio(sound.file_url);
+                                  previewAudioRef.current.onended = () => setPreviewSoundId(null);
+                                  previewAudioRef.current.play().catch(() => {});
+                                  setPreviewSoundId(sound.id);
+                                }
+                              }}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                previewSoundId === sound.id ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+                              }`}
+                            >
+                              {previewSoundId === sound.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{sound.name}</p>
+                              {sound.is_default && <span className="text-[10px] text-primary font-bold">★ Default</span>}
+                            </div>
+                            {selectedSoundId === sound.id ? (
+                              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">Selected</span>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  setSelectedSoundId(sound.id);
+                                  setTripRequestSoundUrl(sound.file_url);
+                                  if (userProfile?.id) {
+                                    await supabase.from("profiles").update({ trip_sound_id: sound.id } as any).eq("id", userProfile.id);
+                                  }
+                                  toast({ title: "Sound selected", description: sound.name });
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold active:scale-95 transition-transform"
+                              >
+                                Use this
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}

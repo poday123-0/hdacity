@@ -288,6 +288,36 @@ export type Database = {
           },
         ]
       }
+      notification_sounds: {
+        Row: {
+          category: string
+          created_at: string
+          file_url: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          file_url: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       otp_codes: {
         Row: {
           code: string
@@ -342,6 +372,7 @@ export type Database = {
           taxi_permit_back_url: string | null
           taxi_permit_front_url: string | null
           trip_radius_km: number
+          trip_sound_id: string | null
           updated_at: string
           user_type: string
         }
@@ -371,6 +402,7 @@ export type Database = {
           taxi_permit_back_url?: string | null
           taxi_permit_front_url?: string | null
           trip_radius_km?: number
+          trip_sound_id?: string | null
           updated_at?: string
           user_type?: string
         }
@@ -400,6 +432,7 @@ export type Database = {
           taxi_permit_back_url?: string | null
           taxi_permit_front_url?: string | null
           trip_radius_km?: number
+          trip_sound_id?: string | null
           updated_at?: string
           user_type?: string
         }
