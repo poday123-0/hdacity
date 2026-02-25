@@ -1158,7 +1158,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-1 bg-surface rounded-xl p-1">
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar bg-surface/60 rounded-2xl p-1.5 -mx-1">
                   {([
                     { key: "info", label: "Info", icon: User },
                     { key: "documents", label: "Docs", icon: IdCard },
@@ -1170,11 +1170,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <button
                       key={key}
                       onClick={() => setProfileTab(key)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                        profileTab === key ? "bg-card text-primary shadow-sm" : "text-muted-foreground"
+                      className={`flex flex-col items-center gap-1 min-w-[52px] py-2 px-2.5 rounded-xl text-[10px] font-semibold transition-all shrink-0 ${
+                        profileTab === key
+                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-[1.02]"
+                          : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5" />
+                      <Icon className={`w-4 h-4 ${profileTab === key ? "" : "opacity-70"}`} />
                       {label}
                     </button>
                   ))}
