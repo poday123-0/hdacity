@@ -37,9 +37,12 @@ import {
   Volume2,
   Play,
   Pause,
+  MessageSquare,
 } from "lucide-react";
+import TripChat from "./TripChat";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
+type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "sounds" | "billing";
 
 interface TripRequest {
@@ -73,8 +76,10 @@ interface DriverAppProps {
 
 const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
+  const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
+  const [showDriverChat, setShowDriverChat] = useState(false);
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
-  const [passengerProfile, setPassengerProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [passengerProfile, setPassengerProfile] = useState<{ first_name: string; last_name: string; phone_number?: string; avatar_url?: string | null; country_code?: string } | null>(null);
   const [tripStops, setTripStops] = useState<Array<{ id: string; stop_order: number; address: string; completed_at: string | null }>>([]);
   const [showEarnings, setShowEarnings] = useState(true);
   const [panelMinimized, setPanelMinimized] = useState(false);
@@ -273,7 +278,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Fetch passenger profile and trip stops in parallel
     const [pProfileRes, stopsRes] = await Promise.all([
       trip.passenger_id
-        ? supabase.from("profiles").select("first_name, last_name").eq("id", trip.passenger_id).single()
+        ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single()
         : Promise.resolve({ data: null }),
       supabase.from("trip_stops").select("id, stop_order, address, completed_at").eq("trip_id", trip.id).order("stop_order"),
     ]);
@@ -616,10 +621,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         isNavigating={screen === "navigating"}
         radiusKm={screen === "online" ? tripRadius : undefined}
         gpsEnabled={gpsEnabled}
-        pickupCoords={[4.1745, 73.5088]}
-        dropoffCoords={[4.1912, 73.5291]}
-        pickupLabel="Majeedhee Magu, Malé"
-        dropoffLabel="Velana International Airport"
+        pickupCoords={currentTrip ? [Number(currentTrip.pickup_address ? 4.1745 : 4.1745), Number(currentTrip.pickup_address ? 73.5088 : 73.5088)] : undefined}
+        dropoffCoords={currentTrip ? [Number(currentTrip.dropoff_address ? 4.1912 : 4.1912), Number(currentTrip.dropoff_address ? 73.5291 : 73.5291)] : undefined}
+        pickupLabel={currentTrip?.pickup_address || "Pickup"}
+        dropoffLabel={currentTrip?.dropoff_address || "Dropoff"}
         mapIconUrl={(() => {
           const sel = driverVehicles.find(v => v.id === selectedVehicleId) || driverVehicles[0];
           const vt = sel ? vehicleTypes.find(t => t.id === sel.vehicle_type_id) : null;
@@ -819,8 +824,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <div className="px-4 py-4 space-y-3">
               {/* Customer/Passenger info */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0">
-                  {currentTrip.customer_name
+                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0 overflow-hidden">
+                  {passengerProfile?.avatar_url ? (
+                    <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : currentTrip.customer_name
                     ? `${currentTrip.customer_name[0] || ""}` 
                     : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"}
                 </div>
@@ -828,9 +835,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   <p className="font-semibold text-sm text-foreground truncate">
                     {currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}
                   </p>
-                  {currentTrip.customer_phone && (
-                    <a href={`tel:+960${currentTrip.customer_phone}`} className="text-xs text-primary font-medium">
-                      +960 {currentTrip.customer_phone}
+                  {(currentTrip.customer_phone || passengerProfile?.phone_number) && (
+                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : `+${passengerProfile?.country_code || "960"}${passengerProfile?.phone_number}`}`} className="text-xs text-primary font-medium">
+                      {currentTrip.customer_phone ? `+960 ${currentTrip.customer_phone}` : `+${passengerProfile?.country_code || "960"} ${passengerProfile?.phone_number}`}
                     </a>
                   )}
                   {currentTrip.dispatch_type === "operator" && (
@@ -916,30 +923,53 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Navigating */}
       {screen === "navigating" && currentTrip && (
-        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450]">
-          <div className="p-5 space-y-4">
+        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] max-h-[70vh] overflow-y-auto">
+          <div className="p-5 space-y-3">
             <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
+
+            {/* Status banner */}
             <div className="bg-primary rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-primary-foreground/80 text-xs">Heading to passenger</p>
+                <p className="text-primary-foreground/80 text-xs">
+                  {driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup location" : "Trip in progress"}
+                </p>
                 <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
               </div>
               <Navigation className="w-8 h-8 text-primary-foreground" />
             </div>
+
+            {/* Passenger info with avatar and phone */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground">
-                  {currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"}
+                <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground overflow-hidden">
+                  {passengerProfile?.avatar_url ? (
+                    <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">{currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}</p>
-                  <p className="text-xs text-muted-foreground">{currentTrip.customer_phone ? `+960 ${currentTrip.customer_phone}` : currentTrip.pickup_address}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentTrip.customer_phone
+                      ? `+960 ${currentTrip.customer_phone}`
+                      : passengerProfile?.phone_number
+                        ? `+${passengerProfile.country_code || "960"} ${passengerProfile.phone_number}`
+                        : currentTrip.pickup_address}
+                  </p>
                 </div>
               </div>
-              <a href={`tel:+960${currentTrip.customer_phone || ""}`} className="w-10 h-10 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform">
-                <Phone className="w-5 h-5 text-primary-foreground" />
-              </a>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowDriverChat(true)} className="w-10 h-10 rounded-full bg-surface flex items-center justify-center active:scale-95 transition-transform">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                </button>
+                <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="w-10 h-10 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform">
+                  <Phone className="w-5 h-5 text-primary-foreground" />
+                </a>
+              </div>
             </div>
+
+            {/* Route */}
             <div className="bg-surface rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-primary" /><p className="text-sm text-foreground">{currentTrip.pickup_address}</p></div>
               {tripStops.map((stop) => (
@@ -955,18 +985,76 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="ml-1 w-0.5 h-3 bg-border" />
               <div className="flex items-center gap-2"><MapPin className="w-2.5 h-2.5 text-foreground" /><p className="text-sm text-foreground">{currentTrip.dropoff_address}</p></div>
             </div>
-            <button onClick={async () => {
-              if (!currentTrip || !userProfile?.id) return;
-              await supabase.from("trips").update({
-                status: "completed",
-                completed_at: new Date().toISOString(),
-                actual_fare: currentTrip.estimated_fare,
-              }).eq("id", currentTrip.id);
-              await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
-              setScreen("complete");
-            }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">Complete ride</button>
+
+            {/* Passenger & Luggage */}
+            <div className="flex gap-2">
+              <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold">Passengers</p>
+                  <p className="text-sm font-bold text-foreground">{currentTrip.passenger_count}</p>
+                </div>
+              </div>
+              <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+                <Luggage className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold">Luggage</p>
+                  <p className="text-sm font-bold text-foreground">{currentTrip.luggage_count}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Phase-based action buttons */}
+            {driverTripPhase === "heading_to_pickup" && (
+              <button onClick={async () => {
+                if (!currentTrip) return;
+                await supabase.from("trips").update({ status: "arrived" }).eq("id", currentTrip.id);
+                setDriverTripPhase("arrived");
+                toast({ title: "📍 Arrived", description: "Passenger has been notified" });
+              }} className="w-full bg-accent text-accent-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">
+                I've Arrived at Pickup
+              </button>
+            )}
+
+            {driverTripPhase === "arrived" && (
+              <button onClick={async () => {
+                if (!currentTrip) return;
+                await supabase.from("trips").update({ status: "in_progress", started_at: new Date().toISOString() }).eq("id", currentTrip.id);
+                setDriverTripPhase("in_progress");
+                toast({ title: "🚗 Trip Started", description: "Navigate to destination" });
+              }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">
+                Start Trip
+              </button>
+            )}
+
+            {driverTripPhase === "in_progress" && (
+              <button onClick={async () => {
+                if (!currentTrip || !userProfile?.id) return;
+                await supabase.from("trips").update({
+                  status: "completed",
+                  completed_at: new Date().toISOString(),
+                  actual_fare: currentTrip.estimated_fare,
+                }).eq("id", currentTrip.id);
+                await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
+                setDriverTripPhase("heading_to_pickup");
+                setScreen("complete");
+              }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">
+                Complete Ride
+              </button>
+            )}
           </div>
         </motion.div>
+      )}
+
+      {/* Driver Chat */}
+      {currentTrip && (
+        <TripChat
+          tripId={currentTrip.id}
+          senderId={userProfile?.id}
+          senderType="driver"
+          isOpen={showDriverChat}
+          onClose={() => setShowDriverChat(false)}
+        />
       )}
 
       {/* Complete */}
