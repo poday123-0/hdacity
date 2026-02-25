@@ -339,6 +339,8 @@ export type Database = {
           monthly_fee: number
           phone_number: string
           status: string
+          taxi_permit_back_url: string | null
+          taxi_permit_front_url: string | null
           trip_radius_km: number
           updated_at: string
           user_type: string
@@ -366,6 +368,8 @@ export type Database = {
           monthly_fee?: number
           phone_number: string
           status?: string
+          taxi_permit_back_url?: string | null
+          taxi_permit_front_url?: string | null
           trip_radius_km?: number
           updated_at?: string
           user_type?: string
@@ -393,6 +397,8 @@ export type Database = {
           monthly_fee?: number
           phone_number?: string
           status?: string
+          taxi_permit_back_url?: string | null
+          taxi_permit_front_url?: string | null
           trip_radius_km?: number
           updated_at?: string
           user_type?: string

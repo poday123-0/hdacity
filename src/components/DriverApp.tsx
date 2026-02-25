@@ -79,6 +79,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [idCardBackUrl, setIdCardBackUrl] = useState<string | null>(null);
   const [licenseFrontUrl, setLicenseFrontUrl] = useState<string | null>(null);
   const [licenseBackUrl, setLicenseBackUrl] = useState<string | null>(null);
+  const [taxiPermitFrontUrl, setTaxiPermitFrontUrl] = useState<string | null>(null);
+  const [taxiPermitBackUrl, setTaxiPermitBackUrl] = useState<string | null>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showAddBank, setShowAddBank] = useState(false);
   const [newBank, setNewBank] = useState({ bank_name: "", account_number: "", account_name: "" });
@@ -313,13 +315,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
 
       if (userProfile?.id) {
-        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, status").eq("id", userProfile.id).single();
+        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status").eq("id", userProfile.id).single();
         setTripRadius(data?.trip_radius_km ?? defaultRadius);
         setAvatarUrl(data?.avatar_url || null);
         setIdCardFrontUrl(data?.id_card_front_url || null);
         setIdCardBackUrl(data?.id_card_back_url || null);
         setLicenseFrontUrl(data?.license_front_url || null);
         setLicenseBackUrl(data?.license_back_url || null);
+        setTaxiPermitFrontUrl((data as any)?.taxi_permit_front_url || null);
+        setTaxiPermitBackUrl((data as any)?.taxi_permit_back_url || null);
         setProfileStatus(data?.status || "Pending");
 
         // Check verification issues
@@ -421,6 +425,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     else if (uploadTarget === "id_back") updateField.id_card_back_url = publicUrl;
     else if (uploadTarget === "license_front") updateField.license_front_url = publicUrl;
     else if (uploadTarget === "license_back") updateField.license_back_url = publicUrl;
+    else if (uploadTarget === "taxi_permit_front") (updateField as any).taxi_permit_front_url = publicUrl;
+    else if (uploadTarget === "taxi_permit_back") (updateField as any).taxi_permit_back_url = publicUrl;
+
+    // Document uploads (not avatar) flag profile for review
+    if (uploadTarget !== "avatar") {
+      (updateField as any).status = "Pending Review";
+    }
 
     await supabase.from("profiles").update(updateField).eq("id", userProfile.id);
 
@@ -429,9 +440,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     else if (uploadTarget === "id_back") setIdCardBackUrl(publicUrl);
     else if (uploadTarget === "license_front") setLicenseFrontUrl(publicUrl);
     else if (uploadTarget === "license_back") setLicenseBackUrl(publicUrl);
+    else if (uploadTarget === "taxi_permit_front") setTaxiPermitFrontUrl(publicUrl);
+    else if (uploadTarget === "taxi_permit_back") setTaxiPermitBackUrl(publicUrl);
+
+    // Update status if doc was uploaded
+    if (uploadTarget !== "avatar") {
+      setProfileStatus("Pending Review");
+      toast({ title: "Uploaded!", description: "Document submitted for admin review" });
+    } else {
+      toast({ title: "Uploaded!", description: "Image saved successfully" });
+    }
 
     setUploading(null);
-    toast({ title: "Uploaded!", description: "Image saved successfully" });
     e.target.value = "";
   };
 
@@ -1064,6 +1084,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 {profileTab === "documents" && (
                   <div className="space-y-3">
+                    {profileStatus === "Pending Review" && (
+                      <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5" />
+                        Documents pending admin approval
+                      </div>
+                    )}
                     {/* ID Card */}
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID Card</p>
                     <div className="grid grid-cols-2 gap-2">
@@ -1075,6 +1101,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <div className="grid grid-cols-2 gap-2">
                       <DocumentUpload label="Front" url={licenseFrontUrl} uploading={uploading === "license_front"} onUpload={() => triggerUpload("license_front")} />
                       <DocumentUpload label="Back" url={licenseBackUrl} uploading={uploading === "license_back"} onUpload={() => triggerUpload("license_back")} />
+                    </div>
+                    {/* Taxi Permit (optional) */}
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Taxi Permit <span className="text-[10px] font-normal normal-case">(optional)</span></p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <DocumentUpload label="Front" url={taxiPermitFrontUrl} uploading={uploading === "taxi_permit_front"} onUpload={() => triggerUpload("taxi_permit_front")} />
+                      <DocumentUpload label="Back" url={taxiPermitBackUrl} uploading={uploading === "taxi_permit_back"} onUpload={() => triggerUpload("taxi_permit_back")} />
                     </div>
                   </div>
                 )}
