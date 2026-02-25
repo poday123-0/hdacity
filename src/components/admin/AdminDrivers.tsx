@@ -483,7 +483,11 @@ const AdminDrivers = () => {
                                 {vehicles.map((v) => (
                                   <div key={v.id} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2">
                                     <div className="flex items-center gap-3">
-                                      <Car className="w-4 h-4 text-primary" />
+                                      {v.vehicle_types?.image_url ? (
+                                        <img src={v.vehicle_types.image_url} alt={v.vehicle_types.name || "Vehicle"} className="w-4 h-4 object-contain" />
+                                      ) : (
+                                        <Car className="w-4 h-4 text-primary" />
+                                      )}
                                       <div>
                                         <p className="text-sm font-medium text-foreground">{v.plate_number} — {v.make} {v.model} {v.color}</p>
                                         <p className="text-xs text-muted-foreground">{v.vehicle_types?.name || "No type"} {v.year ? `• ${v.year}` : ""}</p>
