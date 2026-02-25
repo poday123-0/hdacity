@@ -18,6 +18,7 @@ const AdminDrivers = () => {
     first_name: "", last_name: "", email: "", phone_number: "",
     company_id: "", monthly_fee: "", bank_id: "", bank_account_number: "", bank_account_name: "",
     license_front_url: "", license_back_url: "", id_card_front_url: "", id_card_back_url: "",
+    taxi_permit_front_url: "", taxi_permit_back_url: "",
   });
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
@@ -83,6 +84,7 @@ const AdminDrivers = () => {
       bank_id: d.bank_id || "", bank_account_number: d.bank_account_number || "", bank_account_name: d.bank_account_name || "",
       license_front_url: d.license_front_url || "", license_back_url: d.license_back_url || "",
       id_card_front_url: d.id_card_front_url || "", id_card_back_url: d.id_card_back_url || "",
+      taxi_permit_front_url: d.taxi_permit_front_url || "", taxi_permit_back_url: d.taxi_permit_back_url || "",
     });
     setEditingId(d.id);
   };
@@ -113,7 +115,8 @@ const AdminDrivers = () => {
       bank_account_number: editForm.bank_account_number || "", bank_account_name: editForm.bank_account_name || "",
       license_front_url: editForm.license_front_url || null, license_back_url: editForm.license_back_url || null,
       id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
-    }).eq("id", editingId);
+      taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
+    } as any).eq("id", editingId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -347,6 +350,11 @@ const AdminDrivers = () => {
             <DocUpload field="id_card_front_url" label="ID Card Front" />
             <DocUpload field="id_card_back_url" label="ID Card Back" />
           </div>
+          <h4 className="text-sm font-semibold text-foreground pt-2">Taxi Permit <span className="text-xs font-normal text-muted-foreground">(optional)</span></h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <DocUpload field="taxi_permit_front_url" label="Permit Front" />
+            <DocUpload field="taxi_permit_back_url" label="Permit Back" />
+          </div>
           <button onClick={saveEdit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">Save Changes</button>
         </div>
       )}
@@ -373,6 +381,7 @@ const AdminDrivers = () => {
             ) : (
               drivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
+                const permitCount = [d.taxi_permit_front_url, d.taxi_permit_back_url].filter(Boolean).length;
                 const companyName = companies.find((c) => c.id === d.company_id)?.name || d.company_name || "—";
                 const vehicles = driverVehicles[d.id] || [];
                 const isExpanded = expandedDriver === d.id;
@@ -397,6 +406,7 @@ const AdminDrivers = () => {
                           <span className={`text-xs font-medium px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                             {docCount}/4
                           </span>
+                          {permitCount > 0 && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">+Permit</span>}
                           {docCount > 0 && <button onClick={() => openEdit(d)} className="text-xs text-primary hover:underline ml-1">View</button>}
                         </div>
                       </td>
