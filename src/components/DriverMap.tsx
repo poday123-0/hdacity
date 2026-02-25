@@ -4,8 +4,16 @@ import "leaflet/dist/leaflet.css";
 
 const MALE_CENTER: [number, number] = [4.1755, 73.5093];
 
-const createCarIcon = (color: string, size: number = 22) =>
-  L.divIcon({
+const createCarIcon = (color: string, size: number = 22, imageUrl?: string | null) => {
+  if (imageUrl) {
+    return L.icon({
+      iconUrl: imageUrl,
+      iconSize: [size * 1.4, size * 1.4],
+      iconAnchor: [size * 0.7, size * 0.7],
+      className: "drop-shadow-lg",
+    });
+  }
+  return L.divIcon({
     html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
       <svg width="${size * 0.55}" height="${size * 0.55}" viewBox="0 0 24 24" fill="white"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
     </div>`,
@@ -13,8 +21,9 @@ const createCarIcon = (color: string, size: number = 22) =>
     iconAnchor: [size / 2, size / 2],
     className: "",
   });
+};
 
-const driverIcon = createCarIcon("#40A3DB", 28);
+const defaultDriverIcon = createCarIcon("#40A3DB", 28);
 
 const pickupIcon = L.divIcon({
   html: `<div style="width:18px;height:18px;border-radius:50%;background:#22c55e;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
@@ -46,9 +55,10 @@ interface DriverMapProps {
   dropoffCoords?: [number, number];
   pickupLabel?: string;
   dropoffLabel?: string;
+  mapIconUrl?: string | null;
 }
 
-const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const routeLayer = useRef<L.Polyline | null>(null);
@@ -101,8 +111,9 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCo
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    // Driver marker
-    const marker = L.marker(currentPos || MALE_CENTER, { icon: driverIcon, zIndexOffset: 1000 })
+    // Driver marker with vehicle map icon if available
+    const icon = mapIconUrl ? createCarIcon("#40A3DB", 28, mapIconUrl) : defaultDriverIcon;
+    const marker = L.marker(currentPos || MALE_CENTER, { icon, zIndexOffset: 1000 })
       .addTo(map)
       .bindPopup("<b>Your location</b>");
     driverMarkerRef.current = marker;
@@ -115,15 +126,16 @@ const DriverMap = ({ isNavigating, radiusKm, gpsEnabled, pickupCoords, dropoffCo
     };
   }, []);
 
-  // Update driver marker position in real-time
+  // Update driver marker position and icon in real-time
   useEffect(() => {
     if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
     driverMarkerRef.current.setLatLng(currentPos);
-    // Only re-center if not navigating (navigating uses fitBounds)
+    const icon = mapIconUrl ? createCarIcon("#40A3DB", 28, mapIconUrl) : defaultDriverIcon;
+    driverMarkerRef.current.setIcon(icon);
     if (!isNavigating) {
       mapInstance.current.setView(currentPos, mapInstance.current.getZoom(), { animate: true });
     }
-  }, [currentPos, isNavigating]);
+  }, [currentPos, isNavigating, mapIconUrl]);
 
   // Fetch route helper
   const fetchRoute = (map: L.Map, driverPos: [number, number], pickup: [number, number], dropoff: [number, number], fitBounds: boolean) => {

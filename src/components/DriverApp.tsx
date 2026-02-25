@@ -620,6 +620,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         dropoffCoords={[4.1912, 73.5291]}
         pickupLabel="Majeedhee Magu, Malé"
         dropoffLabel="Velana International Airport"
+        mapIconUrl={(() => {
+          const sel = driverVehicles.find(v => v.id === selectedVehicleId) || driverVehicles[0];
+          const vt = sel ? vehicleTypes.find(t => t.id === sel.vehicle_type_id) : null;
+          return vt?.map_icon_url || null;
+        })()}
       />
 
       {/* GPS Toggle */}
