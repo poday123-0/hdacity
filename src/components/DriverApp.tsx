@@ -512,7 +512,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setNewVehicle({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
     setShowAddVehicle(false);
     if (!vehicleInfo) setVehicleInfo({ make: data.make, model: data.model, plate_number: data.plate_number, color: data.color });
-    toast({ title: "Vehicle added" });
+    // Flag for admin review
+    await supabase.from("profiles").update({ status: "Pending Review" }).eq("id", userProfile.id);
+    setProfileStatus("Pending Review");
+    toast({ title: "Vehicle added", description: "Pending admin approval" });
   };
 
   const deleteVehicle = async (id: string) => {
@@ -529,7 +532,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     } else {
       setVehicleInfo(null);
     }
-    toast({ title: "Vehicle removed" });
+    // Flag for admin review
+    if (userProfile?.id) {
+      await supabase.from("profiles").update({ status: "Pending Review" }).eq("id", userProfile.id);
+      setProfileStatus("Pending Review");
+    }
+    toast({ title: "Vehicle removed", description: "Pending admin approval" });
   };
 
   const selectVehicle = (v: any) => {
