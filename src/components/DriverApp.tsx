@@ -666,7 +666,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       {showEarnings ? "Hide" : "Show"}
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[
                       { label: "Rides", value: String(driverStats.rides), icon: Navigation, mask: false },
                       { label: "Earnings", value: `${driverStats.earnings.toFixed(0)} MVR`, icon: DollarSign, mask: true },
@@ -678,7 +678,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <p className="text-[10px] text-muted-foreground">{stat.label}</p>
                       </div>
                     ))}
+                    {/* Trip Radius card */}
+                    <div className="bg-surface rounded-xl p-2.5 text-center space-y-1">
+                      <Radar className="w-4 h-4 text-primary mx-auto" />
+                      <p className="text-base font-bold text-foreground tabular-nums">{tripRadius < 1 ? `${(tripRadius * 1000).toFixed(0)}m` : `${tripRadius}km`}</p>
+                      <p className="text-[10px] text-muted-foreground">Radius</p>
+                      <div className="flex items-center justify-center gap-1 pt-0.5">
+                        <button
+                          onClick={() => updateRadius(Math.max(0.1, +(tripRadius - (tripRadius <= 1 ? 0.1 : 1)).toFixed(1)))}
+                          className="w-6 h-6 rounded-lg bg-card flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
+                        >
+                          <span className="text-sm font-bold leading-none">−</span>
+                        </button>
+                        <button
+                          onClick={() => updateRadius(Math.min(50, +(tripRadius + (tripRadius < 1 ? 0.1 : 1)).toFixed(1)))}
+                          className="w-6 h-6 rounded-lg bg-card flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
+                        >
+                          <span className="text-sm font-bold leading-none">+</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
 
                   {/* Vehicle info with switcher */}
                   {vehicleInfo && (
@@ -699,27 +720,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </div>
                     </div>
                   )}
-
-                  {/* Trip Radius */}
-                  <div className="bg-surface rounded-2xl p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <Radar className="w-4 h-4 text-primary" />
-                        </div>
-                        <span className="text-sm font-medium text-foreground">Trip Radius</span>
-                      </div>
-                      <div className="bg-primary/10 px-2.5 py-1 rounded-lg">
-                        <span className="text-sm font-bold text-primary tabular-nums">{tripRadius < 1 ? `${(tripRadius * 1000).toFixed(0)}m` : `${tripRadius} km`}</span>
-                      </div>
-                    </div>
-                    <div className="px-1">
-                      <input type="range" min={0.1} max={50} step={0.1} value={tripRadius} onChange={(e) => updateRadius(Number(e.target.value))} className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-primary" />
-                      <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>100m</span><span>25 km</span><span>50 km</span></div>
-                    </div>
-                  </div>
-
-
 
                 </motion.div>
               )}
