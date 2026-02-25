@@ -23,7 +23,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
 
   return (
     <>
-      <div className="absolute top-0 left-0 right-0 z-[510] p-4 safe-area-top">
+      <div className="absolute top-0 left-0 right-0 z-[700] p-4 safe-area-top">
         <div className="flex items-center justify-between">
           <button
             onClick={() => setShowProfile(true)}
