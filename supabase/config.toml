@@ -8,3 +8,18 @@ verify_jwt = false
 
 [functions.get-maps-key]
 verify_jwt = false
+
+[functions.manage-user-role]
+verify_jwt = false
+
+[functions.lookup-profile]
+verify_jwt = false
+
+[functions.import-drivers-csv]
+verify_jwt = false
+
+[functions.import-users]
+verify_jwt = false
+
+[functions.import-vehicles]
+verify_jwt = false
