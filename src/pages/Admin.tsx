@@ -12,6 +12,7 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import AdminTrips from "@/components/admin/AdminTrips";
 import AdminBanks from "@/components/admin/AdminBanks";
 import AdminCompanies from "@/components/admin/AdminCompanies";
+import AdminPassengers from "@/components/admin/AdminPassengers";
 import {
   LayoutDashboard,
   Users,
@@ -24,13 +25,15 @@ import {
   Layers,
   Building2,
   Building,
+  UserCheck,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "drivers" | "vehicles" | "vehicle_types" | "fares" | "locations" | "trips" | "banks" | "companies" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "fares" | "locations" | "trips" | "banks" | "companies" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "passengers", label: "Passengers", icon: UserCheck },
   { id: "drivers", label: "Drivers", icon: Users },
   { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
   { id: "vehicles", label: "Vehicles", icon: Car },
@@ -170,6 +173,7 @@ const Admin = () => {
       <main className="flex-1 overflow-auto">
         <div className="p-8">
           {activeTab === "dashboard" && <AdminDashboard />}
+          {activeTab === "passengers" && <AdminPassengers />}
           {activeTab === "drivers" && <AdminDrivers />}
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
           {activeTab === "vehicles" && <AdminVehicles />}

@@ -17,9 +17,10 @@ export interface UserProfile {
 
 interface AuthScreenProps {
   onLogin: (profile: UserProfile | null, isDriver: boolean) => void;
+  mode?: "passenger" | "driver";
 }
 
-const AuthScreen = ({ onLogin }: AuthScreenProps) => {
+const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -160,7 +161,7 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
-                HDA <span className="text-primary">TAXI</span>
+                HDA <span className="text-primary">{mode === "driver" ? "DRIVER" : "TAXI"}</span>
               </h1>
             </div>
           </div>
@@ -180,8 +181,8 @@ const AuthScreen = ({ onLogin }: AuthScreenProps) => {
               className="space-y-4"
             >
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Welcome</h2>
-                <p className="text-muted-foreground mt-1">Enter your phone number to continue</p>
+                <h2 className="text-2xl font-bold text-foreground">{mode === "driver" ? "Driver Login" : "Welcome"}</h2>
+                <p className="text-muted-foreground mt-1">{mode === "driver" ? "Enter your registered driver phone number" : "Enter your phone number to continue"}</p>
               </div>
 
               <div className="relative">

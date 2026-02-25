@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
-type ProfileTab = "info" | "documents" | "banks" | "vehicles";
+type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "billing";
 
 interface TripRequest {
   id: string;
@@ -60,9 +60,10 @@ interface BankAccount {
 interface DriverAppProps {
   onSwitchToPassenger: () => void;
   userProfile?: UserProfile | null;
+  onLogout?: () => void;
 }
 
-const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
+const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
   const [screen, setScreen] = useState<DriverScreen>("offline");
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
   const [passengerProfile, setPassengerProfile] = useState<{ first_name: string; last_name: string } | null>(null);
@@ -89,6 +90,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
+  const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
   const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h" });
   const [gpsEnabled, setGpsEnabled] = useState(false);
@@ -333,6 +336,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
         if (activeVehicle) setVehicleInfo({ make: activeVehicle.make || "", model: activeVehicle.model || "", plate_number: activeVehicle.plate_number, color: activeVehicle.color || "" });
         else issues.push("No vehicle assigned");
         setVerificationIssues([...issues]);
+
+        // Fetch company info if driver has one
+        const { data: profileExtra } = await supabase.from("profiles").select("company_id, monthly_fee, company_name").eq("id", userProfile.id).single();
+        if (profileExtra?.company_id) {
+          const { data: company } = await supabase.from("companies").select("*").eq("id", profileExtra.company_id).single();
+          setCompanyInfo(company);
+        }
+
+        // Fetch admin bank account info from system_settings
+        const { data: adminBank } = await supabase.from("system_settings").select("value").eq("key", "admin_bank_info").single();
+        if (adminBank?.value) {
+          setAdminBankInfo(typeof adminBank.value === "string" ? JSON.parse(adminBank.value) : adminBank.value);
+        }
 
         // Fetch today's stats
         const todayStart = new Date();
@@ -883,6 +899,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                     { key: "documents", label: "Docs", icon: IdCard },
                     { key: "vehicles", label: "Vehicles", icon: Car },
                     { key: "banks", label: "Banks", icon: Landmark },
+                    { key: "billing", label: "Billing", icon: DollarSign },
                   ] as const).map(({ key, label, icon: Icon }) => (
                     <button
                       key={key}
@@ -1087,9 +1104,94 @@ const DriverApp = ({ onSwitchToPassenger, userProfile }: DriverAppProps) => {
                     )}
                   </div>
                 )}
+
+                {profileTab === "billing" && (
+                  <div className="space-y-3">
+                    {/* Company info & discounts */}
+                    {companyInfo ? (
+                      <div className="bg-surface rounded-xl p-3 space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</p>
+                        <div className="flex items-center gap-3">
+                          {companyInfo.logo_url && <img src={companyInfo.logo_url} alt={companyInfo.name} className="w-10 h-10 rounded-lg object-contain" />}
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{companyInfo.name}</p>
+                            {companyInfo.fee_free && <span className="text-xs text-primary font-semibold">Fee Free</span>}
+                          </div>
+                        </div>
+                        {companyInfo.discount_pct > 0 && (
+                          <p className="text-xs text-muted-foreground">Discount: <span className="font-semibold text-primary">{companyInfo.discount_pct}%</span></p>
+                        )}
+                        {companyInfo.monthly_fee > 0 && (
+                          <p className="text-xs text-muted-foreground">Monthly fee: <span className="font-semibold text-foreground">{companyInfo.monthly_fee} MVR</span></p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-surface rounded-xl p-3">
+                        <p className="text-sm text-muted-foreground text-center">No company assigned</p>
+                      </div>
+                    )}
+
+                    {/* Admin bank info for payment */}
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payment Account</p>
+                    {adminBankInfo ? (
+                      <div className="bg-surface rounded-xl p-3 space-y-2">
+                        <p className="text-xs text-muted-foreground">Transfer your fees to the account below:</p>
+                        <div className="bg-card rounded-xl divide-y divide-border">
+                          {adminBankInfo.bank_name && (
+                            <div className="flex items-center justify-between px-3 py-2">
+                              <span className="text-xs text-muted-foreground">Bank</span>
+                              <span className="text-sm font-semibold text-foreground">{adminBankInfo.bank_name}</span>
+                            </div>
+                          )}
+                          {adminBankInfo.account_number && (
+                            <div className="flex items-center justify-between px-3 py-2">
+                              <span className="text-xs text-muted-foreground">Account</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(adminBankInfo.account_number);
+                                  toast({ title: "Copied!", description: "Account number copied to clipboard" });
+                                }}
+                                className="text-sm font-semibold text-primary flex items-center gap-1"
+                              >
+                                {adminBankInfo.account_number}
+                                <CreditCard className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                          {adminBankInfo.account_name && (
+                            <div className="flex items-center justify-between px-3 py-2">
+                              <span className="text-xs text-muted-foreground">Name</span>
+                              <span className="text-sm font-medium text-foreground">{adminBankInfo.account_name}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-surface rounded-xl p-3">
+                        <p className="text-sm text-muted-foreground text-center">No payment account configured</p>
+                      </div>
+                    )}
+
+                    {/* Monthly fee info */}
+                    <div className="bg-surface rounded-xl p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Your monthly fee</span>
+                        <span className="text-lg font-bold text-foreground">{userProfile?.status === "Active" ? "Contact admin" : "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-4 pt-2 border-t border-border">
+              <div className="p-4 pt-2 border-t border-border space-y-2">
+                {onLogout && (
+                  <button
+                    onClick={() => { setShowProfile(false); onLogout(); }}
+                    className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform"
+                  >
+                    Logout
+                  </button>
+                )}
                 <button onClick={() => setShowProfile(false)} className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform">Close</button>
               </div>
             </motion.div>

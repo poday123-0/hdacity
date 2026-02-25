@@ -10,11 +10,10 @@ import RideConfirmation from "@/components/RideConfirmation";
 import SearchingDriver from "@/components/SearchingDriver";
 import DriverMatching from "@/components/DriverMatching";
 import RideFeedback from "@/components/RideFeedback";
-import DriverApp from "@/components/DriverApp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type AppPhase = "splash" | "auth" | "passenger" | "driver";
+type AppPhase = "splash" | "auth" | "passenger";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
 
 interface SelectedLocation {
@@ -40,7 +39,7 @@ const Index = () => {
   const [phase, setPhase] = useState<AppPhase>(() => savedSession ? "passenger" : "splash");
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
-  const [isDriver, setIsDriver] = useState(savedSession?.isDriver || false);
+  const [isDriver] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
@@ -114,13 +113,11 @@ const Index = () => {
     }
   }, [savedSession]);
 
-  const handleLogin = useCallback((profile: UserProfile | null, isDriverUser: boolean) => {
+  const handleLogin = useCallback((profile: UserProfile | null, _isDriverUser: boolean) => {
     setUserProfile(profile);
-    setIsDriver(isDriverUser);
     setPhase("passenger");
-    // Persist session
     if (profile) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: isDriverUser }));
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
     }
   }, []);
 
@@ -277,7 +274,6 @@ const Index = () => {
   const handleLogout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
     setUserProfile(null);
-    setIsDriver(false);
     setPhase("auth");
     setPassengerScreen("home");
     setCurrentTripId(null);
@@ -286,8 +282,7 @@ const Index = () => {
   }, []);
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
-  if (phase === "auth") return <AuthScreen onLogin={handleLogin} />;
-  if (phase === "driver") return <DriverApp onSwitchToPassenger={() => setPhase("passenger")} userProfile={userProfile} />;
+  if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode="passenger" />;
 
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-background">
@@ -297,7 +292,6 @@ const Index = () => {
       </div>
 
       <TopBar 
-        onDriverMode={isDriver ? () => setPhase("driver") : undefined} 
         onLogout={handleLogout}
         userName={userProfile?.first_name}
         userProfile={userProfile}
