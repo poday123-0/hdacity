@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Menu, X } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
 import AdminLogin from "@/components/admin/AdminLogin";
@@ -49,6 +50,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     // Check if admin is already logged in via localStorage
@@ -121,23 +123,35 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Sidebar overlay on mobile */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col shrink-0">
-        <div className="p-5 flex items-center gap-3 border-b border-border">
-          <img src={hdaLogo} alt="HDA" className="w-10 h-10 object-contain" />
-          <div>
-            <h1 className="text-lg font-extrabold text-foreground">
-              HDA <span className="text-primary">ADMIN</span>
-            </h1>
-            <p className="text-xs text-muted-foreground">Management Panel</p>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col shrink-0 transition-transform duration-300 ${
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:overflow-hidden lg:border-0"
+      }`}>
+        <div className="p-5 flex items-center justify-between border-b border-border">
+          <div className="flex items-center gap-3">
+            <img src={hdaLogo} alt="HDA" className="w-10 h-10 object-contain" />
+            <div>
+              <h1 className="text-lg font-extrabold text-foreground">
+                HDA <span className="text-primary">ADMIN</span>
+              </h1>
+              <p className="text-xs text-muted-foreground">Management Panel</p>
+            </div>
           </div>
+          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface lg:flex">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground"
@@ -170,7 +184,13 @@ const Admin = () => {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-8">
+        <div className="p-4 lg:p-8">
+          {/* Top bar with menu toggle */}
+          {!sidebarOpen && (
+            <button onClick={() => setSidebarOpen(true)} className="mb-4 w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface transition-colors">
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           {activeTab === "dashboard" && <AdminDashboard />}
           {activeTab === "passengers" && <AdminPassengers />}
           {activeTab === "drivers" && <AdminDrivers />}
