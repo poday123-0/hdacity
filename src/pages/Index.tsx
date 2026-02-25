@@ -74,7 +74,7 @@ const Index = () => {
       .from("driver_locations")
       .select(`
         id, lat, lng, driver_id, vehicle_type_id,
-        vehicle_types:vehicle_type_id (name, image_url, icon)
+        vehicle_types:vehicle_type_id (name, image_url, icon, map_icon_url)
       `)
       .eq("is_online", true)
       .eq("is_on_trip", false);
@@ -85,7 +85,7 @@ const Index = () => {
         lat: dl.lat,
         lng: dl.lng,
         name: dl.vehicle_types?.name || "Driver",
-        imageUrl: dl.vehicle_types?.image_url || undefined,
+        imageUrl: dl.vehicle_types?.map_icon_url || dl.vehicle_types?.image_url || undefined,
         icon: dl.vehicle_types?.icon || undefined,
       }));
       setVehicleMarkers(markers);

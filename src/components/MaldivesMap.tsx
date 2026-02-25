@@ -68,15 +68,13 @@ interface MaldivesMapProps {
   vehicleMarkers?: VehicleMarkerData[];
 }
 
-const createVehicleMapIcon = (imageUrl?: string, name?: string) => {
+const createVehicleMapIcon = (imageUrl?: string, _name?: string) => {
   if (imageUrl) {
-    return L.divIcon({
-      html: `<div style="width:36px;height:36px;border-radius:50%;background:white;border:2px solid #40A3DB;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;overflow:hidden;">
-        <img src="${imageUrl}" style="width:26px;height:26px;object-fit:contain;" alt="${name || ''}" />
-      </div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-      className: "",
+    return L.icon({
+      iconUrl: imageUrl,
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+      className: "drop-shadow-lg",
     });
   }
   return driverCarIcon;
