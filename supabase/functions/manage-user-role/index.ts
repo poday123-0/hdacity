@@ -1,0 +1,133 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { action, phone_number, user_id, role, role_id } = await req.json();
+
+    if (action === "add") {
+      // Find profile by phone
+      const { data: profiles, error: pErr } = await supabaseAdmin
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .eq("phone_number", phone_number);
+
+      if (pErr || !profiles || profiles.length === 0) {
+        return new Response(JSON.stringify({ error: "No user found with this phone number. They need to register first." }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const profile = profiles[0];
+
+      // Check if already has role
+      const { data: existing } = await supabaseAdmin
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", profile.id)
+        .eq("role", role);
+
+      if (existing && existing.length > 0) {
+        return new Response(JSON.stringify({ error: `${profile.first_name} already has the ${role} role` }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Insert role
+      const { error: insertErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: profile.id, role });
+
+      if (insertErr) {
+        return new Response(JSON.stringify({ error: insertErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, profile }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "remove") {
+      const { error: delErr } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("id", role_id);
+
+      if (delErr) {
+        return new Response(JSON.stringify({ error: delErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "list") {
+      const { data: roles, error: rErr } = await supabaseAdmin
+        .from("user_roles")
+        .select("id, user_id, role, created_at")
+        .in("role", ["admin", "dispatcher"])
+        .order("created_at", { ascending: false });
+
+      if (rErr) {
+        return new Response(JSON.stringify({ error: rErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (roles && roles.length > 0) {
+        const userIds = roles.map((r: any) => r.user_id);
+        const { data: profiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, first_name, last_name, phone_number, email")
+          .in("id", userIds);
+
+        const merged = roles.map((r: any) => ({
+          ...r,
+          profile: profiles?.find((p: any) => p.id === r.user_id) || null,
+        }));
+
+        return new Response(JSON.stringify({ data: merged }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ data: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Invalid action" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
