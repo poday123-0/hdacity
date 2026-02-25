@@ -233,6 +233,38 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
           </div>
         ) : !minimized ? (
           <>
+            {/* Compact Passenger & Luggage row - above pickup */}
+            {!activeField && (
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 bg-surface rounded-xl px-2.5 py-1.5">
+                  <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Pax</span>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded-md bg-card flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount <= 1}>
+                      <Minus className="w-3 h-3 text-foreground" />
+                    </button>
+                    <span className="text-sm font-bold text-foreground tabular-nums min-w-[1.5ch] text-center">{passengerCount}</span>
+                    <button onClick={() => setPassengerCount(Math.min(10, passengerCount + 1))} className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount >= 10}>
+                      <Plus className="w-3 h-3 text-primary" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 flex items-center gap-2 bg-surface rounded-xl px-2.5 py-1.5">
+                  <Luggage className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bags</span>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded-md bg-card flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount <= 0}>
+                      <Minus className="w-3 h-3 text-foreground" />
+                    </button>
+                    <span className="text-sm font-bold text-foreground tabular-nums min-w-[1.5ch] text-center">{luggageCount}</span>
+                    <button onClick={() => setLuggageCount(Math.min(20, luggageCount + 1))} className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount >= 20}>
+                      <Plus className="w-3 h-3 text-primary" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Pickup & Dropoff inline search inputs */}
             <div className="flex items-start gap-3">
               {/* Route dots */}
@@ -368,48 +400,6 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                 </div>
               </div>
             </div>
-
-            {/* Passenger & Luggage counters */}
-            {!activeField && (
-              <div className="flex gap-2">
-                <div className="flex-1 bg-surface rounded-2xl p-3 flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Users className="w-4.5 h-4.5 text-primary" />
-                    </div>
-                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Passengers</p>
-                  </div>
-                  <div className="flex items-center justify-between w-full bg-card rounded-xl px-1 py-1">
-                    <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-9 h-9 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount <= 1}>
-                      <Minus className="w-4 h-4 text-foreground" />
-                    </button>
-                    <span className="text-lg font-bold text-foreground tabular-nums min-w-[2ch] text-center">{passengerCount}</span>
-                    <button onClick={() => setPassengerCount(Math.min(10, passengerCount + 1))} className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount >= 10}>
-                      <Plus className="w-4 h-4 text-primary" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex-1 bg-surface rounded-2xl p-3 flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Luggage className="w-4.5 h-4.5 text-primary" />
-                    </div>
-                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Luggage</p>
-                  </div>
-                  <div className="flex items-center justify-between w-full bg-card rounded-xl px-1 py-1">
-                    <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-9 h-9 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount <= 0}>
-                      <Minus className="w-4 h-4 text-foreground" />
-                    </button>
-                    <span className="text-lg font-bold text-foreground tabular-nums min-w-[2ch] text-center">{luggageCount}</span>
-                    <button onClick={() => setLuggageCount(Math.min(20, luggageCount + 1))} className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount >= 20}>
-                      <Plus className="w-4 h-4 text-primary" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Confirm button */}
             <button
               onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount)}
