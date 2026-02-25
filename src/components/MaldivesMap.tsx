@@ -1,50 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 
-// Fix default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-const MALE_CENTER: [number, number] = [4.1755, 73.5093];
-
-const userIcon = L.divIcon({
-  html: `<div style="width:16px;height:16px;border-radius:50%;background:#40A3DB;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-  className: "",
-});
-
-const pickupIcon = L.divIcon({
-  html: `<div style="width:18px;height:18px;border-radius:50%;background:#22c55e;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-  </div>`,
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  className: "",
-});
-
-const dropoffIcon = L.divIcon({
-  html: `<div style="width:18px;height:18px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-  </div>`,
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  className: "",
-});
-
-const driverCarIcon = L.divIcon({
-  html: `<div style="width:28px;height:28px;border-radius:50%;background:#40A3DB;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
-  </div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-  className: "",
-});
+const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 
 interface RideMapData {
   pickup?: { lat: number; lng: number; name: string };
@@ -68,199 +25,214 @@ interface MaldivesMapProps {
   vehicleMarkers?: VehicleMarkerData[];
 }
 
-const createVehicleMapIcon = (imageUrl?: string, _name?: string) => {
-  if (imageUrl) {
-    return L.icon({
-      iconUrl: imageUrl,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-      className: "",
-    });
-  }
-  return driverCarIcon;
-};
-
 const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
-  const userMarkerRef = useRef<L.Marker | null>(null);
-  const rideMarkersRef = useRef<L.Marker[]>([]);
-  const driverMarkerRef = useRef<L.Marker | null>(null);
-  const routeLayerRef = useRef<L.Polyline | null>(null);
-  const vehicleMarkersRef = useRef<L.Marker[]>([]);
+  const mapInstance = useRef<any>(null);
+  const userMarkerRef = useRef<any>(null);
+  const rideMarkersRef = useRef<any[]>([]);
+  const driverMarkerRef = useRef<any>(null);
+  const vehicleMarkersRef = useRef<any[]>([]);
+  const directionsRendererRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
-  const [userPos, setUserPos] = useState<[number, number] | null>(null);
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+  const { isLoaded, error } = useGoogleMaps();
 
-  // Track user's real location
+  // Track user location
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setUserPos(MALE_CENTER);
-      return;
-    }
-
+    if (!navigator.geolocation) { setUserPos(MALE_CENTER); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => setUserPos(MALE_CENTER),
       { enableHighAccuracy: true, timeout: 10000 }
     );
-
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => {},
       { enableHighAccuracy: true, maximumAge: 5000 }
     );
-
-    return () => {
-      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
-    };
+    return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
 
   // Init map
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
+    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
 
-    const map = L.map(mapRef.current, {
+    const isDark = document.documentElement.classList.contains("dark");
+
+    const map = new g.maps.Map(mapRef.current, {
       center: userPos || MALE_CENTER,
       zoom: 15,
+      disableDefaultUI: true,
       zoomControl: false,
-      attributionControl: false,
+      mapId: "hda_map",
+      styles: isDark ? darkMapStyle : [],
+      gestureHandling: "greedy",
     });
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-    // User location marker
-    const marker = L.marker(userPos || MALE_CENTER, { icon: userIcon })
-      .addTo(map)
-      .bindPopup("<b>Your location</b><br/>Malé, Maldives");
-    userMarkerRef.current = marker;
-
+    const userDot = document.createElement("div");
+    userDot.innerHTML = `<div style="width:16px;height:16px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`;
+    const userMarker = new g.maps.marker.AdvancedMarkerElement({
+      map,
+      position: userPos || MALE_CENTER,
+      content: userDot,
+      zIndex: 900,
+    });
+    userMarkerRef.current = userMarker;
     mapInstance.current = map;
 
-    return () => {
-      map.remove();
-      mapInstance.current = null;
-    };
-  }, []);
+    return () => { mapInstance.current = null; };
+  }, [isLoaded]);
 
-  // Update user marker position
+  // Theme observer
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains("dark");
+      mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [isLoaded]);
+
+  // Update user marker
   useEffect(() => {
     if (!userPos || !userMarkerRef.current || !mapInstance.current) return;
-    userMarkerRef.current.setLatLng(userPos);
-    // Only re-center if no ride is active
+    userMarkerRef.current.position = userPos;
     if (!rideData?.showRoute) {
-      mapInstance.current.setView(userPos, mapInstance.current.getZoom(), { animate: true });
+      mapInstance.current.panTo(userPos);
     }
   }, [userPos, rideData?.showRoute]);
 
-  // Ride markers, driver icon & route
+  // Ride markers & route
   useEffect(() => {
     const map = mapInstance.current;
-    if (!map) return;
+    const g = (window as any).google;
+    if (!map || !g?.maps) return;
 
-    // Clear previous ride markers
-    rideMarkersRef.current.forEach((m) => { try { map.removeLayer(m); } catch {} });
+    rideMarkersRef.current.forEach((m: any) => { m.map = null; });
     rideMarkersRef.current = [];
-    if (driverMarkerRef.current) {
-      try { map.removeLayer(driverMarkerRef.current); } catch {}
-      driverMarkerRef.current = null;
-    }
-    if (routeLayerRef.current) {
-      try { map.removeLayer(routeLayerRef.current); } catch {}
-      routeLayerRef.current = null;
-    }
+    if (driverMarkerRef.current) { driverMarkerRef.current.map = null; driverMarkerRef.current = null; }
+    if (directionsRendererRef.current) { directionsRendererRef.current.setMap(null); directionsRendererRef.current = null; }
 
     if (!rideData) return;
-
     const { pickup, dropoff, driverLat, driverLng, showRoute } = rideData;
 
-    // Add pickup marker
     if (pickup) {
-      const pm = L.marker([pickup.lat, pickup.lng], { icon: pickupIcon })
-        .addTo(map)
-        .bindPopup(`<b>Pickup</b><br/>${pickup.name}`);
-      rideMarkersRef.current.push(pm);
+      const el = createMarkerEl("#22c55e", "P");
+      const m = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: pickup.lat, lng: pickup.lng }, content: el, zIndex: 1000 });
+      rideMarkersRef.current.push(m);
     }
-
-    // Add dropoff marker
     if (dropoff) {
-      const dm = L.marker([dropoff.lat, dropoff.lng], { icon: dropoffIcon })
-        .addTo(map)
-        .bindPopup(`<b>Dropoff</b><br/>${dropoff.name}`);
-      rideMarkersRef.current.push(dm);
+      const el = createMarkerEl("#ef4444", "D");
+      const m = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: dropoff.lat, lng: dropoff.lng }, content: el, zIndex: 1000 });
+      rideMarkersRef.current.push(m);
     }
-
-    // Add driver car icon
     if (driverLat != null && driverLng != null) {
-      driverMarkerRef.current = L.marker([driverLat, driverLng], { icon: driverCarIcon, zIndexOffset: 1000 })
-        .addTo(map)
-        .bindPopup("<b>Driver</b>");
+      const el = createCarEl();
+      driverMarkerRef.current = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: driverLat, lng: driverLng }, content: el, zIndex: 1100 });
     }
 
-    // Draw route
     if (showRoute && pickup && dropoff) {
-      const driverPos = driverLat != null && driverLng != null
-        ? `${driverLng},${driverLat}`
-        : null;
-      const p = `${pickup.lng},${pickup.lat}`;
-      const d = `${dropoff.lng},${dropoff.lat}`;
-      const waypoints = driverPos ? `${driverPos};${p};${d}` : `${p};${d}`;
+      const ds = new g.maps.DirectionsService();
+      const dr = new g.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: true,
+        polylineOptions: { strokeColor: "#4285F4", strokeWeight: 5, strokeOpacity: 0.85 },
+      });
+      directionsRendererRef.current = dr;
 
-      fetch(`https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.routes && data.routes[0]) {
-            const coords = data.routes[0].geometry.coordinates.map(
-              (c: [number, number]) => [c[1], c[0]] as [number, number]
-            );
-            routeLayerRef.current = L.polyline(coords, {
-              color: "#40A3DB",
-              weight: 5,
-              opacity: 0.85,
-              dashArray: "10, 6",
-            }).addTo(map);
+      const waypoints = driverLat != null && driverLng != null
+        ? [{ location: { lat: pickup.lat, lng: pickup.lng }, stopover: true }]
+        : [];
+      const origin = driverLat != null ? { lat: driverLat, lng: driverLng } : { lat: pickup.lat, lng: pickup.lng };
+      const destination = { lat: dropoff.lat, lng: dropoff.lng };
 
-            map.fitBounds(routeLayerRef.current.getBounds(), { padding: [60, 60] });
-          }
-        })
-        .catch((err) => console.error("OSRM route error:", err));
+      ds.route({
+        origin,
+        destination,
+        waypoints,
+        travelMode: g.maps.TravelMode.DRIVING,
+      }).then((result: any) => {
+        dr.setDirections(result);
+      }).catch((err: any) => console.error("Directions error:", err));
     } else if (pickup && dropoff) {
-      // Fit to pickup + dropoff without route
-      const bounds = L.latLngBounds([pickup.lat, pickup.lng], [dropoff.lat, dropoff.lng]);
-      if (driverLat != null && driverLng != null) bounds.extend([driverLat, driverLng]);
-      map.fitBounds(bounds, { padding: [60, 60] });
+      const bounds = new g.maps.LatLngBounds();
+      bounds.extend({ lat: pickup.lat, lng: pickup.lng });
+      bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
+      if (driverLat != null && driverLng != null) bounds.extend({ lat: driverLat, lng: driverLng });
+      map.fitBounds(bounds, 60);
     }
   }, [rideData?.pickup?.lat, rideData?.dropoff?.lat, rideData?.driverLat, rideData?.driverLng, rideData?.showRoute]);
 
-  // Smoothly update driver marker position without full re-render
+  // Smooth driver marker update
   useEffect(() => {
     if (!driverMarkerRef.current || rideData?.driverLat == null || rideData?.driverLng == null) return;
-    driverMarkerRef.current.setLatLng([rideData.driverLat, rideData.driverLng]);
+    driverMarkerRef.current.position = { lat: rideData.driverLat, lng: rideData.driverLng };
   }, [rideData?.driverLat, rideData?.driverLng]);
 
-  // Vehicle type markers on the map
+  // Vehicle markers
   useEffect(() => {
     const map = mapInstance.current;
-    if (!map) return;
-
-    // Clear old vehicle markers
-    vehicleMarkersRef.current.forEach((m) => { try { map.removeLayer(m); } catch {} });
+    const g = (window as any).google;
+    if (!map || !g?.maps) return;
+    vehicleMarkersRef.current.forEach((m: any) => { m.map = null; });
     vehicleMarkersRef.current = [];
-
-    // Don't show during active ride
     if (rideData?.showRoute) return;
 
     if (vehicleMarkers && vehicleMarkers.length > 0) {
-      vehicleMarkers.forEach((v) => {
-        const icon = createVehicleMapIcon(v.imageUrl, v.name);
-        const m = L.marker([v.lat, v.lng], { icon })
-          .addTo(map)
-          .bindPopup(`<b>${v.name}</b>`);
+      vehicleMarkers.forEach(v => {
+        const el = v.imageUrl ? createImageMarkerEl(v.imageUrl) : createCarEl();
+        const m = new g.maps.marker.AdvancedMarkerElement({ map, position: { lat: v.lat, lng: v.lng }, content: el });
         vehicleMarkersRef.current.push(m);
       });
     }
   }, [vehicleMarkers, rideData?.showRoute]);
 
+  if (error) {
+    return <div className="w-full h-full bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
+  }
+  if (!isLoaded) {
+    return <div className="w-full h-full bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
   return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 };
+
+function createMarkerEl(color: string, letter: string) {
+  const el = document.createElement("div");
+  el.innerHTML = `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;">${letter}</div>`;
+  return el;
+}
+
+function createCarEl() {
+  const el = document.createElement("div");
+  el.innerHTML = `<div style="width:28px;height:28px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+  </div>`;
+  return el;
+}
+
+function createImageMarkerEl(imageUrl: string) {
+  const el = document.createElement("div");
+  el.innerHTML = `<img src="${imageUrl}" style="width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />`;
+  return el;
+}
+
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#212121" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#292929" }] },
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#383838" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212121" }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#484848" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f2f" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1626" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] },
+];
 
 export default MaldivesMap;
