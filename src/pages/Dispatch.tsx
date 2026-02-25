@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/hooks/use-theme";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
-  Loader2, Navigation, Send, ArrowRight, Shield, Trash2, ChevronDown
+  Loader2, Navigation, Send, ArrowRight, Shield, Trash2, ChevronDown, Moon, Sun
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
@@ -36,6 +37,7 @@ interface OnlineDriver {
 const Dispatch = () => {
   const [isAuthed, setIsAuthed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { theme, toggleTheme } = useTheme();
   const [dispatcherProfile, setDispatcherProfile] = useState<any>(null);
 
   // Login state
@@ -377,6 +379,9 @@ const Dispatch = () => {
           <h1 className="text-lg font-extrabold text-foreground">HDA <span className="text-primary">DISPATCH</span></h1>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={toggleTheme} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <span className="text-sm text-muted-foreground">{dispatcherProfile?.first_name} {dispatcherProfile?.last_name}</span>
           <button onClick={handleLogout} className="text-xs text-muted-foreground hover:text-destructive font-medium">Logout</button>
         </div>
