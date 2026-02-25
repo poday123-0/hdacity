@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Car, MapPin, DollarSign } from "lucide-react";
+import MaldivesMap from "@/components/MaldivesMap";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({ drivers: 0, vehicles: 0, trips: 0, activeTrips: 0 });
+  const [vehicleMarkers, setVehicleMarkers] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -21,6 +23,28 @@ const AdminDashboard = () => {
       });
     };
     fetchStats();
+  }, []);
+
+  // Fetch live driver locations
+  useEffect(() => {
+    const fetchLocations = async () => {
+      const { data } = await supabase
+        .from("driver_locations")
+        .select("id, lat, lng, driver_id, vehicle_type_id, vehicle_types:vehicle_type_id(name, image_url, icon, map_icon_url)")
+        .eq("is_online", true);
+      if (data) {
+        setVehicleMarkers(data.map((d: any) => ({
+          id: d.id,
+          lat: d.lat,
+          lng: d.lng,
+          name: d.vehicle_types?.name || "Driver",
+          imageUrl: d.vehicle_types?.map_icon_url || undefined,
+        })));
+      }
+    };
+    fetchLocations();
+    const interval = setInterval(fetchLocations, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const cards = [
@@ -47,6 +71,17 @@ const AdminDashboard = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Live Map */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Live Map</h3>
+          <p className="text-xs text-muted-foreground">{vehicleMarkers.length} driver{vehicleMarkers.length !== 1 ? "s" : ""} online</p>
+        </div>
+        <div className="h-[400px]">
+          <MaldivesMap vehicleMarkers={vehicleMarkers} />
+        </div>
       </div>
     </div>
   );
