@@ -2,8 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, MapPin, Undo2, Trash } from "lucide-react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 
@@ -22,13 +21,16 @@ const AdminLocations = () => {
   const [form, setForm] = useState(emptyForm);
   const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([]);
   const [drawingMode, setDrawingMode] = useState(false);
+  const { isLoaded } = useGoogleMaps();
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
-  const polygonLayerRef = useRef<L.Polygon | null>(null);
-  const pointMarkersRef = useRef<L.LayerGroup | null>(null);
-  const areaLayersRef = useRef<L.LayerGroup | null>(null);
+  const mapInstance = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const polygonRef = useRef<any>(null);
+  const pointMarkersRef = useRef<any[]>([]);
+  const areaPolygonsRef = useRef<any[]>([]);
+  const areaMarkersRef = useRef<any[]>([]);
+  const clickListenerRef = useRef<any>(null);
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -42,173 +44,172 @@ const AdminLocations = () => {
 
   useEffect(() => { fetchLocations(); }, []);
 
-  // Render all saved service area polygons and center markers on the map
+  const clearAreaLayers = () => {
+    areaPolygonsRef.current.forEach(p => p.setMap(null));
+    areaPolygonsRef.current = [];
+    areaMarkersRef.current.forEach(m => m.setMap(null));
+    areaMarkersRef.current = [];
+  };
+
   const renderAreas = useCallback(() => {
-    if (!mapInstance.current) return;
-    if (areaLayersRef.current) {
-      areaLayersRef.current.clearLayers();
-    } else {
-      areaLayersRef.current = L.layerGroup().addTo(mapInstance.current);
-    }
+    const g = (window as any).google;
+    if (!mapInstance.current || !g?.maps) return;
+    clearAreaLayers();
+
     locations.forEach((loc) => {
-      // Draw polygon if available
       if (loc.polygon && Array.isArray(loc.polygon) && loc.polygon.length >= 3) {
-        const latlngs = loc.polygon.map((p: PolygonPoint) => [p.lat, p.lng] as L.LatLngTuple);
-        const poly = L.polygon(latlngs, {
-          color: "hsl(var(--primary))",
-          fillColor: "hsl(var(--primary))",
+        const poly = new g.maps.Polygon({
+          paths: loc.polygon.map((p: PolygonPoint) => ({ lat: p.lat, lng: p.lng })),
+          strokeColor: "#4285F4",
+          fillColor: "#4285F4",
           fillOpacity: 0.15,
-          weight: 2,
+          strokeWeight: 2,
+          map: mapInstance.current,
         });
-        poly.bindTooltip(loc.name, { direction: "center" });
-        poly.addTo(areaLayersRef.current!);
+        areaPolygonsRef.current.push(poly);
       }
-      // Always draw center marker
-      const icon = L.divIcon({
-        className: "custom-loc-marker",
-        html: `<div style="background:hsl(var(--primary));width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-        </div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+
+      const el = document.createElement("div");
+      el.innerHTML = `<div style="background:#4285F4;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>`;
+      const m = new g.maps.marker.AdvancedMarkerElement({
+        map: mapInstance.current,
+        position: { lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) },
+        content: el,
+        title: loc.name,
       });
-      L.marker([parseFloat(loc.lat), parseFloat(loc.lng)], { icon })
-        .bindTooltip(loc.name, { direction: "top", offset: [0, -12] })
-        .addTo(areaLayersRef.current!);
+      areaMarkersRef.current.push(m);
     });
   }, [locations]);
 
   // Initialize map
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
-    const map = L.map(mapRef.current, {
-      center: [MALE_CENTER.lat, MALE_CENTER.lng],
+    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    const isDark = document.documentElement.classList.contains("dark");
+    const map = new g.maps.Map(mapRef.current, {
+      center: MALE_CENTER,
       zoom: 14,
-      zoomControl: true,
+      mapId: "hda_admin_map",
+      styles: isDark ? darkMapStyle : [],
     });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-    }).addTo(map);
     mapInstance.current = map;
 
-    return () => {
-      map.remove();
-      mapInstance.current = null;
-    };
-  }, [showForm]);
+    return () => { mapInstance.current = null; };
+  }, [isLoaded, showForm]);
 
-  useEffect(() => { renderAreas(); }, [locations, renderAreas]);
+  useEffect(() => { renderAreas(); }, [locations, renderAreas, isLoaded]);
 
-  // Draw/update the polygon preview on the map
+  const clearPolygonPreview = () => {
+    if (polygonRef.current) { polygonRef.current.setMap(null); polygonRef.current = null; }
+    pointMarkersRef.current.forEach(m => m.setMap(null));
+    pointMarkersRef.current = [];
+  };
+
   const updatePolygonPreview = useCallback((pts: PolygonPoint[]) => {
-    if (!mapInstance.current) return;
-    // Clear old
-    if (polygonLayerRef.current) {
-      mapInstance.current.removeLayer(polygonLayerRef.current);
-      polygonLayerRef.current = null;
-    }
-    if (pointMarkersRef.current) {
-      pointMarkersRef.current.clearLayers();
-    } else {
-      pointMarkersRef.current = L.layerGroup().addTo(mapInstance.current);
-    }
+    const g = (window as any).google;
+    if (!mapInstance.current || !g?.maps) return;
+    clearPolygonPreview();
 
-    if (pts.length === 0) return;
-
-    // Draw vertex markers
     pts.forEach((p, i) => {
-      const icon = L.divIcon({
-        className: "polygon-vertex",
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${i === 0 ? 'hsl(142 76% 36%)' : 'hsl(var(--primary))'};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
+      const el = document.createElement("div");
+      el.innerHTML = `<div style="width:14px;height:14px;border-radius:50%;background:${i === 0 ? '#22c55e' : '#4285F4'};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`;
+      const m = new g.maps.marker.AdvancedMarkerElement({
+        map: mapInstance.current,
+        position: { lat: p.lat, lng: p.lng },
+        content: el,
       });
-      L.marker([p.lat, p.lng], { icon })
-        .bindTooltip(i === 0 ? "Start" : `Point ${i + 1}`, { direction: "top", offset: [0, -8] })
-        .addTo(pointMarkersRef.current!);
+      pointMarkersRef.current.push(m);
     });
 
-    // Draw polygon if 3+ points
     if (pts.length >= 3) {
-      const latlngs = pts.map((p) => [p.lat, p.lng] as L.LatLngTuple);
-      polygonLayerRef.current = L.polygon(latlngs, {
-        color: "hsl(var(--destructive, 0 84% 60%))",
-        fillColor: "hsl(var(--destructive, 0 84% 60%))",
+      polygonRef.current = new g.maps.Polygon({
+        paths: pts.map(p => ({ lat: p.lat, lng: p.lng })),
+        strokeColor: "#ef4444",
+        fillColor: "#ef4444",
         fillOpacity: 0.2,
-        weight: 2,
-        dashArray: "6 4",
-      }).addTo(mapInstance.current);
+        strokeWeight: 2,
+        map: mapInstance.current,
+      });
     } else if (pts.length === 2) {
-      // Draw line between 2 points
-      L.polyline(pts.map(p => [p.lat, p.lng] as L.LatLngTuple), {
-        color: "hsl(var(--destructive, 0 84% 60%))",
-        weight: 2,
-        dashArray: "6 4",
-      }).addTo(pointMarkersRef.current!);
+      polygonRef.current = new g.maps.Polyline({
+        path: pts.map(p => ({ lat: p.lat, lng: p.lng })),
+        strokeColor: "#ef4444",
+        strokeWeight: 2,
+        map: mapInstance.current,
+      });
     }
   }, []);
 
   // Handle map clicks
   useEffect(() => {
-    if (!mapInstance.current || !showForm) return;
+    const g = (window as any).google;
+    if (!mapInstance.current || !showForm || !g?.maps) return;
     const map = mapInstance.current;
 
-    const onClick = (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
+    if (clickListenerRef.current) {
+      g.maps.event.removeListener(clickListenerRef.current);
+    }
+
+    clickListenerRef.current = map.addListener("click", (e: any) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
 
       if (drawingMode) {
-        // Add polygon point
         setPolygonPoints((prev) => {
           const next = [...prev, { lat, lng }];
           updatePolygonPreview(next);
-          // Auto-set center to centroid
           const cLat = next.reduce((s, p) => s + p.lat, 0) / next.length;
           const cLng = next.reduce((s, p) => s + p.lng, 0) / next.length;
           setForm((f) => ({ ...f, lat: cLat.toFixed(6), lng: cLng.toFixed(6) }));
           return next;
         });
       } else {
-        // Set center point
         setForm((prev) => ({ ...prev, lat: lat.toFixed(6), lng: lng.toFixed(6) }));
         if (markerRef.current) {
-          markerRef.current.setLatLng([lat, lng]);
+          markerRef.current.position = { lat, lng };
         } else {
-          const icon = L.divIcon({
-            className: "custom-pick-marker",
-            html: `<div style="background:hsl(var(--destructive, 0 84% 60%));width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            </div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 28],
+          const el = document.createElement("div");
+          el.innerHTML = `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>`;
+          markerRef.current = new g.maps.marker.AdvancedMarkerElement({
+            map,
+            position: { lat, lng },
+            content: el,
+            gmpDraggable: true,
           });
-          markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
-          markerRef.current.on("dragend", () => {
-            const pos = markerRef.current!.getLatLng();
+          markerRef.current.addListener("dragend", () => {
+            const pos = markerRef.current.position;
             setForm((prev) => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6) }));
           });
         }
       }
-    };
+    });
 
-    map.on("click", onClick);
-    return () => { map.off("click", onClick); };
+    return () => {
+      if (clickListenerRef.current) {
+        g.maps.event.removeListener(clickListenerRef.current);
+        clickListenerRef.current = null;
+      }
+    };
   }, [showForm, drawingMode, updatePolygonPreview]);
 
-  // Pan to area when editing
   useEffect(() => {
     if (showForm && form.lat && form.lng && mapInstance.current) {
       const lat = parseFloat(form.lat);
       const lng = parseFloat(form.lng);
       if (!isNaN(lat) && !isNaN(lng)) {
-        mapInstance.current.setView([lat, lng], 16);
+        mapInstance.current.setCenter({ lat, lng });
+        mapInstance.current.setZoom(16);
       }
     }
   }, [editingId]);
 
-  // Sync polygon preview when points change externally (editing)
-  useEffect(() => {
-    updatePolygonPreview(polygonPoints);
-  }, [polygonPoints, updatePolygonPreview]);
+  useEffect(() => { updatePolygonPreview(polygonPoints); }, [polygonPoints, updatePolygonPreview]);
 
   const undoLastPoint = () => {
     setPolygonPoints((prev) => {
@@ -229,17 +230,8 @@ const AdminLocations = () => {
     setShowForm(false);
     setPolygonPoints([]);
     setDrawingMode(false);
-    if (markerRef.current && mapInstance.current) {
-      mapInstance.current.removeLayer(markerRef.current);
-      markerRef.current = null;
-    }
-    if (polygonLayerRef.current && mapInstance.current) {
-      mapInstance.current.removeLayer(polygonLayerRef.current);
-      polygonLayerRef.current = null;
-    }
-    if (pointMarkersRef.current) {
-      pointMarkersRef.current.clearLayers();
-    }
+    if (markerRef.current) { markerRef.current.map = null; markerRef.current = null; }
+    clearPolygonPreview();
   };
 
   const openEdit = (loc: any) => {
@@ -250,9 +242,7 @@ const AdminLocations = () => {
       lat: loc.lat?.toString() || "",
       lng: loc.lng?.toString() || "",
     });
-    setPolygonPoints(
-      loc.polygon && Array.isArray(loc.polygon) ? loc.polygon : []
-    );
+    setPolygonPoints(loc.polygon && Array.isArray(loc.polygon) ? loc.polygon : []);
     setEditingId(loc.id);
     setShowForm(true);
     setDrawingMode(false);
@@ -318,12 +308,16 @@ const AdminLocations = () => {
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Service Area" : "New Service Area"}</h3>
 
-          {/* Map */}
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 400 }}>
-            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+            {isLoaded ? (
+              <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+            ) : (
+              <div className="w-full h-full bg-surface flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
           </div>
 
-          {/* Drawing controls */}
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
@@ -361,52 +355,23 @@ const AdminLocations = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Area Name *</label>
-              <input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Malé City"
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Malé City" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Address / Area</label>
-              <input
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="e.g. Greater Malé Region"
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="e.g. Greater Malé Region" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div className="col-span-2">
               <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <input
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief description of this service area"
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Brief description of this service area" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Center Latitude</label>
-              <input
-                value={form.lat}
-                onChange={(e) => setForm({ ...form, lat: e.target.value })}
-                placeholder="4.1755"
-                type="number"
-                step="any"
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} placeholder="4.1755" type="number" step="any" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Center Longitude</label>
-              <input
-                value={form.lng}
-                onChange={(e) => setForm({ ...form, lng: e.target.value })}
-                placeholder="73.5093"
-                type="number"
-                step="any"
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} placeholder="73.5093" type="number" step="any" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
           <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
@@ -415,7 +380,6 @@ const AdminLocations = () => {
         </div>
       )}
 
-      {/* Areas table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
@@ -480,5 +444,20 @@ const AdminLocations = () => {
     </div>
   );
 };
+
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#212121" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#292929" }] },
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#383838" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212121" }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#484848" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f2f" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1626" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] },
+];
 
 export default AdminLocations;
