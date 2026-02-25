@@ -48,6 +48,7 @@ const Index = () => {
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [matchedDriver, setMatchedDriver] = useState<any>(null);
 
   // Driver location will be fetched from realtime when a driver accepts
 
@@ -211,7 +212,7 @@ const Index = () => {
         schema: "public",
         table: "trips",
         filter: `id=eq.${currentTripId}`,
-      }, (payload) => {
+      }, async (payload) => {
         const trip = payload.new as any;
         const status = trip.status;
 
@@ -244,12 +245,34 @@ const Index = () => {
 
         // Transition screens based on real trip status
         if (status === "accepted") {
+          // Fetch driver info + primary bank account
+          if (trip.driver_id) {
+            const [profileRes, banksRes, vehicleRes] = await Promise.all([
+              supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.driver_id).single(),
+              supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+              trip.vehicle_id 
+                ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", trip.vehicle_id).single()
+                : Promise.resolve({ data: null }),
+            ]);
+            const p = profileRes.data;
+            const v = vehicleRes.data;
+            setMatchedDriver({
+              name: p ? `${p.first_name} ${p.last_name}` : "Driver",
+              initials: p ? `${p.first_name?.[0] || ""}${p.last_name?.[0] || ""}` : "D",
+              phone: p ? `+${p.country_code || "960"} ${p.phone_number}` : "",
+              avatar_url: p?.avatar_url || null,
+              vehicle: v ? `${v.make} ${v.model}` : "",
+              plate: v?.plate_number || "",
+              bank_accounts: banksRes.data || [],
+            });
+          }
           setPassengerScreen("driver-matching");
         } else if (status === "completed") {
           setPassengerScreen("feedback");
         } else if (status === "cancelled") {
           setPassengerScreen("home");
           setCurrentTripId(null);
+          setMatchedDriver(null);
         }
       })
       .subscribe();
@@ -268,6 +291,7 @@ const Index = () => {
     setLuggageCount(0);
     setSelectedVehicleType(null);
     setEstimatedFare(0);
+    setMatchedDriver(null);
     setPassengerScreen("home");
   }, []);
 
@@ -346,6 +370,7 @@ const Index = () => {
             <DriverMatching
               key="driver-matching"
               onCancel={() => setPassengerScreen("home")}
+              driver={matchedDriver || undefined}
             />
           )}
         </AnimatePresence>
