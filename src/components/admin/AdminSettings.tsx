@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2 } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2 } from "lucide-react";
 
 interface SoundFile {
   id: string;
@@ -20,6 +20,12 @@ const soundCategories = [
   { key: "passenger_started", label: "Passenger: Trip Started" },
   { key: "passenger_completed", label: "Passenger: Trip Completed" },
   { key: "passenger_cancelled", label: "Passenger: Trip Cancelled" },
+];
+
+const adminBankFields = [
+  { key: "bank_name", label: "Bank Name", placeholder: "e.g. Bank of Maldives" },
+  { key: "account_number", label: "Account Number", placeholder: "7730000000000" },
+  { key: "account_name", label: "Account Holder Name", placeholder: "Company name or person" },
 ];
 
 const settingsConfig = [
@@ -45,6 +51,7 @@ const AdminSettings = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategory, setUploadCategory] = useState("");
+  const [adminBank, setAdminBank] = useState<Record<string, string>>({ bank_name: "", account_number: "", account_name: "" });
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -56,6 +63,11 @@ const AdminSettings = () => {
     settingsRes.data?.forEach((s: any) => { map[s.key] = s.value; });
     setSettings(map);
     setSounds((soundsRes.data as SoundFile[]) || []);
+    // Load admin bank info
+    if (map["admin_bank_info"]) {
+      const bankVal = typeof map["admin_bank_info"] === "string" ? JSON.parse(map["admin_bank_info"]) : map["admin_bank_info"];
+      setAdminBank({ bank_name: bankVal.bank_name || "", account_number: bankVal.account_number || "", account_name: bankVal.account_name || "" });
+    }
     setLoading(false);
   };
 
@@ -204,6 +216,33 @@ const AdminSettings = () => {
             )}
           </div>
         ))}
+      </div>
+
+      {/* Admin Bank Account */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Building2 className="w-5 h-5 text-primary" /> Admin Payment Account
+      </h2>
+      <p className="text-sm text-muted-foreground">This is the bank account drivers see in their billing tab to transfer monthly fees.</p>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {adminBankFields.map((f) => (
+            <div key={f.key}>
+              <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+              <input
+                value={adminBank[f.key] || ""}
+                onChange={(e) => setAdminBank({ ...adminBank, [f.key]: e.target.value })}
+                placeholder={f.placeholder}
+                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => updateSetting("admin_bank_info", adminBank)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+        >
+          <Save className="w-4 h-4" /> Save Payment Account
+        </button>
       </div>
 
       {/* Notification Sounds */}

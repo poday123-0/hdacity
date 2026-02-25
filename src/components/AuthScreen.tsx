@@ -13,6 +13,8 @@ export interface UserProfile {
   phone_number: string;
   gender: string;
   status: string;
+  monthly_fee?: number;
+  fee_free_until?: string | null;
 }
 
 interface AuthScreenProps {
