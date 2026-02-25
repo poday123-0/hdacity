@@ -8,9 +8,9 @@ const createCarIcon = (color: string, size: number = 22, imageUrl?: string | nul
   if (imageUrl) {
     return L.icon({
       iconUrl: imageUrl,
-      iconSize: [size * 1.4, size * 1.4],
-      iconAnchor: [size * 0.7, size * 0.7],
-      className: "drop-shadow-lg",
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      className: "",
     });
   }
   return L.divIcon({

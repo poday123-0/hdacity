@@ -72,9 +72,9 @@ const createVehicleMapIcon = (imageUrl?: string, _name?: string) => {
   if (imageUrl) {
     return L.icon({
       iconUrl: imageUrl,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19],
-      className: "drop-shadow-lg",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      className: "",
     });
   }
   return driverCarIcon;
