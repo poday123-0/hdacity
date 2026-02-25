@@ -727,17 +727,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {/* Status bar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse-dot" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))] animate-pulse-dot" />
                 <span className="font-semibold text-sm text-foreground">Online</span>
                 {panelMinimized && (
                   <span className="text-xs text-muted-foreground">• {driverStats.rides} rides • {driverStats.earnings.toFixed(0)} MVR</span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
+                <button onClick={() => setShowEarnings(!showEarnings)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title={showEarnings ? "Hide amounts" : "Show amounts"}>
+                  {showEarnings ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
+                </button>
+                <button onClick={() => { setShowProfile(true); setProfileTab("info"); }} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title="Profile">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
                 <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
                   {panelMinimized ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                 </button>
-                <button onClick={() => setScreen("offline")} className="px-2.5 py-1.5 bg-surface rounded-lg text-[11px] font-medium text-foreground active:scale-95 transition-transform">Off</button>
+                {/* On/Off toggle */}
+                <button
+                  onClick={() => setScreen("offline")}
+                  className="relative w-11 h-6 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0"
+                  title="Go Offline"
+                >
+                  <div className="w-5 h-5 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[19px]" />
+                </button>
               </div>
             </div>
 
@@ -822,17 +835,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </div>
                   )}
 
-                  {/* Quick actions */}
-                  <div className="flex gap-2">
-                    <button onClick={() => setShowEarnings(!showEarnings)} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-surface text-xs text-muted-foreground active:scale-95 transition-transform">
-                      {showEarnings ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                      {showEarnings ? "Hide amounts" : "Show amounts"}
-                    </button>
-                    <button onClick={() => { setShowProfile(true); setProfileTab("info"); }} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-surface text-xs text-muted-foreground active:scale-95 transition-transform">
-                      <User className="w-3 h-3" />
-                      Profile
-                    </button>
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
