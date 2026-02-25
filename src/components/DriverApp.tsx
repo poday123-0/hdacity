@@ -603,7 +603,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[500] p-4 safe-area-top">
+      <div className="absolute top-0 left-0 right-0 z-[700] p-4 safe-area-top">
         <div className="flex items-center justify-between">
           <button onClick={onSwitchToPassenger} className="px-3 py-2 rounded-full bg-card shadow-md text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
             Passenger Mode
