@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageSquare, X, PackageX } from "lucide-react";
+import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   requested: "bg-yellow-100 text-yellow-700",
@@ -52,6 +52,8 @@ const AdminTrips = () => {
     setSelectedTripMessages((msgs as any[]) || []);
     setLostItems((items as any[]) || []);
   };
+
+  const selectedTrip = trips.find(t => t.id === selectedTripId);
 
   return (
     <div className="space-y-6">
@@ -111,15 +113,65 @@ const AdminTrips = () => {
         </table>
       </div>
 
-      {/* Message history modal */}
+      {/* Trip detail modal */}
       {selectedTripMessages !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => { setSelectedTripMessages(null); setSelectedTripId(null); }}>
-          <div className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-lg max-h-[70vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-bold text-foreground">Trip Messages & Reports</h3>
+              <h3 className="font-bold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Trip Details</h3>
               <button onClick={() => { setSelectedTripMessages(null); setSelectedTripId(null); }} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Trip info */}
+              {selectedTrip && (
+                <div className="bg-surface rounded-xl p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3" />
+                      <span>Passenger: <span className="text-foreground font-medium">{selectedTrip.passenger ? `${selectedTrip.passenger.first_name} ${selectedTrip.passenger.last_name}` : selectedTrip.customer_name || "—"}</span></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3" />
+                      <span>Driver: <span className="text-foreground font-medium">{selectedTrip.driver ? `${selectedTrip.driver.first_name} ${selectedTrip.driver.last_name}` : "—"}</span></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      <span className="truncate">{selectedTrip.pickup_address}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      <span className="truncate">{selectedTrip.dropoff_address}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <DollarSign className="w-3 h-3" />
+                      <span>Fare: <span className="text-foreground font-medium">{selectedTrip.actual_fare ? `MVR ${selectedTrip.actual_fare}` : selectedTrip.estimated_fare ? `~MVR ${selectedTrip.estimated_fare}` : "—"}</span></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>{selectedTrip.duration_minutes ? `${selectedTrip.duration_minutes} min` : "—"} • {selectedTrip.distance_km ? `${selectedTrip.distance_km} km` : "—"}</span>
+                    </div>
+                  </div>
+                  {/* Rating & feedback */}
+                  {selectedTrip.rating && (
+                    <div className="flex items-center gap-2 pt-1 border-t border-border">
+                      <div className="flex items-center gap-0.5">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} className={`w-3.5 h-3.5 ${s <= selectedTrip.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
+                        ))}
+                      </div>
+                      {selectedTrip.feedback_text && (
+                        <p className="text-xs text-muted-foreground italic">"{selectedTrip.feedback_text}"</p>
+                      )}
+                    </div>
+                  )}
+                  {selectedTrip.cancel_reason && (
+                    <div className="pt-1 border-t border-border">
+                      <p className="text-xs text-destructive">Cancel reason: {selectedTrip.cancel_reason}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Lost items */}
               {lostItems.length > 0 && (
                 <div className="space-y-2">
@@ -134,9 +186,9 @@ const AdminTrips = () => {
               )}
 
               {/* Messages */}
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Messages ({selectedTripMessages.length})</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Chat History ({selectedTripMessages.length})</p>
               {selectedTripMessages.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No messages</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No messages in this trip</p>
               ) : (
                 selectedTripMessages.map((msg: any) => (
                   <div key={msg.id} className={`flex ${msg.sender_type === "system" ? "justify-center" : msg.sender_type === "driver" ? "justify-end" : "justify-start"}`}>

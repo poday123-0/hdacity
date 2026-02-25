@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
-  Loader2, Navigation, Send, ArrowRight, Shield, Trash2, ChevronDown, Moon, Sun
+  Loader2, Navigation, Send, ArrowRight, Shield, Trash2, ChevronDown, Moon, Sun, MessageSquare, PackageX
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
@@ -72,6 +72,11 @@ const Dispatch = () => {
 
   // Recent trips
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
+
+  // Chat history
+  const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [lostItems, setLostItems] = useState<any[]>([]);
 
   // Check auth on mount
   useEffect(() => {
@@ -302,6 +307,16 @@ const Dispatch = () => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
     setSubmitting(false);
+  };
+
+  const viewMessages = async (tripId: string) => {
+    setSelectedTripId(tripId);
+    const [{ data: msgs }, { data: items }] = await Promise.all([
+      supabase.from("trip_messages").select("*").eq("trip_id", tripId).order("created_at", { ascending: true }),
+      supabase.from("lost_item_reports").select("*").eq("trip_id", tripId).order("created_at", { ascending: false }),
+    ]);
+    setSelectedTripMessages((msgs as any[]) || []);
+    setLostItems((items as any[]) || []);
   };
 
   const handleLogout = () => {
@@ -557,18 +572,69 @@ const Dispatch = () => {
             <div className="bg-card border border-border rounded-xl divide-y divide-border">
               {recentTrips.map((t) => (
                 <div key={t.id} className="px-4 py-3 flex items-center justify-between">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">{t.customer_name} • +960 {t.customer_phone}</p>
-                    <p className="text-xs text-muted-foreground">{t.pickup_address} → {t.dropoff_address}</p>
+                    <p className="text-xs text-muted-foreground truncate">{t.pickup_address} → {t.dropoff_address}</p>
                   </div>
-                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
-                    t.status === "completed" ? "bg-green-100 text-green-700" :
-                    t.status === "cancelled" ? "bg-red-100 text-red-700" :
-                    t.status === "accepted" ? "bg-blue-100 text-blue-700" :
-                    "bg-yellow-100 text-yellow-700"
-                  }`}>{t.status}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => viewMessages(t.id)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors" title="View chat & reports">
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
+                      t.status === "completed" ? "bg-primary/10 text-primary" :
+                      t.status === "cancelled" ? "bg-destructive/10 text-destructive" :
+                      t.status === "accepted" ? "bg-accent text-accent-foreground" :
+                      "bg-accent text-accent-foreground"
+                    }`}>{t.status}</span>
+                  </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Chat history modal */}
+        {selectedTripMessages !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => { setSelectedTripMessages(null); setSelectedTripId(null); }}>
+            <div className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-lg max-h-[70vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h3 className="font-bold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Trip Messages & Reports</h3>
+                <button onClick={() => { setSelectedTripMessages(null); setSelectedTripId(null); }} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Lost items */}
+                {lostItems.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-destructive uppercase tracking-wider flex items-center gap-1"><PackageX className="w-3.5 h-3.5" /> Lost Item Reports</p>
+                    {lostItems.map((item: any) => (
+                      <div key={item.id} className="bg-destructive/5 border border-destructive/20 rounded-xl p-3">
+                        <p className="text-sm text-foreground">{item.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Status: <span className="font-medium">{item.status}</span> • {new Date(item.created_at).toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Messages */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Messages ({selectedTripMessages.length})</p>
+                {selectedTripMessages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No messages in this trip</p>
+                ) : (
+                  selectedTripMessages.map((msg: any) => (
+                    <div key={msg.id} className={`flex ${msg.sender_type === "system" ? "justify-center" : msg.sender_type === "driver" ? "justify-end" : "justify-start"}`}>
+                      {msg.sender_type === "system" ? (
+                        <span className="text-[10px] text-muted-foreground bg-surface px-3 py-1 rounded-full">{msg.message}</span>
+                      ) : (
+                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${msg.sender_type === "driver" ? "bg-primary text-primary-foreground rounded-br-md" : "bg-surface text-foreground rounded-bl-md"}`}>
+                          <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.sender_type === "driver" ? "Driver" : "Passenger"}</p>
+                          <p className="text-sm">{msg.message}</p>
+                          <p className="text-[9px] mt-1 opacity-60">{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
