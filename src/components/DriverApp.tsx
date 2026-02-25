@@ -32,6 +32,8 @@ import {
   Locate,
   LocateOff,
   Car,
+  Pencil,
+  Save,
 } from "lucide-react";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -95,6 +97,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
   const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h" });
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", phone_number: "", gender: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -946,19 +951,114 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {/* Tab Content */}
                 {profileTab === "info" && (
                   <div className="space-y-3">
-                    <div className="bg-surface rounded-xl divide-y divide-border">
-                      {[
-                        { label: "Phone", value: `+960 ${userProfile?.phone_number || "—"}` },
-                        { label: "Email", value: userProfile?.email || "Not set" },
-                        { label: "Gender", value: userProfile?.gender === "1" ? "Male" : userProfile?.gender === "2" ? "Female" : userProfile?.gender || "—" },
-                        { label: "Status", value: userProfile?.status || "—" },
-                      ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between px-4 py-3">
-                          <span className="text-sm text-muted-foreground">{item.label}</span>
-                          <span className="text-sm font-medium text-foreground">{item.value}</span>
+                    {profileStatus === "Pending Review" && (
+                      <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5" />
+                        Your profile changes are pending admin approval
+                      </div>
+                    )}
+                    {!editingProfile ? (
+                      <>
+                        <div className="bg-surface rounded-xl divide-y divide-border">
+                          {[
+                            { label: "First Name", value: userProfile?.first_name || "—" },
+                            { label: "Last Name", value: userProfile?.last_name || "—" },
+                            { label: "Phone", value: `+960 ${userProfile?.phone_number || "—"}` },
+                            { label: "Email", value: userProfile?.email || "Not set" },
+                            { label: "Gender", value: userProfile?.gender === "1" ? "Male" : userProfile?.gender === "2" ? "Female" : userProfile?.gender || "—" },
+                            { label: "Status", value: userProfile?.status || "—" },
+                          ].map((item) => (
+                            <div key={item.label} className="flex items-center justify-between px-4 py-3">
+                              <span className="text-sm text-muted-foreground">{item.label}</span>
+                              <span className="text-sm font-medium text-foreground">{item.value}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                        <button
+                          onClick={() => {
+                            setEditForm({
+                              first_name: userProfile?.first_name || "",
+                              last_name: userProfile?.last_name || "",
+                              email: userProfile?.email || "",
+                              phone_number: userProfile?.phone_number || "",
+                              gender: userProfile?.gender || "1",
+                            });
+                            setEditingProfile(true);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary font-semibold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-transform"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit Profile
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="bg-surface rounded-xl p-3 space-y-3">
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">First Name</label>
+                            <input value={editForm.first_name} onChange={(e) => setEditForm(f => ({ ...f, first_name: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Last Name</label>
+                            <input value={editForm.last_name} onChange={(e) => setEditForm(f => ({ ...f, last_name: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-sm text-muted-foreground bg-card border border-border rounded-lg px-3 py-2">+960</span>
+                              <input value={editForm.phone_number} onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value.replace(/\D/g, "").slice(0, 7) }))} className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Email</label>
+                            <input type="email" value={editForm.email} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))} placeholder="driver@example.com" className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Gender</label>
+                            <select value={editForm.gender} onChange={(e) => setEditForm(f => ({ ...f, gender: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                              <option value="1">Male</option>
+                              <option value="2">Female</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2.5 text-xs text-yellow-700">
+                          ⚠️ Saving changes will set your profile to <strong>Pending Review</strong>. You won't be able to go online until an admin approves.
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => setEditingProfile(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground">Cancel</button>
+                          <button
+                            disabled={savingProfile}
+                            onClick={async () => {
+                              if (!userProfile?.id || !editForm.first_name.trim() || !editForm.last_name.trim() || !editForm.phone_number.trim()) {
+                                toast({ title: "Please fill all required fields", variant: "destructive" });
+                                return;
+                              }
+                              setSavingProfile(true);
+                              const { error } = await supabase.from("profiles").update({
+                                first_name: editForm.first_name.trim(),
+                                last_name: editForm.last_name.trim(),
+                                phone_number: editForm.phone_number.trim(),
+                                email: editForm.email.trim() || null,
+                                gender: editForm.gender,
+                                status: "Pending Review",
+                              }).eq("id", userProfile.id);
+                              setSavingProfile(false);
+                              if (error) {
+                                toast({ title: "Error", description: error.message, variant: "destructive" });
+                              } else {
+                                toast({ title: "Profile updated", description: "Awaiting admin approval" });
+                                setProfileStatus("Pending Review");
+                                setEditingProfile(false);
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground disabled:opacity-50"
+                          >
+                            <Save className="w-4 h-4" />
+                            {savingProfile ? "Saving..." : "Save & Submit"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

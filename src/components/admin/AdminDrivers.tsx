@@ -403,6 +403,7 @@ const AdminDrivers = () => {
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
                           d.status === "Active" ? "bg-green-100 text-green-700" : 
+                          d.status === "Pending Review" ? "bg-orange-100 text-orange-700" :
                           d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
                         }`}>
                           {d.status === "Active" ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
