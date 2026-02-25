@@ -3,11 +3,19 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface LocationData {
+  name: string;
+  id: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+}
+
 interface RideOptionsProps {
   onBack: () => void;
   onConfirm: (vehicleType: any, estimatedFare: number) => void;
-  pickup?: { name: string; id: string } | null;
-  dropoff?: { name: string; id: string } | null;
+  pickup?: LocationData | null;
+  dropoff?: LocationData | null;
   passengerCount: number;
   luggageCount: number;
 }
@@ -20,6 +28,17 @@ const iconMap: Record<string, typeof Car> = {
   van: Bus,
 };
 
+/** Haversine distance in km */
+const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, luggageCount }: RideOptionsProps) => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [fareZones, setFareZones] = useState<any[]>([]);
@@ -27,6 +46,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   const [onlineVehicleTypeIds, setOnlineVehicleTypeIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -36,8 +56,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("driver_locations").select("vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
       ]);
-      const types = vtRes.data || [];
-      setVehicleTypes(types);
+      setVehicleTypes(vtRes.data || []);
       setFareZones(fzRes.data || []);
       setSurcharges(scRes.data || []);
       const onlineIds = new Set<string>((dlRes.data || []).map((d: any) => d.vehicle_type_id).filter(Boolean));
@@ -47,24 +66,72 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     fetchAll();
   }, []);
 
+  // Calculate driving distance via OSRM, fallback to haversine
+  useEffect(() => {
+    if (!pickup?.lat || !pickup?.lng || !dropoff?.lat || !dropoff?.lng) {
+      setDistanceKm(null);
+      return;
+    }
+
+    const straight = haversineKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+
+    // Try OSRM for road distance
+    fetch(
+      `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=false`
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.routes?.[0]?.distance) {
+          setDistanceKm(data.routes[0].distance / 1000);
+        } else {
+          setDistanceKm(straight * 1.3); // approximate road factor
+        }
+      })
+      .catch(() => {
+        setDistanceKm(straight * 1.3);
+      });
+  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+
   const calcFare = (vt: any): number => {
+    // 1. Check for fixed fare zone match (by area name)
     const zone = fareZones.find(
       (fz) =>
         fz.vehicle_type_id === vt.id &&
         ((fz.from_area === pickup?.name && fz.to_area === dropoff?.name) ||
           (fz.from_area === dropoff?.name && fz.to_area === pickup?.name))
     );
-    let fare = zone ? Number(zone.fixed_fare) : Number(vt.base_fare);
 
+    // Also try matching by service area ID
+    const zoneById = !zone
+      ? fareZones.find(
+          (fz) =>
+            fz.vehicle_type_id === vt.id &&
+            ((fz.from_area === pickup?.id && fz.to_area === dropoff?.id) ||
+              (fz.from_area === dropoff?.id && fz.to_area === pickup?.id))
+        )
+      : null;
+
+    let fare: number;
+
+    if (zone || zoneById) {
+      // Fixed zone fare
+      fare = Number((zone || zoneById).fixed_fare);
+    } else if (distanceKm != null && distanceKm > 0) {
+      // Distance-based fare: base_fare + (per_km_rate × distance)
+      fare = Number(vt.base_fare) + Number(vt.per_km_rate) * distanceKm;
+    } else {
+      // Fallback to base fare
+      fare = Number(vt.base_fare);
+    }
+
+    // Apply surcharges
     for (const sc of surcharges) {
       if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null && luggageCount >= sc.luggage_threshold) {
         fare += Number(sc.amount);
       }
       if (sc.surcharge_type === "time_based" && sc.start_time && sc.end_time) {
         const now = new Date();
-        const h = now.getHours();
-        const m = now.getMinutes();
-        const nowMin = h * 60 + m;
+        const nowMin = now.getHours() * 60 + now.getMinutes();
         const [sh, sm] = sc.start_time.split(":").map(Number);
         const [eh, em] = sc.end_time.split(":").map(Number);
         const startMin = sh * 60 + sm;
@@ -75,11 +142,14 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       }
     }
 
+    // Passenger tax
     fare += fare * (Number(vt.passenger_tax_pct) / 100);
-    return Math.max(fare, Number(vt.minimum_fare));
+
+    // Enforce minimum fare
+    return Math.max(Math.round(fare), Number(vt.minimum_fare));
   };
 
-  // Sort: online vehicles first, then by capacity fit
+  // Sort: online first, then by capacity fit
   const sortedTypes = [...vehicleTypes].sort((a, b) => {
     const aOnline = onlineVehicleTypeIds.has(a.id) ? 0 : 1;
     const bOnline = onlineVehicleTypeIds.has(b.id) ? 0 : 1;
@@ -115,7 +185,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           <div className="w-10 h-1 rounded-full bg-border/60" />
         </div>
 
-        {/* Header + route summary inline */}
+        {/* Header + route summary */}
         <div className="flex items-center gap-2.5">
           <button onClick={onBack} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform shrink-0">
             <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -135,6 +205,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
             <div className="flex gap-3 mt-0.5">
               <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{passengerCount}</span> pax</span>
               <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{luggageCount}</span> bags</span>
+              {distanceKm != null && (
+                <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{distanceKm.toFixed(1)}</span> km</span>
+              )}
             </div>
           </div>
         </div>
@@ -188,7 +261,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                     )}
                   </div>
                   <p className="font-semibold text-[11px] text-foreground truncate w-full text-center leading-tight">{vt.name}</p>
-                  <p className="text-sm font-bold text-primary leading-none">{fare.toFixed(0)}<span className="text-[9px] font-medium text-muted-foreground ml-px">MVR</span></p>
+                  <p className="text-sm font-bold text-primary leading-none">{fare}<span className="text-[9px] font-medium text-muted-foreground ml-px">MVR</span></p>
                   <p className="text-[9px] text-muted-foreground leading-none">{vt.capacity} seats</p>
                 </button>
               );
@@ -210,7 +283,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
               <p className="font-bold text-xs text-foreground">{selectedType.name}</p>
               <p className="text-[10px] text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats`}</p>
             </div>
-            <p className="text-base font-bold text-primary shrink-0">{selectedFare.toFixed(0)} <span className="text-[10px] font-semibold text-muted-foreground">MVR</span></p>
+            <p className="text-base font-bold text-primary shrink-0">{selectedFare} <span className="text-[10px] font-semibold text-muted-foreground">MVR</span></p>
           </div>
         )}
 
@@ -219,7 +292,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           disabled={!selectedType || !selectedIsOnline}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
         >
-          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : `Confirm ${selectedType.name} — ${selectedFare.toFixed(0)} MVR`}
+          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : `Confirm ${selectedType.name} — ${selectedFare} MVR`}
         </button>
       </div>
     </motion.div>
