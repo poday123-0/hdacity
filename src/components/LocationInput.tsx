@@ -1,6 +1,6 @@
-import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation } from "lucide-react";
+import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ServiceLocation {
@@ -29,8 +29,9 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
   const [loading, setLoading] = useState(true);
   const [pickup, setPickup] = useState<ServiceLocation | null>(null);
   const [dropoff, setDropoff] = useState<ServiceLocation | null>(null);
-  const [selecting, setSelecting] = useState<"pickup" | "dropoff" | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeField, setActiveField] = useState<"pickup" | "dropoff" | null>(null);
+  const [pickupQuery, setPickupQuery] = useState("");
+  const [dropoffQuery, setDropoffQuery] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
@@ -38,6 +39,10 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
   const [osmSearching, setOsmSearching] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const pickupRef = useRef<HTMLInputElement>(null);
+  const dropoffRef = useRef<HTMLInputElement>(null);
+
+  const activeQuery = activeField === "pickup" ? pickupQuery : dropoffQuery;
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -58,7 +63,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
 
   // Nominatim search with debounce
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 3) {
+    if (!activeQuery.trim() || activeQuery.length < 3) {
       setOsmResults([]);
       return;
     }
@@ -67,7 +72,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       setOsmSearching(true);
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
           { headers: { "Accept-Language": "en" } }
         );
         const data: NominatimResult[] = await res.json();
@@ -78,7 +83,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       setOsmSearching(false);
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery]);
+  }, [activeQuery]);
 
   const findNearestServiceArea = useCallback((lat: number, lng: number): ServiceLocation | null => {
     let nearest: ServiceLocation | null = null;
@@ -100,8 +105,6 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         const nearest = findNearestServiceArea(latitude, longitude);
-
-        // Reverse geocode for precise address
         let name = nearest?.name || "Current Location";
         let address = nearest?.address || "";
         try {
@@ -113,36 +116,43 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
           address = data.display_name?.split(",").slice(0, 3).join(", ") || address;
           name = data.name || data.address?.road || data.address?.neighbourhood || name;
         } catch {}
-
-        setPickup({
+        const loc: ServiceLocation = {
           id: nearest?.id || "current-location",
           name,
           address,
           lat: latitude,
           lng: longitude,
-        });
+        };
+        setPickup(loc);
+        setPickupQuery(name);
         setDetectingLocation(false);
+        // Auto-focus dropoff after detecting location
+        if (!dropoff) {
+          setActiveField("dropoff");
+          setTimeout(() => dropoffRef.current?.focus(), 100);
+        }
       },
       () => setDetectingLocation(false),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
-  const handleSelect = (loc: ServiceLocation) => {
-    if (selecting === "pickup") {
+  const selectLocation = (loc: ServiceLocation) => {
+    if (activeField === "pickup") {
       setPickup(loc);
+      setPickupQuery(loc.name);
+      setOsmResults([]);
       if (!dropoff) {
-        setSelecting("dropoff");
-        setSearchQuery("");
-        setOsmResults([]);
+        setActiveField("dropoff");
+        setTimeout(() => dropoffRef.current?.focus(), 100);
         return;
       }
-    } else if (selecting === "dropoff") {
+    } else if (activeField === "dropoff") {
       setDropoff(loc);
+      setDropoffQuery(loc.name);
+      setOsmResults([]);
     }
-    setSelecting(null);
-    setSearchQuery("");
-    setOsmResults([]);
+    setActiveField(null);
   };
 
   const handleOsmSelect = (result: NominatimResult) => {
@@ -151,41 +161,30 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
     const nearest = findNearestServiceArea(lat, lng);
     if (!nearest) return;
 
-    // Create a location with the specific place name but linked to nearest service area
     const specificLocation: ServiceLocation = {
       ...nearest,
+      name: result.name || result.display_name.split(",")[0],
       address: result.display_name.split(",").slice(0, 3).join(", "),
       lat,
       lng,
     };
-
-    if (selecting === "pickup") {
-      setPickup(specificLocation);
-      if (!dropoff) {
-        setSelecting("dropoff");
-        setSearchQuery("");
-        setOsmResults([]);
-        return;
-      }
-    } else if (selecting === "dropoff") {
-      setDropoff(specificLocation);
-    }
-    setSelecting(null);
-    setSearchQuery("");
-    setOsmResults([]);
+    selectLocation(specificLocation);
   };
 
-  const availableForDropoff = locations.filter((l) => l.id !== pickup?.id);
-  const availableForPickup = locations.filter((l) => l.id !== dropoff?.id);
-  const displayList = selecting === "pickup" ? availableForPickup : availableForDropoff;
-
-  const filteredList = useMemo(() => {
-    if (!searchQuery.trim()) return displayList;
-    const q = searchQuery.toLowerCase();
-    return displayList.filter(
-      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
-    );
-  }, [displayList, searchQuery]);
+  const clearField = (field: "pickup" | "dropoff") => {
+    if (field === "pickup") {
+      setPickup(null);
+      setPickupQuery("");
+      setActiveField("pickup");
+      setTimeout(() => pickupRef.current?.focus(), 50);
+    } else {
+      setDropoff(null);
+      setDropoffQuery("");
+      setActiveField("dropoff");
+      setTimeout(() => dropoffRef.current?.focus(), 50);
+    }
+    setOsmResults([]);
+  };
 
   const canConfirm = pickup && dropoff;
 
@@ -197,16 +196,16 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 max-h-[85vh] flex flex-col"
     >
       <div className="px-5 pt-3 pb-8 space-y-3 overflow-y-auto flex-1 overscroll-contain">
-        {/* Handle — tap to toggle */}
+        {/* Handle */}
         <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
           <div className="w-12 h-1.5 rounded-full bg-border/60" />
         </button>
 
-        {/* Always visible: compact bar when minimized */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-foreground tracking-tight">Where to?</h2>
-            {!minimized && <p className="text-xs text-muted-foreground mt-0.5">Search a place or select an area</p>}
+            {!minimized && <p className="text-xs text-muted-foreground mt-0.5">Type to search any place</p>}
             {minimized && pickup && (
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{pickup.name}{dropoff ? ` → ${dropoff.name}` : ""}</p>
             )}
@@ -234,115 +233,144 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
           </div>
         ) : !minimized ? (
           <>
-            {/* Pickup & Dropoff selectors */}
+            {/* Pickup & Dropoff inline search inputs */}
             <div className="flex items-start gap-3">
+              {/* Route dots */}
               <div className="flex flex-col items-center gap-0.5 pt-4">
                 <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.3)] animate-pulse-dot" />
                 <div className="w-0.5 h-8 bg-gradient-to-b from-primary/40 to-foreground/30" />
                 <div className="w-3 h-3 rounded-sm bg-foreground" />
               </div>
+
               <div className="flex-1 space-y-2.5">
-                <button
-                  onClick={() => { setSelecting(selecting === "pickup" ? null : "pickup"); setSearchQuery(""); setOsmResults([]); }}
-                  className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
-                    selecting === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface hover:bg-muted"
-                  }`}
-                >
-                  <div className="text-left min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Pickup</p>
-                    <p className={`text-sm font-medium truncate mt-0.5 ${pickup ? "text-foreground" : "text-muted-foreground"}`}>
-                      {pickup ? pickup.name : "Select pickup area"}
-                    </p>
-                    {pickup?.address && pickup.address !== pickup.name && (
-                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
-                    )}
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${selecting === "pickup" ? "rotate-180" : ""}`} />
-                </button>
-
-                <button
-                  onClick={() => { setSelecting(selecting === "dropoff" ? null : "dropoff"); setSearchQuery(""); setOsmResults([]); }}
-                  className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
-                    selecting === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface hover:bg-muted"
-                  }`}
-                >
-                  <div className="text-left min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Destination</p>
-                    <p className={`text-sm font-medium truncate mt-0.5 ${dropoff ? "text-foreground" : "text-muted-foreground"}`}>
-                      {dropoff ? dropoff.name : "Select destination area"}
-                    </p>
-                    {dropoff?.address && dropoff.address !== dropoff.name && (
-                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">{dropoff.address}</p>
-                    )}
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${selecting === "dropoff" ? "rotate-180" : ""}`} />
-                </button>
-              </div>
-            </div>
-
-            {/* Location search dropdown */}
-            <AnimatePresence>
-              {selecting && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-2 overflow-hidden"
-                >
-                  <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Search places or areas..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      autoFocus
-                      className="w-full pl-10 pr-10 py-3 rounded-2xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-shadow"
-                    />
-                    {osmSearching && (
-                      <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                {/* Pickup input */}
+                <div className="relative">
+                  <div className={`flex items-center rounded-2xl px-4 py-3 transition-all ${
+                    activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
+                  }`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Pickup</p>
+                      <input
+                        ref={pickupRef}
+                        type="text"
+                        placeholder="Search pickup location..."
+                        value={pickupQuery}
+                        onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
+                        onFocus={() => setActiveField("pickup")}
+                        className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                      />
+                      {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
+                      )}
+                    </div>
+                    {pickup && (
+                      <button onClick={() => clearField("pickup")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
+                        <X className="w-3 h-3 text-muted-foreground" />
+                      </button>
                     )}
                   </div>
 
-                  <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1 px-1">
-                    {/* OSM Results */}
-                    {osmResults.length > 0 && (
-                      <>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-3 pt-2 pb-1">Places</p>
+                  {/* Pickup search results */}
+                  <AnimatePresence>
+                    {activeField === "pickup" && (osmResults.length > 0 || osmSearching) && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-2xl shadow-lg z-20 max-h-48 overflow-y-auto"
+                      >
+                        {osmSearching && (
+                          <div className="flex items-center gap-2 px-4 py-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Searching...</span>
+                          </div>
+                        )}
                         {osmResults.map((r) => (
                           <button
                             key={r.place_id}
                             onClick={() => handleOsmSelect(r)}
-                            className="flex items-center gap-3 w-full px-3 py-3 rounded-2xl hover:bg-surface active:bg-muted active:scale-[0.98] transition-all"
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
                           >
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                              <Navigation className="w-4.5 h-4.5 text-primary" />
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Navigation className="w-4 h-4 text-primary" />
                             </div>
                             <div className="text-left min-w-0">
-                              <p className="text-sm font-semibold text-foreground truncate">
-                                {r.name || r.display_name.split(",")[0]}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                {r.display_name.split(",").slice(0, 3).join(",")}
-                              </p>
+                              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
                             </div>
                           </button>
                         ))}
-                      </>
+                      </motion.div>
                     )}
+                  </AnimatePresence>
+                </div>
 
-                    {/* Service areas hidden - using exact location search */}
-
-                    {filteredList.length === 0 && osmResults.length === 0 && !osmSearching && (
-                      <p className="text-sm text-muted-foreground px-3 py-4 text-center">No places found</p>
+                {/* Dropoff input */}
+                <div className="relative">
+                  <div className={`flex items-center rounded-2xl px-4 py-3 transition-all ${
+                    activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
+                  }`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Destination</p>
+                      <input
+                        ref={dropoffRef}
+                        type="text"
+                        placeholder="Search destination..."
+                        value={dropoffQuery}
+                        onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
+                        onFocus={() => setActiveField("dropoff")}
+                        className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                      />
+                      {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{dropoff.address}</p>
+                      )}
+                    </div>
+                    {dropoff && (
+                      <button onClick={() => clearField("dropoff")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
+                        <X className="w-3 h-3 text-muted-foreground" />
+                      </button>
                     )}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+                  {/* Dropoff search results */}
+                  <AnimatePresence>
+                    {activeField === "dropoff" && (osmResults.length > 0 || osmSearching) && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-2xl shadow-lg z-20 max-h-48 overflow-y-auto"
+                      >
+                        {osmSearching && (
+                          <div className="flex items-center gap-2 px-4 py-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Searching...</span>
+                          </div>
+                        )}
+                        {osmResults.map((r) => (
+                          <button
+                            key={r.place_id}
+                            onClick={() => handleOsmSelect(r)}
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Navigation className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
 
             {/* Passenger & Luggage counters */}
-            {!selecting && (
+            {!activeField && (
               <div className="flex gap-2">
                 <div className="flex-1 bg-surface rounded-2xl p-3 flex flex-col items-center gap-2">
                   <div className="flex items-center gap-2 w-full">
