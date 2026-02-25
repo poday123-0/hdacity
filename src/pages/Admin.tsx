@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "@/hooks/use-theme";
 import { Menu, X } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -31,6 +32,8 @@ import {
   UserCheck,
   Receipt,
   ShieldCheck,
+  Moon,
+  Sun,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
@@ -57,6 +60,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     // Check if admin is already logged in via localStorage
@@ -170,7 +174,16 @@ const Admin = () => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-2">
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-surface hover:text-foreground transition-all"
+          >
+            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {theme === "dark" ? "Light Mode" : "Dark Mode"}
+          </button>
+
           <div className="flex items-center gap-3 px-4 py-2">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
               {adminProfile?.first_name?.[0]}{adminProfile?.last_name?.[0]}

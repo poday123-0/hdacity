@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
 import RideHistory from "@/components/RideHistory";
+import ThemeToggle from "@/components/ThemeToggle";
+import { useTheme } from "@/hooks/use-theme";
 
 interface TopBarProps {
   onDriverMode?: () => void;
@@ -13,6 +15,7 @@ interface TopBarProps {
 }
 
 const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
+  useTheme(); // Initialize theme on mount
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -100,6 +103,9 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
                     </div>
                   ))}
                 </div>
+
+                {/* Theme toggle */}
+                <ThemeToggle variant="row" />
 
                 {/* Ride History button */}
                 <button

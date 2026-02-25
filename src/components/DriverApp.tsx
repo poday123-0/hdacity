@@ -5,6 +5,8 @@ import DriverMap from "@/components/DriverMap";
 import DriverEarnings from "@/components/DriverEarnings";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import ThemeToggle from "@/components/ThemeToggle";
+import { useTheme } from "@/hooks/use-theme";
 import {
   MapPin,
   Navigation,
@@ -76,6 +78,7 @@ interface DriverAppProps {
 }
 
 const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
+  useTheme(); // Initialize theme
   const [screen, setScreen] = useState<DriverScreen>("offline");
   const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
   const [showDriverChat, setShowDriverChat] = useState(false);
@@ -634,15 +637,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         })()}
       />
 
-      {/* GPS Toggle */}
-      <button
-        onClick={() => setGpsEnabled(!gpsEnabled)}
-        className={`absolute top-20 right-4 z-[460] w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-90 transition-all duration-300 ${
-          gpsEnabled ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
-        }`}
-      >
-        {gpsEnabled ? <Locate className="w-4 h-4" /> : <LocateOff className="w-4 h-4" />}
-      </button>
+      {/* GPS Toggle & Theme Toggle */}
+      <div className="absolute top-20 right-4 z-[460] flex flex-col gap-2">
+        <button
+          onClick={() => setGpsEnabled(!gpsEnabled)}
+          className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-90 transition-all duration-300 ${
+            gpsEnabled ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+          }`}
+        >
+          {gpsEnabled ? <Locate className="w-4 h-4" /> : <LocateOff className="w-4 h-4" />}
+        </button>
+        <ThemeToggle />
+      </div>
 
       {/* Offline */}
       {screen === "offline" && (
