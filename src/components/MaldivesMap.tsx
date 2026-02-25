@@ -18,14 +18,29 @@ interface VehicleMarkerData {
   name: string;
   imageUrl?: string;
   icon?: string;
+  isOnTrip?: boolean;
+  driverId?: string;
+}
+
+interface TripRouteData {
+  id: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffLat: number;
+  dropoffLng: number;
+  pickupAddress: string;
+  dropoffAddress: string;
+  driverName?: string;
+  status: string;
 }
 
 interface MaldivesMapProps {
   rideData?: RideMapData;
   vehicleMarkers?: VehicleMarkerData[];
+  tripRoutes?: TripRouteData[];
 }
 
-const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
+const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes }: MaldivesMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
@@ -33,6 +48,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
   const driverMarkerRef = useRef<any>(null);
   const vehicleMarkersRef = useRef<any[]>([]);
   const directionsRendererRef = useRef<any>(null);
+  const tripRenderersRef = useRef<any[]>([]);
+  const tripMarkersRef = useRef<any[]>([]);
   const watchIdRef = useRef<number | null>(null);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const { isLoaded, error } = useGoogleMaps();
@@ -206,6 +223,67 @@ const MaldivesMap = ({ rideData, vehicleMarkers }: MaldivesMapProps) => {
       });
     }
   }, [vehicleMarkers, rideData?.showRoute]);
+
+  // Trip routes rendering
+  useEffect(() => {
+    const map = mapInstance.current;
+    const g = (window as any).google;
+    if (!map || !g?.maps) return;
+
+    // Clear previous trip renderers and markers
+    tripRenderersRef.current.forEach((r: any) => r.setMap(null));
+    tripRenderersRef.current = [];
+    tripMarkersRef.current.forEach((m: any) => m.setMap(null));
+    tripMarkersRef.current = [];
+
+    if (!tripRoutes || tripRoutes.length === 0) return;
+
+    const ds = new g.maps.DirectionsService();
+
+    tripRoutes.forEach((trip) => {
+      // Pickup marker
+      const pickupM = new g.maps.Marker({
+        map, position: { lat: trip.pickupLat, lng: trip.pickupLng }, zIndex: 800,
+        label: { text: "P", color: "white", fontWeight: "700", fontSize: "10px" },
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
+      });
+      tripMarkersRef.current.push(pickupM);
+
+      // Dropoff marker
+      const dropoffM = new g.maps.Marker({
+        map, position: { lat: trip.dropoffLat, lng: trip.dropoffLng }, zIndex: 800,
+        label: { text: "D", color: "white", fontWeight: "700", fontSize: "10px" },
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
+      });
+      tripMarkersRef.current.push(dropoffM);
+
+      // Route
+      const dr = new g.maps.DirectionsRenderer({
+        map, suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: trip.status === "in_progress" ? "#4285F4" : "#f59e0b",
+          strokeWeight: 4,
+          strokeOpacity: 0.7,
+        },
+      });
+      tripRenderersRef.current.push(dr);
+
+      ds.route({
+        origin: { lat: trip.pickupLat, lng: trip.pickupLng },
+        destination: { lat: trip.dropoffLat, lng: trip.dropoffLng },
+        travelMode: g.maps.TravelMode.DRIVING,
+      }).then((result: any) => dr.setDirections(result))
+        .catch(() => {});
+
+      // Info window on pickup
+      if (trip.driverName) {
+        const infoWindow = new g.maps.InfoWindow({
+          content: `<div style="font-size:11px;font-weight:600;padding:2px">${trip.driverName}<br/><span style="font-size:10px;color:#666">${trip.status === "in_progress" ? "In Progress" : "Accepted"}</span></div>`,
+        });
+        pickupM.addListener("click", () => infoWindow.open(map, pickupM));
+      }
+    });
+  }, [tripRoutes]);
 
   if (error) {
     return <div className="w-full h-full bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
