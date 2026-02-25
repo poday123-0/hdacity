@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminDrivers from "@/components/admin/AdminDrivers";
-import AdminVehicles from "@/components/admin/AdminVehicles";
+// Vehicles are now managed within AdminDrivers
 import AdminVehicleTypes from "@/components/admin/AdminVehicleTypes";
 import AdminFares from "@/components/admin/AdminFares";
 import AdminSettings from "@/components/admin/AdminSettings";
@@ -29,14 +29,13 @@ import {
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "fares" | "locations" | "trips" | "banks" | "companies" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "locations" | "trips" | "banks" | "companies" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "passengers", label: "Passengers", icon: UserCheck },
   { id: "drivers", label: "Drivers", icon: Users },
   { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
-  { id: "vehicles", label: "Vehicles", icon: Car },
   { id: "fares", label: "Fares", icon: DollarSign },
   { id: "banks", label: "Banks", icon: Building2 },
   { id: "companies", label: "Companies", icon: Building },
@@ -176,7 +175,6 @@ const Admin = () => {
           {activeTab === "passengers" && <AdminPassengers />}
           {activeTab === "drivers" && <AdminDrivers />}
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
-          {activeTab === "vehicles" && <AdminVehicles />}
           {activeTab === "fares" && <AdminFares />}
           {activeTab === "banks" && <AdminBanks />}
           {activeTab === "companies" && <AdminCompanies />}

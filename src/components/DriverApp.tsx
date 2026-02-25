@@ -87,6 +87,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
@@ -124,13 +125,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Fetch driver's vehicle to get vehicle_type_id
     const startTracking = async () => {
-      const { data: vehicle } = await supabase
-        .from("vehicles")
-        .select("id, vehicle_type_id")
-        .eq("driver_id", userProfile.id)
-        .eq("is_active", true)
-        .limit(1)
-        .single();
+      // Use selected vehicle or first active vehicle
+      let vehicle: any = null;
+      if (selectedVehicleId) {
+        const { data } = await supabase.from("vehicles").select("id, vehicle_type_id").eq("id", selectedVehicleId).single();
+        vehicle = data;
+      }
+      if (!vehicle) {
+        const { data } = await supabase.from("vehicles").select("id, vehicle_type_id").eq("driver_id", userProfile.id).eq("is_active", true).limit(1).single();
+        vehicle = data;
+      }
 
       const vehicleId = vehicle?.id || null;
       const vehicleTypeId = vehicle?.vehicle_type_id || null;
@@ -191,7 +195,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationIntervalRef.current = null;
       }
     };
-  }, [screen, userProfile?.id]);
+  }, [screen, userProfile?.id, selectedVehicleId]);
 
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -332,8 +336,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Fetch all driver vehicles
         const { data: allVehicles } = await supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at");
         setDriverVehicles(allVehicles || []);
-        const activeVehicle = allVehicles?.find(v => v.is_active) || allVehicles?.[0];
-        if (activeVehicle) setVehicleInfo({ make: activeVehicle.make || "", model: activeVehicle.model || "", plate_number: activeVehicle.plate_number, color: activeVehicle.color || "" });
+        const activeVehicle = allVehicles?.[0];
+        if (activeVehicle) {
+          if (!selectedVehicleId) setSelectedVehicleId(activeVehicle.id);
+          const sel = allVehicles?.find(v => v.id === selectedVehicleId) || activeVehicle;
+          setVehicleInfo({ make: sel.make || "", model: sel.model || "", plate_number: sel.plate_number, color: sel.color || "" });
+        }
         else issues.push("No vehicle assigned");
         setVerificationIssues([...issues]);
 
@@ -486,9 +494,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     await supabase.from("vehicles").update({ is_active: false }).eq("id", id);
     const remaining = driverVehicles.filter(v => v.id !== id);
     setDriverVehicles(remaining);
-    if (remaining.length > 0) setVehicleInfo({ make: remaining[0].make, model: remaining[0].model, plate_number: remaining[0].plate_number, color: remaining[0].color });
-    else setVehicleInfo(null);
+    if (selectedVehicleId === id) {
+      const next = remaining.length > 0 ? remaining[0] : null;
+      setSelectedVehicleId(next?.id || null);
+      setVehicleInfo(next ? { make: next.make, model: next.model, plate_number: next.plate_number, color: next.color } : null);
+    } else if (remaining.length > 0) {
+      const active = remaining.find(v => v.id === selectedVehicleId) || remaining[0];
+      setVehicleInfo({ make: active.make, model: active.model, plate_number: active.plate_number, color: active.color });
+    } else {
+      setVehicleInfo(null);
+    }
     toast({ title: "Vehicle removed" });
+  };
+
+  const selectVehicle = (v: any) => {
+    setSelectedVehicleId(v.id);
+    setVehicleInfo({ make: v.make || "", model: v.model || "", plate_number: v.plate_number, color: v.color || "" });
+    toast({ title: "Vehicle selected", description: `${v.make} ${v.model} — ${v.plate_number}. Trip requests will match this vehicle type.` });
   };
 
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
@@ -658,15 +680,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     ))}
                   </div>
 
-                  {/* Vehicle info */}
+                  {/* Vehicle info with switcher */}
                   {vehicleInfo && (
-                    <div className="bg-surface rounded-xl p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Navigation className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
-                        <p className="text-xs text-muted-foreground">{vehicleInfo.plate_number} {vehicleInfo.color ? `• ${vehicleInfo.color}` : ""}</p>
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Car className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
+                          <p className="text-xs text-muted-foreground">{vehicleInfo.plate_number} {vehicleInfo.color ? `• ${vehicleInfo.color}` : ""}</p>
+                        </div>
+                        {driverVehicles.length > 1 && (
+                          <button onClick={() => { setShowProfile(true); setProfileTab("vehicles"); }} className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                            Switch
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1048,7 +1077,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {driverVehicles.map((v) => {
                       const vType = vehicleTypes.find(vt => vt.id === v.vehicle_type_id);
                       return (
-                        <div key={v.id} className="bg-surface rounded-xl p-3 space-y-2">
+                        <div key={v.id} className={`bg-surface rounded-xl p-3 space-y-2 ${selectedVehicleId === v.id ? "ring-2 ring-primary" : ""}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {vType?.image_url ? (
@@ -1061,14 +1090,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 <p className="text-xs text-muted-foreground">{vType?.name || "Unknown type"}</p>
                               </div>
                             </div>
-                            <button onClick={() => deleteVehicle(v.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              {selectedVehicleId === v.id && (
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Selected</span>
+                              )}
+                              <button onClick={() => deleteVehicle(v.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                           <div className="flex gap-2 text-xs text-muted-foreground">
                             <span className="bg-card px-2 py-1 rounded-lg font-medium text-foreground">{v.plate_number}</span>
                             {v.color && <span className="bg-card px-2 py-1 rounded-lg">{v.color}</span>}
                           </div>
+                          {selectedVehicleId !== v.id && (
+                            <button onClick={() => selectVehicle(v)} className="w-full py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold active:scale-95 transition-transform">
+                              Use this vehicle
+                            </button>
+                          )}
                         </div>
                       );
                     })}

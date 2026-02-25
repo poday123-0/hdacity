@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2 } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car } from "lucide-react";
+
+const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "" };
 
 const AdminDrivers = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [driverVehicles, setDriverVehicles] = useState<Record<string, any[]>>({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -20,10 +24,14 @@ const AdminDrivers = () => {
   const [showImport, setShowImport] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState<any>(null);
+  const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
+  const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [showVehicleForm, setShowVehicleForm] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [driversRes, banksRes, companiesRes] = await Promise.all([
+    const [driversRes, banksRes, companiesRes, vtRes, vehiclesRes] = await Promise.all([
       (() => {
         let q = supabase.from("profiles").select("*").ilike("user_type", "%Driver%").order("created_at", { ascending: false });
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
@@ -31,10 +39,23 @@ const AdminDrivers = () => {
       })(),
       supabase.from("banks").select("*").eq("is_active", true).order("name"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
+      supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("vehicles").select("*, vehicle_types(name)").order("created_at", { ascending: false }),
     ]);
     setDrivers(driversRes.data || []);
     setBanks(banksRes.data || []);
     setCompanies(companiesRes.data || []);
+    setVehicleTypes(vtRes.data || []);
+
+    // Group vehicles by driver_id
+    const vMap: Record<string, any[]> = {};
+    (vehiclesRes.data || []).forEach((v: any) => {
+      if (v.driver_id) {
+        if (!vMap[v.driver_id]) vMap[v.driver_id] = [];
+        vMap[v.driver_id].push(v);
+      }
+    });
+    setDriverVehicles(vMap);
     setLoading(false);
   };
 
@@ -42,8 +63,6 @@ const AdminDrivers = () => {
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
-    
-    // If activating, check that all 4 docs are uploaded
     if (newStatus === "Active") {
       const driver = drivers.find(d => d.id === id);
       const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
@@ -52,7 +71,6 @@ const AdminDrivers = () => {
         return;
       }
     }
-
     await supabase.from("profiles").update({ status: newStatus }).eq("id", id);
     toast({ title: `Driver ${newStatus === "Active" ? "approved ✅" : "deactivated"}` });
     fetchAll();
@@ -116,8 +134,57 @@ const AdminDrivers = () => {
     }
   };
 
-  const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
-  const selectCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
+  // Vehicle CRUD
+  const openVehicleForm = (driverId: string, v?: any) => {
+    setExpandedDriver(driverId);
+    setShowVehicleForm(true);
+    if (v) {
+      setEditingVehicleId(v.id);
+      setVehicleForm({
+        plate_number: v.plate_number || "", make: v.make || "", model: v.model || "",
+        color: v.color || "", year: v.year?.toString() || "", vehicle_type_id: v.vehicle_type_id || "",
+      });
+    } else {
+      setEditingVehicleId(null);
+      setVehicleForm(emptyVehicleForm);
+    }
+  };
+
+  const saveVehicle = async () => {
+    if (!expandedDriver || !vehicleForm.plate_number) return;
+    const payload = {
+      plate_number: vehicleForm.plate_number,
+      make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
+      year: vehicleForm.year ? parseInt(vehicleForm.year) : null,
+      vehicle_type_id: vehicleForm.vehicle_type_id || null,
+      driver_id: expandedDriver,
+    };
+    const { error } = editingVehicleId
+      ? await supabase.from("vehicles").update(payload).eq("id", editingVehicleId)
+      : await supabase.from("vehicles").insert(payload);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: editingVehicleId ? "Vehicle updated" : "Vehicle added" });
+      setShowVehicleForm(false);
+      setEditingVehicleId(null);
+      setVehicleForm(emptyVehicleForm);
+      fetchAll();
+    }
+  };
+
+  const deleteVehicle = async (id: string) => {
+    if (!confirm("Delete this vehicle?")) return;
+    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else { toast({ title: "Vehicle deleted" }); fetchAll(); }
+  };
+
+  const toggleVehicleActive = async (id: string, current: boolean) => {
+    await supabase.from("vehicles").update({ is_active: !current }).eq("id", id);
+    toast({ title: current ? "Vehicle deactivated" : "Vehicle activated" });
+    fetchAll();
+  };
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,9 +193,7 @@ const AdminDrivers = () => {
     setCsvResult(null);
     try {
       const text = await file.text();
-      const { data, error } = await supabase.functions.invoke("import-drivers-csv", {
-        body: { csv: text },
-      });
+      const { data, error } = await supabase.functions.invoke("import-drivers-csv", { body: { csv: text } });
       if (error) {
         toast({ title: "Import failed", description: error.message, variant: "destructive" });
         setCsvResult({ error: error.message });
@@ -144,6 +209,9 @@ const AdminDrivers = () => {
     setCsvImporting(false);
     e.target.value = "";
   };
+
+  const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
+  const selectCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
   const DocUpload = ({ field, label }: { field: string; label: string }) => (
     <div>
@@ -176,7 +244,7 @@ const AdminDrivers = () => {
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Drivers</h2>
+        <h2 className="text-2xl font-bold text-foreground">Drivers & Vehicles</h2>
         <div className="flex items-center gap-3">
           <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
             <FileUp className="w-4 h-4" />Import CSV
@@ -196,7 +264,6 @@ const AdminDrivers = () => {
             <button onClick={() => { setShowImport(false); setCsvResult(null); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
           <p className="text-sm text-muted-foreground">Upload a CSV file with driver and vehicle data. Existing drivers (by phone number) will be skipped. Vehicles are linked automatically.</p>
-          
           <div className="flex items-center gap-3">
             <a href="/sample-drivers-import.csv" download className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors">
               <Download className="w-4 h-4" />Download Sample CSV
@@ -207,14 +274,10 @@ const AdminDrivers = () => {
               <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
             </label>
           </div>
-
-          {/* Expected columns */}
           <div className="bg-surface rounded-lg p-3">
             <p className="text-xs font-semibold text-muted-foreground mb-1">Expected CSV columns:</p>
             <p className="text-xs text-muted-foreground font-mono">first_name, last_name, phone_number, email, gender, country_code, status, company, monthly_fee, plate_number, vehicle_type, make, model, color, year</p>
           </div>
-
-          {/* Results */}
           {csvResult && !csvResult.error && (
             <div className="bg-surface rounded-lg p-4 space-y-1">
               <p className="text-sm font-semibold text-foreground">✅ Import Complete</p>
@@ -243,74 +306,40 @@ const AdminDrivers = () => {
         </div>
       )}
 
+      {/* Edit Driver Form */}
       {editingId && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Edit Driver</h3>
             <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
-
-          {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">First Name</label>
-              <input value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} className={inputCls} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Last Name</label>
-              <input value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} className={inputCls} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Email</label>
-              <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Phone</label>
-              <input value={editForm.phone_number} onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })} className={inputCls} />
-            </div>
+            <div><label className="text-xs font-medium text-muted-foreground">First Name</label><input value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Last Name</label><input value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Email</label><input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Phone</label><input value={editForm.phone_number} onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })} className={inputCls} /></div>
           </div>
-
-          {/* Company & Fee */}
           <h4 className="text-sm font-semibold text-foreground pt-2">Company & Monthly Fee</h4>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Company / Taxi Center</label>
+            <div><label className="text-xs font-medium text-muted-foreground">Company / Taxi Center</label>
               <select value={editForm.company_id} onChange={(e) => setEditForm({ ...editForm, company_id: e.target.value })} className={selectCls}>
                 <option value="">— Select Company —</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {companies.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Monthly Fee (MVR)</label>
-              <input type="number" value={editForm.monthly_fee} onChange={(e) => setEditForm({ ...editForm, monthly_fee: e.target.value })} className={inputCls} />
-            </div>
+            <div><label className="text-xs font-medium text-muted-foreground">Monthly Fee (MVR)</label><input type="number" value={editForm.monthly_fee} onChange={(e) => setEditForm({ ...editForm, monthly_fee: e.target.value })} className={inputCls} /></div>
           </div>
-
-          {/* Bank Account */}
           <h4 className="text-sm font-semibold text-foreground pt-2">Bank Account</h4>
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Bank</label>
+            <div><label className="text-xs font-medium text-muted-foreground">Bank</label>
               <select value={editForm.bank_id} onChange={(e) => setEditForm({ ...editForm, bank_id: e.target.value })} className={selectCls}>
                 <option value="">— Select Bank —</option>
-                {banks.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
+                {banks.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Account Number</label>
-              <input value={editForm.bank_account_number} onChange={(e) => setEditForm({ ...editForm, bank_account_number: e.target.value })} placeholder="7730000000000" className={inputCls} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Account Name</label>
-              <input value={editForm.bank_account_name} onChange={(e) => setEditForm({ ...editForm, bank_account_name: e.target.value })} placeholder="Full name on account" className={inputCls} />
-            </div>
+            <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><input value={editForm.bank_account_number} onChange={(e) => setEditForm({ ...editForm, bank_account_number: e.target.value })} placeholder="7730000000000" className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Account Name</label><input value={editForm.bank_account_name} onChange={(e) => setEditForm({ ...editForm, bank_account_name: e.target.value })} placeholder="Full name on account" className={inputCls} /></div>
           </div>
-
-          {/* Documents */}
           <h4 className="text-sm font-semibold text-foreground pt-2">Driver Documents</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <DocUpload field="license_front_url" label="License Front" />
@@ -318,13 +347,11 @@ const AdminDrivers = () => {
             <DocUpload field="id_card_front_url" label="ID Card Front" />
             <DocUpload field="id_card_back_url" label="ID Card Back" />
           </div>
-
-          <button onClick={saveEdit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-            Save Changes
-          </button>
+          <button onClick={saveEdit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">Save Changes</button>
         </div>
       )}
 
+      {/* Drivers Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
@@ -332,7 +359,7 @@ const AdminDrivers = () => {
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicles</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Docs</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
@@ -347,50 +374,140 @@ const AdminDrivers = () => {
               drivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
                 const companyName = companies.find((c) => c.id === d.company_id)?.name || d.company_name || "—";
+                const vehicles = driverVehicles[d.id] || [];
+                const isExpanded = expandedDriver === d.id;
                 return (
-                  <tr key={d.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{d.monthly_fee > 0 ? `${d.monthly_fee} MVR` : "—"}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
-                          {docCount}/4
+                  <>
+                    <tr key={d.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setExpandedDriver(isExpanded ? null : d.id)}
+                          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        >
+                          <Car className="w-3.5 h-3.5" />
+                          {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""}
+                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                            {docCount}/4
+                          </span>
+                          {docCount > 0 && <button onClick={() => openEdit(d)} className="text-xs text-primary hover:underline ml-1">View</button>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+                          d.status === "Active" ? "bg-green-100 text-green-700" : 
+                          d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                        }`}>
+                          {d.status === "Active" ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
+                          {d.status}
                         </span>
-                        {docCount > 0 && (
-                          <button onClick={() => openEdit(d)} className="text-xs text-primary hover:underline ml-1">View</button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-                        d.status === "Active" ? "bg-green-100 text-green-700" : 
-                        d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : 
-                        "bg-red-100 text-red-700"
-                      }`}>
-                        {d.status === "Active" ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
-                        {d.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {d.status !== "Active" && docCount === 4 ? (
-                          <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-lg hover:opacity-90">
-                            Approve
-                          </button>
-                        ) : d.status === "Active" ? (
-                          <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-medium text-destructive hover:underline">
-                            Deactivate
-                          </button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Docs incomplete</span>
-                        )}
-                        <button onClick={() => openEdit(d)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => deleteDriver(d.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {d.status !== "Active" && docCount === 4 ? (
+                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-lg hover:opacity-90">Approve</button>
+                          ) : d.status === "Active" ? (
+                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-medium text-destructive hover:underline">Deactivate</button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Docs incomplete</span>
+                          )}
+                          <button onClick={() => openEdit(d)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => deleteDriver(d.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Expanded vehicles row */}
+                    {isExpanded && (
+                      <tr key={`${d.id}-vehicles`} className="border-b border-border bg-surface/50">
+                        <td colSpan={7} className="px-4 py-3">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
+                              <button onClick={() => openVehicleForm(d.id)} className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                                <Plus className="w-3 h-3" /> Add Vehicle
+                              </button>
+                            </div>
+
+                            {/* Vehicle form */}
+                            {showVehicleForm && expandedDriver === d.id && (
+                              <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+                                <p className="text-xs font-semibold text-foreground">{editingVehicleId ? "Edit Vehicle" : "New Vehicle"}</p>
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Plate *</label>
+                                    <input value={vehicleForm.plate_number} onChange={(e) => setVehicleForm({ ...vehicleForm, plate_number: e.target.value })} placeholder="P-1234" className={inputCls} />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Type</label>
+                                    <select value={vehicleForm.vehicle_type_id} onChange={(e) => setVehicleForm({ ...vehicleForm, vehicle_type_id: e.target.value })} className={selectCls}>
+                                      <option value="">Select</option>
+                                      {vehicleTypes.map((vt) => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Make</label>
+                                    <input value={vehicleForm.make} onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })} placeholder="Toyota" className={inputCls} />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Model</label>
+                                    <input value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="Yaris" className={inputCls} />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Color</label>
+                                    <input value={vehicleForm.color} onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })} placeholder="White" className={inputCls} />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Year</label>
+                                    <input value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="2023" className={inputCls} />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={() => { setShowVehicleForm(false); setEditingVehicleId(null); }} className="px-4 py-2 bg-surface text-foreground rounded-lg text-xs font-semibold">Cancel</button>
+                                  <button onClick={saveVehicle} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold">{editingVehicleId ? "Update" : "Add"}</button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Vehicle list */}
+                            {vehicles.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2">No vehicles assigned to this driver</p>
+                            ) : (
+                              <div className="grid gap-2">
+                                {vehicles.map((v) => (
+                                  <div key={v.id} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2">
+                                    <div className="flex items-center gap-3">
+                                      <Car className="w-4 h-4 text-primary" />
+                                      <div>
+                                        <p className="text-sm font-medium text-foreground">{v.plate_number} — {v.make} {v.model} {v.color}</p>
+                                        <p className="text-xs text-muted-foreground">{v.vehicle_types?.name || "No type"} {v.year ? `• ${v.year}` : ""}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                        {v.is_active ? "Active" : "Inactive"}
+                                      </span>
+                                      <button onClick={() => toggleVehicleActive(v.id, v.is_active)} className="text-[10px] text-primary hover:underline">
+                                        {v.is_active ? "Deactivate" : "Activate"}
+                                      </button>
+                                      <button onClick={() => openVehicleForm(d.id, v)} className="text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => deleteVehicle(v.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })
             )}
