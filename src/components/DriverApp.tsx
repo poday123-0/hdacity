@@ -311,7 +311,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (screen !== "online" || !userProfile?.id) return;
     let isActive = true;
 
-    // Primary: Realtime subscription
+    // Primary: Realtime subscription for new trips
     const channel = supabase
       .channel("driver-trip-requests")
       .on("postgres_changes", {
@@ -319,9 +319,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         schema: "public",
         table: "trips",
         filter: "status=eq.requested",
-      }, (payload) => {
-        const trip = payload.new as TripRequest;
+      }, async (payload) => {
+        const trip = payload.new as any;
         if (trip.id !== lastSeenTripRef.current) {
+          // In auto_nearest mode, only show if targeted at this driver
+          if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
+        }
+      })
+      .subscribe();
+
+    // Listen for target_driver_id updates (auto-nearest cycling)
+    const targetChannel = supabase
+      .channel("driver-target-updates")
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "trips",
+        filter: "status=eq.requested",
+      }, async (payload) => {
+        const trip = payload.new as any;
+        if (trip.status !== "requested") return;
+        if (trip.target_driver_id === userProfile.id && trip.id !== lastSeenTripRef.current) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
         }
@@ -339,7 +359,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         .limit(1);
 
       if (data && data.length > 0) {
-        const trip = data[0] as TripRequest;
+        const trip = data[0] as any;
+        // Skip if targeted at another driver
+        if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
         if (trip.id !== lastSeenTripRef.current) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
@@ -351,6 +373,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       isActive = false;
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
+      supabase.removeChannel(targetChannel);
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 

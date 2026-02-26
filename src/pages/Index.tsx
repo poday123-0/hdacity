@@ -395,7 +395,7 @@ const Index = () => {
             <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} />
           )}
           {passengerScreen === "searching" && (
-            <SearchingDriver key="searching" onCancel={() => {
+            <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng} onCancel={() => {
               if (currentTripId) supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
               setCurrentTripId(null);
               setPassengerScreen("home");

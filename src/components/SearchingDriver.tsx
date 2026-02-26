@@ -1,42 +1,169 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Car, MapPin, Phone } from "lucide-react";
+import { Car, MapPin, Phone, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface SearchingDriverProps {
   onCancel: () => void;
   pickupName?: string;
   dropoffName?: string;
+  tripId?: string | null;
+  pickupLat?: number;
+  pickupLng?: number;
 }
 
-const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Destination" }: SearchingDriverProps) => {
+const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng }: SearchingDriverProps) => {
   const [showCallCenter, setShowCallCenter] = useState(false);
   const [callCenterNumber, setCallCenterNumber] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [timeoutSeconds, setTimeoutSeconds] = useState(60);
+  const [dispatchMode, setDispatchMode] = useState<string>("broadcast");
+  const [maxAutoDrivers, setMaxAutoDrivers] = useState(0);
+  const [maxSearchRadius, setMaxSearchRadius] = useState(50);
+  const [currentAttempt, setCurrentAttempt] = useState(0);
+  const [totalDriversAvailable, setTotalDriversAvailable] = useState(0);
+  const [currentDriverName, setCurrentDriverName] = useState("");
+  const driversListRef = useRef<Array<{ driver_id: string; distance: number; name: string }>>([]);
+  const attemptTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Fetch settings
   useEffect(() => {
-    // Fetch call center number and timeout from settings
     const fetchSettings = async () => {
-      const { data } = await supabase.from("system_settings").select("key, value").in("key", ["call_center_number", "driver_accept_timeout_seconds"]);
+      const { data } = await supabase.from("system_settings").select("key, value").in("key", [
+        "call_center_number", "driver_accept_timeout_seconds", "dispatch_mode", "max_auto_drivers", "max_search_radius_km"
+      ]);
       data?.forEach((s: any) => {
         if (s.key === "call_center_number") setCallCenterNumber(typeof s.value === "string" ? s.value : String(s.value || ""));
         if (s.key === "driver_accept_timeout_seconds") setTimeoutSeconds(typeof s.value === "number" ? s.value : parseInt(s.value) || 60);
+        if (s.key === "dispatch_mode") setDispatchMode(typeof s.value === "string" ? s.value : "broadcast");
+        if (s.key === "max_auto_drivers") setMaxAutoDrivers(typeof s.value === "number" ? s.value : parseInt(s.value) || 0);
+        if (s.key === "max_search_radius_km") setMaxSearchRadius(typeof s.value === "number" ? s.value : parseInt(s.value) || 50);
       });
     };
     fetchSettings();
   }, []);
 
+  // Find and sort nearest drivers for auto-nearest mode
+  const findNearestDrivers = useCallback(async () => {
+    if (!pickupLat || !pickupLng) return [];
+    
+    const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const { data: drivers } = await supabase
+      .from("driver_locations")
+      .select("driver_id, lat, lng")
+      .eq("is_online", true)
+      .eq("is_on_trip", false)
+      .gte("updated_at", twoMinAgo);
+
+    if (!drivers || drivers.length === 0) return [];
+
+    // Calculate distance and sort
+    const withDistance = drivers.map(d => {
+      const dlat = d.lat - pickupLat;
+      const dlng = d.lng - pickupLng;
+      const distance = Math.sqrt(dlat * dlat + dlng * dlng) * 111; // rough km
+      return { driver_id: d.driver_id, distance, name: "" };
+    }).filter(d => d.distance <= maxSearchRadius).sort((a, b) => a.distance - b.distance);
+
+    // Limit if max is set
+    const limited = maxAutoDrivers > 0 ? withDistance.slice(0, maxAutoDrivers) : withDistance;
+
+    // Fetch driver names
+    if (limited.length > 0) {
+      const ids = limited.map(d => d.driver_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
+      if (profiles) {
+        profiles.forEach(p => {
+          const d = limited.find(x => x.driver_id === p.id);
+          if (d) d.name = `${p.first_name} ${p.last_name}`;
+        });
+      }
+    }
+
+    return limited;
+  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers]);
+
+  // Initialize auto-nearest dispatch
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedSeconds(prev => {
-        const next = prev + 1;
-        if (next >= timeoutSeconds) setShowCallCenter(true);
-        return next;
-      });
+    if (dispatchMode !== "auto_nearest" || !tripId) return;
+
+    const initDispatch = async () => {
+      const drivers = await findNearestDrivers();
+      driversListRef.current = drivers;
+      setTotalDriversAvailable(drivers.length);
+
+      if (drivers.length === 0) {
+        setShowCallCenter(true);
+        return;
+      }
+
+      // Target first driver
+      setCurrentAttempt(0);
+      setCurrentDriverName(drivers[0]?.name || "Driver");
+      await supabase.from("trips").update({
+        target_driver_id: drivers[0].driver_id,
+        dispatch_attempt: 1,
+      }).eq("id", tripId);
+    };
+
+    initDispatch();
+  }, [dispatchMode, tripId, findNearestDrivers]);
+
+  // Timer for auto-nearest: cycle drivers on timeout
+  useEffect(() => {
+    if (dispatchMode !== "auto_nearest" || !tripId) {
+      // Broadcast mode: simple overall timeout
+      const interval = setInterval(() => {
+        setElapsedSeconds(prev => {
+          const next = prev + 1;
+          if (next >= timeoutSeconds) setShowCallCenter(true);
+          return next;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+
+    // Auto-nearest mode: per-driver timeout
+    let secondsForCurrentDriver = 0;
+
+    attemptTimerRef.current = setInterval(async () => {
+      secondsForCurrentDriver++;
+      setElapsedSeconds(prev => prev + 1);
+
+      if (secondsForCurrentDriver >= timeoutSeconds) {
+        // Time's up for current driver — move to next
+        secondsForCurrentDriver = 0;
+        const drivers = driversListRef.current;
+        const nextAttempt = currentAttempt + 1;
+
+        if (nextAttempt >= drivers.length) {
+          // All drivers tried
+          setShowCallCenter(true);
+          if (attemptTimerRef.current) clearInterval(attemptTimerRef.current);
+          // Clear target so no driver sees it
+          await supabase.from("trips").update({ target_driver_id: null }).eq("id", tripId);
+          return;
+        }
+
+        // Target next driver
+        setCurrentAttempt(nextAttempt);
+        setCurrentDriverName(drivers[nextAttempt]?.name || "Driver");
+        await supabase.from("trips").update({
+          target_driver_id: drivers[nextAttempt].driver_id,
+          dispatch_attempt: nextAttempt + 1,
+        }).eq("id", tripId);
+
+        toast({ title: "Trying next driver...", description: `Attempt ${nextAttempt + 1} of ${drivers.length}` });
+      }
     }, 1000);
-    return () => clearInterval(interval);
-  }, [timeoutSeconds]);
+
+    return () => {
+      if (attemptTimerRef.current) clearInterval(attemptTimerRef.current);
+    };
+  }, [dispatchMode, tripId, timeoutSeconds, currentAttempt]);
+
+  const isAutoNearest = dispatchMode === "auto_nearest";
 
   return (
     <motion.div
@@ -80,8 +207,31 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
             {showCallCenter ? "No drivers available" : "Finding your driver..."}
           </motion.h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {showCallCenter ? "Try calling our support center" : "Waiting for a driver to accept"}
+            {showCallCenter
+              ? "Try calling our support center"
+              : isAutoNearest
+                ? `Requesting driver ${currentAttempt + 1}${totalDriversAvailable > 0 ? ` of ${totalDriversAvailable}` : ""}...`
+                : "Waiting for a driver to accept"
+            }
           </p>
+
+          {/* Countdown timer */}
+          {!showCallCenter && (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="w-32 h-1.5 bg-surface rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  style={{
+                    width: `${Math.max(0, 100 - ((elapsedSeconds % timeoutSeconds) / timeoutSeconds) * 100)}%`,
+                  }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">
+                {Math.max(0, timeoutSeconds - (elapsedSeconds % timeoutSeconds))}s
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Call center option */}
