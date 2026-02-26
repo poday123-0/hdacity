@@ -8,6 +8,7 @@ import {
   Loader2, Navigation, Send, ArrowRight, Shield, Trash2, ChevronDown, Moon, Sun, MessageSquare, PackageX
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
+import SOSAlertPanel from "@/components/SOSAlertPanel";
 
 interface NominatimResult {
   place_id: number;
@@ -403,6 +404,9 @@ const Dispatch = () => {
       </header>
 
       <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-6">
+        {/* SOS Alerts */}
+        <SOSAlertPanel />
+
         <h2 className="text-2xl font-bold text-foreground">Create Trip Request</h2>
 
         {/* Customer info */}

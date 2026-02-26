@@ -603,6 +603,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sos_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          trip_id: string | null
+          user_id: string
+          user_name: string
+          user_phone: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          trip_id?: string | null
+          user_id: string
+          user_name?: string
+          user_phone?: string
+          user_type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          trip_id?: string | null
+          user_id?: string
+          user_name?: string
+          user_phone?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           description: string | null

@@ -12,6 +12,7 @@ import DriverMatching from "@/components/DriverMatching";
 import RideFeedback from "@/components/RideFeedback";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import SOSButton from "@/components/SOSButton";
 
 type AppPhase = "splash" | "auth" | "passenger";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
@@ -338,6 +339,19 @@ const Index = () => {
       </div>
 
       <TopBar onLogout={handleLogout} userName={userProfile?.first_name} userProfile={userProfile} />
+
+      {/* Passenger SOS - visible during active trip */}
+      {userProfile?.id && (tripStatus === "in_progress" || tripStatus === "accepted" || tripStatus === "arrived") && currentTripId && (
+        <div className="absolute top-20 right-4 z-[600]">
+          <SOSButton
+            userId={userProfile.id}
+            userType="passenger"
+            userName={`${userProfile.first_name} ${userProfile.last_name}`}
+            userPhone={userProfile.phone_number || ""}
+            tripId={currentTripId}
+          />
+        </div>
+      )}
 
       <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto">
         <AnimatePresence mode="wait">
