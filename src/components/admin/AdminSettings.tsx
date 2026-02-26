@@ -15,11 +15,13 @@ interface SoundFile {
 
 const soundCategories = [
   { key: "trip_request", label: "Driver: Trip Request" },
+  { key: "driver_message_received", label: "Driver: Message Received" },
   { key: "passenger_accepted", label: "Passenger: Driver Accepted" },
   { key: "passenger_arrived", label: "Passenger: Driver Arrived" },
   { key: "passenger_started", label: "Passenger: Trip Started" },
   { key: "passenger_completed", label: "Passenger: Trip Completed" },
   { key: "passenger_cancelled", label: "Passenger: Trip Cancelled" },
+  { key: "passenger_message_received", label: "Passenger: Message Received" },
 ];
 
 const adminBankFields = [
@@ -127,7 +129,9 @@ const AdminSettings = () => {
       passenger_started: "passenger_sound_started",
       passenger_completed: "passenger_sound_completed",
       passenger_cancelled: "passenger_sound_cancelled",
+      passenger_message_received: "passenger_sound_message",
       trip_request: "trip_request_sound_url",
+      driver_message_received: "driver_sound_message",
     };
     const settingsKey = settingsKeyMap[sound.category];
     if (settingsKey) {

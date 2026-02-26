@@ -42,6 +42,13 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
 
     if (readOnly) return;
 
+    // Fetch message sound URL
+    const soundKey = senderType === "passenger" ? "passenger_sound_message" : "driver_sound_message";
+    let messageSoundUrl: string | null = null;
+    supabase.from("system_settings").select("value").eq("key", soundKey).single().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") messageSoundUrl = data.value;
+    });
+
     const channel = supabase
       .channel(`trip-chat-${tripId}`)
       .on("postgres_changes", {
@@ -55,6 +62,11 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
           if (prev.some(m => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
+        // Play sound if message is from the other party
+        if (msg.sender_type !== senderType && messageSoundUrl) {
+          const audio = new Audio(messageSoundUrl);
+          audio.play().catch(() => {});
+        }
       })
       .subscribe();
 
