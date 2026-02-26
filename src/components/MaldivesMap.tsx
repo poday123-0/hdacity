@@ -38,9 +38,10 @@ interface MaldivesMapProps {
   rideData?: RideMapData;
   vehicleMarkers?: VehicleMarkerData[];
   tripRoutes?: TripRouteData[];
+  onMapClick?: (lat: number, lng: number) => void;
 }
 
-const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes }: MaldivesMapProps) => {
+const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: MaldivesMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
@@ -102,6 +103,14 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes }: MaldivesMapProps)
     });
     userMarkerRef.current = userMarker;
     mapInstance.current = map;
+
+    map.addListener("click", (e: any) => {
+      const lat = e.latLng?.lat();
+      const lng = e.latLng?.lng();
+      if (lat != null && lng != null) {
+        window.dispatchEvent(new CustomEvent("map-tap", { detail: { lat, lng } }));
+      }
+    });
 
     return () => { mapInstance.current = null; };
   }, [isLoaded]);
