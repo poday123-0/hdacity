@@ -161,15 +161,28 @@ const SOSAlertPanel = () => {
                   </div>
 
                   {alert.lat && alert.lng && (
-                    <a
-                      href={`https://www.google.com/maps?q=${alert.lat},${alert.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      View Live Location on Map
-                    </a>
+                    <div className="space-y-2">
+                      <div className="rounded-lg overflow-hidden border border-destructive/20 h-40">
+                        <iframe
+                          src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyCxO9qqVIyDU5C-ZKfS3Cwa3LaKaHSwNS0&q=${alert.lat},${alert.lng}&zoom=16&maptype=roadmap`}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+                      <a
+                        href={`https://www.google.com/maps?q=${alert.lat},${alert.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        Open in Google Maps
+                      </a>
+                    </div>
                   )}
 
                   {/* Quick SMS option */}
