@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import { MapPin, Loader2, X, Check, Crosshair } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MapPin, Loader2, X, Check, Crosshair, Navigation } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { reverseGeocodeLocation } from "@/lib/geocode";
+
+interface NearbyPlace {
+  name: string;
+  vicinity: string;
+  lat: number;
+  lng: number;
+}
 
 interface MapPickerProps {
   onConfirm: (lat: number, lng: number, name: string, address: string) => void;
@@ -31,7 +38,9 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
   const [placeName, setPlaceName] = useState("");
   const [loading, setLoading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const nearbyRef = useRef<ReturnType<typeof setTimeout>>();
   const { isLoaded } = useGoogleMaps();
 
   // Get user location on mount
@@ -101,6 +110,44 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [center.lat, center.lng]);
+
+  // Fetch nearby places
+  useEffect(() => {
+    if (nearbyRef.current) clearTimeout(nearbyRef.current);
+    nearbyRef.current = setTimeout(() => {
+      const g = (window as any).google;
+      if (!g?.maps?.places?.PlacesService) {
+        setNearbyPlaces([]);
+        return;
+      }
+      const mapDiv = document.createElement("div");
+      const service = new g.maps.places.PlacesService(mapDiv);
+      service.nearbySearch(
+        { location: new g.maps.LatLng(center.lat, center.lng), radius: 80 },
+        (results: any[], status: string) => {
+          if (status !== "OK" || !results?.length) {
+            setNearbyPlaces([]);
+            return;
+          }
+          // Filter out the main place (already shown), take up to 3
+          const places: NearbyPlace[] = [];
+          for (const r of results) {
+            if (!r.name || !r.geometry?.location) continue;
+            if (r.name === placeName) continue;
+            places.push({
+              name: r.name,
+              vicinity: r.vicinity || "",
+              lat: r.geometry.location.lat(),
+              lng: r.geometry.location.lng(),
+            });
+            if (places.length >= 3) break;
+          }
+          setNearbyPlaces(places);
+        }
+      );
+    }, 500);
+    return () => { if (nearbyRef.current) clearTimeout(nearbyRef.current); };
+  }, [center.lat, center.lng, placeName]);
 
   const handleRecenter = () => {
     if (!navigator.geolocation || !mapInstance.current) return;
@@ -197,6 +244,27 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
             )}
           </div>
         </div>
+
+        {/* Nearby places */}
+        {!loading && nearbyPlaces.length > 0 && (
+          <div className="mb-3 space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">Nearby places</p>
+            {nearbyPlaces.map((place, i) => (
+              <button
+                key={i}
+                onClick={() => onConfirm(place.lat, place.lng, place.name, place.vicinity)}
+                className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl bg-surface border border-border hover:border-primary/30 hover:bg-primary/5 active:scale-[0.98] transition-all"
+              >
+                <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
+                <div className="text-left min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-foreground truncate">{place.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{place.vicinity}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         <button
           onClick={() => onConfirm(center.lat, center.lng, placeName, address)}
           disabled={loading}
