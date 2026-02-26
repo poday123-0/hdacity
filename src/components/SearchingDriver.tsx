@@ -27,6 +27,32 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
   const [currentDriverName, setCurrentDriverName] = useState("");
   const driversListRef = useRef<Array<{ driver_id: string; distance: number; name: string }>>([]);
   const attemptTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const noDriverCancelRef = useRef(false);
+
+  const cancelTripNoDriver = useCallback(async () => {
+    if (!tripId || noDriverCancelRef.current) return;
+    noDriverCancelRef.current = true;
+
+    const { error } = await supabase
+      .from("trips")
+      .update({
+        status: "cancelled",
+        cancel_reason: "No driver found",
+        cancelled_at: new Date().toISOString(),
+        target_driver_id: null,
+      })
+      .eq("id", tripId)
+      .eq("status", "requested");
+
+    if (error) {
+      console.error("Failed to cancel timed-out trip:", error);
+      noDriverCancelRef.current = false;
+    }
+  }, [tripId]);
+
+  useEffect(() => {
+    noDriverCancelRef.current = false;
+  }, [tripId]);
 
   // Fetch settings
   useEffect(() => {
@@ -96,6 +122,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
 
       if (drivers.length === 0) {
         setShowCallCenter(true);
+        await cancelTripNoDriver();
         return;
       }
 
@@ -110,7 +137,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
     };
 
     initDispatch();
-  }, [dispatchMode, tripId, findNearestDrivers]);
+  }, [dispatchMode, tripId, findNearestDrivers, cancelTripNoDriver]);
 
   // Timer for auto-nearest: cycle drivers on timeout
   useEffect(() => {
@@ -119,7 +146,10 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
       const interval = setInterval(() => {
         setElapsedSeconds(prev => {
           const next = prev + 1;
-          if (next >= timeoutSeconds) setShowCallCenter(true);
+          if (next >= timeoutSeconds) {
+            setShowCallCenter(true);
+            void cancelTripNoDriver();
+          }
           return next;
         });
       }, 1000);
@@ -143,8 +173,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
           // All drivers tried
           setShowCallCenter(true);
           if (attemptTimerRef.current) clearInterval(attemptTimerRef.current);
-          // Clear target so no driver sees it
-          await supabase.from("trips").update({ target_driver_id: null }).eq("id", tripId);
+          await cancelTripNoDriver();
           return;
         }
 
@@ -164,7 +193,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
     return () => {
       if (attemptTimerRef.current) clearInterval(attemptTimerRef.current);
     };
-  }, [dispatchMode, tripId, timeoutSeconds]);
+  }, [dispatchMode, tripId, timeoutSeconds, cancelTripNoDriver]);
 
   const isAutoNearest = dispatchMode === "auto_nearest";
 

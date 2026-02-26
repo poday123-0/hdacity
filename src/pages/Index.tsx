@@ -201,6 +201,24 @@ const Index = () => {
     }
 
     try {
+      if (userProfile?.id) {
+        const { data: existingRequestedTrip } = await supabase
+          .from("trips")
+          .select("id")
+          .eq("passenger_id", userProfile.id)
+          .eq("status", "requested")
+          .order("requested_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingRequestedTrip?.id) {
+          setCurrentTripId(existingRequestedTrip.id);
+          setPassengerScreen("searching");
+          toast({ title: "Request already active", description: "You already have a pending trip request." });
+          return;
+        }
+      }
+
       const { data, error } = await supabase.from("trips").insert({
         pickup_address: pickup.name,
         dropoff_address: dropoff.name,
@@ -236,7 +254,7 @@ const Index = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id]);
+  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id, intermediateStops]);
 
   // Passenger notification sounds
   const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});
