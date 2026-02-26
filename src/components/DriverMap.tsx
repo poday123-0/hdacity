@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { Navigation, ChevronUp, ChevronDown } from "lucide-react";
+import { Navigation, ChevronUp, ChevronDown, Locate } from "lucide-react";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 
@@ -34,6 +34,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const watchIdRef = useRef<number | null>(null);
   const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
+  const userInteractingRef = useRef(false);
+  const [userPannedAway, setUserPannedAway] = useState(false);
+  const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error } = useGoogleMaps();
 
   const radiusFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,6 +97,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     driverMarkerRef.current = new g.maps.Marker(markerOpts);
     mapInstance.current = map;
 
+    // Detect user interaction — stop auto-panning
+    map.addListener("dragstart", () => {
+      userInteractingRef.current = true;
+      setUserPannedAway(true);
+      if (interactTimeoutRef.current) clearTimeout(interactTimeoutRef.current);
+    });
+
     return () => { mapInstance.current = null; };
   }, [isLoaded]);
 
@@ -121,7 +131,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12),
       });
     }
-    if (!isNavigating) mapInstance.current.panTo(currentPos);
+    if (!isNavigating && !userInteractingRef.current) mapInstance.current.panTo(currentPos);
   }, [currentPos, isNavigating, mapIconUrl]);
 
   // Parse navigation steps from directions result
@@ -328,6 +338,23 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
+      {/* Re-center button — shown when user has panned away */}
+      {userPannedAway && (
+        <button
+          onClick={() => {
+            userInteractingRef.current = false;
+            setUserPannedAway(false);
+            if (currentPos && mapInstance.current) {
+              mapInstance.current.panTo(currentPos);
+              mapInstance.current.setZoom(16);
+            }
+          }}
+          className="absolute bottom-4 right-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90 transition-transform"
+          title="Re-center"
+        >
+          <Locate className="w-5 h-5 text-primary" />
+        </button>
+      )}
       {/* In-app Navigation Overlay */}
       {isNavigating && navSteps.length > 0 && (
         <div className="absolute top-16 left-3 right-3 z-[460]">
