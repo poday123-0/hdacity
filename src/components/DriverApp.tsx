@@ -53,6 +53,10 @@ interface TripRequest {
   id: string;
   pickup_address: string;
   dropoff_address: string;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
   estimated_fare: number | null;
   passenger_count: number;
   luggage_count: number;
@@ -625,10 +629,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       <DriverMap
         isNavigating={screen === "navigating"}
+        tripPhase={driverTripPhase}
         radiusKm={screen === "online" ? tripRadius : undefined}
         gpsEnabled={gpsEnabled}
-        pickupCoords={currentTrip ? [Number(currentTrip.pickup_address ? 4.1745 : 4.1745), Number(currentTrip.pickup_address ? 73.5088 : 73.5088)] : undefined}
-        dropoffCoords={currentTrip ? [Number(currentTrip.dropoff_address ? 4.1912 : 4.1912), Number(currentTrip.dropoff_address ? 73.5291 : 73.5291)] : undefined}
+        pickupCoords={currentTrip ? [currentTrip.pickup_lat ?? 4.1755, currentTrip.pickup_lng ?? 73.5093] : undefined}
+        dropoffCoords={currentTrip ? [currentTrip.dropoff_lat ?? 4.1755, currentTrip.dropoff_lng ?? 73.5093] : undefined}
         pickupLabel={currentTrip?.pickup_address || "Pickup"}
         dropoffLabel={currentTrip?.dropoff_address || "Dropoff"}
         mapIconUrl={(() => {
