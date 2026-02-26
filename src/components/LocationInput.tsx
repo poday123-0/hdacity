@@ -498,6 +498,31 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                 {/* Dropoff input */}
                 {(
                   <div className="relative">
+                    {activeField === "dropoff" && (osmResults.length > 0 || osmSearching) && (
+                      <div className="mb-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
+                        {osmSearching && (
+                          <div className="flex items-center gap-2 px-4 py-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Searching...</span>
+                          </div>
+                        )}
+                        {osmResults.map((r) => (
+                          <button
+                            key={r.place_id}
+                            onClick={() => handleOsmSelect(r)}
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Navigation className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
                       activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
                     }`}>
@@ -522,31 +547,6 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                         </button>
                       )}
                     </div>
-                    {activeField === "dropoff" && (osmResults.length > 0 || osmSearching) && (
-                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
-                        {osmSearching && (
-                          <div className="flex items-center gap-2 px-4 py-3">
-                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">Searching...</span>
-                          </div>
-                        )}
-                        {osmResults.map((r) => (
-                          <button
-                            key={r.place_id}
-                            onClick={() => handleOsmSelect(r)}
-                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
-                          >
-                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                              <Navigation className="w-4 h-4 text-primary" />
-                            </div>
-                            <div className="text-left min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
