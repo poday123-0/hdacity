@@ -71,6 +71,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   }, []);
 
   // Calculate driving distance via OSRM for the full route (pickup → stops → dropoff)
+  // Also calculate per-segment distances for segment-based fare
+  const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
+
   useEffect(() => {
     const allPoints: { lat: number; lng: number }[] = [];
     if (pickup?.lat && pickup?.lng) allPoints.push({ lat: pickup.lat, lng: pickup.lng });
@@ -81,84 +84,114 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
 
     if (allPoints.length < 2) {
       setDistanceKm(null);
+      setSegmentDistances([]);
       return;
     }
 
     // Haversine total for fallback
     let straightTotal = 0;
+    const straightSegments: number[] = [];
     for (let i = 0; i < allPoints.length - 1; i++) {
-      straightTotal += haversineKm(allPoints[i].lat, allPoints[i].lng, allPoints[i + 1].lat, allPoints[i + 1].lng);
+      const d = haversineKm(allPoints[i].lat, allPoints[i].lng, allPoints[i + 1].lat, allPoints[i + 1].lng);
+      straightTotal += d;
+      straightSegments.push(d * 1.3); // rough road factor
     }
 
     // OSRM waypoints
     const coords = allPoints.map(p => `${p.lng},${p.lat}`).join(";");
-    fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`)
+    fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false&steps=false&annotations=false`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.routes?.[0]?.distance) {
-          setDistanceKm(data.routes[0].distance / 1000);
+        if (data.routes?.[0]) {
+          const totalDist = data.routes[0].distance / 1000;
+          setDistanceKm(totalDist);
+          // Extract per-leg distances
+          const legs = data.routes[0].legs;
+          if (legs && legs.length > 0) {
+            setSegmentDistances(legs.map((leg: any) => leg.distance / 1000));
+          } else {
+            setSegmentDistances([totalDist]);
+          }
         } else {
           setDistanceKm(straightTotal * 1.3);
+          setSegmentDistances(straightSegments);
         }
       })
       .catch(() => {
         setDistanceKm(straightTotal * 1.3);
+        setSegmentDistances(straightSegments);
       });
   }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, stops]);
 
-  const calcFare = (vt: any): number => {
-    // Resolve which service area the pickup/dropoff belong to
-    const findServiceArea = (loc: LocationData | null | undefined) => {
-      if (!loc) return null;
-      // Direct match by name or id
-      const direct = serviceLocations.find((sl: any) => sl.name === loc.name || sl.id === loc.id);
-      if (direct) return direct;
-      // Find nearest service area by coordinates
-      if (loc.lat && loc.lng && serviceLocations.length > 0) {
-        let best: any = null;
-        let bestDist = Infinity;
-        for (const sl of serviceLocations) {
-          const d = haversineKm(loc.lat, loc.lng, sl.lat, sl.lng);
-          if (d < bestDist) { bestDist = d; best = sl; }
-        }
-        return best;
+  // Resolve which service area a location belongs to
+  const findServiceArea = (loc: LocationData | null | undefined) => {
+    if (!loc) return null;
+    const direct = serviceLocations.find((sl: any) => sl.name === loc.name || sl.id === loc.id);
+    if (direct) return direct;
+    if (loc.lat && loc.lng && serviceLocations.length > 0) {
+      let best: any = null;
+      let bestDist = Infinity;
+      for (const sl of serviceLocations) {
+        const d = haversineKm(loc.lat, loc.lng, sl.lat, sl.lng);
+        if (d < bestDist) { bestDist = d; best = sl; }
       }
-      return null;
-    };
+      return best;
+    }
+    return null;
+  };
 
-    const pickupArea = findServiceArea(pickup);
-    const dropoffArea = findServiceArea(dropoff);
+  const calcFare = (vt: any): number => {
+    // Build the ordered list of waypoints: [pickup, ...stops, dropoff]
+    const waypoints: (LocationData | null | undefined)[] = [pickup, ...stops, dropoff];
 
-    // 1. Check for fixed fare zone match (by area name or id)
-    const matchesZone = (fz: any) => {
-      if (fz.vehicle_type_id !== vt.id) return false;
-      const fromNames = [pickup?.name, pickup?.id, pickupArea?.name, pickupArea?.id].filter(Boolean);
-      const toNames = [dropoff?.name, dropoff?.id, dropoffArea?.name, dropoffArea?.id].filter(Boolean);
-      return (
-        (fromNames.includes(fz.from_area) && toNames.includes(fz.to_area)) ||
-        (toNames.includes(fz.from_area) && fromNames.includes(fz.to_area))
-      );
-    };
+    // For multi-stop trips, calculate fare per segment and sum
+    let totalFare = 0;
 
-    const zone = fareZones.find(matchesZone);
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      const from = waypoints[i];
+      const to = waypoints[i + 1];
+      if (!from || !to) continue;
 
-    let fare: number;
+      const fromArea = findServiceArea(from);
+      const toArea = findServiceArea(to);
 
-    if (zone) {
-      // Fixed zone fare
-      fare = Number(zone.fixed_fare);
-    } else if (distanceKm != null && distanceKm > 0) {
-      // Distance-based fare: base_fare + (per_km_rate × distance)
-      fare = Number(vt.base_fare) + Number(vt.per_km_rate) * distanceKm;
-    } else {
-      // Fallback to base fare
-      fare = Number(vt.base_fare);
+      // Check for fixed fare zone match for this segment
+      const matchesZone = (fz: any) => {
+        if (fz.vehicle_type_id !== vt.id) return false;
+        const fromNames = [from?.name, from?.id, fromArea?.name, fromArea?.id].filter(Boolean);
+        const toNames = [to?.name, to?.id, toArea?.name, toArea?.id].filter(Boolean);
+        return (
+          (fromNames.includes(fz.from_area) && toNames.includes(fz.to_area)) ||
+          (toNames.includes(fz.from_area) && fromNames.includes(fz.to_area))
+        );
+      };
+
+      const zone = fareZones.find(matchesZone);
+
+      if (zone) {
+        totalFare += Number(zone.fixed_fare);
+      } else {
+        // Distance-based for this segment
+        const segDist = segmentDistances[i] ?? (distanceKm != null ? distanceKm / Math.max(waypoints.length - 1, 1) : 0);
+        if (segDist > 0) {
+          totalFare += Number(vt.base_fare) + Number(vt.per_km_rate) * segDist;
+        } else {
+          totalFare += Number(vt.base_fare);
+        }
+      }
     }
 
-    // Apply surcharges
+    // If no stops (single segment), ensure we use the total fare as-is
+    // If only 1 segment and no zone matched, totalFare already has base_fare + distance
+
+    // Apply surcharges to total
     for (const sc of surcharges) {
-      if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null && luggageCount >= sc.luggage_threshold) {
-        fare += Number(sc.amount);
+      if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null) {
+        // Per-bag surcharge for bags above threshold
+        const extraBags = Math.max(0, luggageCount - sc.luggage_threshold);
+        if (extraBags > 0) {
+          totalFare += Number(sc.amount) * extraBags;
+        }
       }
       if (sc.surcharge_type === "time_based" && sc.start_time && sc.end_time) {
         const now = new Date();
@@ -168,16 +201,16 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         const startMin = sh * 60 + sm;
         const endMin = eh * 60 + em;
         if (startMin < endMin ? nowMin >= startMin && nowMin < endMin : nowMin >= startMin || nowMin < endMin) {
-          fare += Number(sc.amount);
+          totalFare += Number(sc.amount);
         }
       }
     }
 
     // Passenger tax
-    fare += fare * (Number(vt.passenger_tax_pct) / 100);
+    totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
 
     // Enforce minimum fare
-    return Math.max(Math.round(fare), Number(vt.minimum_fare));
+    return Math.max(Math.round(totalFare), Number(vt.minimum_fare));
   };
 
   // Sort: online first, then by capacity fit
