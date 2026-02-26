@@ -153,32 +153,51 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const detectCurrentLocation = () => {
     if (!navigator.geolocation) return;
     setDetectingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const nearest = findNearestServiceArea(latitude, longitude);
-        let name = nearest?.name || "Current Location";
-        let address = nearest?.address || "";
-        try {
-          const result = await reverseGeocodeLocation(latitude, longitude);
-          address = result.address;
-          name = result.name;
-        } catch {}
-        const loc: ServiceLocation = {
-          id: nearest?.id || "current-location",
-          name,
-          address,
-          lat: latitude,
-          lng: longitude,
+
+    // Try fast low-accuracy first, then refine with high accuracy
+    const onPosition = async (pos: GeolocationPosition, isFinal: boolean) => {
+      const { latitude, longitude } = pos.coords;
+      const nearest = findNearestServiceArea(latitude, longitude);
+
+      // Set immediately with nearest area name so UI feels instant
+      const quickLoc: ServiceLocation = {
+        id: nearest?.id || "current-location",
+        name: nearest?.name || "Current Location",
+        address: nearest?.address || "",
+        lat: latitude,
+        lng: longitude,
+      };
+      setPickup(quickLoc);
+      setPickupQuery(quickLoc.name);
+      setDetectingLocation(false);
+
+      if (!dropoff) {
+        setActiveField("dropoff");
+        setTimeout(() => dropoffRef.current?.focus(), 100);
+      }
+
+      // Resolve actual place name in background (non-blocking)
+      reverseGeocodeLocation(latitude, longitude).then((result) => {
+        const detailedLoc: ServiceLocation = {
+          ...quickLoc,
+          name: result.name,
+          address: result.address,
         };
-        setPickup(loc);
-        setPickupQuery(name);
-        setDetectingLocation(false);
-        if (!dropoff) {
-          setActiveField("dropoff");
-          setTimeout(() => dropoffRef.current?.focus(), 100);
-        }
-      },
+        setPickup(detailedLoc);
+        setPickupQuery(result.name);
+      }).catch(() => {});
+    };
+
+    // 1) Fast coarse position (cell/wifi, no GPS wait)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => onPosition(pos, false),
+      () => {},
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+    );
+
+    // 2) Accurate GPS position (refines the coarse one)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => onPosition(pos, true),
       () => setDetectingLocation(false),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
