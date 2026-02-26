@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 
 interface RideRequestMapProps {
@@ -10,16 +10,18 @@ interface RideRequestMapProps {
   passengerMapIconUrl?: string | null;
 }
 
-const RideRequestMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [], passengerMapIconUrl }: RideRequestMapProps) => {
+const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [], passengerMapIconUrl }: RideRequestMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
+  const initialized = useRef(false);
   const { isLoaded } = useGoogleMaps();
 
-  useEffect(() => {
-    if (!isLoaded || !mapRef.current) return;
+  const initMap = useCallback(() => {
+    if (!isLoaded || !mapRef.current || initialized.current) return;
     const g = (window as any).google;
     if (!g?.maps) return;
 
+    initialized.current = true;
     const isDark = document.documentElement.classList.contains("dark");
 
     const bounds = new g.maps.LatLngBounds();
@@ -99,26 +101,36 @@ const RideRequestMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = 
         waypoints,
         travelMode: g.maps.TravelMode.DRIVING,
       }).then((result: any) => {
-        new g.maps.DirectionsRenderer({
-          map,
-          directions: result,
-          suppressMarkers: true,
-          suppressInfoWindows: true,
-          preserveViewport: true,
-          polylineOptions: { strokeColor: "#4285F4", strokeWeight: 4, strokeOpacity: 0.8 },
-        });
+        if (mapInstance.current) {
+          new g.maps.DirectionsRenderer({
+            map: mapInstance.current,
+            directions: result,
+            suppressMarkers: true,
+            suppressInfoWindows: true,
+            preserveViewport: true,
+            polylineOptions: { strokeColor: "#4285F4", strokeWeight: 4, strokeOpacity: 0.8 },
+          });
+        }
       }).catch(() => {});
     }
+  }, [isLoaded, pickupLat, pickupLng, dropoffLat, dropoffLng, passengerMapIconUrl]);
 
-    return () => { mapInstance.current = null; };
-  }, [isLoaded, pickupLat, pickupLng, dropoffLat, dropoffLng, stops, passengerMapIconUrl]);
+  useEffect(() => {
+    initMap();
+    return () => {
+      mapInstance.current = null;
+      initialized.current = false;
+    };
+  }, [initMap]);
 
   if (!isLoaded) {
     return <div className="w-full h-full bg-surface animate-pulse rounded-xl" />;
   }
 
   return <div ref={mapRef} className="w-full h-full rounded-xl" />;
-};
+});
+
+RideRequestMap.displayName = "RideRequestMap";
 
 const darkStyle = [
   { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
