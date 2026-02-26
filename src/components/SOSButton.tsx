@@ -78,6 +78,17 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
               lat = loc.lat;
               lng = loc.lng;
             }
+          } else if (userType === "passenger" && tripId) {
+            // For passengers, fall back to trip pickup location
+            const { data: trip } = await supabase
+              .from("trips")
+              .select("pickup_lat, pickup_lng")
+              .eq("id", tripId)
+              .single();
+            if (trip?.pickup_lat && trip?.pickup_lng) {
+              lat = Number(trip.pickup_lat);
+              lng = Number(trip.pickup_lng);
+            }
           }
         }
       }
