@@ -600,7 +600,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
 
   return (
-    <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-surface">
+    <div className="relative w-full h-screen h-[100dvh] max-w-lg mx-auto overflow-hidden bg-surface">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Top bar */}

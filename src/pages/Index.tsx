@@ -364,7 +364,7 @@ const Index = () => {
   if (phase === "register") return <PassengerRegistration phoneNumber={pendingPhone} onComplete={handleRegistrationComplete} />;
 
   return (
-    <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-background">
+    <div className="relative w-full h-screen h-[100dvh] max-w-lg mx-auto overflow-hidden bg-background">
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />

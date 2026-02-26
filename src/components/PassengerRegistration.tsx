@@ -98,7 +98,7 @@ const PassengerRegistration = ({ phoneNumber, onComplete }: PassengerRegistratio
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-lg mx-auto">
       <div className="flex-1 overflow-y-auto px-6 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

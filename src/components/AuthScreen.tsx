@@ -149,7 +149,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-lg mx-auto">
       <div className="flex-1 flex flex-col justify-center px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
