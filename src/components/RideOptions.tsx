@@ -44,6 +44,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [fareZones, setFareZones] = useState<any[]>([]);
   const [surcharges, setSurcharges] = useState<any[]>([]);
+  const [serviceLocations, setServiceLocations] = useState<any[]>([]);
   const [onlineVehicleTypeIds, setOnlineVehicleTypeIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -51,15 +52,17 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [vtRes, fzRes, scRes, dlRes] = await Promise.all([
+      const [vtRes, fzRes, scRes, dlRes, slRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("driver_locations").select("vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
+        supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
       ]);
       setVehicleTypes(vtRes.data || []);
       setFareZones(fzRes.data || []);
       setSurcharges(scRes.data || []);
+      setServiceLocations(slRes.data || []);
       const onlineIds = new Set<string>((dlRes.data || []).map((d: any) => d.vehicle_type_id).filter(Boolean));
       setOnlineVehicleTypeIds(onlineIds);
       setLoading(false);
@@ -104,29 +107,46 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, stops]);
 
   const calcFare = (vt: any): number => {
-    // 1. Check for fixed fare zone match (by area name)
-    const zone = fareZones.find(
-      (fz) =>
-        fz.vehicle_type_id === vt.id &&
-        ((fz.from_area === pickup?.name && fz.to_area === dropoff?.name) ||
-          (fz.from_area === dropoff?.name && fz.to_area === pickup?.name))
-    );
+    // Resolve which service area the pickup/dropoff belong to
+    const findServiceArea = (loc: LocationData | null | undefined) => {
+      if (!loc) return null;
+      // Direct match by name or id
+      const direct = serviceLocations.find((sl: any) => sl.name === loc.name || sl.id === loc.id);
+      if (direct) return direct;
+      // Find nearest service area by coordinates
+      if (loc.lat && loc.lng && serviceLocations.length > 0) {
+        let best: any = null;
+        let bestDist = Infinity;
+        for (const sl of serviceLocations) {
+          const d = haversineKm(loc.lat, loc.lng, sl.lat, sl.lng);
+          if (d < bestDist) { bestDist = d; best = sl; }
+        }
+        return best;
+      }
+      return null;
+    };
 
-    // Also try matching by service area ID
-    const zoneById = !zone
-      ? fareZones.find(
-          (fz) =>
-            fz.vehicle_type_id === vt.id &&
-            ((fz.from_area === pickup?.id && fz.to_area === dropoff?.id) ||
-              (fz.from_area === dropoff?.id && fz.to_area === pickup?.id))
-        )
-      : null;
+    const pickupArea = findServiceArea(pickup);
+    const dropoffArea = findServiceArea(dropoff);
+
+    // 1. Check for fixed fare zone match (by area name or id)
+    const matchesZone = (fz: any) => {
+      if (fz.vehicle_type_id !== vt.id) return false;
+      const fromNames = [pickup?.name, pickup?.id, pickupArea?.name, pickupArea?.id].filter(Boolean);
+      const toNames = [dropoff?.name, dropoff?.id, dropoffArea?.name, dropoffArea?.id].filter(Boolean);
+      return (
+        (fromNames.includes(fz.from_area) && toNames.includes(fz.to_area)) ||
+        (toNames.includes(fz.from_area) && fromNames.includes(fz.to_area))
+      );
+    };
+
+    const zone = fareZones.find(matchesZone);
 
     let fare: number;
 
-    if (zone || zoneById) {
+    if (zone) {
       // Fixed zone fare
-      fare = Number((zone || zoneById).fixed_fare);
+      fare = Number(zone.fixed_fare);
     } else if (distanceKm != null && distanceKm > 0) {
       // Distance-based fare: base_fare + (per_km_rate × distance)
       fare = Number(vt.base_fare) + Number(vt.per_km_rate) * distanceKm;
