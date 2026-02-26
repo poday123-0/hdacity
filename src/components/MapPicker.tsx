@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Loader2, X, Check, Crosshair } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { reverseGeocodeLocation } from "@/lib/geocode";
 
 interface MapPickerProps {
   onConfirm: (lat: number, lng: number, name: string, address: string) => void;
@@ -88,15 +89,9 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${center.lat}&lon=${center.lng}&zoom=18&addressdetails=1`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        const data = await res.json();
-        const name = data.name || data.address?.road || data.address?.neighbourhood || "Selected Location";
-        const addr = data.display_name?.split(",").slice(0, 3).join(", ") || `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`;
-        setPlaceName(name);
-        setAddress(addr);
+        const result = await reverseGeocodeLocation(center.lat, center.lng);
+        setPlaceName(result.name);
+        setAddress(result.address);
       } catch {
         setPlaceName("Selected Location");
         setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);

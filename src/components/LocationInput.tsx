@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import MapPicker from "./MapPicker";
+import { reverseGeocodeLocation } from "@/lib/geocode";
 
 interface ServiceLocation {
   id: string;
@@ -123,7 +124,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       setOsmSearching(true);
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=5&addressdetails=1&extratags=1&namedetails=1`,
           { headers: { "Accept-Language": "en" } }
         );
         const data: NominatimResult[] = await res.json();
@@ -159,13 +160,9 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
         let name = nearest?.name || "Current Location";
         let address = nearest?.address || "";
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await res.json();
-          address = data.display_name?.split(",").slice(0, 3).join(", ") || address;
-          name = data.name || data.address?.road || data.address?.neighbourhood || name;
+          const result = await reverseGeocodeLocation(latitude, longitude);
+          address = result.address;
+          name = result.name;
         } catch {}
         const loc: ServiceLocation = {
           id: nearest?.id || "current-location",
