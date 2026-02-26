@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          device_type: string
+          id: string
+          is_active: boolean
+          token: string
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string
+          id?: string
+          is_active?: boolean
+          token: string
+          updated_at?: string
+          user_id: string
+          user_type?: string
+        }
+        Update: {
+          created_at?: string
+          device_type?: string
+          id?: string
+          is_active?: boolean
+          token?: string
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
       driver_bank_accounts: {
         Row: {
           account_name: string
