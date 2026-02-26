@@ -273,39 +273,60 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 max-h-[calc(100vh-80px)] flex flex-col"
+      className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col ${
+        activeField ? "top-0 rounded-t-none" : "max-h-[calc(100vh-80px)]"
+      }`}
     >
-      <div className="px-5 pt-3 pb-8 space-y-3 overflow-y-auto flex-1 overscroll-contain">
+      <div className="px-4 pt-3 pb-6 space-y-2.5 overflow-y-auto flex-1 overscroll-contain">
         {/* Handle */}
-        <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
-          <div className="w-12 h-1.5 rounded-full bg-border/60" />
-        </button>
+        {!activeField && (
+          <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
+            <div className="w-12 h-1.5 rounded-full bg-border/60" />
+          </button>
+        )}
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-foreground tracking-tight">Where to?</h2>
-            {!minimized && <p className="text-xs text-muted-foreground mt-0.5">Type to search any place</p>}
-            {minimized && pickup && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{pickup.name}{dropoff ? ` → ${dropoff.name}` : ""}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {!minimized && (
-              <button
-                onClick={detectCurrentLocation}
-                disabled={detectingLocation}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-primary/10 text-primary text-xs font-semibold active:scale-95 transition-all hover:bg-primary/15"
-              >
-                <Locate className={`w-4 h-4 ${detectingLocation ? "animate-spin" : ""}`} />
-                {detectingLocation ? "Detecting..." : "My location"}
+        {/* Header — hide when searching */}
+        {!activeField && (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-foreground tracking-tight">Where to?</h2>
+              {!minimized && <p className="text-[11px] text-muted-foreground mt-0.5">Type to search any place</p>}
+              {minimized && pickup && (
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[10rem]">{pickup.name}{dropoff ? ` → ${dropoff.name}` : ""}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {!minimized && (
+                <button
+                  onClick={detectCurrentLocation}
+                  disabled={detectingLocation}
+                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-primary/10 text-primary text-[11px] font-semibold active:scale-95 transition-all"
+                >
+                  <Locate className={`w-3.5 h-3.5 ${detectingLocation ? "animate-spin" : ""}`} />
+                  <span className="hidden min-[360px]:inline">{detectingLocation ? "Detecting..." : "My location"}</span>
+                </button>
+              )}
+              <button onClick={() => setMinimized(!minimized)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+                {minimized ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </button>
-            )}
-            <button onClick={() => setMinimized(!minimized)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
-              {minimized ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Back button when searching */}
+        {activeField && (
+          <div className="flex items-center gap-2 pt-1 safe-area-top">
+            <button
+              onClick={() => { setActiveField(null); setOsmResults([]); }}
+              className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform shrink-0"
+            >
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <p className="text-sm font-semibold text-foreground">
+              {activeField === "pickup" ? "Search pickup" : activeField === "dropoff" ? "Search destination" : `Search stop ${parseInt(activeField.split("-")[1]) + 1}`}
+            </p>
+          </div>
+        )}
 
         {loading && !minimized ? (
           <div className="flex justify-center py-6">
@@ -313,13 +334,13 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
           </div>
         ) : !minimized ? (
           <>
-            {/* Compact Passenger & Luggage row */}
+            {/* Compact Passenger & Luggage row — hidden when searching */}
             {!activeField && (
               <div className="flex gap-2">
-                <div className="flex-1 flex items-center gap-2 bg-surface rounded-xl px-2.5 py-1.5">
+                <div className="flex-1 flex items-center gap-1.5 bg-surface rounded-xl px-2 py-1.5">
                   <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Pax</span>
-                  <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Pax</span>
+                  <div className="flex items-center gap-0.5 ml-auto">
                     <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded-md bg-card flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={passengerCount <= 1}>
                       <Minus className="w-3 h-3 text-foreground" />
                     </button>
@@ -329,10 +350,10 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                     </button>
                   </div>
                 </div>
-                <div className="flex-1 flex items-center gap-2 bg-surface rounded-xl px-2.5 py-1.5">
+                <div className="flex-1 flex items-center gap-1.5 bg-surface rounded-xl px-2 py-1.5">
                   <Luggage className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bags</span>
-                  <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Bags</span>
+                  <div className="flex items-center gap-0.5 ml-auto">
                     <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded-md bg-card flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30" disabled={luggageCount <= 0}>
                       <Minus className="w-3 h-3 text-foreground" />
                     </button>
@@ -346,131 +367,217 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
             )}
 
             {/* Pickup, Stops & Dropoff */}
-            <div className="flex items-start gap-3">
-              {/* Route dots */}
-              <div className="flex flex-col items-center gap-0.5 pt-4">
-                <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.3)] animate-pulse-dot" />
-                <div className="w-0.5 h-8 bg-gradient-to-b from-primary/40 to-primary/20" />
-                {stops.map((_, i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <div className="w-2.5 h-2.5 rounded-sm bg-accent" />
-                    <div className="w-0.5 h-8 bg-gradient-to-b from-accent/40 to-foreground/20" />
-                  </div>
-                ))}
-                <div className="w-3 h-3 rounded-sm bg-foreground" />
-              </div>
-
-              <div className="flex-1 space-y-2.5">
-                {/* Pickup input */}
-                <div className="relative">
-                  <div className={`flex items-center rounded-2xl px-4 py-3 transition-all ${
-                    activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
-                  }`}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Pickup</p>
-                      <input
-                        ref={pickupRef}
-                        type="text"
-                        placeholder="Search pickup location..."
-                        value={pickupQuery}
-                        onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
-                        onFocus={() => setActiveField("pickup")}
-                        className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
-                      />
-                      {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
-                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
-                      )}
+            <div className="flex items-start gap-2.5">
+              {/* Route dots — hide when searching */}
+              {!activeField && (
+                <div className="flex flex-col items-center gap-0.5 pt-3.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.3)] animate-pulse-dot" />
+                  <div className="w-0.5 h-7 bg-gradient-to-b from-primary/40 to-primary/20" />
+                  {stops.map((_, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-sm bg-accent" />
+                      <div className="w-0.5 h-7 bg-gradient-to-b from-accent/40 to-foreground/20" />
                     </div>
-                    {pickup && (
-                      <button onClick={() => clearField("pickup")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
-                        <X className="w-3 h-3 text-muted-foreground" />
-                      </button>
-                    )}
-                  </div>
-                  {renderSearchDropdown("pickup")}
+                  ))}
+                  <div className="w-2.5 h-2.5 rounded-sm bg-foreground" />
                 </div>
+              )}
 
-                {/* Intermediate stops */}
-                {stops.map((stop, idx) => (
-                  <div key={idx} className="relative">
-                    <div className={`flex items-center rounded-2xl px-4 py-3 transition-all ${
-                      activeField === `stop-${idx}` ? "bg-accent/20 ring-2 ring-accent shadow-sm" : "bg-surface"
+              <div className="flex-1 space-y-2">
+                {/* Pickup input — always show, or only when it's the active field */}
+                {(!activeField || activeField === "pickup") && (
+                  <div className="relative">
+                    <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
+                      activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
                     }`}>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Stop {idx + 1}</p>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Pickup</p>
                         <input
-                          ref={(el) => { stopRefs.current[idx] = el; }}
+                          ref={pickupRef}
                           type="text"
-                          placeholder="Search stop location..."
-                          value={stopQueries[idx] || ""}
-                          onChange={(e) => {
-                            const newQ = [...stopQueries];
-                            newQ[idx] = e.target.value;
-                            setStopQueries(newQ);
-                            if (activeField !== `stop-${idx}`) setActiveField(`stop-${idx}`);
-                          }}
-                          onFocus={() => setActiveField(`stop-${idx}`)}
+                          placeholder="Search pickup location..."
+                          value={pickupQuery}
+                          onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
+                          onFocus={() => setActiveField("pickup")}
                           className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
                         />
+                        {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
+                        )}
                       </div>
-                      <button onClick={() => removeStop(idx)} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
-                        <X className="w-3 h-3 text-muted-foreground" />
-                      </button>
+                      {pickup && !activeField && (
+                        <button onClick={() => clearField("pickup")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      )}
                     </div>
-                    {renderSearchDropdown(`stop-${idx}`)}
+                    {/* Search results below when in full-screen mode */}
+                    {activeField === "pickup" && (osmResults.length > 0 || osmSearching) && (
+                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
+                        {osmSearching && (
+                          <div className="flex items-center gap-2 px-4 py-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Searching...</span>
+                          </div>
+                        )}
+                        {osmResults.map((r) => (
+                          <button
+                            key={r.place_id}
+                            onClick={() => handleOsmSelect(r)}
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Navigation className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
+
+                {/* Intermediate stops — show all when not searching, or only the active one */}
+                {stops.map((stop, idx) => {
+                  if (activeField && activeField !== `stop-${idx}`) return null;
+                  return (
+                    <div key={idx} className="relative">
+                      <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
+                        activeField === `stop-${idx}` ? "bg-accent/20 ring-2 ring-accent shadow-sm" : "bg-surface"
+                      }`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Stop {idx + 1}</p>
+                          <input
+                            ref={(el) => { stopRefs.current[idx] = el; }}
+                            type="text"
+                            placeholder="Search stop location..."
+                            value={stopQueries[idx] || ""}
+                            onChange={(e) => {
+                              const newQ = [...stopQueries];
+                              newQ[idx] = e.target.value;
+                              setStopQueries(newQ);
+                              if (activeField !== `stop-${idx}`) setActiveField(`stop-${idx}`);
+                            }}
+                            onFocus={() => setActiveField(`stop-${idx}`)}
+                            className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                          />
+                        </div>
+                        {!activeField && (
+                          <button onClick={() => removeStop(idx)} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
+                            <X className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                      {activeField === `stop-${idx}` && (osmResults.length > 0 || osmSearching) && (
+                        <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
+                          {osmSearching && (
+                            <div className="flex items-center gap-2 px-4 py-3">
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">Searching...</span>
+                            </div>
+                          )}
+                          {osmResults.map((r) => (
+                            <button
+                              key={r.place_id}
+                              onClick={() => handleOsmSelect(r)}
+                              className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
+                            >
+                              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                <Navigation className="w-4 h-4 text-primary" />
+                              </div>
+                              <div className="text-left min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                                <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Add stop button */}
-                {stops.length < 5 && dropoff && (
+                {!activeField && stops.length < 5 && dropoff && (
                   <button
                     onClick={addStop}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-primary active:scale-95 transition-transform"
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-primary active:scale-95 transition-transform"
                   >
-                    <CirclePlus className="w-4 h-4" />
+                    <CirclePlus className="w-3.5 h-3.5" />
                     Add stop
                   </button>
                 )}
 
                 {/* Dropoff input */}
-                <div className="relative">
-                  <div className={`flex items-center rounded-2xl px-4 py-3 transition-all ${
-                    activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
-                  }`}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Destination</p>
-                      <input
-                        ref={dropoffRef}
-                        type="text"
-                        placeholder="Search destination..."
-                        value={dropoffQuery}
-                        onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
-                        onFocus={() => setActiveField("dropoff")}
-                        className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
-                      />
-                      {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
-                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{dropoff.address}</p>
+                {(!activeField || activeField === "dropoff") && (
+                  <div className="relative">
+                    <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
+                      activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
+                    }`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Destination</p>
+                        <input
+                          ref={dropoffRef}
+                          type="text"
+                          placeholder="Search destination..."
+                          value={dropoffQuery}
+                          onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
+                          onFocus={() => setActiveField("dropoff")}
+                          className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                        />
+                        {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{dropoff.address}</p>
+                        )}
+                      </div>
+                      {dropoff && !activeField && (
+                        <button onClick={() => clearField("dropoff")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
                       )}
                     </div>
-                    {dropoff && (
-                      <button onClick={() => clearField("dropoff")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
-                        <X className="w-3 h-3 text-muted-foreground" />
-                      </button>
+                    {activeField === "dropoff" && (osmResults.length > 0 || osmSearching) && (
+                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
+                        {osmSearching && (
+                          <div className="flex items-center gap-2 px-4 py-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Searching...</span>
+                          </div>
+                        )}
+                        {osmResults.map((r) => (
+                          <button
+                            key={r.place_id}
+                            onClick={() => handleOsmSelect(r)}
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Navigation className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {renderSearchDropdown("dropoff")}
-                </div>
+                )}
               </div>
             </div>
 
-            {/* Confirm button */}
-            <button
-              onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount, validStops)}
-              disabled={!canConfirm}
-              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
-            >
-              {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length + 2} stops)` : "Find a ride") : "Select pickup & destination"}
-            </button>
+            {/* Confirm button — hide when searching */}
+            {!activeField && (
+              <button
+                onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount, validStops)}
+                disabled={!canConfirm}
+                className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
+              >
+                {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length + 2} stops)` : "Find a ride") : "Select pickup & destination"}
+              </button>
+            )}
           </>
         ) : null}
       </div>
