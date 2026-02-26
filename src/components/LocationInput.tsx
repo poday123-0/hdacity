@@ -854,7 +854,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                 disabled={!canConfirm}
                 className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
               >
-                {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length + 2} stops)` : "Find a ride") : "Select pickup & destination"}
+                {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})` : "Find a ride") : "Select pickup & destination"}
               </button>
             )}
           </>
