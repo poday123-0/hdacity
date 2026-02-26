@@ -812,7 +812,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] max-h-[85vh] overflow-y-auto"
+          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] ${panelMinimized ? "" : "max-h-[85vh] overflow-y-auto"}`}
         >
           <div className="p-4 pb-6 space-y-3">
             {/* Drag handle */}
