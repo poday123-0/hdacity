@@ -277,14 +277,14 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
     >
       <div className="px-4 pt-3 pb-6 space-y-2.5 overflow-y-auto flex-1 overscroll-contain">
         {/* Handle */}
-        {!activeField && (
+        {(
           <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
             <div className="w-12 h-1.5 rounded-full bg-border/60" />
           </button>
         )}
 
         {/* Header — hide when searching */}
-        {!activeField && (
+        {(
           <div className="flex items-center justify-between">
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-foreground tracking-tight">Where to?</h2>
@@ -304,27 +304,13 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                   <span className="hidden min-[360px]:inline">{detectingLocation ? "Detecting..." : "My location"}</span>
                 </button>
               )}
-              <button onClick={() => setMinimized(!minimized)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+              <button onClick={() => { setMinimized(!minimized); if (activeField) { setActiveField(null); setOsmResults([]); } }} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
                 {minimized ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </button>
             </div>
           </div>
         )}
 
-        {/* Back button when searching */}
-        {activeField && (
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              onClick={() => { setActiveField(null); setOsmResults([]); }}
-              className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform shrink-0"
-            >
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <p className="text-sm font-semibold text-foreground">
-              {activeField === "pickup" ? "Search pickup" : activeField === "dropoff" ? "Search destination" : `Search stop ${parseInt(activeField.split("-")[1]) + 1}`}
-            </p>
-          </div>
-        )}
 
         {loading && !minimized ? (
           <div className="flex justify-center py-6">
@@ -333,7 +319,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
         ) : !minimized ? (
           <>
             {/* Compact Passenger & Luggage row — hidden when searching */}
-            {!activeField && (
+            {(
               <div className="flex gap-2">
                 <div className="flex-1 flex items-center gap-1.5 bg-surface rounded-xl px-2 py-1.5">
                   <Users className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -367,7 +353,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
             {/* Pickup, Stops & Dropoff */}
             <div className="flex items-start gap-2.5">
               {/* Route dots — hide when searching */}
-              {!activeField && (
+              {(
                 <div className="flex flex-col items-center gap-0.5 pt-3.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.3)] animate-pulse-dot" />
                   <div className="w-0.5 h-7 bg-gradient-to-b from-primary/40 to-primary/20" />
@@ -383,7 +369,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
 
               <div className="flex-1 space-y-2">
                 {/* Pickup input — always show, or only when it's the active field */}
-                {(!activeField || activeField === "pickup") && (
+                {(
                   <div className="relative">
                     <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
                       activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
@@ -440,7 +426,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
 
                 {/* Intermediate stops — show all when not searching, or only the active one */}
                 {stops.map((stop, idx) => {
-                  if (activeField && activeField !== `stop-${idx}`) return null;
+                  // Show all stops always
                   return (
                     <div key={idx} className="relative">
                       <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
@@ -499,7 +485,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                 })}
 
                 {/* Add stop button */}
-                {!activeField && stops.length < 5 && dropoff && (
+                {stops.length < 5 && dropoff && (
                   <button
                     onClick={addStop}
                     className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-primary active:scale-95 transition-transform"
@@ -510,7 +496,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                 )}
 
                 {/* Dropoff input */}
-                {(!activeField || activeField === "dropoff") && (
+                {(
                   <div className="relative">
                     <div className={`flex items-center rounded-xl px-3 py-2.5 transition-all ${
                       activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-sm" : "bg-surface"
