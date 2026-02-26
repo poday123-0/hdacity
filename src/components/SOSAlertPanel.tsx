@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, X, MapPin, Phone, Clock, CheckCircle } from "lucide-react";
+import { AlertTriangle, X, MapPin, Phone, Clock, CheckCircle, Shield, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+
+const MALDIVES_POLICE_NUMBER = "119";
+const MALDIVES_AMBULANCE_NUMBER = "102";
 
 interface SOSAlert {
   id: string;
@@ -18,6 +21,13 @@ interface SOSAlert {
   notes: string | null;
 }
 
+interface EmergencyContact {
+  id: string;
+  name: string;
+  phone_number: string;
+  relationship: string | null;
+}
+
 const SOS_SOUND_URL = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
 const SOSAlertPanel = () => {
@@ -25,6 +35,7 @@ const SOSAlertPanel = () => {
   const [expanded, setExpanded] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevAlertCountRef = useRef(0);
+  const [emergencyContacts, setEmergencyContacts] = useState<Record<string, EmergencyContact[]>>({});
 
   const fetchAlerts = async () => {
     const { data } = await supabase
@@ -32,7 +43,22 @@ const SOSAlertPanel = () => {
       .select("*")
       .eq("status", "active")
       .order("created_at", { ascending: false });
-    setAlerts((data as SOSAlert[]) || []);
+    const alertsData = (data as SOSAlert[]) || [];
+    setAlerts(alertsData);
+    
+    // Fetch emergency contacts for each user
+    for (const alert of alertsData) {
+      if (!emergencyContacts[alert.user_id]) {
+        const { data: contacts } = await supabase
+          .from("emergency_contacts")
+          .select("*")
+          .eq("user_id", alert.user_id)
+          .eq("is_active", true);
+        if (contacts && contacts.length > 0) {
+          setEmergencyContacts(prev => ({ ...prev, [alert.user_id]: contacts as EmergencyContact[] }));
+        }
+      }
+    }
   };
 
   useEffect(() => {
@@ -185,19 +211,60 @@ const SOSAlertPanel = () => {
                     </div>
                   )}
 
-                  {/* Quick SMS option */}
+                  {/* Emergency contacts */}
+                  {emergencyContacts[alert.user_id]?.length > 0 && (
+                    <div className="bg-surface rounded-lg p-3 space-y-1.5">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                        <Users className="w-3 h-3" /> Emergency Contacts
+                      </p>
+                      {emergencyContacts[alert.user_id].map((c) => (
+                        <div key={c.id} className="flex items-center justify-between text-xs">
+                          <span className="text-foreground font-medium">
+                            {c.name} {c.relationship ? <span className="text-muted-foreground">({c.relationship})</span> : ""}
+                          </span>
+                          <a href={`tel:+960${c.phone_number}`} className="text-primary font-medium hover:underline">
+                            +960 {c.phone_number}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Contact user */}
                   <div className="flex gap-2">
                     <a
                       href={`tel:+960${alert.user_phone}`}
                       className="flex-1 flex items-center justify-center gap-1 bg-primary/10 text-primary rounded-lg py-2 text-xs font-semibold hover:bg-primary/20"
                     >
-                      <Phone className="w-3 h-3" /> Call
+                      <Phone className="w-3 h-3" /> Call User
                     </a>
                     <a
-                      href={`sms:+960${alert.user_phone}?body=HDA Emergency: We received your SOS. Help is on the way.`}
+                      href={`sms:+960${alert.user_phone}?body=${encodeURIComponent("HDA Emergency: We received your SOS. Help is on the way.")}`}
                       className="flex-1 flex items-center justify-center gap-1 bg-accent text-accent-foreground rounded-lg py-2 text-xs font-semibold hover:bg-accent/80"
                     >
-                      Send SMS
+                      SMS User
+                    </a>
+                  </div>
+
+                  {/* Police & Emergency services */}
+                  <div className="flex gap-2">
+                    <a
+                      href={`tel:${MALDIVES_POLICE_NUMBER}`}
+                      className="flex-1 flex items-center justify-center gap-1 bg-destructive/10 text-destructive rounded-lg py-2 text-xs font-semibold hover:bg-destructive/20"
+                    >
+                      <Shield className="w-3 h-3" /> Call Police (119)
+                    </a>
+                    <a
+                      href={`sms:${MALDIVES_POLICE_NUMBER}?body=${encodeURIComponent(`SOS Alert - ${alert.user_type === "driver" ? "Driver" : "Passenger"}: ${alert.user_name}, Phone: +960${alert.user_phone}${alert.lat && alert.lng ? `, Location: https://maps.google.com/?q=${alert.lat},${alert.lng}` : ""}`)}`}
+                      className="flex-1 flex items-center justify-center gap-1 bg-destructive/10 text-destructive rounded-lg py-2 text-xs font-semibold hover:bg-destructive/20"
+                    >
+                      SMS Police
+                    </a>
+                    <a
+                      href={`tel:${MALDIVES_AMBULANCE_NUMBER}`}
+                      className="flex-1 flex items-center justify-center gap-1 bg-destructive/10 text-destructive rounded-lg py-2 text-xs font-semibold hover:bg-destructive/20"
+                    >
+                      <Phone className="w-3 h-3" /> Ambulance (102)
                     </a>
                   </div>
                 </div>
