@@ -354,12 +354,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
-  // Monitor active trip for passenger cancellation
+  // Monitor active trip for cancellation or acceptance by another driver
   useEffect(() => {
     if (!currentTrip?.id || (screen !== "navigating" && screen !== "ride-request")) return;
 
     const channel = supabase
-      .channel(`driver-trip-cancel-${currentTrip.id}`)
+      .channel(`driver-trip-monitor-${currentTrip.id}`)
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",
@@ -367,8 +367,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         filter: `id=eq.${currentTrip.id}`,
       }, async (payload) => {
         const updated = payload.new as any;
+        
+        // Trip accepted by ANOTHER driver while we're on ride-request screen
+        if (updated.status === "accepted" && screen === "ride-request" && updated.driver_id !== userProfile?.id) {
+          toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
+          setScreen("online");
+          setCurrentTrip(null);
+          setPassengerProfile(null);
+          return;
+        }
+
+        // Trip cancelled by passenger
         if (updated.status === "cancelled") {
-          // Play cancellation sound
           const { data: soundSetting } = await supabase.from("system_settings").select("value").eq("key", "driver_sound_cancelled").single();
           if (soundSetting?.value && typeof soundSetting.value === "string") {
             const audio = new Audio(soundSetting.value);
@@ -1005,8 +1015,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
                 <button onClick={async () => {
                   if (!currentTrip || !userProfile?.id) return;
-                  // Accept trip in database
-                  const { error } = await supabase.from("trips").update({
+                  
+                  // First check if trip is still available
+                  const { data: freshTrip } = await supabase
+                    .from("trips")
+                    .select("status, driver_id")
+                    .eq("id", currentTrip.id)
+                    .single();
+                  
+                  if (!freshTrip || freshTrip.status !== "requested") {
+                    toast({ title: "Trip Unavailable", description: "This trip has already been accepted by another driver.", variant: "destructive" });
+                    setScreen("online");
+                    setCurrentTrip(null);
+                    setPassengerProfile(null);
+                    return;
+                  }
+
+                  // Accept trip in database (conditional on still being requested)
+                  const { error, count } = await supabase.from("trips").update({
                     status: "accepted",
                     driver_id: userProfile.id,
                     accepted_at: new Date().toISOString(),
@@ -1014,6 +1040,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                   if (error) {
                     toast({ title: "Error", description: error.message, variant: "destructive" });
+                    return;
+                  }
+
+                  // Verify the update actually happened (race condition check)
+                  const { data: verifyTrip } = await supabase
+                    .from("trips")
+                    .select("driver_id")
+                    .eq("id", currentTrip.id)
+                    .single();
+                  
+                  if (verifyTrip?.driver_id !== userProfile.id) {
+                    toast({ title: "Trip Taken", description: "Another driver accepted this trip first.", variant: "destructive" });
+                    setScreen("online");
+                    setCurrentTrip(null);
+                    setPassengerProfile(null);
                     return;
                   }
 
