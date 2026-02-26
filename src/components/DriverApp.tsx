@@ -354,6 +354,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
+  // Monitor active trip for passenger cancellation
+  useEffect(() => {
+    if (!currentTrip?.id || (screen !== "navigating" && screen !== "ride-request")) return;
+
+    const channel = supabase
+      .channel(`driver-trip-cancel-${currentTrip.id}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "trips",
+        filter: `id=eq.${currentTrip.id}`,
+      }, async (payload) => {
+        const updated = payload.new as any;
+        if (updated.status === "cancelled") {
+          // Play cancellation sound
+          const { data: soundSetting } = await supabase.from("system_settings").select("value").eq("key", "driver_sound_cancelled").single();
+          if (soundSetting?.value && typeof soundSetting.value === "string") {
+            const audio = new Audio(soundSetting.value);
+            audio.play().catch(() => {});
+          }
+          toast({ title: "Trip Cancelled", description: "The passenger cancelled this trip.", variant: "destructive" });
+          await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
+          setScreen("online");
+          setCurrentTrip(null);
+          setPassengerProfile(null);
+          setDriverTripPhase("heading_to_pickup");
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentTrip?.id, screen, userProfile?.id]);
+
   // Fetch available banks from admin-configured banks table
   useEffect(() => {
     supabase.from("banks").select("id, name, logo_url").eq("is_active", true).order("name").then(({ data }) => {
