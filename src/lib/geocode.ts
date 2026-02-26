@@ -1,5 +1,5 @@
 /**
- * Reverse-geocoding using Google Maps Geocoder + Nearby Places for rich POI names.
+ * Reverse-geocoding using Google Maps Geocoder + Places Nearby Search for rich POI names.
  * Falls back to Nominatim if Google isn't loaded yet.
  */
 
@@ -22,11 +22,11 @@ export const reverseGeocodeLocation = async (
 ): Promise<ReverseGeocodeResult> => {
   const g = (window as any).google;
 
-  // If Google Maps is loaded, use it — much faster & richer
+  // If Google Maps is loaded, use it
   if (g?.maps?.Geocoder) {
     try {
       const result = await googleReverseGeocode(g, lat, lng);
-      if (result) return result;
+      if (result && result.name !== "Selected Location") return result;
     } catch {}
   }
 
@@ -34,9 +34,34 @@ export const reverseGeocodeLocation = async (
   return nominatimReverse(lat, lng);
 };
 
-// ─── Google Maps Geocoder + Places ─────────────────────────────
+// ─── Google Maps Geocoder + Places Nearby ──────────────────────
 
 async function googleReverseGeocode(
+  g: any,
+  lat: number,
+  lng: number
+): Promise<ReverseGeocodeResult | null> {
+  // Run geocoder + nearby places in parallel for speed
+  const [geocodeResult, nearbyResult] = await Promise.allSettled([
+    googleGeocode(g, lat, lng),
+    googleNearbyPlace(g, lat, lng),
+  ]);
+
+  const geo = geocodeResult.status === "fulfilled" ? geocodeResult.value : null;
+  const nearby = nearbyResult.status === "fulfilled" ? nearbyResult.value : null;
+
+  // Prefer nearby place name (shop, cafe, etc.) over geocoder
+  if (nearby) {
+    return {
+      name: nearby.name,
+      address: geo?.address || nearby.address,
+    };
+  }
+
+  return geo;
+}
+
+async function googleGeocode(
   g: any,
   lat: number,
   lng: number
@@ -88,15 +113,66 @@ async function googleReverseGeocode(
       }
 
       const best = poiResult || buildingResult || streetResult || results[0];
-
-      // Extract a clean name
       const name = extractGoogleName(best);
-
-      // Build address from components, excluding the name part
       const address = extractGoogleAddress(best, name);
-
       resolve({ name, address });
     });
+  });
+}
+
+async function googleNearbyPlace(
+  g: any,
+  lat: number,
+  lng: number
+): Promise<ReverseGeocodeResult | null> {
+  // Need a map div for PlacesService — use existing or create hidden one
+  if (!g.maps.places?.PlacesService) return null;
+
+  const mapDiv = document.createElement("div");
+  const service = new g.maps.places.PlacesService(mapDiv);
+  const location = new g.maps.LatLng(lat, lng);
+
+  return new Promise((resolve) => {
+    // Search within 30m radius for nearby places
+    service.nearbySearch(
+      {
+        location,
+        radius: 30,
+        // No type filter to get everything nearby
+      },
+      (results: any[], status: string) => {
+        if (status !== "OK" || !results?.length) {
+          resolve(null);
+          return;
+        }
+
+        // Find the closest place
+        let best: any = null;
+        let bestDist = Infinity;
+
+        for (const place of results) {
+          if (!place.geometry?.location) continue;
+          const plat = place.geometry.location.lat();
+          const plng = place.geometry.location.lng();
+          const dist = Math.sqrt(
+            Math.pow(plat - lat, 2) + Math.pow(plng - lng, 2)
+          );
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = place;
+          }
+        }
+
+        if (best && best.name) {
+          resolve({
+            name: best.name,
+            address: best.vicinity || "",
+          });
+        } else {
+          resolve(null);
+        }
+      }
+    );
   });
 }
 
@@ -104,27 +180,23 @@ function extractGoogleName(result: any): string {
   const components: any[] = result.address_components || [];
   const types: string[] = result.types || [];
 
-  // If it's a POI, the formatted address often starts with the name
   if (
     types.some((t: string) =>
       ["point_of_interest", "establishment", "premise", "subpremise"].includes(t)
     )
   ) {
-    // First component is usually the most specific (name/number)
     const first = components[0];
     if (first) {
-      // For premises, combine with street
       if (types.includes("premise") || types.includes("subpremise")) {
         const street = components.find((c: any) => c.types?.includes("route"));
         if (street) {
-          return `${first.long_name} ${street.long_name}`;
+          return `${first.long_name}, ${street.long_name}`;
         }
       }
       return first.long_name;
     }
   }
 
-  // For street addresses: "123 Road Name"
   const streetNum = components.find((c: any) => c.types?.includes("street_number"));
   const route = components.find((c: any) => c.types?.includes("route"));
   if (streetNum && route) {
@@ -132,18 +204,14 @@ function extractGoogleName(result: any): string {
   }
   if (route) return route.long_name;
 
-  // Fallback to first part of formatted address
   return result.formatted_address?.split(",")[0] || "Selected Location";
 }
 
 function extractGoogleAddress(result: any, excludeName: string): string {
   const parts = (result.formatted_address || "").split(",").map((p: string) => p.trim());
-
-  // Remove the first part if it matches the name
   const filtered = parts.filter(
     (p: string) => p.toLowerCase() !== excludeName.toLowerCase()
   );
-
   return filtered.slice(0, 3).join(", ") || parts.slice(1, 4).join(", ");
 }
 
