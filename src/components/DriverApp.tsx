@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
+import RideRequestMap from "./RideRequestMap";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -123,10 +124,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
   const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h", avgRating: 0, totalRatings: 0 });
+  const [acceptTimeoutSeconds, setAcceptTimeoutSeconds] = useState(30);
+  const [rideRequestCountdown, setRideRequestCountdown] = useState(0);
+  const rideRequestTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", phone_number: "", gender: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
+  const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -287,13 +292,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       } catch {}
     }
 
-    // Fetch passenger profile and trip stops in parallel
-    const [pProfileRes, stopsRes] = await Promise.all([
+    // Fetch passenger profile, trip stops, and timeout in parallel
+    const [pProfileRes, stopsRes, timeoutRes] = await Promise.all([
       trip.passenger_id
         ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single()
         : Promise.resolve({ data: null }),
-      supabase.from("trip_stops").select("id, stop_order, address, completed_at").eq("trip_id", trip.id).order("stop_order"),
+      supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
+      supabase.from("system_settings").select("value").eq("key", "driver_accept_timeout_seconds").single(),
     ]);
+
+    const timeout = timeoutRes.data?.value ? Number(timeoutRes.data.value) : 30;
+    setAcceptTimeoutSeconds(timeout);
+    setRideRequestCountdown(timeout);
 
     toast({
       title: "🚗 New Ride Request!",
@@ -304,6 +314,27 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setPassengerProfile(pProfileRes.data);
     setTripStops((stopsRes.data as any[]) || []);
     setScreen("ride-request");
+
+    // Start countdown timer
+    if (rideRequestTimerRef.current) clearInterval(rideRequestTimerRef.current);
+    let remaining = timeout;
+    rideRequestTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      setRideRequestCountdown(remaining);
+      if (remaining <= 0) {
+        if (rideRequestTimerRef.current) clearInterval(rideRequestTimerRef.current);
+        rideRequestTimerRef.current = null;
+        // Auto-dismiss ride request
+        setScreen("online");
+        setCurrentTrip(null);
+        setPassengerProfile(null);
+        setTripStops([]);
+        if (tripSoundRef.current) {
+          tripSoundRef.current.pause();
+          tripSoundRef.current.currentTime = 0;
+        }
+      }
+    }, 1000);
   };
 
   // Track last seen trip id to avoid duplicate handling
@@ -429,6 +460,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
     supabase.from("vehicle_types").select("id, name, icon, image_url, map_icon_url").eq("is_active", true).order("sort_order").then(({ data }) => {
       if (data) setVehicleTypes(data);
+    });
+    supabase.from("system_settings").select("value").eq("key", "passenger_map_icon_url").single().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") setPassengerMapIconUrl(data.value);
     });
   }, []);
 
@@ -731,6 +765,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           const vt = sel ? vehicleTypes.find(t => t.id === sel.vehicle_type_id) : null;
           return vt?.map_icon_url || null;
         })()}
+        passengerMapIconUrl={passengerMapIconUrl}
       />
 
       {/* GPS Toggle, Theme Toggle & SOS */}
@@ -973,14 +1008,43 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Ride Request */}
       {screen === "ride-request" && currentTrip && (
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[500] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm">
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden">
-            <div className="bg-primary px-4 py-4 text-center">
-              <p className="text-primary-foreground/80 text-xs">New ride{tripStops.length > 0 ? ` • ${tripStops.length + 2} stops` : ""}</p>
+          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden max-h-[90vh] overflow-y-auto">
+            {/* Header with countdown */}
+            <div className="bg-primary px-4 py-3 text-center relative">
+              <p className="text-primary-foreground/80 text-xs">
+                New ride{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
+              </p>
               <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
               {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
+              {/* Countdown timer */}
+              <div className="absolute top-3 right-3 w-10 h-10 rounded-full border-2 border-primary-foreground/40 flex items-center justify-center">
+                <span className={`text-sm font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-primary-foreground"}`}>
+                  {rideRequestCountdown}
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div className="mt-2 h-1 bg-primary-foreground/20 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary-foreground/60 rounded-full"
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: acceptTimeoutSeconds, ease: "linear" }}
+                />
+              </div>
             </div>
 
-            <div className="px-4 py-4 space-y-3">
+            {/* Mini map preview */}
+            <div className="h-36 w-full">
+              <RideRequestMap
+                pickupLat={currentTrip.pickup_lat}
+                pickupLng={currentTrip.pickup_lng}
+                dropoffLat={currentTrip.dropoff_lat}
+                dropoffLng={currentTrip.dropoff_lng}
+                stops={tripStops.map(s => ({ lat: (s as any).lat, lng: (s as any).lng, stop_order: s.stop_order }))}
+              />
+            </div>
+
+            <div className="px-4 py-3 space-y-2.5">
               {/* Customer/Passenger info */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0 overflow-hidden">
@@ -1008,22 +1072,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               {/* Route with stops */}
               <div className="bg-surface rounded-xl p-3 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                  <p className="text-xs text-foreground truncate">{currentTrip.pickup_address}</p>
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+                  <p className="text-xs text-foreground truncate font-medium">{currentTrip.pickup_address}</p>
                 </div>
-                {tripStops.map((stop, i) => (
+                {tripStops.map((stop) => (
                   <div key={stop.id}>
                     <div className="ml-1 w-0.5 h-2.5 bg-border" />
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-2 h-2 rounded-sm bg-accent shrink-0" />
+                      <div className="w-2.5 h-2.5 rounded-sm bg-amber-500 shrink-0" />
                       <p className="text-xs text-foreground truncate">Stop {stop.stop_order}: {stop.address}</p>
                     </div>
                   </div>
                 ))}
                 <div className="ml-1 w-0.5 h-2.5 bg-border" />
                 <div className="flex items-center gap-2 min-w-0">
-                  <MapPin className="w-2 h-2 text-foreground shrink-0" />
-                  <p className="text-xs text-foreground truncate">{currentTrip.dropoff_address}</p>
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                  <p className="text-xs text-foreground truncate font-medium">{currentTrip.dropoff_address}</p>
                 </div>
               </div>
 
@@ -1045,15 +1109,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </div>
               </div>
 
+              {/* Accept / Decline buttons */}
               <div className="flex gap-2">
                 <button onClick={async () => {
+                  if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
+                  if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);
-                }} className="flex-1 flex items-center justify-center gap-1.5 bg-surface text-foreground rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
+                }} className="flex-1 flex items-center justify-center gap-1.5 bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
                   <X className="w-4 h-4" />Decline
                 </button>
                 <button onClick={async () => {
+                  if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
                   if (!currentTrip || !userProfile?.id) return;
                   
                   // First check if trip is still available
@@ -1102,7 +1170,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   await supabase.from("driver_locations").update({ is_on_trip: true }).eq("driver_id", userProfile.id);
 
                   setScreen("navigating");
-                }} className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-3 text-sm font-semibold active:scale-95 transition-transform">
+                }} className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 text-white rounded-xl py-3 text-sm font-bold active:scale-95 transition-transform">
                   <CheckCircle className="w-4 h-4" />Accept
                 </button>
               </div>
