@@ -564,6 +564,50 @@ export type Database = {
           },
         ]
       }
+      saved_locations: {
+        Row: {
+          address: string
+          created_at: string
+          icon: string
+          id: string
+          label: string
+          lat: number
+          lng: number
+          name: string
+          user_id: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          label?: string
+          lat: number
+          lng: number
+          name: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          label?: string
+          lat?: number
+          lng?: number
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_locations: {
         Row: {
           address: string
