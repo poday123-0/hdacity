@@ -387,7 +387,7 @@ const Index = () => {
 
       <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto">
         <AnimatePresence mode="wait">
-          {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} />}
+          {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} userId={userProfile?.id} />}
           {passengerScreen === "ride-options" && (
             <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} />
           )}
