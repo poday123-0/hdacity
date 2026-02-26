@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
@@ -41,6 +42,7 @@ const Dispatch = () => {
   const [loading, setLoading] = useState(true);
   const { theme, toggleTheme } = useTheme();
   const [dispatcherProfile, setDispatcherProfile] = useState<any>(null);
+  usePushNotifications(dispatcherProfile?.id, "dispatcher");
 
   // Login state
   const [phone, setPhone] = useState("");

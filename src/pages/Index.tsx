@@ -14,6 +14,7 @@ import RideFeedback from "@/components/RideFeedback";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SOSButton from "@/components/SOSButton";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 type AppPhase = "splash" | "auth" | "register" | "passenger";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
@@ -43,6 +44,7 @@ const Index = () => {
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [isDriver] = useState(false);
+  usePushNotifications(userProfile?.id, "passenger");
   const [pendingPhone, setPendingPhone] = useState("");
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);

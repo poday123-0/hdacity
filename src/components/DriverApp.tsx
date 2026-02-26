@@ -45,6 +45,7 @@ import {
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
 import RideRequestMap from "./RideRequestMap";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -85,6 +86,7 @@ interface DriverAppProps {
 
 const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
   useTheme(); // Initialize theme
+  usePushNotifications(userProfile?.id, "driver");
   const [screen, setScreen] = useState<DriverScreen>("offline");
   const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
   const [showDriverChat, setShowDriverChat] = useState(false);
