@@ -128,7 +128,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 pb-6 space-y-4">
@@ -242,7 +242,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 pb-6 space-y-4">
@@ -287,7 +287,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85vh] overflow-y-auto"
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 pb-6 space-y-4">
