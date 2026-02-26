@@ -108,12 +108,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [newBank, setNewBank] = useState({ bank_name: "", account_number: "", account_name: "" });
   const [availableBanks, setAvailableBanks] = useState<Array<{ id: string; name: string; logo_url: string | null }>>([]);
   const [uploading, setUploading] = useState<string | null>(null);
-  const [vehicleInfo, setVehicleInfo] = useState<{ make: string; model: string; plate_number: string; color: string } | null>(null);
+  const [vehicleInfo, setVehicleInfo] = useState<{ make: string; model: string; plate_number: string; color: string; vehicle_type_id?: string } | null>(null);
   const [driverVehicles, setDriverVehicles] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => {
+    try { return localStorage.getItem("hda_last_vehicle_id"); } catch { return null; }
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
@@ -468,9 +470,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setDriverVehicles(allVehicles || []);
         const activeVehicle = allVehicles?.[0];
         if (activeVehicle) {
-          if (!selectedVehicleId) setSelectedVehicleId(activeVehicle.id);
-          const sel = allVehicles?.find(v => v.id === selectedVehicleId) || activeVehicle;
-          setVehicleInfo({ make: sel.make || "", model: sel.model || "", plate_number: sel.plate_number, color: sel.color || "" });
+          const savedId = selectedVehicleId || (() => { try { return localStorage.getItem("hda_last_vehicle_id"); } catch { return null; } })();
+          const sel = (savedId && allVehicles?.find(v => v.id === savedId)) || activeVehicle;
+          setSelectedVehicleId(sel.id);
+          try { localStorage.setItem("hda_last_vehicle_id", sel.id); } catch {}
+          setVehicleInfo({ make: sel.make || "", model: sel.model || "", plate_number: sel.plate_number, color: sel.color || "", vehicle_type_id: sel.vehicle_type_id || "" });
         }
         else issues.push("No vehicle assigned");
         setVerificationIssues([...issues]);
@@ -647,7 +651,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setDriverVehicles([...driverVehicles, data]);
     setNewVehicle({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
     setShowAddVehicle(false);
-    if (!vehicleInfo) setVehicleInfo({ make: data.make, model: data.model, plate_number: data.plate_number, color: data.color });
+    if (!vehicleInfo) {
+      setVehicleInfo({ make: data.make, model: data.model, plate_number: data.plate_number, color: data.color, vehicle_type_id: data.vehicle_type_id || "" });
+      try { localStorage.setItem("hda_last_vehicle_id", data.id); } catch {}
+    }
     // Flag for admin review
     await supabase.from("profiles").update({ status: "Pending Review" }).eq("id", userProfile.id);
     setProfileStatus("Pending Review");
@@ -661,10 +668,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (selectedVehicleId === id) {
       const next = remaining.length > 0 ? remaining[0] : null;
       setSelectedVehicleId(next?.id || null);
-      setVehicleInfo(next ? { make: next.make, model: next.model, plate_number: next.plate_number, color: next.color } : null);
+      if (next) { try { localStorage.setItem("hda_last_vehicle_id", next.id); } catch {} }
+      setVehicleInfo(next ? { make: next.make, model: next.model, plate_number: next.plate_number, color: next.color, vehicle_type_id: next.vehicle_type_id || "" } : null);
     } else if (remaining.length > 0) {
       const active = remaining.find(v => v.id === selectedVehicleId) || remaining[0];
-      setVehicleInfo({ make: active.make, model: active.model, plate_number: active.plate_number, color: active.color });
+      setVehicleInfo({ make: active.make, model: active.model, plate_number: active.plate_number, color: active.color, vehicle_type_id: active.vehicle_type_id || "" });
     } else {
       setVehicleInfo(null);
     }
@@ -678,7 +686,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   const selectVehicle = (v: any) => {
     setSelectedVehicleId(v.id);
-    setVehicleInfo({ make: v.make || "", model: v.model || "", plate_number: v.plate_number, color: v.color || "" });
+    try { localStorage.setItem("hda_last_vehicle_id", v.id); } catch {}
+    setVehicleInfo({ make: v.make || "", model: v.model || "", plate_number: v.plate_number, color: v.color || "", vehicle_type_id: v.vehicle_type_id || "" });
     toast({ title: "Vehicle selected", description: `${v.make} ${v.model} — ${v.plate_number}. Trip requests will match this vehicle type.` });
   };
 
@@ -919,22 +928,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </button>
 
                   {/* Vehicle info */}
-                  {vehicleInfo && (
-                    <div className="bg-surface rounded-xl p-2.5 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Car className="w-5 h-5 text-primary" />
+                  {vehicleInfo && (() => {
+                    const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
+                    return (
+                      <div className="bg-surface rounded-xl p-2.5 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          {vTypeImg ? (
+                            <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" />
+                          ) : (
+                            <Car className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
+                          <p className="text-[10px] text-muted-foreground">{vehicleInfo.plate_number} {vehicleInfo.color ? `• ${vehicleInfo.color}` : ""}</p>
+                        </div>
+                        {driverVehicles.length > 1 && (
+                          <button onClick={() => { setShowProfile(true); setProfileTab("vehicles"); }} className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                            Switch
+                          </button>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
-                        <p className="text-[10px] text-muted-foreground">{vehicleInfo.plate_number} {vehicleInfo.color ? `• ${vehicleInfo.color}` : ""}</p>
-                      </div>
-                      {driverVehicles.length > 1 && (
-                        <button onClick={() => { setShowProfile(true); setProfileTab("vehicles"); }} className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-lg">
-                          Switch
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
 
                 </motion.div>
               )}
