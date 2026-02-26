@@ -193,7 +193,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 max-h-[85vh] flex flex-col"
+      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 max-h-[calc(100vh-80px)] flex flex-col"
     >
       <div className="px-5 pt-3 pb-8 space-y-3 overflow-y-auto flex-1 overscroll-contain">
         {/* Handle */}
