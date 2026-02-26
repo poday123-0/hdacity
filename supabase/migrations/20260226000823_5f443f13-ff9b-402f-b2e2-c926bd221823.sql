@@ -1,0 +1,1 @@
+ALTER TABLE public.user_roles ADD COLUMN IF NOT EXISTS permissions jsonb NOT NULL DEFAULT '[]'::jsonb;

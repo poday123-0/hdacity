@@ -864,18 +864,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          permissions: Json
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          permissions?: Json
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          permissions?: Json
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }

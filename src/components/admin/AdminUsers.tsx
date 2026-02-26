@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, Plus, Trash2, Shield, Radio, X } from "lucide-react";
+import { Search, Plus, Trash2, Shield, Radio, X, UserCheck, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+
+const AVAILABLE_PERMISSIONS = [
+  { key: "manage_trips", label: "Manage Trips" },
+  { key: "manage_drivers", label: "Manage Drivers" },
+  { key: "manage_vehicles", label: "Manage Vehicles" },
+  { key: "manage_passengers", label: "Manage Passengers" },
+  { key: "manage_billing", label: "Manage Billing" },
+  { key: "manage_settings", label: "Manage Settings" },
+  { key: "manage_lost_items", label: "Manage Lost Items" },
+  { key: "view_live_map", label: "View Live Map" },
+  { key: "manage_companies", label: "Manage Companies" },
+  { key: "manage_locations", label: "Manage Locations" },
+  { key: "manage_fares", label: "Manage Fares" },
+  { key: "dispatch_trips", label: "Dispatch Trips" },
+];
 
 const AdminUsers = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -11,6 +27,11 @@ const AdminUsers = () => {
   const [addPhone, setAddPhone] = useState("");
   const [addRole, setAddRole] = useState<"admin" | "dispatcher">("dispatcher");
   const [adding, setAdding] = useState(false);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [lookedUpProfile, setLookedUpProfile] = useState<any>(null);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [editingPermissions, setEditingPermissions] = useState<string | null>(null);
+  const [editPermissions, setEditPermissions] = useState<string[]>([]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -28,15 +49,38 @@ const AdminUsers = () => {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  const lookupPhone = async () => {
+    if (!addPhone || addPhone.length < 7) return;
+    setLookingUp(true);
+    setLookedUpProfile(null);
+    const { data, error } = await supabase.functions.invoke("lookup-profile", {
+      body: { phone_number: addPhone },
+    });
+    if (error || !data || data.error) {
+      setLookedUpProfile(null);
+      toast({ title: "No user found", description: "No registered user with this phone number.", variant: "destructive" });
+    } else {
+      setLookedUpProfile(data);
+    }
+    setLookingUp(false);
+  };
+
+  useEffect(() => {
+    setLookedUpProfile(null);
+    if (addPhone.length === 7) {
+      lookupPhone();
+    }
+  }, [addPhone]);
+
   const addUser = async () => {
-    if (!addPhone || addPhone.length < 7) {
-      toast({ title: "Enter a valid phone number", variant: "destructive" });
+    if (!lookedUpProfile) {
+      toast({ title: "Look up a user first", variant: "destructive" });
       return;
     }
     setAdding(true);
 
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "add", phone_number: addPhone, role: addRole },
+      body: { action: "add", phone_number: addPhone, role: addRole, permissions: selectedPermissions },
     });
 
     if (error || data?.error) {
@@ -45,6 +89,8 @@ const AdminUsers = () => {
       toast({ title: "User added!", description: `${data.profile.first_name} ${data.profile.last_name} is now a ${addRole}` });
       setShowAdd(false);
       setAddPhone("");
+      setLookedUpProfile(null);
+      setSelectedPermissions([]);
       fetchUsers();
     }
     setAdding(false);
@@ -63,6 +109,23 @@ const AdminUsers = () => {
       toast({ title: "Role removed" });
       fetchUsers();
     }
+  };
+
+  const updatePermissions = async (roleId: string) => {
+    const { data, error } = await supabase.functions.invoke("manage-user-role", {
+      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions },
+    });
+    if (error || data?.error) {
+      toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "Permissions updated" });
+      setEditingPermissions(null);
+      fetchUsers();
+    }
+  };
+
+  const togglePermission = (key: string, list: string[], setList: (v: string[]) => void) => {
+    setList(list.includes(key) ? list.filter(p => p !== key) : [...list, key]);
   };
 
   const filtered = users.filter((u) => {
@@ -95,18 +158,23 @@ const AdminUsers = () => {
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Add Admin or Dispatcher</h3>
-            <button onClick={() => setShowAdd(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            <button onClick={() => { setShowAdd(false); setLookedUpProfile(null); setAddPhone(""); setSelectedPermissions([]); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
           <p className="text-sm text-muted-foreground">The user must already have a registered profile (as driver or passenger).</p>
+
+          {/* Phone + Role row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
-              <input
-                value={addPhone}
-                onChange={(e) => setAddPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                placeholder="7XXXXXX"
-                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <div className="relative">
+                <input
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                  placeholder="7XXXXXX"
+                  className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {lookingUp && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Role</label>
@@ -120,9 +188,36 @@ const AdminUsers = () => {
               </select>
             </div>
             <div className="flex items-end">
-              <button onClick={addUser} disabled={adding} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50">
+              <button onClick={addUser} disabled={adding || !lookedUpProfile} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50">
                 {adding ? "Adding..." : "Add User"}
               </button>
+            </div>
+          </div>
+
+          {/* Looked-up profile display */}
+          {lookedUpProfile && (
+            <div className="flex items-center gap-3 p-3 bg-accent/30 border border-accent rounded-lg">
+              <UserCheck className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">{lookedUpProfile.first_name} {lookedUpProfile.last_name}</p>
+                <p className="text-xs text-muted-foreground">+960 {lookedUpProfile.phone_number} · {lookedUpProfile.user_type}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Permissions */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Permissions</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {AVAILABLE_PERMISSIONS.map((p) => (
+                <label key={p.key} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-2 rounded-lg hover:bg-muted/50">
+                  <Checkbox
+                    checked={selectedPermissions.includes(p.key)}
+                    onCheckedChange={() => togglePermission(p.key, selectedPermissions, setSelectedPermissions)}
+                  />
+                  {p.label}
+                </label>
+              ))}
             </div>
           </div>
         </div>
@@ -135,15 +230,16 @@ const AdminUsers = () => {
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Role</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Permissions</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Added</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
             ) : (
               filtered.map((u) => (
                 <tr key={u.id} className="border-b border-border last:border-0">
@@ -160,6 +256,37 @@ const AdminUsers = () => {
                       {u.role === "admin" ? <Shield className="w-3 h-3" /> : <Radio className="w-3 h-3" />}
                       {u.role === "admin" ? "Admin" : "Dispatcher"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {editingPermissions === u.id ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-1">
+                          {AVAILABLE_PERMISSIONS.map((p) => (
+                            <label key={p.key} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                              <Checkbox
+                                checked={editPermissions.includes(p.key)}
+                                onCheckedChange={() => togglePermission(p.key, editPermissions, setEditPermissions)}
+                              />
+                              {p.label}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => updatePermissions(u.id)} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded">Save</button>
+                          <button onClick={() => setEditingPermissions(null)} className="text-xs px-2 py-1 bg-muted text-muted-foreground rounded">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditingPermissions(u.id); setEditPermissions(u.permissions || []); }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {(u.permissions && u.permissions.length > 0)
+                          ? u.permissions.map((p: string) => AVAILABLE_PERMISSIONS.find(ap => ap.key === p)?.label || p).join(", ")
+                          : "No permissions set — click to edit"
+                        }
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {new Date(u.created_at).toLocaleDateString()}
