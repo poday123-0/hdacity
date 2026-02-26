@@ -120,7 +120,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
-  const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h" });
+  const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h", avgRating: 0, totalRatings: 0 });
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", phone_number: "", gender: "" });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -464,6 +464,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .eq("driver_id", userProfile.id)
           .gte("created_at", todayStart.toISOString());
 
+        // Fetch all-time ratings
+        const { data: ratedTrips } = await supabase
+          .from("trips")
+          .select("rating")
+          .eq("driver_id", userProfile.id)
+          .eq("status", "completed")
+          .not("rating", "is", null);
+
+        const totalRatings = ratedTrips?.length || 0;
+        const avgRating = totalRatings > 0
+          ? ratedTrips!.reduce((sum, t) => sum + Number(t.rating), 0) / totalRatings
+          : 0;
+
         if (trips) {
           const completedTrips = trips.filter(t => t.status === "completed");
           const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
@@ -474,6 +487,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             rides: completedTrips.length,
             earnings: totalEarnings,
             hours: h > 0 ? `${h}h${m > 0 ? m.toString().padStart(2, "0") : ""}` : `${m}m`,
+            avgRating: Math.round(avgRating * 10) / 10,
+            totalRatings,
           });
         }
       } else {
@@ -828,6 +843,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <Clock className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
                       <p className="text-sm font-bold text-foreground">{driverStats.hours}</p>
                       <p className="text-[9px] text-muted-foreground">Time</p>
+                    </div>
+                    <div className="bg-surface rounded-xl p-2 text-center">
+                      <Star className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
+                      <p className="text-sm font-bold text-foreground">{driverStats.avgRating > 0 ? driverStats.avgRating : "—"}</p>
+                      <p className="text-[9px] text-muted-foreground">Rating</p>
                     </div>
                     <div className="bg-surface rounded-xl p-2 text-center space-y-0.5">
                       <Radar className="w-3.5 h-3.5 text-primary mx-auto" />

@@ -245,7 +245,7 @@ const Index = () => {
       const { data } = await supabase
         .from("system_settings")
         .select("key, value")
-        .in("key", ["passenger_sound_accepted", "passenger_sound_arrived", "passenger_sound_started", "passenger_sound_completed", "passenger_sound_cancelled"]);
+        .in("key", ["passenger_sound_accepted", "passenger_sound_arrived", "passenger_sound_started", "passenger_sound_completed", "passenger_sound_cancelled", "passenger_sound_message"]);
       if (data) {
         const map: Record<string, string> = {};
         data.forEach((s: any) => {
