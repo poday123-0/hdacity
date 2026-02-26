@@ -17,10 +17,9 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { action, phone_number, user_id, role, role_id } = await req.json();
+    const { action, phone_number, user_id, role, role_id, permissions } = await req.json();
 
     if (action === "add") {
-      // Find profile by phone
       const { data: profiles, error: pErr } = await supabaseAdmin
         .from("profiles")
         .select("id, first_name, last_name")
@@ -35,7 +34,6 @@ serve(async (req) => {
 
       const profile = profiles[0];
 
-      // Check if already has role
       const { data: existing } = await supabaseAdmin
         .from("user_roles")
         .select("id")
@@ -49,10 +47,9 @@ serve(async (req) => {
         });
       }
 
-      // Insert role
       const { error: insertErr } = await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: profile.id, role });
+        .insert({ user_id: profile.id, role, permissions: permissions || [] });
 
       if (insertErr) {
         return new Response(JSON.stringify({ error: insertErr.message }), {
@@ -84,10 +81,28 @@ serve(async (req) => {
       });
     }
 
+    if (action === "update_permissions") {
+      const { error: updErr } = await supabaseAdmin
+        .from("user_roles")
+        .update({ permissions: permissions || [] })
+        .eq("id", role_id);
+
+      if (updErr) {
+        return new Response(JSON.stringify({ error: updErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "list") {
       const { data: roles, error: rErr } = await supabaseAdmin
         .from("user_roles")
-        .select("id, user_id, role, created_at")
+        .select("id, user_id, role, permissions, created_at")
         .in("role", ["admin", "dispatcher"])
         .order("created_at", { ascending: false });
 
