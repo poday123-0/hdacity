@@ -265,13 +265,11 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                       Offline
                     </span>
                   )}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden ${
-                    isSelected ? "bg-primary" : "bg-muted"
-                  }`}>
+                  <div className="w-12 h-10 flex items-center justify-center">
                     {vt.image_url ? (
-                      <img src={vt.image_url} alt={vt.name} className="w-full h-full object-contain p-1" />
+                      <img src={vt.image_url} alt={vt.name} className="w-full h-full object-contain" />
                     ) : (
-                      <Icon className={`w-5 h-5 ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                      <Icon className={`w-6 h-6 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                     )}
                   </div>
                   <p className="font-semibold text-[11px] text-foreground truncate w-full text-center leading-tight">{vt.name}</p>
