@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star } from "lucide-react";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "" };
 
@@ -11,6 +11,7 @@ const AdminDrivers = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [driverVehicles, setDriverVehicles] = useState<Record<string, any[]>>({});
+  const [driverRatings, setDriverRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,6 +58,27 @@ const AdminDrivers = () => {
       }
     });
     setDriverVehicles(vMap);
+
+    // Fetch driver ratings
+    const { data: ratedTrips } = await supabase
+      .from("trips")
+      .select("driver_id, rating")
+      .eq("status", "completed")
+      .not("rating", "is", null)
+      .not("driver_id", "is", null);
+    
+    const rMap: Record<string, { sum: number; count: number }> = {};
+    (ratedTrips || []).forEach((t: any) => {
+      if (!rMap[t.driver_id]) rMap[t.driver_id] = { sum: 0, count: 0 };
+      rMap[t.driver_id].sum += Number(t.rating);
+      rMap[t.driver_id].count += 1;
+    });
+    const ratingsMap: Record<string, { avg: number; count: number }> = {};
+    Object.entries(rMap).forEach(([id, v]) => {
+      ratingsMap[id] = { avg: Math.round((v.sum / v.count) * 10) / 10, count: v.count };
+    });
+    setDriverRatings(ratingsMap);
+
     setLoading(false);
   };
 
@@ -367,6 +389,7 @@ const AdminDrivers = () => {
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Rating</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicles</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Docs</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -375,9 +398,9 @@ const AdminDrivers = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : drivers.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
             ) : (
               drivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
@@ -391,6 +414,17 @@ const AdminDrivers = () => {
                       <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
+                      <td className="px-4 py-3">
+                        {driverRatings[d.id] ? (
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                            <span className="text-sm font-medium text-foreground">{driverRatings[d.id].avg}</span>
+                            <span className="text-[10px] text-muted-foreground">({driverRatings[d.id].count})</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No ratings</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => setExpandedDriver(isExpanded ? null : d.id)}
