@@ -1,4 +1,4 @@
-import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Home, Briefcase, Star, Heart, MapPinned, Trash2 } from "lucide-react";
+import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Home, Briefcase, Star, Heart, MapPinned, Trash2, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +72,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [pendingSaveLocation, setPendingSaveLocation] = useState<ServiceLocation | null>(null);
   const [settingOnMap, setSettingOnMap] = useState(false);
   const [saveMapPicker, setSaveMapPicker] = useState(false);
+  const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
@@ -326,6 +327,34 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const handleDeleteSaved = async (id: string) => {
     await supabase.from("saved_locations").delete().eq("id", id);
     setSavedLocations(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleEditSaved = (saved: SavedLocation) => {
+    setEditingSavedId(saved.id);
+    setSaveLabel(saved.label);
+    setSaveIcon(saved.icon);
+    setPendingSaveLocation({ id: saved.id, name: saved.name, address: saved.address, lat: saved.lat, lng: saved.lng });
+    setShowSaveDialog(true);
+  };
+
+  const handleUpdateSavedLocation = async () => {
+    if (!editingSavedId || !pendingSaveLocation || !saveLabel.trim()) return;
+    const { error } = await supabase.from("saved_locations").update({
+      label: saveLabel.trim(),
+      name: pendingSaveLocation.name,
+      address: pendingSaveLocation.address,
+      lat: pendingSaveLocation.lat,
+      lng: pendingSaveLocation.lng,
+      icon: saveIcon,
+    }).eq("id", editingSavedId);
+    if (!error) {
+      setSavedLocations(prev => prev.map(s => s.id === editingSavedId ? { ...s, label: saveLabel.trim(), name: pendingSaveLocation.name, address: pendingSaveLocation.address, lat: pendingSaveLocation.lat, lng: pendingSaveLocation.lng, icon: saveIcon } : s));
+    }
+    setShowSaveDialog(false);
+    setPendingSaveLocation(null);
+    setSaveLabel("");
+    setSaveIcon("star");
+    setEditingSavedId(null);
   };
 
   const handleSetOnMap = () => {
@@ -653,20 +682,27 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   {savedLocations.map((saved) => {
                     const IconComp = ICON_MAP[saved.icon] || Star;
                     return (
-                      <button
-                        key={saved.id}
-                        onClick={() => handleSelectSaved(saved)}
-                        className="group flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface text-xs font-semibold whitespace-nowrap active:scale-95 transition-all border border-border hover:border-primary/30 hover:bg-primary/5 relative"
-                      >
-                        <IconComp className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-foreground">{saved.label}</span>
+                      <div key={saved.id} className="flex items-center gap-0.5 shrink-0">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteSaved(saved.id); }}
-                          className="w-4 h-4 rounded-full bg-destructive/10 items-center justify-center shrink-0 ml-0.5 hidden group-hover:flex active:scale-90"
+                          onClick={() => handleSelectSaved(saved)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-l-xl bg-surface text-xs font-semibold whitespace-nowrap active:scale-95 transition-all border border-r-0 border-border hover:border-primary/30 hover:bg-primary/5"
                         >
-                          <X className="w-2.5 h-2.5 text-destructive" />
+                          <IconComp className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-foreground">{saved.label}</span>
                         </button>
-                      </button>
+                        <button
+                          onClick={() => handleEditSaved(saved)}
+                          className="px-1.5 py-2 bg-surface border-y border-border hover:bg-primary/5 transition-colors"
+                        >
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSaved(saved.id)}
+                          className="px-1.5 py-2 rounded-r-xl bg-surface border border-l-0 border-border hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3 text-destructive/70" />
+                        </button>
+                      </div>
                     );
                   })}
 
@@ -717,8 +753,8 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   className="bg-surface border border-border rounded-2xl p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-foreground">Save a place</h3>
-                    <button onClick={() => setShowSaveDialog(false)} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
+                    <h3 className="text-sm font-bold text-foreground">{editingSavedId ? "Edit place" : "Save a place"}</h3>
+                    <button onClick={() => { setShowSaveDialog(false); setEditingSavedId(null); }} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
                       <X className="w-3 h-3 text-muted-foreground" />
                     </button>
                   </div>
@@ -791,11 +827,11 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
                   {/* Save button */}
                   <button
-                    onClick={handleSaveLocation}
+                    onClick={editingSavedId ? handleUpdateSavedLocation : handleSaveLocation}
                     disabled={!saveLabel.trim() || !pendingSaveLocation}
                     className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
                   >
-                    Save place
+                    {editingSavedId ? "Update place" : "Save place"}
                   </button>
                 </motion.div>
               )}
