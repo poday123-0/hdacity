@@ -38,7 +38,8 @@ const settingsConfig = [
   { key: "max_search_radius_km", label: "Max Search Radius (km)", type: "number" },
   { key: "driver_accept_timeout_seconds", label: "Driver Accept Timeout (seconds)", type: "number" },
   { key: "default_trip_radius_km", label: "Default Driver Trip Radius (km)", type: "number" },
-  { key: "call_center_number", label: "Call Center Phone Number (shown to passengers)", type: "text" },
+  { key: "call_center_number", label: "Call Center Phone Number (shown in SOS dialog)", type: "text" },
+  { key: "local_police_number", label: "Local Police Number (shown in SOS dialog, e.g. 119)", type: "text" },
   { key: "privacy_notice", label: "Privacy Notice", type: "textarea" },
   { key: "terms_of_service", label: "Terms of Service", type: "textarea" },
 ];

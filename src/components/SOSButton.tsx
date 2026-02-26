@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, X, Plus, Trash2, Phone } from "lucide-react";
+import { AlertTriangle, X, Plus, Trash2, Phone, Shield, PhoneCall } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SOSButtonProps {
@@ -27,8 +27,18 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [newContact, setNewContact] = useState({ name: "", phone_number: "", relationship: "" });
   const [addingContact, setAddingContact] = useState(false);
+  const [callCenterNumber, setCallCenterNumber] = useState("");
+  const [policeNumber, setPoliceNumber] = useState("");
 
   useEffect(() => {
+    // Fetch call center and police numbers from settings
+    supabase.from("system_settings").select("key, value").in("key", ["call_center_number", "local_police_number"]).then(({ data }) => {
+      data?.forEach((s: any) => {
+        if (s.key === "call_center_number" && s.value) setCallCenterNumber(String(s.value).replace(/"/g, ""));
+        if (s.key === "local_police_number" && s.value) setPoliceNumber(String(s.value).replace(/"/g, ""));
+      });
+    });
+
     if (userType === "passenger" && userId) {
       supabase.from("emergency_contacts").select("*").eq("user_id", userId).eq("is_active", true).then(({ data }) => {
         setContacts(data || []);
@@ -232,6 +242,28 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                         <Plus className="w-3 h-3" /> Add Contact
                       </button>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick call buttons */}
+              {(callCenterNumber || policeNumber) && (
+                <div className="grid grid-cols-2 gap-2">
+                  {callCenterNumber && (
+                    <a
+                      href={`tel:${callCenterNumber.startsWith("+") ? callCenterNumber : `+960${callCenterNumber}`}`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors"
+                    >
+                      <PhoneCall className="w-4 h-4" /> Call Center
+                    </a>
+                  )}
+                  {policeNumber && (
+                    <a
+                      href={`tel:${policeNumber}`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-destructive/10 text-destructive font-semibold text-xs hover:bg-destructive/20 transition-colors"
+                    >
+                      <Shield className="w-4 h-4" /> Call Police
+                    </a>
                   )}
                 </div>
               )}
