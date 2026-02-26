@@ -39,16 +39,48 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
   const triggerSOS = async () => {
     setSending(true);
     try {
-      // Get current location
+      // Get current location with multiple fallback strategies
       let lat: number | null = null;
       let lng: number | null = null;
+
+      // Strategy 1: High-accuracy GPS
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000,
+          });
         });
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
-      } catch {}
+      } catch {
+        // Strategy 2: Low-accuracy fallback (network/wifi)
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 5000,
+              maximumAge: 60000,
+            });
+          });
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+        } catch {
+          // Strategy 3: Last known location from database
+          if (userType === "driver") {
+            const { data: loc } = await supabase
+              .from("driver_locations")
+              .select("lat, lng")
+              .eq("driver_id", userId)
+              .single();
+            if (loc) {
+              lat = loc.lat;
+              lng = loc.lng;
+            }
+          }
+        }
+      }
 
       const { data, error } = await supabase.functions.invoke("trigger-sos", {
         body: {
