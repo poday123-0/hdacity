@@ -97,7 +97,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
         setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
       }
       setLoading(false);
-    }, 500);
+    }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [center.lat, center.lng]);
 
