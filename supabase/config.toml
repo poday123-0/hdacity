@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.import-vehicles]
 verify_jwt = false
+
+[functions.trigger-sos]
+verify_jwt = false

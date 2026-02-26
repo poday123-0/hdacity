@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX } from "lucide-react";
+import SOSAlertPanel from "@/components/SOSAlertPanel";
 import MaldivesMap from "@/components/MaldivesMap";
 
 interface TripRoute {
@@ -175,6 +176,9 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* SOS Alerts */}
+      <SOSAlertPanel />
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
         <a

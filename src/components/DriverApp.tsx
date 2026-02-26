@@ -43,6 +43,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import TripChat from "./TripChat";
+import SOSButton from "./SOSButton";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -637,7 +638,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         })()}
       />
 
-      {/* GPS Toggle & Theme Toggle */}
+      {/* GPS Toggle, Theme Toggle & SOS */}
       <div className="absolute top-20 right-4 z-[460] flex flex-col gap-2">
         <button
           onClick={() => setGpsEnabled(!gpsEnabled)}
@@ -648,6 +649,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           {gpsEnabled ? <Locate className="w-4 h-4" /> : <LocateOff className="w-4 h-4" />}
         </button>
         <ThemeToggle />
+        {userProfile?.id && (
+          <SOSButton
+            userId={userProfile.id}
+            userType="driver"
+            userName={`${userProfile.first_name} ${userProfile.last_name}`}
+            userPhone={userProfile.phone_number || ""}
+            tripId={currentTrip?.id}
+          />
+        )}
       </div>
 
       {/* Offline */}
