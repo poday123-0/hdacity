@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useTheme } from "@/hooks/use-theme";
 import { Menu, X } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
@@ -67,6 +68,7 @@ const Admin = () => {
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { theme, toggleTheme } = useTheme();
+  usePushNotifications(adminProfile?.id, "admin");
 
   useEffect(() => {
     // Check if admin is already logged in via localStorage

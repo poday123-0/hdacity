@@ -1,0 +1,127 @@
+import { useEffect, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
+import { registerDeviceToken, removeDeviceToken } from "@/lib/push-notifications";
+
+/**
+ * Hook to register push notification token for the current user.
+ * Works on both web (Firebase) and native (Capacitor).
+ */
+export const usePushNotifications = (
+  userId: string | undefined,
+  userType: "driver" | "passenger" | "admin" | "dispatcher"
+) => {
+  const tokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const setup = async () => {
+      if (Capacitor.isNativePlatform()) {
+        // Native: use Capacitor Push Notifications
+        try {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+
+          const permResult = await PushNotifications.requestPermissions();
+          if (permResult.receive !== "granted") {
+            console.warn("Push notification permission denied");
+            return;
+          }
+
+          await PushNotifications.register();
+
+          PushNotifications.addListener("registration", async (token) => {
+            console.log("FCM Token (native):", token.value);
+            tokenRef.current = token.value;
+            const deviceType = Capacitor.getPlatform() === "ios" ? "ios" : "android";
+            await registerDeviceToken(userId, token.value, userType, deviceType);
+          });
+
+          PushNotifications.addListener("registrationError", (error) => {
+            console.error("Push registration error:", error);
+          });
+
+          PushNotifications.addListener("pushNotificationReceived", (notification) => {
+            console.log("Push received (foreground):", notification);
+            // Could show an in-app toast here
+          });
+
+          PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+            console.log("Push action:", action);
+            // Handle navigation based on action.notification.data
+          });
+        } catch (err) {
+          console.error("Native push setup failed:", err);
+        }
+      } else {
+        // Web: use Firebase Messaging
+        try {
+          const { initializeApp, getApps } = await import("firebase/app");
+          const { getMessaging, getToken, onMessage } = await import("firebase/messaging");
+
+          // Firebase config should be set in system_settings
+          const { supabase } = await import("@/integrations/supabase/client");
+          const { data } = await supabase
+            .from("system_settings")
+            .select("key, value")
+            .in("key", ["firebase_config"]);
+
+          const configSetting = data?.find((s: any) => s.key === "firebase_config");
+          if (!configSetting?.value) {
+            console.warn("Firebase config not found in system_settings. Web push disabled.");
+            return;
+          }
+
+          const firebaseConfig = typeof configSetting.value === "string"
+            ? JSON.parse(configSetting.value)
+            : configSetting.value;
+
+          // Initialize Firebase only once
+          const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+          const messaging = getMessaging(app);
+
+          // Get VAPID key from settings
+          const vapidSetting = data?.find((s: any) => s.key === "firebase_vapid_key");
+          const vapidKey = vapidSetting?.value
+            ? (typeof vapidSetting.value === "string" ? vapidSetting.value : String(vapidSetting.value))
+            : undefined;
+
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") {
+            console.warn("Notification permission denied");
+            return;
+          }
+
+          const token = await getToken(messaging, { vapidKey: vapidKey || undefined });
+          if (token) {
+            console.log("FCM Token (web):", token);
+            tokenRef.current = token;
+            await registerDeviceToken(userId, token, userType, "web");
+          }
+
+          // Handle foreground messages
+          onMessage(messaging, (payload) => {
+            console.log("Foreground message:", payload);
+            if (payload.notification) {
+              // Show browser notification
+              new Notification(payload.notification.title || "Notification", {
+                body: payload.notification.body || "",
+                icon: "/favicon.ico",
+              });
+            }
+          });
+        } catch (err) {
+          console.error("Web push setup failed:", err);
+        }
+      }
+    };
+
+    setup();
+
+    // Cleanup: deactivate token on unmount
+    return () => {
+      if (tokenRef.current && userId) {
+        removeDeviceToken(userId, tokenRef.current);
+      }
+    };
+  }, [userId, userType]);
+};
