@@ -71,6 +71,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [saveIcon, setSaveIcon] = useState("star");
   const [pendingSaveLocation, setPendingSaveLocation] = useState<ServiceLocation | null>(null);
   const [settingOnMap, setSettingOnMap] = useState(false);
+  const [saveMapPicker, setSaveMapPicker] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
@@ -381,6 +382,27 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       </div>
     );
   };
+
+  if (saveMapPicker) {
+    return (
+      <MapPicker
+        onConfirm={(lat, lng, name, address) => {
+          const nearest = findNearestServiceArea(lat, lng);
+          setPendingSaveLocation({
+            id: nearest?.id || "saved-loc",
+            name,
+            address,
+            lat,
+            lng,
+          });
+          setSaveMapPicker(false);
+        }}
+        onCancel={() => setSaveMapPicker(false)}
+        initialLat={pickup?.lat}
+        initialLng={pickup?.lng}
+      />
+    );
+  }
 
   if (settingOnMap) {
     return (
@@ -751,10 +773,19 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         </button>
                       </div>
                     ) : (
-                      <SaveLocationSearch
-                        onSelect={(loc) => setPendingSaveLocation(loc)}
-                        findNearest={findNearestServiceArea}
-                      />
+                      <div className="space-y-2">
+                        <SaveLocationSearch
+                          onSelect={(loc) => setPendingSaveLocation(loc)}
+                          findNearest={findNearestServiceArea}
+                        />
+                        <button
+                          onClick={() => setSaveMapPicker(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent/15 text-accent-foreground text-xs font-semibold whitespace-nowrap active:scale-95 transition-all border border-accent/20 hover:bg-accent/25 w-full justify-center"
+                        >
+                          <MapPinned className="w-3.5 h-3.5" />
+                          Pick on map
+                        </button>
+                      </div>
                     )}
                   </div>
 
