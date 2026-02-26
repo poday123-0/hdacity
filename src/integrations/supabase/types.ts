@@ -816,6 +816,7 @@ export type Database = {
           created_by: string | null
           customer_name: string | null
           customer_phone: string | null
+          dispatch_attempt: number | null
           dispatch_type: string | null
           distance_km: number | null
           driver_id: string | null
@@ -838,6 +839,7 @@ export type Database = {
           requested_at: string
           started_at: string | null
           status: string
+          target_driver_id: string | null
           updated_at: string
           vehicle_id: string | null
           vehicle_type_id: string | null
@@ -852,6 +854,7 @@ export type Database = {
           created_by?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          dispatch_attempt?: number | null
           dispatch_type?: string | null
           distance_km?: number | null
           driver_id?: string | null
@@ -874,6 +877,7 @@ export type Database = {
           requested_at?: string
           started_at?: string | null
           status?: string
+          target_driver_id?: string | null
           updated_at?: string
           vehicle_id?: string | null
           vehicle_type_id?: string | null
@@ -888,6 +892,7 @@ export type Database = {
           created_by?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          dispatch_attempt?: number | null
           dispatch_type?: string | null
           distance_km?: number | null
           driver_id?: string | null
@@ -910,6 +915,7 @@ export type Database = {
           requested_at?: string
           started_at?: string | null
           status?: string
+          target_driver_id?: string | null
           updated_at?: string
           vehicle_id?: string | null
           vehicle_type_id?: string | null

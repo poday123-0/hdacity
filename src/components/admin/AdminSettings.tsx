@@ -40,6 +40,7 @@ const settingsConfig = [
   { key: "surge_multiplier", label: "Surge Multiplier", type: "number" },
   { key: "max_search_radius_km", label: "Max Search Radius (km)", type: "number" },
   { key: "driver_accept_timeout_seconds", label: "Driver Accept Timeout (seconds)", type: "number" },
+  { key: "max_auto_drivers", label: "Max Drivers to Try (Auto-Nearest mode, 0 = unlimited)", type: "number" },
   { key: "default_trip_radius_km", label: "Default Driver Trip Radius (km)", type: "number" },
   { key: "call_center_number", label: "Call Center Phone Number (shown in SOS dialog)", type: "text" },
   { key: "local_police_number", label: "Local Police Number (shown in SOS dialog, e.g. 119)", type: "text" },
