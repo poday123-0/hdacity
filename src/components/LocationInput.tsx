@@ -273,9 +273,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col ${
-        activeField ? "top-0 rounded-t-none" : "max-h-[calc(100vh-80px)]"
-      }`}
+      className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col max-h-[85vh]`}
     >
       <div className="px-4 pt-3 pb-6 space-y-2.5 overflow-y-auto flex-1 overscroll-contain">
         {/* Handle */}
@@ -315,7 +313,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
 
         {/* Back button when searching */}
         {activeField && (
-          <div className="flex items-center gap-2 pt-1 safe-area-top">
+          <div className="flex items-center gap-2 pt-1">
             <button
               onClick={() => { setActiveField(null); setOsmResults([]); }}
               className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform shrink-0"
@@ -413,7 +411,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                     </div>
                     {/* Search results below when in full-screen mode */}
                     {activeField === "pickup" && (osmResults.length > 0 || osmSearching) && (
-                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
+                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
                         {osmSearching && (
                           <div className="flex items-center gap-2 px-4 py-3">
                             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -472,7 +470,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                         )}
                       </div>
                       {activeField === `stop-${idx}` && (osmResults.length > 0 || osmSearching) && (
-                        <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
+                        <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
                           {osmSearching && (
                             <div className="flex items-center gap-2 px-4 py-3">
                               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -539,7 +537,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                       )}
                     </div>
                     {activeField === "dropoff" && (osmResults.length > 0 || osmSearching) && (
-                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
+                      <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
                         {osmSearching && (
                           <div className="flex items-center gap-2 px-4 py-3">
                             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
