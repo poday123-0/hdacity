@@ -52,6 +52,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
   const tripRenderersRef = useRef<any[]>([]);
   const tripMarkersRef = useRef<any[]>([]);
   const watchIdRef = useRef<number | null>(null);
+  const userInteractingRef = useRef(false);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const { isLoaded, error } = useGoogleMaps();
 
@@ -112,6 +113,9 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
       }
     });
 
+    // Detect user interaction to stop auto-panning
+    map.addListener("dragstart", () => { userInteractingRef.current = true; });
+
     return () => { mapInstance.current = null; };
   }, [isLoaded]);
 
@@ -130,7 +134,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
   useEffect(() => {
     if (!userPos || !userMarkerRef.current || !mapInstance.current) return;
     userMarkerRef.current.setPosition(userPos);
-    if (!rideData?.showRoute) {
+    if (!rideData?.showRoute && !userInteractingRef.current) {
       mapInstance.current.panTo(userPos);
     }
   }, [userPos, rideData?.showRoute]);
