@@ -19,7 +19,8 @@ const darkMapStyle = [
   { elementType: "labels.text.fill", stylers: [{ color: "#8a8a9a" }] },
   { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a2a3e" }] },
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2b" }] },
-  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#9a9aaa" }] },
+  { featureType: "poi", elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
 ];
 
 const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerProps) => {
