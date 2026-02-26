@@ -834,6 +834,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))] animate-pulse-dot" />
                 <span className="font-semibold text-sm text-foreground">Online</span>
+                {driverStats.avgRating > 0 && (
+                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                    <Star className="w-3 h-3 text-primary fill-primary" />
+                    {driverStats.avgRating}
+                  </span>
+                )}
                 {panelMinimized && (
                   <span className="text-xs text-muted-foreground">• {driverStats.rides} rides • {driverStats.earnings.toFixed(0)} MVR</span>
                 )}
@@ -870,7 +876,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   className="space-y-3 overflow-hidden"
                 >
                   {/* Compact stats grid */}
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-3 gap-1.5">
                     <div className="bg-surface rounded-xl p-2 text-center">
                       <Navigation className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
                       <p className="text-sm font-bold text-foreground">{driverStats.rides}</p>
@@ -885,11 +891,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <Clock className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
                       <p className="text-sm font-bold text-foreground">{driverStats.hours}</p>
                       <p className="text-[9px] text-muted-foreground">Time</p>
-                    </div>
-                    <div className="bg-surface rounded-xl p-2 text-center">
-                      <Star className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
-                      <p className="text-sm font-bold text-foreground">{driverStats.avgRating > 0 ? driverStats.avgRating : "—"}</p>
-                      <p className="text-[9px] text-muted-foreground">Rating</p>
                     </div>
                     <div className="bg-surface rounded-xl p-2 text-center space-y-0.5">
                       <Radar className="w-3.5 h-3.5 text-primary mx-auto" />
