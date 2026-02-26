@@ -61,6 +61,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       found: true,
       profile: {
+        id: primaryProfile.id,
         first_name: primaryProfile.first_name,
         last_name: primaryProfile.last_name,
         email: primaryProfile.email,

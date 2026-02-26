@@ -18,7 +18,7 @@ export interface UserProfile {
 }
 
 interface AuthScreenProps {
-  onLogin: (profile: UserProfile | null, isDriver: boolean) => void;
+  onLogin: (profile: UserProfile | null, isDriver: boolean, phoneNumber?: string) => void;
   mode?: "passenger" | "driver";
 }
 
@@ -96,7 +96,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
           : "Login successful" 
       });
       
-      onLogin(profile, isDriver);
+      onLogin(profile, isDriver, phone);
     } catch (err: any) {
       console.error("Verify OTP failed:", err);
       setError(err.message || "Invalid code. Please try again.");

@@ -3,6 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
+import PassengerRegistration from "@/components/PassengerRegistration";
 import TopBar from "@/components/TopBar";
 import LocationInput from "@/components/LocationInput";
 import RideOptions from "@/components/RideOptions";
@@ -14,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SOSButton from "@/components/SOSButton";
 
-type AppPhase = "splash" | "auth" | "passenger";
+type AppPhase = "splash" | "auth" | "register" | "passenger";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
 
 interface SelectedLocation {
@@ -42,6 +43,7 @@ const Index = () => {
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [isDriver] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState("");
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
@@ -147,10 +149,22 @@ const Index = () => {
     else setPhase("auth");
   }, [savedSession]);
 
-  const handleLogin = useCallback((profile: UserProfile | null, _isDriverUser: boolean) => {
+  const handleLogin = useCallback((profile: UserProfile | null, _isDriverUser: boolean, phoneNumber?: string) => {
+    if (!profile) {
+      // No profile found — show registration
+      setPendingPhone(phoneNumber || "");
+      setPhase("register");
+      return;
+    }
     setUserProfile(profile);
     setPhase("passenger");
     if (profile) localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
+  }, []);
+
+  const handleRegistrationComplete = useCallback((profile: UserProfile) => {
+    setUserProfile(profile);
+    setPhase("passenger");
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
   }, []);
 
   const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[]) => {
@@ -347,6 +361,7 @@ const Index = () => {
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode="passenger" />;
+  if (phase === "register") return <PassengerRegistration phoneNumber={pendingPhone} onComplete={handleRegistrationComplete} />;
 
   return (
     <div className="relative w-full h-screen max-w-md mx-auto overflow-hidden bg-background">
