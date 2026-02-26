@@ -22,6 +22,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
   const [maxAutoDrivers, setMaxAutoDrivers] = useState(0);
   const [maxSearchRadius, setMaxSearchRadius] = useState(50);
   const [currentAttempt, setCurrentAttempt] = useState(0);
+  const currentAttemptRef = useRef(0);
   const [totalDriversAvailable, setTotalDriversAvailable] = useState(0);
   const [currentDriverName, setCurrentDriverName] = useState("");
   const driversListRef = useRef<Array<{ driver_id: string; distance: number; name: string }>>([]);
@@ -100,6 +101,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
 
       // Target first driver
       setCurrentAttempt(0);
+      currentAttemptRef.current = 0;
       setCurrentDriverName(drivers[0]?.name || "Driver");
       await supabase.from("trips").update({
         target_driver_id: drivers[0].driver_id,
@@ -135,7 +137,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
         // Time's up for current driver — move to next
         secondsForCurrentDriver = 0;
         const drivers = driversListRef.current;
-        const nextAttempt = currentAttempt + 1;
+        const nextAttempt = currentAttemptRef.current + 1;
 
         if (nextAttempt >= drivers.length) {
           // All drivers tried
@@ -147,6 +149,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
         }
 
         // Target next driver
+        currentAttemptRef.current = nextAttempt;
         setCurrentAttempt(nextAttempt);
         setCurrentDriverName(drivers[nextAttempt]?.name || "Driver");
         await supabase.from("trips").update({
@@ -161,7 +164,7 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
     return () => {
       if (attemptTimerRef.current) clearInterval(attemptTimerRef.current);
     };
-  }, [dispatchMode, tripId, timeoutSeconds, currentAttempt]);
+  }, [dispatchMode, tripId, timeoutSeconds]);
 
   const isAutoNearest = dispatchMode === "auto_nearest";
 
