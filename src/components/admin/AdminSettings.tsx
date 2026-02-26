@@ -38,6 +38,7 @@ const settingsConfig = [
   { key: "max_search_radius_km", label: "Max Search Radius (km)", type: "number" },
   { key: "driver_accept_timeout_seconds", label: "Driver Accept Timeout (seconds)", type: "number" },
   { key: "default_trip_radius_km", label: "Default Driver Trip Radius (km)", type: "number" },
+  { key: "call_center_number", label: "Call Center Phone Number (shown to passengers)", type: "text" },
   { key: "privacy_notice", label: "Privacy Notice", type: "textarea" },
   { key: "terms_of_service", label: "Terms of Service", type: "textarea" },
 ];
@@ -196,6 +197,21 @@ const AdminSettings = () => {
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
                 >
                   <Save className="w-4 h-4" /> Save
+                </button>
+              </div>
+            ) : cfg.type === "text" ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={settings[cfg.key] ?? ""}
+                  onChange={(e) => setSettings({ ...settings, [cfg.key]: e.target.value })}
+                  className="w-40 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <button
+                  onClick={() => updateSetting(cfg.key, settings[cfg.key])}
+                  className="p-2 bg-primary text-primary-foreground rounded-lg"
+                >
+                  <Save className="w-4 h-4" />
                 </button>
               </div>
             ) : (

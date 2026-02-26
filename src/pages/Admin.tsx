@@ -17,6 +17,7 @@ import AdminCompanies from "@/components/admin/AdminCompanies";
 import AdminPassengers from "@/components/admin/AdminPassengers";
 import AdminBilling from "@/components/admin/AdminBilling";
 import AdminUsers from "@/components/admin/AdminUsers";
+import AdminLostItems from "@/components/admin/AdminLostItems";
 import {
   LayoutDashboard,
   Users,
@@ -34,10 +35,11 @@ import {
   ShieldCheck,
   Moon,
   Sun,
+  PackageX,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "banks" | "companies" | "users" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "lost_items" | "banks" | "companies" | "users" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -50,6 +52,7 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "companies", label: "Companies", icon: Building },
   { id: "locations", label: "Service Areas", icon: Navigation },
   { id: "trips", label: "Trips", icon: MapPin },
+  { id: "lost_items", label: "Lost Items", icon: PackageX },
   { id: "users", label: "Admins & Dispatch", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -220,6 +223,7 @@ const Admin = () => {
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}
           {activeTab === "trips" && <AdminTrips />}
+          {activeTab === "lost_items" && <AdminLostItems />}
           {activeTab === "users" && <AdminUsers />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
