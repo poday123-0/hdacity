@@ -1,4 +1,4 @@
-import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Route, Moon, BaggageClaim, DollarSign } from "lucide-react";
+import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,19 +40,6 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
   const [osmResults, setOsmResults] = useState<NominatimResult[]>([]);
   const [osmSearching, setOsmSearching] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [fareEstimate, setFareEstimate] = useState<{
-    baseFare: number;
-    distanceFare: number;
-    luggageFee: number;
-    nightFee: number;
-    passengerTax: number;
-    total: number;
-    vehicleName: string;
-    isZoneFare: boolean;
-    zoneFare: number;
-  } | null>(null);
-  const [fareLoading, setFareLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
@@ -104,101 +91,6 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [activeQuery]);
 
-  // Calculate route distance & estimated fare when both pickup and dropoff are set
-  useEffect(() => {
-    if (!pickup?.lat || !pickup?.lng || !dropoff?.lat || !dropoff?.lng) {
-      setFareEstimate(null);
-      setDistanceKm(null);
-      return;
-    }
-
-    const allPoints: { lat: number; lng: number }[] = [{ lat: pickup.lat, lng: pickup.lng }];
-    const validStopsForCalc = stops.filter((s): s is ServiceLocation => s !== null && s.lat != null && s.lng != null);
-    for (const s of validStopsForCalc) allPoints.push({ lat: s.lat, lng: s.lng });
-    allPoints.push({ lat: dropoff.lat, lng: dropoff.lng });
-
-    const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      const R = 6371;
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLon = ((lon2 - lon1) * Math.PI) / 180;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
-
-    let straightTotal = 0;
-    for (let i = 0; i < allPoints.length - 1; i++) {
-      straightTotal += haversine(allPoints[i].lat, allPoints[i].lng, allPoints[i + 1].lat, allPoints[i + 1].lng);
-    }
-
-    setFareLoading(true);
-    const coords = allPoints.map(p => `${p.lng},${p.lat}`).join(";");
-
-    Promise.all([
-      fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`).then(r => r.json()).catch(() => null),
-      supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order").limit(1),
-      supabase.from("fare_zones").select("*").eq("is_active", true),
-      supabase.from("fare_surcharges").select("*").eq("is_active", true),
-    ]).then(([routeData, vtRes, fzRes, scRes]) => {
-      const dist = routeData?.routes?.[0]?.distance ? routeData.routes[0].distance / 1000 : straightTotal * 1.3;
-      setDistanceKm(dist);
-
-      const vt = vtRes.data?.[0];
-      if (!vt) { setFareLoading(false); return; }
-
-      const fareZonesData = fzRes.data || [];
-      const surchargesData = scRes.data || [];
-
-      const zone = fareZonesData.find((fz: any) =>
-        fz.vehicle_type_id === vt.id &&
-        ((fz.from_area === pickup.name && fz.to_area === dropoff.name) ||
-          (fz.from_area === dropoff.name && fz.to_area === pickup.name) ||
-          (fz.from_area === pickup.id && fz.to_area === dropoff.id) ||
-          (fz.from_area === dropoff.id && fz.to_area === pickup.id))
-      );
-
-      const isZoneFare = !!zone;
-      const baseFare = Number(vt.base_fare);
-      const distanceFare = dist * Number(vt.per_km_rate);
-      const zoneFare = zone ? Number(zone.fixed_fare) : 0;
-
-      let luggageFee = 0;
-      let nightFee = 0;
-      for (const sc of surchargesData) {
-        if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null && luggageCount >= sc.luggage_threshold) {
-          luggageFee += Number(sc.amount);
-        }
-        if (sc.surcharge_type === "time_based" && sc.start_time && sc.end_time) {
-          const now = new Date();
-          const nowMin = now.getHours() * 60 + now.getMinutes();
-          const [sh, sm] = sc.start_time.split(":").map(Number);
-          const [eh, em] = sc.end_time.split(":").map(Number);
-          const startMin = sh * 60 + sm;
-          const endMin = eh * 60 + em;
-          if (startMin < endMin ? nowMin >= startMin && nowMin < endMin : nowMin >= startMin || nowMin < endMin) {
-            nightFee += Number(sc.amount);
-          }
-        }
-      }
-
-      let subtotal = isZoneFare ? zoneFare : (baseFare + distanceFare);
-      subtotal += luggageFee + nightFee;
-      const passengerTax = subtotal * (Number(vt.passenger_tax_pct) / 100);
-      const total = Math.max(Math.round(subtotal + passengerTax), Number(vt.minimum_fare));
-
-      setFareEstimate({
-        baseFare,
-        distanceFare: Math.round(distanceFare),
-        luggageFee,
-        nightFee,
-        passengerTax: Math.round(passengerTax),
-        total,
-        vehicleName: vt.name,
-        isZoneFare,
-        zoneFare,
-      });
-      setFareLoading(false);
-    }).catch(() => setFareLoading(false));
-  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, stops, luggageCount]);
 
   const findNearestServiceArea = useCallback((lat: number, lng: number): ServiceLocation | null => {
     let nearest: ServiceLocation | null = null;
@@ -661,68 +553,6 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
               </div>
             </div>
 
-            {/* Fare estimate preview */}
-            {!activeField && canConfirm && (fareLoading || fareEstimate) && (
-              <div className="bg-surface rounded-xl p-3 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Route className="w-3.5 h-3.5 text-primary" />
-                    Estimated Fare
-                  </p>
-                  {fareLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                  ) : fareEstimate ? (
-                    <p className="text-base font-extrabold text-primary">{fareEstimate.total} <span className="text-[10px] font-semibold text-muted-foreground">MVR</span></p>
-                  ) : null}
-                </div>
-                {fareEstimate && !fareLoading && (
-                  <div className="space-y-0.5">
-                    {distanceKm != null && (
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">Route distance</span>
-                        <span className="font-semibold text-foreground">{distanceKm.toFixed(1)} km</span>
-                      </div>
-                    )}
-                    {fareEstimate.isZoneFare ? (
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">Zone fare ({fareEstimate.vehicleName})</span>
-                        <span className="font-medium text-foreground">{fareEstimate.zoneFare} MVR</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-muted-foreground">Base fare ({fareEstimate.vehicleName})</span>
-                          <span className="font-medium text-foreground">{fareEstimate.baseFare} MVR</span>
-                        </div>
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-muted-foreground">Distance charge</span>
-                          <span className="font-medium text-foreground">{fareEstimate.distanceFare} MVR</span>
-                        </div>
-                      </>
-                    )}
-                    {fareEstimate.luggageFee > 0 && (
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-1"><BaggageClaim className="w-3 h-3" /> Luggage fee</span>
-                        <span className="font-medium text-foreground">+{fareEstimate.luggageFee} MVR</span>
-                      </div>
-                    )}
-                    {fareEstimate.nightFee > 0 && (
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-1"><Moon className="w-3 h-3" /> Night surcharge</span>
-                        <span className="font-medium text-foreground">+{fareEstimate.nightFee} MVR</span>
-                      </div>
-                    )}
-                    {fareEstimate.passengerTax > 0 && (
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">Tax</span>
-                        <span className="font-medium text-foreground">+{fareEstimate.passengerTax} MVR</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Confirm button — hide when searching */}
             {!activeField && (
               <button
@@ -730,7 +560,7 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
                 disabled={!canConfirm}
                 className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
               >
-                {canConfirm ? (fareEstimate ? `Find a ride — ${fareEstimate.total} MVR` : (validStops.length > 0 ? `Find a ride (${validStops.length + 2} stops)` : "Find a ride")) : "Select pickup & destination"}
+                {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length + 2} stops)` : "Find a ride") : "Select pickup & destination"}
               </button>
             )}
           </>
