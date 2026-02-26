@@ -324,6 +324,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (remaining <= 0) {
         if (rideRequestTimerRef.current) clearInterval(rideRequestTimerRef.current);
         rideRequestTimerRef.current = null;
+        // Mark as declined so it won't come back
+        declinedTripIdsRef.current.add(trip.id);
         // Auto-dismiss ride request
         setScreen("online");
         setCurrentTrip(null);
@@ -337,8 +339,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }, 1000);
   };
 
-  // Track last seen trip id to avoid duplicate handling
+  // Track last seen trip id and declined trips to avoid duplicate handling
   const lastSeenTripRef = useRef<string | null>(null);
+  const declinedTripIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) return;
@@ -354,7 +357,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         filter: "status=eq.requested",
       }, async (payload) => {
         const trip = payload.new as any;
-        if (trip.id !== lastSeenTripRef.current) {
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           // In auto_nearest mode, only show if targeted at this driver
           if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
           lastSeenTripRef.current = trip.id;
@@ -374,7 +377,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }, async (payload) => {
         const trip = payload.new as any;
         if (trip.status !== "requested") return;
-        if (trip.target_driver_id === userProfile.id && trip.id !== lastSeenTripRef.current) {
+        if (trip.target_driver_id === userProfile.id && trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
         }
@@ -395,7 +398,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const trip = data[0] as any;
         // Skip if targeted at another driver
         if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
-        if (trip.id !== lastSeenTripRef.current) {
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
         }
@@ -1114,6 +1117,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button onClick={async () => {
                   if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
                   if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+                  if (currentTrip?.id) declinedTripIdsRef.current.add(currentTrip.id);
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);
