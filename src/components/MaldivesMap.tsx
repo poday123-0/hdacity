@@ -305,18 +305,21 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 };
 
 const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#212121" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#292929" }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#383838" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#484848" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f2f" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1626" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] },
+  { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "on" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#b0b0c0" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#505060" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#252538" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#9a9aaa" }] },
+  { featureType: "poi", elementType: "labels.icon", stylers: [{ lightness: -20 }] },
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2a2a3e" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1a1a2e" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#a0a0b0" }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#3a3a50" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f42" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2b" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4a6080" }] },
 ];
 
 export default MaldivesMap;
