@@ -2,6 +2,7 @@ import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import MapPicker from "./MapPicker";
 
 interface ServiceLocation {
   id: string;
@@ -312,43 +313,21 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
   const handleSetOnMap = () => {
     setSettingOnMap(true);
-    setMinimized(true);
   };
 
-  // Listen for map tap when setting on map
-  useEffect(() => {
-    if (!settingOnMap) return;
-    const handler = (e: Event) => {
-      const { lat, lng } = (e as CustomEvent).detail;
-      reverseGeocode(lat, lng);
+  const handleMapPickerConfirm = (lat: number, lng: number, name: string, address: string) => {
+    const nearest = findNearestServiceArea(lat, lng);
+    const loc: ServiceLocation = {
+      id: nearest?.id || "map-selected",
+      name,
+      address,
+      lat,
+      lng,
     };
-    window.addEventListener("map-tap", handler);
-    return () => window.removeEventListener("map-tap", handler);
-  }, [settingOnMap]);
-
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        { headers: { "Accept-Language": "en" } }
-      );
-      const data = await res.json();
-      const name = data.name || data.address?.road || data.address?.neighbourhood || "Selected Location";
-      const address = data.display_name?.split(",").slice(0, 3).join(", ") || "";
-      const nearest = findNearestServiceArea(lat, lng);
-      const loc: ServiceLocation = {
-        id: nearest?.id || "map-selected",
-        name,
-        address,
-        lat,
-        lng,
-      };
-      setDropoff(loc);
-      setDropoffQuery(name);
-      setActiveField(null);
-    } catch {}
+    setDropoff(loc);
+    setDropoffQuery(name);
+    setActiveField(null);
     setSettingOnMap(false);
-    setMinimized(false);
   };
 
   const canConfirm = pickup && dropoff;
@@ -389,27 +368,12 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
   if (settingOnMap) {
     return (
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="absolute bottom-6 left-4 right-4 z-10"
-      >
-        <div className="bg-card rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.18)] border border-border p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-            <MapPinned className="w-5 h-5 text-primary animate-bounce" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-foreground">Tap on the map</p>
-            <p className="text-[11px] text-muted-foreground">Select your destination by tapping any location</p>
-          </div>
-          <button
-            onClick={() => { setSettingOnMap(false); setMinimized(false); }}
-            className="px-3 py-2 rounded-xl bg-muted text-xs font-semibold text-foreground active:scale-95 transition-all"
-          >
-            Cancel
-          </button>
-        </div>
-      </motion.div>
+      <MapPicker
+        onConfirm={handleMapPickerConfirm}
+        onCancel={() => setSettingOnMap(false)}
+        initialLat={pickup?.lat}
+        initialLng={pickup?.lng}
+      />
     );
   }
 
