@@ -20,6 +20,7 @@ interface RideConfirmationProps {
   userId?: string;
   onConfirm: () => void;
   onBack: () => void;
+  stops?: Array<{ name: string; lat: number; lng: number }>;
 }
 
 const RideConfirmation = ({
@@ -32,6 +33,7 @@ const RideConfirmation = ({
   userId,
   onConfirm,
   onBack,
+  stops = [],
 }: RideConfirmationProps) => {
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -87,11 +89,17 @@ const RideConfirmation = ({
         <h2 className="text-lg font-bold text-foreground text-center">Confirm Your Ride</h2>
 
         {/* Route & ETA */}
-        <div className="bg-surface rounded-xl p-3 space-y-2">
+          <div className="bg-surface rounded-xl p-3 space-y-2">
           <div className="flex items-start gap-3">
             <div className="flex flex-col items-center gap-0.5 mt-1">
               <div className="w-2.5 h-2.5 rounded-full bg-primary" />
               <div className="w-0.5 h-6 bg-border" />
+              {stops.map((_, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-accent" />
+                  <div className="w-0.5 h-6 bg-border" />
+                </div>
+              ))}
               <div className="w-2.5 h-2.5 rounded-sm bg-foreground" />
             </div>
             <div className="flex-1 space-y-2 min-w-0">
@@ -99,6 +107,12 @@ const RideConfirmation = ({
                 <p className="text-[10px] text-muted-foreground uppercase font-semibold">Pickup</p>
                 <p className="text-sm font-medium text-foreground truncate">{pickup.name}</p>
               </div>
+              {stops.map((s, i) => (
+                <div key={i}>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold">Stop {i + 1}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
+                </div>
+              ))}
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase font-semibold">Destination</p>
                 <p className="text-sm font-medium text-foreground truncate">{dropoff.name}</p>
