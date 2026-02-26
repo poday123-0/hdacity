@@ -312,29 +312,19 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
   const handleSetOnMap = () => {
     setSettingOnMap(true);
-    // Use click on the map - listen for map click event
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === "map-click") {
-        const { lat, lng } = e.data;
-        reverseGeocode(lat, lng);
-        window.removeEventListener("message", handler);
-      }
-    };
-    window.addEventListener("message", handler);
-
-    // Also try geolocation-based approach: use the map center
-    // For now, let user tap the map - we'll use a click listener on the map component
-    // Fallback: use navigator to get a point and let them adjust
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        },
-        () => setSettingOnMap(false),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
+    setMinimized(true);
   };
+
+  // Listen for map tap when setting on map
+  useEffect(() => {
+    if (!settingOnMap) return;
+    const handler = (e: Event) => {
+      const { lat, lng } = (e as CustomEvent).detail;
+      reverseGeocode(lat, lng);
+    };
+    window.addEventListener("map-tap", handler);
+    return () => window.removeEventListener("map-tap", handler);
+  }, [settingOnMap]);
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
@@ -358,6 +348,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       setActiveField(null);
     } catch {}
     setSettingOnMap(false);
+    setMinimized(false);
   };
 
   const canConfirm = pickup && dropoff;
@@ -395,6 +386,32 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       </div>
     );
   };
+
+  if (settingOnMap) {
+    return (
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="absolute bottom-6 left-4 right-4 z-10"
+      >
+        <div className="bg-card rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.18)] border border-border p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+            <MapPinned className="w-5 h-5 text-primary animate-bounce" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground">Tap on the map</p>
+            <p className="text-[11px] text-muted-foreground">Select your destination by tapping any location</p>
+          </div>
+          <button
+            onClick={() => { setSettingOnMap(false); setMinimized(false); }}
+            className="px-3 py-2 rounded-xl bg-muted text-xs font-semibold text-foreground active:scale-95 transition-all"
+          >
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
