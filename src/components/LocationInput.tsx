@@ -237,10 +237,10 @@ const LocationInput = ({ onSearch }: LocationInputProps) => {
     return (
       <AnimatePresence>
         <motion.div
-          initial={{ opacity: 0, y: -4 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-2xl shadow-lg z-20 max-h-48 overflow-y-auto"
+          exit={{ opacity: 0, y: 4 }}
+          className="absolute left-0 right-0 bottom-full mb-1 bg-card border border-border rounded-2xl shadow-lg z-[50] max-h-48 overflow-y-auto"
         >
           {osmSearching && (
             <div className="flex items-center gap-2 px-4 py-3">
