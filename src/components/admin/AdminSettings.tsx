@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2 } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User } from "lucide-react";
 
 interface SoundFile {
   id: string;
@@ -56,8 +56,11 @@ const AdminSettings = () => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const passengerIconInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategory, setUploadCategory] = useState("");
   const [adminBank, setAdminBank] = useState<Record<string, string>>({ bank_name: "", account_number: "", account_name: "" });
+  const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
+  const [uploadingPassengerIcon, setUploadingPassengerIcon] = useState(false);
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -73,6 +76,9 @@ const AdminSettings = () => {
     if (map["admin_bank_info"]) {
       const bankVal = typeof map["admin_bank_info"] === "string" ? JSON.parse(map["admin_bank_info"]) : map["admin_bank_info"];
       setAdminBank({ bank_name: bankVal.bank_name || "", account_number: bankVal.account_number || "", account_name: bankVal.account_name || "" });
+    }
+    if (map["passenger_map_icon_url"] && typeof map["passenger_map_icon_url"] === "string") {
+      setPassengerMapIconUrl(map["passenger_map_icon_url"]);
     }
     setLoading(false);
   };
@@ -267,6 +273,57 @@ const AdminSettings = () => {
         >
           <Save className="w-4 h-4" /> Save Payment Account
         </button>
+      </div>
+
+      {/* Passenger Map Icon */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <User className="w-5 h-5 text-primary" /> Passenger Map Icon
+      </h2>
+      <p className="text-sm text-muted-foreground">Upload a map icon for passengers that drivers will see on the map (similar to vehicle icons). PNG recommended, ~60x60px.</p>
+      <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0">
+          {passengerMapIconUrl ? (
+            <img src={passengerMapIconUrl} alt="Passenger icon" className="w-12 h-12 object-contain" />
+          ) : (
+            <User className="w-8 h-8 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1 space-y-2">
+          <p className="text-sm text-foreground font-medium">{passengerMapIconUrl ? "Icon uploaded" : "No icon set"}</p>
+          <input
+            ref={passengerIconInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploadingPassengerIcon(true);
+              const path = `map-icons/passenger_${Date.now()}.${file.name.split(".").pop()}`;
+              const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+              if (error) {
+                toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+                setUploadingPassengerIcon(false);
+                return;
+              }
+              const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+              const url = urlData.publicUrl;
+              await updateSetting("passenger_map_icon_url", url);
+              setPassengerMapIconUrl(url);
+              setUploadingPassengerIcon(false);
+              toast({ title: "Passenger map icon updated!" });
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => passengerIconInputRef.current?.click()}
+            disabled={uploadingPassengerIcon}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {uploadingPassengerIcon ? "Uploading..." : "Upload Icon"}
+          </button>
+        </div>
       </div>
 
       {/* Notification Sounds */}

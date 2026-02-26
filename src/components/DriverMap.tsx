@@ -22,9 +22,10 @@ interface DriverMapProps {
   pickupLabel?: string;
   dropoffLabel?: string;
   mapIconUrl?: string | null;
+  passengerMapIconUrl?: string | null;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -225,11 +226,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
 
     // Only show destination marker (origin is the driver's current position marker)
-    const destMarker = new g.maps.Marker({
+    const destMarkerOpts: any = {
       map, position: destination, zIndex: 1000,
-      label: { text: destLabel, color: "white", fontWeight: "700", fontSize: "12px" },
-      icon: { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: destColor, fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
-    });
+    };
+    // Use passenger icon for pickup marker when heading to pickup
+    if (tripPhase === "heading_to_pickup" && passengerMapIconUrl) {
+      destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(32, 32) };
+    } else {
+      destMarkerOpts.label = { text: destLabel, color: "white", fontWeight: "700", fontSize: "12px" };
+      destMarkerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: destColor, fillOpacity: 1, strokeColor: "white", strokeWeight: 3 };
+    }
+    const destMarker = new g.maps.Marker(destMarkerOpts);
     rideMarkersRef.current = [destMarker];
 
     // If in_progress, also show pickup marker faded
