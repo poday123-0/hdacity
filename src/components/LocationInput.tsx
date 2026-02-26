@@ -597,7 +597,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             </div>
 
             {/* ── Saved Places & Set on Map ── */}
-            {!activeField && (
+            {(
               <div className="space-y-2">
                 {/* Quick actions row */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
