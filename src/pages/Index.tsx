@@ -25,6 +25,8 @@ interface SelectedLocation {
   lng: number;
 }
 
+interface StopLocation extends SelectedLocation {}
+
 const SESSION_KEY = "hda_user_session";
 
 const Index = () => {
@@ -45,6 +47,7 @@ const Index = () => {
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
+  const [intermediateStops, setIntermediateStops] = useState<StopLocation[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -150,11 +153,12 @@ const Index = () => {
     if (profile) localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
   }, []);
 
-  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number) => {
+  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[]) => {
     setPickup(p);
     setDropoff(d);
     setPassengerCount(passengers);
     setLuggageCount(luggage);
+    setIntermediateStops(stops || []);
     setPassengerScreen("ride-options");
   }, []);
 
@@ -198,6 +202,19 @@ const Index = () => {
       }).select().single();
 
       if (error) throw error;
+
+      // Save intermediate stops
+      if (intermediateStops.length > 0) {
+        const stopInserts = intermediateStops.map((s, i) => ({
+          trip_id: data.id,
+          stop_order: i + 1,
+          address: s.name,
+          lat: s.lat,
+          lng: s.lng,
+        }));
+        await supabase.from("trip_stops").insert(stopInserts);
+      }
+
       setCurrentTripId(data.id);
       setPassengerScreen("searching");
     } catch (err: any) {
@@ -357,10 +374,10 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} />}
           {passengerScreen === "ride-options" && (
-            <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} />
+            <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} />
           )}
           {passengerScreen === "confirmation" && pickup && dropoff && selectedVehicleType && (
-            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} />
+            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} />
           )}
           {passengerScreen === "searching" && (
             <SearchingDriver key="searching" onCancel={() => {

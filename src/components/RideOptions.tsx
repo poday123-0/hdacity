@@ -18,6 +18,7 @@ interface RideOptionsProps {
   dropoff?: LocationData | null;
   passengerCount: number;
   luggageCount: number;
+  stops?: LocationData[];
 }
 
 const iconMap: Record<string, typeof Car> = {
@@ -39,7 +40,7 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, luggageCount }: RideOptionsProps) => {
+const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, luggageCount, stops = [] }: RideOptionsProps) => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [fareZones, setFareZones] = useState<any[]>([]);
   const [surcharges, setSurcharges] = useState<any[]>([]);
@@ -66,31 +67,41 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     fetchAll();
   }, []);
 
-  // Calculate driving distance via OSRM, fallback to haversine
+  // Calculate driving distance via OSRM for the full route (pickup → stops → dropoff)
   useEffect(() => {
-    if (!pickup?.lat || !pickup?.lng || !dropoff?.lat || !dropoff?.lng) {
+    const allPoints: { lat: number; lng: number }[] = [];
+    if (pickup?.lat && pickup?.lng) allPoints.push({ lat: pickup.lat, lng: pickup.lng });
+    for (const s of stops) {
+      if (s.lat && s.lng) allPoints.push({ lat: s.lat, lng: s.lng });
+    }
+    if (dropoff?.lat && dropoff?.lng) allPoints.push({ lat: dropoff.lat, lng: dropoff.lng });
+
+    if (allPoints.length < 2) {
       setDistanceKm(null);
       return;
     }
 
-    const straight = haversineKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+    // Haversine total for fallback
+    let straightTotal = 0;
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      straightTotal += haversineKm(allPoints[i].lat, allPoints[i].lng, allPoints[i + 1].lat, allPoints[i + 1].lng);
+    }
 
-    // Try OSRM for road distance
-    fetch(
-      `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=false`
-    )
+    // OSRM waypoints
+    const coords = allPoints.map(p => `${p.lng},${p.lat}`).join(";");
+    fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`)
       .then((r) => r.json())
       .then((data) => {
         if (data.routes?.[0]?.distance) {
           setDistanceKm(data.routes[0].distance / 1000);
         } else {
-          setDistanceKm(straight * 1.3); // approximate road factor
+          setDistanceKm(straightTotal * 1.3);
         }
       })
       .catch(() => {
-        setDistanceKm(straight * 1.3);
+        setDistanceKm(straightTotal * 1.3);
       });
-  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, stops]);
 
   const calcFare = (vt: any): number => {
     // 1. Check for fixed fare zone match (by area name)
@@ -205,6 +216,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
             <div className="flex gap-3 mt-0.5">
               <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{passengerCount}</span> pax</span>
               <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{luggageCount}</span> bags</span>
+              {stops.length > 0 && (
+                <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{stops.length}</span> stops</span>
+              )}
               {distanceKm != null && (
                 <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{distanceKm.toFixed(1)}</span> km</span>
               )}
