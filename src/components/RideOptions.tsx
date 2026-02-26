@@ -231,7 +231,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex gap-2 overflow-x-auto pt-2 pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
             {sortedTypes.map((vt, index) => {
               const Icon = iconMap[vt.icon] || Car;
               const fare = calcFare(vt);
@@ -245,15 +245,15 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                   key={vt.id}
                   onClick={() => isOnline ? setSelected(vt.id) : null}
                   disabled={!isOnline}
-                  className={`relative flex flex-col items-center gap-1 p-2.5 pb-3 rounded-xl transition-all snap-start shrink-0 w-[5.5rem] ${
+                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all snap-start shrink-0 w-[5.5rem] ${
                     !isOnline
-                      ? "bg-surface/30 opacity-40 cursor-not-allowed"
-                      : isSelected
-                        ? "bg-primary/10 ring-2 ring-primary shadow-sm"
-                        : fits
-                          ? "bg-surface active:bg-muted"
-                          : "bg-surface/50 opacity-60"
-                  }`}
+                       ? "bg-surface/30 border-border/50 opacity-40 cursor-not-allowed"
+                       : isSelected
+                         ? "bg-primary/10 border-primary ring-1 ring-primary shadow-sm"
+                         : fits
+                           ? "bg-surface border-border active:bg-muted hover:border-primary/30"
+                           : "bg-surface/50 border-border/50 opacity-60"
+                   }`}
                 >
                   {isBestMatch && isOnline && (
                     <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
