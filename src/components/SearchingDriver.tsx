@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Car, MapPin } from "lucide-react";
+import { Car, MapPin, Phone } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SearchingDriverProps {
   onCancel: () => void;
@@ -8,6 +10,34 @@ interface SearchingDriverProps {
 }
 
 const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Destination" }: SearchingDriverProps) => {
+  const [showCallCenter, setShowCallCenter] = useState(false);
+  const [callCenterNumber, setCallCenterNumber] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timeoutSeconds, setTimeoutSeconds] = useState(60);
+
+  useEffect(() => {
+    // Fetch call center number and timeout from settings
+    const fetchSettings = async () => {
+      const { data } = await supabase.from("system_settings").select("key, value").in("key", ["call_center_number", "driver_accept_timeout_seconds"]);
+      data?.forEach((s: any) => {
+        if (s.key === "call_center_number") setCallCenterNumber(typeof s.value === "string" ? s.value : String(s.value || ""));
+        if (s.key === "driver_accept_timeout_seconds") setTimeoutSeconds(typeof s.value === "number" ? s.value : parseInt(s.value) || 60);
+      });
+    };
+    fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(prev => {
+        const next = prev + 1;
+        if (next >= timeoutSeconds) setShowCallCenter(true);
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeoutSeconds]);
+
   return (
     <motion.div
       initial={{ y: "100%" }}
@@ -47,10 +77,30 @@ const SearchingDriver = ({ onCancel, pickupName = "Pickup", dropoffName = "Desti
             transition={{ duration: 2, repeat: Infinity }}
             className="text-lg font-bold text-foreground mt-6"
           >
-            Finding your driver...
+            {showCallCenter ? "No drivers available" : "Finding your driver..."}
           </motion.h3>
-          <p className="text-sm text-muted-foreground mt-1">Waiting for a driver to accept</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {showCallCenter ? "Try calling our support center" : "Waiting for a driver to accept"}
+          </p>
         </div>
+
+        {/* Call center option */}
+        {showCallCenter && callCenterNumber && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-primary/10 rounded-xl p-4 space-y-3"
+          >
+            <p className="text-sm font-semibold text-foreground text-center">No driver accepted your request</p>
+            <a
+              href={`tel:+960${callCenterNumber}`}
+              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
+            >
+              <Phone className="w-4 h-4" />
+              Call Support: +960 {callCenterNumber}
+            </a>
+          </motion.div>
+        )}
 
         {/* Route info */}
         <div className="bg-surface rounded-xl p-4 space-y-3">

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Upload, Clock, Image } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -10,23 +10,43 @@ const AdminBilling = () => {
   const [loading, setLoading] = useState(true);
   const [freeUntilDriver, setFreeUntilDriver] = useState<string | null>(null);
   const [freeUntilDate, setFreeUntilDate] = useState("");
+  const [payments, setPayments] = useState<any[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState("submitted");
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [billingDueDay, setBillingDueDay] = useState(25);
+  const [adminPhone, setAdminPhone] = useState("");
+  const [tab, setTab] = useState<"drivers" | "payments">("drivers");
 
   const fetchDrivers = async () => {
     setLoading(true);
-    const [driversRes, companiesRes] = await Promise.all([
+    const [driversRes, companiesRes, settingsRes] = await Promise.all([
       (() => {
         let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until").ilike("user_type", "%Driver%").order("first_name");
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
         return q;
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
+      supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "admin_sms_phone"]),
     ]);
     setDrivers((driversRes.data as any[]) || []);
     setCompanies((companiesRes.data as any[]) || []);
+    
+    settingsRes.data?.forEach((s: any) => {
+      if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 25);
+      if (s.key === "admin_sms_phone") setAdminPhone(typeof s.value === "string" ? s.value : String(s.value || ""));
+    });
     setLoading(false);
   };
 
+  const fetchPayments = async () => {
+    let q = supabase.from("driver_payments").select("*, driver:driver_id(first_name, last_name, phone_number)").order("created_at", { ascending: false });
+    if (paymentFilter !== "all") q = q.eq("status", paymentFilter);
+    const { data } = await q;
+    setPayments((data as any[]) || []);
+  };
+
   useEffect(() => { fetchDrivers(); }, [search]);
+  useEffect(() => { fetchPayments(); }, [paymentFilter]);
 
   const toggleFeeFree = async (driverId: string, currentFee: number) => {
     const newFee = currentFee === 0 ? 500 : 0;
@@ -50,6 +70,43 @@ const AdminBilling = () => {
     fetchDrivers();
   };
 
+  const saveBillingSettings = async () => {
+    const entries: [string, any][] = [["billing_due_day", billingDueDay], ["admin_sms_phone", adminPhone]];
+    for (const [key, value] of entries) {
+      const { data: existing } = await supabase.from("system_settings").select("id").eq("key", key as string).single();
+      if (existing) {
+        await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key as string);
+      } else {
+        await supabase.from("system_settings").insert({ key: key as string, value });
+      }
+    }
+    toast({ title: "Billing settings saved" });
+  };
+
+  const approvePayment = async (paymentId: string) => {
+    const adminProfile = JSON.parse(localStorage.getItem("hda_admin") || "{}");
+    await supabase.from("driver_payments").update({
+      status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: adminProfile.id || null,
+      updated_at: new Date().toISOString(),
+    } as any).eq("id", paymentId);
+    toast({ title: "Payment approved!" });
+    fetchPayments();
+    setSelectedPayment(null);
+  };
+
+  const rejectPayment = async (paymentId: string, reason: string) => {
+    await supabase.from("driver_payments").update({
+      status: "rejected",
+      rejection_reason: reason,
+      updated_at: new Date().toISOString(),
+    } as any).eq("id", paymentId);
+    toast({ title: "Payment rejected" });
+    fetchPayments();
+    setSelectedPayment(null);
+  };
+
   const getCompanyName = (d: any) => companies.find(c => c.id === d.company_id)?.name || d.company_name || "—";
   const isCompanyFeeFree = (d: any) => companies.find(c => c.id === d.company_id)?.fee_free || false;
   const isFreeUntilActive = (d: any) => d.fee_free_until && new Date(d.fee_free_until) > new Date();
@@ -61,32 +118,214 @@ const AdminBilling = () => {
 
   const freeDriversCount = drivers.filter(d => d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)).length;
   const payingDriversCount = drivers.length - freeDriversCount;
+  const pendingPayments = payments.filter(p => p.status === "submitted").length;
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Driver Billing</h2>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-sm text-muted-foreground">Expected Monthly Revenue</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{totalMonthlyRevenue.toLocaleString()} MVR</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-sm text-muted-foreground">Paying Drivers</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{payingDriversCount}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-sm text-muted-foreground">Fee-Free Drivers</p>
-          <p className="text-2xl font-bold text-primary mt-1">{freeDriversCount}</p>
+      {/* Billing Settings */}
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Billing Settings</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Billing Due Day (of month)</label>
+            <input type="number" min={1} max={28} value={billingDueDay} onChange={(e) => setBillingDueDay(parseInt(e.target.value) || 25)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            <p className="text-[10px] text-muted-foreground mt-1">Drivers not paid by this date will be deactivated</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Admin SMS Phone (Dhiraagu)</label>
+            <input value={adminPhone} onChange={(e) => setAdminPhone(e.target.value.replace(/\D/g, "").slice(0, 7))} placeholder="7XXXXXX" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            <p className="text-[10px] text-muted-foreground mt-1">Receive SMS when driver submits payment</p>
+          </div>
+          <div className="flex items-end">
+            <button onClick={saveBillingSettings} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold">Save Settings</button>
+          </div>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Expected Revenue</p>
+          <p className="text-2xl font-bold text-foreground mt-0.5">{totalMonthlyRevenue.toLocaleString()} MVR</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Paying Drivers</p>
+          <p className="text-2xl font-bold text-foreground mt-0.5">{payingDriversCount}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Fee-Free</p>
+          <p className="text-2xl font-bold text-primary mt-0.5">{freeDriversCount}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Pending Approvals</p>
+          <p className="text-2xl font-bold text-foreground mt-0.5">{pendingPayments}</p>
+        </div>
       </div>
+
+      {/* Tab toggle */}
+      <div className="flex gap-2">
+        <button onClick={() => setTab("drivers")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${tab === "drivers" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Drivers</button>
+        <button onClick={() => setTab("payments")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "payments" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+          Payments
+          {pendingPayments > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{pendingPayments}</span>}
+        </button>
+      </div>
+
+      {tab === "drivers" && (
+        <>
+          {/* Search */}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+
+          {/* Drivers billing table */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface">
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Driver</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                ) : drivers.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+                ) : (
+                  drivers.map((d) => {
+                    const companyFeeFree = isCompanyFeeFree(d);
+                    const temporaryFree = isFreeUntilActive(d);
+                    const effectivelyFree = d.monthly_fee === 0 || companyFeeFree || temporaryFree;
+
+                    return (
+                      <tr key={d.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {getCompanyName(d)}
+                          {companyFeeFree && <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Fee Free</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {effectivelyFree ? (
+                            <span className="text-sm font-semibold text-primary">FREE</span>
+                          ) : (
+                            <span className="text-sm font-semibold text-foreground">{d.monthly_fee} MVR</span>
+                          )}
+                          {temporaryFree && <p className="text-[10px] text-muted-foreground">until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${d.status === "Active" ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                            {d.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {!companyFeeFree && (
+                              <button onClick={() => toggleFeeFree(d.id, d.monthly_fee)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d.monthly_fee === 0 ? "text-destructive bg-destructive/10 hover:bg-destructive/20" : "text-primary bg-primary/10 hover:bg-primary/20"}`}>
+                                <ShieldCheck className="w-3 h-3" />
+                                {d.monthly_fee === 0 ? "Set Fee" : "Make Free"}
+                              </button>
+                            )}
+                            {temporaryFree ? (
+                              <button onClick={() => clearFreeUntil(d.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors">
+                                <X className="w-3 h-3" /> Clear Period
+                              </button>
+                            ) : (
+                              <button onClick={() => { setFreeUntilDriver(d.id); setFreeUntilDate(""); }} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground bg-surface hover:bg-muted transition-colors">
+                                <Calendar className="w-3 h-3" /> Free Period
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {tab === "payments" && (
+        <>
+          <div className="flex items-center gap-3">
+            <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="all">All Payments</option>
+              <option value="submitted">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface">
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Driver</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Amount</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Month</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Slip</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Submitted</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No payments found</td></tr>
+                ) : (
+                  payments.map((p) => (
+                    <tr key={p.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        {p.driver?.first_name} {p.driver?.last_name}
+                        <p className="text-[10px] text-muted-foreground">+960 {p.driver?.phone_number}</p>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-foreground">{p.amount} MVR</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{p.payment_month}</td>
+                      <td className="px-4 py-3">
+                        {p.slip_url ? (
+                          <button onClick={() => setSelectedPayment(p)} className="flex items-center gap-1 text-xs text-primary font-medium hover:underline">
+                            <Image className="w-3 h-3" /> View Slip
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No slip</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          p.status === "approved" ? "bg-primary/10 text-primary" :
+                          p.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                          p.status === "submitted" ? "bg-accent text-accent-foreground" :
+                          "bg-muted text-muted-foreground"
+                        }`}>{p.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{p.submitted_at ? new Date(p.submitted_at).toLocaleString() : "—"}</td>
+                      <td className="px-4 py-3">
+                        {p.status === "submitted" && (
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setSelectedPayment(p)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20">
+                              <Eye className="w-3 h-3" /> Review
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {/* Free-until modal */}
       {freeUntilDriver && (
@@ -106,92 +345,59 @@ const AdminBilling = () => {
         </div>
       )}
 
-      {/* Drivers billing table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-surface">
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Driver</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
-            ) : drivers.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
-            ) : (
-              drivers.map((d) => {
-                const companyFeeFree = isCompanyFeeFree(d);
-                const temporaryFree = isFreeUntilActive(d);
-                const effectivelyFree = d.monthly_fee === 0 || companyFeeFree || temporaryFree;
+      {/* Payment review modal */}
+      {selectedPayment && (
+        <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedPayment(null)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-bold text-foreground">Review Payment</h3>
+              <button onClick={() => setSelectedPayment(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="bg-surface rounded-xl p-3 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span className="font-medium text-foreground">{selectedPayment.driver?.first_name} {selectedPayment.driver?.last_name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span className="font-medium text-foreground">+960 {selectedPayment.driver?.phone_number}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold text-foreground">{selectedPayment.amount} MVR</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Month</span><span className="font-medium text-foreground">{selectedPayment.payment_month}</span></div>
+              </div>
 
-                return (
-                  <tr key={d.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {getCompanyName(d)}
-                      {companyFeeFree && <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Fee Free</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {effectivelyFree ? (
-                        <span className="text-sm font-semibold text-primary">FREE</span>
-                      ) : (
-                        <span className="text-sm font-semibold text-foreground">{d.monthly_fee} MVR</span>
-                      )}
-                      {temporaryFree && (
-                        <p className="text-[10px] text-muted-foreground">until {new Date(d.fee_free_until).toLocaleDateString()}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${d.status === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                        {d.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {!companyFeeFree && (
-                          <button
-                            onClick={() => toggleFeeFree(d.id, d.monthly_fee)}
-                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                              d.monthly_fee === 0
-                                ? "text-destructive bg-destructive/10 hover:bg-destructive/20"
-                                : "text-primary bg-primary/10 hover:bg-primary/20"
-                            }`}
-                          >
-                            <ShieldCheck className="w-3 h-3" />
-                            {d.monthly_fee === 0 ? "Set Fee" : "Make Free"}
-                          </button>
-                        )}
-                        {temporaryFree ? (
-                          <button
-                            onClick={() => clearFreeUntil(d.id)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors"
-                          >
-                            <X className="w-3 h-3" /> Clear Period
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => { setFreeUntilDriver(d.id); setFreeUntilDate(""); }}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground bg-surface hover:bg-muted transition-colors"
-                          >
-                            <Calendar className="w-3 h-3" /> Free Period
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+              {selectedPayment.slip_url && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Payment Slip</p>
+                  <img src={selectedPayment.slip_url} alt="Payment slip" className="w-full rounded-xl border border-border" />
+                </div>
+              )}
+
+              {selectedPayment.status === "submitted" && (
+                <div className="flex gap-3">
+                  <button onClick={() => approvePayment(selectedPayment.id)} className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold">
+                    <CheckCircle className="w-4 h-4" /> Approve
+                  </button>
+                  <button onClick={() => {
+                    const reason = prompt("Rejection reason:");
+                    if (reason) rejectPayment(selectedPayment.id, reason);
+                  }} className="flex-1 flex items-center justify-center gap-2 bg-destructive/10 text-destructive py-3 rounded-xl text-sm font-semibold">
+                    <XCircle className="w-4 h-4" /> Reject
+                  </button>
+                </div>
+              )}
+
+              {selectedPayment.status === "approved" && (
+                <div className="bg-primary/10 text-primary text-sm font-medium p-3 rounded-xl flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" /> Approved {selectedPayment.approved_at ? `on ${new Date(selectedPayment.approved_at).toLocaleString()}` : ""}
+                </div>
+              )}
+
+              {selectedPayment.status === "rejected" && (
+                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-xl">
+                  <p className="font-medium flex items-center gap-2"><XCircle className="w-4 h-4" /> Rejected</p>
+                  {selectedPayment.rejection_reason && <p className="text-xs mt-1">{selectedPayment.rejection_reason}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
