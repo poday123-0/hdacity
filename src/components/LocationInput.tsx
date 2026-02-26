@@ -665,16 +665,18 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
             {/* ── Saved Places & Set on Map ── */}
             {(
-              <div className="space-y-2">
-                {/* Quick actions row */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <div className="space-y-2.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Quick Access</p>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar">
                   {/* Set on Map button */}
                   <button
                     onClick={handleSetOnMap}
                     disabled={settingOnMap}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent/15 text-accent-foreground text-xs font-semibold whitespace-nowrap active:scale-95 transition-all border border-accent/20 hover:bg-accent/25"
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-primary/10 text-primary text-xs font-semibold whitespace-nowrap active:scale-95 transition-all shrink-0"
                   >
-                    <MapPinned className={`w-3.5 h-3.5 text-accent-foreground ${settingOnMap ? "animate-bounce" : ""}`} />
+                    <div className="w-7 h-7 rounded-xl bg-primary/15 flex items-center justify-center">
+                      <MapPinned className={`w-3.5 h-3.5 ${settingOnMap ? "animate-bounce" : ""}`} />
+                    </div>
                     {settingOnMap ? "Tap map..." : "Set on map"}
                   </button>
 
@@ -682,26 +684,30 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   {savedLocations.map((saved) => {
                     const IconComp = ICON_MAP[saved.icon] || Star;
                     return (
-                      <div key={saved.id} className="flex items-center gap-0.5 shrink-0">
+                      <div key={saved.id} className="flex items-center shrink-0 rounded-2xl bg-surface border border-border/60 overflow-hidden shadow-sm">
                         <button
                           onClick={() => handleSelectSaved(saved)}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-l-xl bg-surface text-xs font-semibold whitespace-nowrap active:scale-95 transition-all border border-r-0 border-border hover:border-primary/30 hover:bg-primary/5"
+                          className="flex items-center gap-2 pl-2.5 pr-2 py-2.5 text-xs font-semibold whitespace-nowrap active:scale-[0.97] transition-all"
                         >
-                          <IconComp className="w-3.5 h-3.5 text-primary" />
+                          <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <IconComp className="w-3.5 h-3.5 text-primary" />
+                          </div>
                           <span className="text-foreground">{saved.label}</span>
                         </button>
-                        <button
-                          onClick={() => handleEditSaved(saved)}
-                          className="px-1.5 py-2 bg-surface border-y border-border hover:bg-primary/5 transition-colors"
-                        >
-                          <Pencil className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSaved(saved.id)}
-                          className="px-1.5 py-2 rounded-r-xl bg-surface border border-l-0 border-border hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 className="w-3 h-3 text-destructive/70" />
-                        </button>
+                        <div className="flex items-center border-l border-border/40">
+                          <button
+                            onClick={() => handleEditSaved(saved)}
+                            className="px-2 py-2.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <Pencil className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSaved(saved.id)}
+                            className="px-2 py-2.5 hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3 text-destructive/60" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -718,9 +724,11 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                           setPendingSaveLocation(null);
                           setShowSaveDialog(true);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-border text-xs font-medium text-muted-foreground whitespace-nowrap active:scale-95 transition-all hover:border-primary/30 hover:text-foreground"
+                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-dashed border-border/60 text-xs font-medium text-muted-foreground whitespace-nowrap active:scale-95 transition-all hover:border-primary/40 hover:text-foreground hover:bg-primary/5 shrink-0"
                       >
-                        <CirclePlus className="w-3.5 h-3.5" />
+                        <div className="w-7 h-7 rounded-xl bg-muted/50 flex items-center justify-center">
+                          <IconComp className="w-3.5 h-3.5" />
+                        </div>
                         {preset.label}
                       </button>
                     );
@@ -734,9 +742,11 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                       setPendingSaveLocation(null);
                       setShowSaveDialog(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-border text-xs font-medium text-muted-foreground whitespace-nowrap active:scale-95 transition-all hover:border-primary/30 hover:text-foreground"
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-dashed border-border/60 text-xs font-medium text-muted-foreground whitespace-nowrap active:scale-95 transition-all hover:border-primary/40 hover:text-foreground hover:bg-primary/5 shrink-0"
                   >
-                    <CirclePlus className="w-3.5 h-3.5" />
+                    <div className="w-7 h-7 rounded-xl bg-muted/50 flex items-center justify-center">
+                      <CirclePlus className="w-3.5 h-3.5" />
+                    </div>
                     Add place
                   </button>
                 </div>
