@@ -513,8 +513,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
       {/* Route/follow toggle removed — now in DriverApp sidebar */}
 
-      {/* Speed indicator — only show on map when navigating AND on larger screens (moved to trip panel on mobile) */}
-      {isNavigating && (
+      {/* Speed indicator — only show on map when trip panel is NOT open */}
+      {isNavigating && !tripPanelOpen && (
         <div className="absolute bottom-4 left-3 z-[460] hidden md:block">
           <div className="w-14 h-14 rounded-full bg-card/95 backdrop-blur-md shadow-lg border-2 border-border/30 flex flex-col items-center justify-center">
             <span className="text-base font-black text-foreground leading-none">{currentSpeed}</span>
