@@ -154,6 +154,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
+  const [sessionKicked, setSessionKicked] = useState(false);
   const recenterRef = useRef<(() => void) | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -314,12 +315,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .eq("driver_id", userProfile.id)
           .single();
         if (locRow && (locRow as any).session_id && (locRow as any).session_id !== deviceSessionId.current) {
-          // Another device is now active — force this device offline
-          toast({
-            title: "Signed in on another device",
-            description: "You have been signed in on another device. This device is now offline.",
-            variant: "destructive",
-          });
+          // Another device is now active — show alert and force offline
+          if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+          if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
+          setSessionKicked(true);
           setScreen("offline");
         }
       }, 10000);
@@ -861,6 +860,44 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   return (
     <div className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+      {/* Session conflict full-screen alert */}
+      <AnimatePresence>
+        {sessionKicked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", damping: 22, stiffness: 260 }}
+              className="bg-card rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-5 border border-border"
+            >
+              <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mx-auto">
+                <Power className="w-8 h-8 text-destructive" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-foreground">Signed In Elsewhere</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Your account has been signed in on another device. To keep the system reliable, only one device can be online at a time.
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  This device has been set to <span className="font-semibold text-destructive">offline</span>.
+                </p>
+              </div>
+              <button
+                onClick={() => setSessionKicked(false)}
+                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-95 transition-transform"
+              >
+                I Understand
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
