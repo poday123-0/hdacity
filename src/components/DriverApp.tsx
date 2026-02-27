@@ -830,7 +830,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
 
   return (
-    <div className="relative w-full h-screen h-[100dvh] md:max-w-none max-w-lg mx-auto overflow-hidden bg-surface" style={{ fontSize: `${textSize}rem` }}>
+    <div className="relative w-full h-screen h-[100dvh] md:max-w-none max-w-lg mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Top bar */}
