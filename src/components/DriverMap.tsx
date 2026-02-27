@@ -371,36 +371,39 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       rideMarkersRef.current.push(dropMarker);
     }
 
+    // Create a single DirectionsRenderer and reuse it to avoid flashing
+    const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
+    if (directionsRendererRef.current) directionsRendererRef.current.setMap(null);
+    const dr = new g.maps.DirectionsRenderer({
+      map,
+      suppressMarkers: true,
+      suppressInfoWindows: true,
+      preserveViewport: true,
+      polylineOptions: {
+        strokeColor: routeColor,
+        strokeWeight: 7,
+        strokeOpacity: 0.85,
+      },
+    });
+    directionsRendererRef.current = dr;
+
     const fetchRoute = () => {
       const ds = new g.maps.DirectionsService();
-      const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
-      const dr = new g.maps.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
-        suppressInfoWindows: true,
-        preserveViewport: true,
-        polylineOptions: {
-          strokeColor: routeColor,
-          strokeWeight: 7,
-          strokeOpacity: 0.85,
-        },
-      });
-      if (directionsRendererRef.current) directionsRendererRef.current.setMap(null);
-      directionsRendererRef.current = dr;
-
       ds.route({
         origin,
         destination,
         travelMode: g.maps.TravelMode.DRIVING,
         provideRouteAlternatives: false,
       }).then((result: any) => {
-        dr.setDirections(result);
-        parseNavSteps(result);
+        if (directionsRendererRef.current === dr) {
+          dr.setDirections(result);
+          parseNavSteps(result);
+        }
       }).catch((err: any) => console.error("Directions error:", err));
     };
 
     fetchRoute();
-    routeRefreshRef.current = setInterval(fetchRoute, 12000);
+    routeRefreshRef.current = setInterval(fetchRoute, 15000);
 
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
