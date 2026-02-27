@@ -10,13 +10,13 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [phase, setPhase] = useState<"logo" | "exit">("logo");
 
   useEffect(() => {
-    const timer = setTimeout(() => setPhase("exit"), 2200);
+    const timer = setTimeout(() => setPhase("exit"), 1200);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (phase === "exit") {
-      const timer = setTimeout(onComplete, 600);
+      const timer = setTimeout(onComplete, 300);
       return () => clearTimeout(timer);
     }
   }, [phase, onComplete]);

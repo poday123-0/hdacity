@@ -167,7 +167,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
 
     if (newOtp.every((d) => d !== "")) {
       const code = newOtp.join("");
-      setTimeout(() => handleVerify(code), 300);
+      handleVerify(code);
     }
   };
 

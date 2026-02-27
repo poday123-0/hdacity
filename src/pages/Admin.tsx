@@ -87,8 +87,6 @@ const Admin = () => {
   }, []);
 
   const handleAdminLogin = async (phone: string) => {
-    // Look up the profile and check if they have admin role
-    // Fetch all profiles matching this phone, then pick the one with admin role
     const { data: profiles } = await supabase
       .from("profiles")
       .select("*")
@@ -99,18 +97,16 @@ const Admin = () => {
       return false;
     }
 
-    // Check each profile for admin role, pick the first admin
-    let adminProfileMatch: any = null;
-    for (const p of profiles) {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", p.id);
-      if (roles?.some((r: any) => r.role === "admin")) {
-        adminProfileMatch = p;
-        break;
-      }
-    }
+    // Batch fetch roles for all matching profiles at once
+    const profileIds = profiles.map(p => p.id);
+    const { data: allRoles } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", profileIds);
+
+    const adminProfileMatch = profiles.find(p =>
+      allRoles?.some((r: any) => r.user_id === p.id && r.role === "admin")
+    );
 
     if (!adminProfileMatch) {
       toast({ title: "Access denied", description: "You are not an admin", variant: "destructive" });
@@ -121,7 +117,6 @@ const Admin = () => {
     setIsAdmin(true);
     localStorage.setItem("hda_admin", JSON.stringify(adminProfileMatch));
     return true;
-  
   };
 
   const handleLogout = () => {

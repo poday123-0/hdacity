@@ -158,18 +158,16 @@ const Dispatch = () => {
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || "Invalid code");
 
-      // Check dispatcher or admin role
+      // Fetch profiles and roles in parallel
       const { data: profiles } = await supabase.from("profiles").select("*").eq("phone_number", phone);
       if (!profiles || profiles.length === 0) throw new Error("Profile not found");
 
-      let matchedProfile: any = null;
-      for (const p of profiles) {
-        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", p.id);
-        if (roles?.some((r: any) => r.role === "dispatcher" || r.role === "admin")) {
-          matchedProfile = p;
-          break;
-        }
-      }
+      const profileIds = profiles.map(p => p.id);
+      const { data: allRoles } = await supabase.from("user_roles").select("user_id, role").in("user_id", profileIds);
+
+      const matchedProfile = profiles.find(p =>
+        allRoles?.some((r: any) => r.user_id === p.id && (r.role === "dispatcher" || r.role === "admin"))
+      );
 
       if (!matchedProfile) throw new Error("You don't have dispatcher access");
 
@@ -192,7 +190,7 @@ const Dispatch = () => {
     setOtp(newOtp);
     if (value && index < 5) otpRefs.current[index + 1]?.focus();
     if (newOtp.every((d) => d !== "")) {
-      setTimeout(() => handleVerify(newOtp.join("")), 300);
+      handleVerify(newOtp.join(""));
     }
   };
 
