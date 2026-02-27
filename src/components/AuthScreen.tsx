@@ -15,6 +15,7 @@ export interface UserProfile {
   status: string;
   monthly_fee?: number;
   fee_free_until?: string | null;
+  avatar_url?: string | null;
 }
 
 interface AuthScreenProps {
