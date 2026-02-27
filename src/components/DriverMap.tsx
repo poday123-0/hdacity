@@ -542,18 +542,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
-      {/* Navigation Overlay — restore pill when hidden */}
-      {isNavigating && navSteps.length > 0 && navHidden && (
-        <button
-          onClick={() => setNavHidden(false)}
-          className="absolute top-12 left-2 z-[460] bg-card/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 active:scale-95 transition-transform border border-border/30"
-        >
-          <Navigation className="w-3 h-3 text-primary" />
-          <span className="text-[10px] font-bold text-primary">{navEta}</span>
-          <span className="text-[10px] text-muted-foreground">{navDistance}</span>
-          <ChevronDown className="w-3 h-3 text-muted-foreground" />
-        </button>
-      )}
 
       {isNavigating && navSteps.length > 0 && !navHidden && (
         <div className={`absolute top-12 z-[460] transition-all duration-300 ${tripPanelOpen ? "left-1 right-auto w-[180px]" : "left-2 right-2"}`}>
