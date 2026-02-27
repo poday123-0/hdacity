@@ -350,13 +350,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return "↑";
   };
 
-  if (error) {
-    return <div className="absolute inset-0 bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
-  }
-  if (!isLoaded) {
-    return <div className="absolute inset-0 bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-  }
-
   // Expose recenter function and availability to parent
   useEffect(() => {
     onRecenterAvailableChange?.(userPannedAway && !isNavigating);
@@ -374,6 +367,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       };
     }
   }, [currentPos, recenterRef]);
+
+  if (error) {
+    return <div className="absolute inset-0 bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
+  }
+  if (!isLoaded) {
+    return <div className="absolute inset-0 bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  }
 
   return (
     <>
