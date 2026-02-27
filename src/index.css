@@ -146,37 +146,68 @@
 .driver-text-lg .text-2xl { font-size: 1.875rem; }
 .driver-text-lg .text-3xl { font-size: 2.25rem; }
 
-/* Landscape mode for car dashboard screens */
+/* ─── Landscape car-dashboard mode ─── */
 @media (orientation: landscape) and (min-width: 768px) {
-  .landscape-md\:max-h-full { max-height: 100% !important; }
-  .landscape-md\:bottom-0 { bottom: 0; }
-  .landscape-md\:right-0 { right: 0; }
-  .landscape-md\:top-0 { top: 0; }
-  .landscape-md\:left-auto { left: auto; }
-  .landscape-md\:w-\[380px\] { width: 380px; }
-  .landscape-md\:rounded-t-none { border-top-left-radius: 0; border-top-right-radius: 0; }
-  .landscape-md\:rounded-l-3xl { border-top-left-radius: 1.5rem; border-bottom-left-radius: 1.5rem; }
-  .landscape-md\:items-center { align-items: center; }
-  .landscape-md\:justify-end { justify-content: flex-end; }
-  .landscape-md\:pr-8 { padding-right: 2rem; }
-  .landscape-md\:bg-card { background: hsl(var(--card)); }
-  .landscape-md\:rounded-3xl { border-radius: 1.5rem; }
-  .landscape-md\:shadow-2xl { box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); }
-  .landscape-md\:p-8 { padding: 2rem; }
-
-  /* Panel slides from right instead of bottom */
+  /* Side panel: pin to right edge, full height */
   .landscape-panel {
-    animation: slideFromRight 0.3s ease-out !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+    right: 0 !important;
+    width: 380px !important;
+    max-height: 100% !important;
+    border-radius: 1.5rem 0 0 1.5rem !important;
+    box-shadow: -4px 0 30px rgba(0, 0, 0, 0.15) !important;
+    animation: slideFromRight 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
     transform: none !important;
   }
 
-  @keyframes slideFromRight {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+  /* Allow panel content to scroll full height */
+  .landscape-panel .overflow-y-auto,
+  .landscape-panel .overflow-hidden {
+    max-height: none !important;
   }
 
-  /* Expand navigating panel content for landscape */
-  .landscape-panel .overflow-y-auto {
-    max-height: calc(100vh - 14rem) !important;
+  /* Offline screen: position card on the right side */
+  .landscape-offline {
+    justify-content: flex-end !important;
+    padding-right: 2rem;
+  }
+  .landscape-offline-card {
+    background: hsl(var(--card));
+    border-radius: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+  }
+
+  /* Ride request modal: side panel instead of bottom sheet */
+  .ride-request-overlay {
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+  }
+  .ride-request-overlay > div {
+    max-width: 400px !important;
+    border-radius: 1.5rem 0 0 1.5rem !important;
+    max-height: 100% !important;
+    height: 100%;
+  }
+
+  /* Complete modal: also right-aligned */
+  .complete-overlay {
+    justify-content: flex-end !important;
+    padding-right: 2rem;
+  }
+
+  @keyframes slideFromRight {
+    from { transform: translateX(100%); opacity: 0.8; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+}
+
+/* Extra-wide landscape (e.g. car head units > 1024px) */
+@media (orientation: landscape) and (min-width: 1024px) {
+  .landscape-panel {
+    width: 420px !important;
   }
 }
