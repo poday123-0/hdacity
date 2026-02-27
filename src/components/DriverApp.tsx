@@ -854,14 +854,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {/* Vehicle quick-switcher dropdown */}
             <AnimatePresence>
               {showVehicleSwitcher && driverVehicles.length > 1 && (
-                <>
-                  <div className="fixed inset-0 z-[800]" onClick={() => setShowVehicleSwitcher(false)} />
+                  <div className="fixed inset-0 z-[800] flex items-center justify-center" onClick={() => setShowVehicleSwitcher(false)}>
                   <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[801] w-72 bg-card rounded-2xl shadow-xl border border-border overflow-hidden"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-72 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden z-[801]"
                     style={{ fontSize: '14px' }}
                   >
                     <div className="px-4 py-2.5 border-b border-border">
@@ -907,7 +907,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       })}
                     </div>
                   </motion.div>
-                </>
+                  </div>
               )}
             </AnimatePresence>
           </div>
