@@ -61,7 +61,7 @@ serve(async (req) => {
       body: JSON.stringify({
         recipients: fullNumber,
         sender_id: "HDA TAXI",
-        body: `Your HDA Taxi verification code is: ${code}`,
+        body: `Your HDA Taxi verification code is: ${code}\n\n@app.hda.taxi #${code}`,
       }),
     });
 

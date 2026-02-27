@@ -42,6 +42,34 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     load();
   }, []);
 
+  // WebOTP API: auto-read OTP from SMS on supported devices
+  useEffect(() => {
+    if (step !== "otp") return;
+    const ac = new AbortController();
+
+    if ("OTPCredential" in window) {
+      navigator.credentials
+        .get({ otp: { transport: ["sms"] }, signal: ac.signal } as any)
+        .then((otpCredential: any) => {
+          if (otpCredential?.code) {
+            const digits = otpCredential.code.split("");
+            setOtp(digits);
+            // Auto-fill all inputs
+            digits.forEach((d: string, i: number) => {
+              if (otpRefs.current[i]) otpRefs.current[i]!.value = d;
+            });
+            // Auto-verify
+            setTimeout(() => handleVerify(otpCredential.code), 300);
+          }
+        })
+        .catch(() => {
+          // User dismissed or not supported — silent fail
+        });
+    }
+
+    return () => ac.abort();
+  }, [step]);
+
   const handlePhoneSubmit = async () => {
     if (phone.length < 7) return;
     setLoading(true);
@@ -239,6 +267,8 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                     key={i}
                     ref={(el) => { otpRefs.current[i] = el; }}
                     type="tel"
+                    inputMode="numeric"
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
                     value={digit}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
