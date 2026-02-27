@@ -1468,6 +1468,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   <X className="w-4 h-4" />Decline
                 </button>
                 <button onClick={async () => {
+                // Stop sound immediately on accept
+                if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 if (!currentTrip || !userProfile?.id) return;
 
