@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Send, Bell, Users, User, Car, Loader2, Trash2 } from "lucide-react";
+import { Send, Bell, Users, User, Car, Loader2, Trash2, ImagePlus, X } from "lucide-react";
 
 interface Notification {
   id: string;
   title: string;
   message: string;
   target_type: string;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -24,12 +25,15 @@ const AdminNotifications = () => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [targetType, setTargetType] = useState("all");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchNotifications = async () => {
     setLoading(true);
     const { data } = await supabase
       .from("notifications")
-      .select("id, title, message, target_type, created_at")
+      .select("id, title, message, target_type, image_url, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
     setNotifications((data as Notification[]) || []);
@@ -38,6 +42,35 @@ const AdminNotifications = () => {
 
   useEffect(() => { fetchNotifications(); }, []);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Only PNG, JPG, GIF, and WebP are allowed", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File must be under 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `notifications/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("notification-images").upload(path, file);
+    if (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } else {
+      const { data: urlData } = supabase.storage.from("notification-images").getPublicUrl(path);
+      setImageUrl(urlData.publicUrl);
+      toast({ title: "Image uploaded!" });
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) {
       toast({ title: "Title and message are required", variant: "destructive" });
@@ -45,11 +78,14 @@ const AdminNotifications = () => {
     }
     setSending(true);
 
-    const { error } = await supabase.from("notifications").insert({
+    const payload: any = {
       title: title.trim(),
       message: message.trim(),
       target_type: targetType,
-    } as any);
+    };
+    if (imageUrl) payload.image_url = imageUrl;
+
+    const { error } = await supabase.from("notifications").insert(payload);
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -57,6 +93,7 @@ const AdminNotifications = () => {
       toast({ title: "Notification sent!" });
       setTitle("");
       setMessage("");
+      setImageUrl(null);
       fetchNotifications();
     }
     setSending(false);
@@ -121,6 +158,42 @@ const AdminNotifications = () => {
           />
         </div>
 
+        {/* Image/GIF Upload */}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Image / GIF (optional)</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+          {imageUrl ? (
+            <div className="mt-2 relative inline-block">
+              <img src={imageUrl} alt="Preview" className="max-h-40 rounded-xl border border-border" />
+              <button
+                onClick={() => setImageUrl(null)}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="mt-1.5 flex items-center gap-2 px-4 py-2.5 bg-surface border border-dashed border-border rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ImagePlus className="w-4 h-4" />
+              )}
+              {uploading ? "Uploading..." : "Add image or GIF"}
+            </button>
+          )}
+        </div>
+
         <button
           onClick={handleSend}
           disabled={sending || !title.trim() || !message.trim()}
@@ -144,7 +217,11 @@ const AdminNotifications = () => {
           {notifications.map((n) => (
             <div key={n.id} className="bg-card border border-border rounded-xl p-4 flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Bell className="w-5 h-5 text-primary" />
+                {n.image_url ? (
+                  <img src={n.image_url} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                ) : (
+                  <Bell className="w-5 h-5 text-primary" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -152,6 +229,9 @@ const AdminNotifications = () => {
                   <span className="text-[10px] px-1.5 py-0.5 bg-surface rounded-md text-muted-foreground font-medium">{getTargetLabel(n.target_type)}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                {n.image_url && (
+                  <img src={n.image_url} alt="" className="mt-2 max-h-24 rounded-lg border border-border" />
+                )}
                 <p className="text-[10px] text-muted-foreground/60 mt-1">{new Date(n.created_at).toLocaleString()}</p>
               </div>
               <button onClick={() => handleDelete(n.id)} className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 active:scale-90 transition-transform">

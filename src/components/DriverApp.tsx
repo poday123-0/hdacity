@@ -47,13 +47,15 @@ import {
   MessageSquare,
   Share2,
   Type,
-  Settings } from
+  Settings,
+  Bell as BellIcon } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
 import RideRequestMap from "./RideRequestMap";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import DriverNotifications from "@/components/DriverNotifications";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -158,6 +160,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
   const [sessionKicked, setSessionKicked] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const recenterRef = useRef<(() => void) | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -177,7 +181,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     } catch {return 1;}
   });
 
-  // Persist screen state so driver stays online after refresh
+  // Fetch unread notification count
+  useEffect(() => {
+    const lastSeen = localStorage.getItem("hda_driver_notif_seen") || "2000-01-01T00:00:00Z";
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .in("target_type", ["all", "drivers"])
+      .gt("created_at", lastSeen)
+      .then(({ count }) => setUnreadNotifCount(count || 0));
+  }, [showNotifications]);
+
+  useEffect(() => {
+    if (showNotifications) {
+      localStorage.setItem("hda_driver_notif_seen", new Date().toISOString());
+      setUnreadNotifCount(0);
+    }
+  }, [showNotifications]);
+
   useEffect(() => {
     try { localStorage.setItem(driverScreenKey, screen); } catch {}
   }, [screen, driverScreenKey]);
@@ -1059,26 +1080,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </AnimatePresence>
           </div>
 
-          {/* Right: On/Off toggle */}
-          {screen !== "offline" &&
-          <button
-            onClick={() => setScreen("offline")}
-            className="relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]"
-            title="Go Offline">
-
-            <motion.div
-              className="absolute inset-0 rounded-full bg-[hsl(var(--success))]"
-              animate={{ opacity: [0.4, 0, 0.4] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              style={{ boxShadow: "0 0 16px hsl(var(--success) / 0.5)" }} />
-
-            <motion.div
-              className="relative z-10 w-6 h-6 rounded-full bg-primary-foreground shadow-md"
-              animate={{ x: 24 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }} />
-
-          </button>
-          }
+          {/* Right: Bell + On/Off toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNotifications(true)}
+              className="relative w-9 h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30"
+            >
+              <BellIcon className="w-4.5 h-4.5 text-foreground" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                </span>
+              )}
+            </button>
+            {screen !== "offline" &&
+            <button
+              onClick={() => setScreen("offline")}
+              className="relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]"
+              title="Go Offline">
+              <motion.div
+                className="absolute inset-0 rounded-full bg-[hsl(var(--success))]"
+                animate={{ opacity: [0.4, 0, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                style={{ boxShadow: "0 0 16px hsl(var(--success) / 0.5)" }} />
+              <motion.div
+                className="relative z-10 w-6 h-6 rounded-full bg-primary-foreground shadow-md"
+                animate={{ x: 24 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }} />
+            </button>
+            }
+          </div>
         </div>
       </div>
 
@@ -2529,6 +2560,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </AnimatePresence>
 
       <PWAInstallPrompt />
+      <DriverNotifications userId={userProfile?.id} visible={showNotifications} onClose={() => setShowNotifications(false)} />
     </div>);
 
 };
