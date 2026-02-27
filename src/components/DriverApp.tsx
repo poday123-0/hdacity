@@ -1118,7 +1118,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           }
         </AnimatePresence>
 
-        <motion.div
+        {!showProfile && <motion.div
           initial={{ y: "100%" }}
           animate={{ y: panelMinimized ? "calc(100% - 0px)" : 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
@@ -1251,7 +1251,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               }
             </AnimatePresence>
           </div>
-        </motion.div>
+        </motion.div>}
 
         {/* Earnings History Modal */}
         {userProfile?.id &&
