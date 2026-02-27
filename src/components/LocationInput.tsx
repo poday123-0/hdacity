@@ -611,44 +611,72 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   </button>
                 </div>
 
-                {/* Time selection - scrollable chips */}
+                {/* Time selection - hour & minute wheels */}
                 <div>
                   <label className="text-[9px] text-muted-foreground font-medium mb-1.5 block">Pick a time</label>
-                  <div className="flex gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar">
-                    {(() => {
-                      const now = new Date();
-                      const isToday = scheduledDate === now.toISOString().split("T")[0];
-                      const slots: string[] = [];
-                      const startHour = isToday ? now.getHours() + 1 : 0;
-                      for (let h = startHour; h < 24; h++) {
-                        for (const m of [0, 30]) {
-                          const hh = h.toString().padStart(2, "0");
-                          const mm = m.toString().padStart(2, "0");
-                          slots.push(`${hh}:${mm}`);
-                        }
-                      }
-                      return slots.map((slot) => {
-                        const [hh, mm] = slot.split(":");
-                        const hour = parseInt(hh);
-                        const ampm = hour >= 12 ? "PM" : "AM";
-                        const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                        const display = `${h12}:${mm} ${ampm}`;
-                        return (
-                          <button
-                            key={slot}
-                            onClick={() => setScheduledTime(slot)}
-                            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                              scheduledTime === slot
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "bg-card border border-border text-foreground hover:border-primary/40"
-                            }`}
-                          >
-                            {display}
-                          </button>
-                        );
-                      });
-                    })()}
-                  </div>
+                  {(() => {
+                    const now = new Date();
+                    const isToday = scheduledDate === now.toISOString().split("T")[0];
+                    const minHour = isToday ? now.getHours() + 1 : 0;
+                    
+                    // Parse current selection
+                    const selHour = scheduledTime ? parseInt(scheduledTime.split(":")[0]) : -1;
+                    const selMin = scheduledTime ? parseInt(scheduledTime.split(":")[1]) : -1;
+                    
+                    const setTime = (h: number, m: number) => {
+                      setScheduledTime(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+                    };
+
+                    const formatHour = (h: number) => {
+                      const ampm = h >= 12 ? "PM" : "AM";
+                      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                      return `${h12} ${ampm}`;
+                    };
+
+                    return (
+                      <div className="flex gap-2">
+                        {/* Hours grid */}
+                        <div className="flex-1">
+                          <span className="text-[8px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 block">Hour</span>
+                          <div className="grid grid-cols-4 gap-1 max-h-[140px] overflow-y-auto overscroll-contain pr-0.5">
+                            {Array.from({ length: 24 - minHour }, (_, i) => minHour + i).map((h) => (
+                              <button
+                                key={h}
+                                onClick={() => setTime(h, selMin >= 0 ? selMin : 0)}
+                                className={`py-2 rounded-lg text-[11px] font-semibold transition-all ${
+                                  selHour === h
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "bg-card border border-border text-foreground active:bg-primary/10"
+                                }`}
+                              >
+                                {formatHour(h)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Minutes */}
+                        <div className="w-20">
+                          <span className="text-[8px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 block">Min</span>
+                          <div className="flex flex-col gap-1">
+                            {[0, 15, 30, 45].map((m) => (
+                              <button
+                                key={m}
+                                onClick={() => setTime(selHour >= minHour ? selHour : minHour, m)}
+                                className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                  selMin === m
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "bg-card border border-border text-foreground active:bg-primary/10"
+                                }`}
+                              >
+                                :{m.toString().padStart(2, "0")}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Selected summary */}
