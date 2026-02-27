@@ -1003,8 +1003,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           {/* Center: Vehicle */}
           <div className="relative">
             <button
-              onClick={() => driverVehicles.length > 1 ? setShowVehicleSwitcher(!showVehicleSwitcher) : null}
-              className={`flex items-center gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl px-3 py-1.5 shadow-md border border-border/30 ${driverVehicles.length > 1 ? "active:scale-95 transition-transform cursor-pointer" : ""}`}>
+              onClick={() => !currentTrip && driverVehicles.length > 1 ? setShowVehicleSwitcher(!showVehicleSwitcher) : null}
+              className={`flex items-center gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl px-3 py-1.5 shadow-md border border-border/30 ${!currentTrip && driverVehicles.length > 1 ? "active:scale-95 transition-transform cursor-pointer" : "opacity-70"}`}>
 
               {(() => {
                 const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
