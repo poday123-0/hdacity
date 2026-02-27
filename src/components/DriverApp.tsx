@@ -2052,7 +2052,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
               </div>
 
-              <div className="p-4 pt-2 border-t border-border space-y-2">
+              <div className="p-4 pt-2 border-t border-border space-y-2" style={{ fontSize: '16px' }}>
                 {onLogout && (
                   <button
                     onClick={() => { setShowProfile(false); onLogout(); }}
