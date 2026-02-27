@@ -44,6 +44,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
   const [vehicleTypeId, setVehicleTypeId] = useState("");
+  const [vehicleRegUrl, setVehicleRegUrl] = useState<string | null>(null);
+  const [vehicleInsuranceUrl, setVehicleInsuranceUrl] = useState<string | null>(null);
+  const [vehicleImageUrl, setVehicleImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -80,6 +83,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       case "license_back": setLicenseBack(url); break;
       case "permit_front": setTaxiPermitFront(url); break;
       case "permit_back": setTaxiPermitBack(url); break;
+      case "vehicle_reg": setVehicleRegUrl(url); break;
+      case "vehicle_insurance": setVehicleInsuranceUrl(url); break;
+      case "vehicle_image": setVehicleImageUrl(url); break;
     }
     setUploading(null);
   };
@@ -141,7 +147,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           color: color.trim() || null,
           vehicle_type_id: vehicleTypeId || null,
           is_active: true,
-        });
+          registration_url: vehicleRegUrl,
+          insurance_url: vehicleInsuranceUrl,
+          image_url: vehicleImageUrl,
+        } as any);
       }
 
       // Notify admin
@@ -405,6 +414,16 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none mt-0.5" />
+                </div>
+              </div>
+
+              {/* Vehicle Documents */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-foreground">Vehicle Documents</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <DocUploadCard label="Registration" url={vehicleRegUrl} target="vehicle_reg" />
+                  <DocUploadCard label="Insurance" url={vehicleInsuranceUrl} target="vehicle_insurance" />
+                  <DocUploadCard label="Vehicle Photo" url={vehicleImageUrl} target="vehicle_image" />
                 </div>
               </div>
 

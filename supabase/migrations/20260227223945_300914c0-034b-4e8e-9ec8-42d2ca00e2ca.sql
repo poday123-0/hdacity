@@ -1,0 +1,4 @@
+ALTER TABLE public.vehicles 
+ADD COLUMN IF NOT EXISTS registration_url text DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS insurance_url text DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS image_url text DEFAULT NULL;
