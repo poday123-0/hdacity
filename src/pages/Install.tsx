@@ -207,60 +207,6 @@ const Install = ({ defaultTab }: InstallProps) => {
           </motion.div>
         )}
 
-        {/* Installation Instructions */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-foreground">How to Install</h2>
-
-          {/* iOS Instructions */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3 bg-surface">
-              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                <Apple className="w-4 h-4 text-foreground" />
-              </div>
-              <span className="text-sm font-semibold text-foreground">iPhone / iPad (Safari)</span>
-            </div>
-            <div className="px-4 py-3 space-y-3">
-              {[
-                { step: 1, text: `Open ${currentUrl} in Safari` },
-                { step: 2, text: 'Tap the Share button (square with arrow)' },
-                { step: 3, text: '"Add to Home Screen"' },
-                { step: 4, text: 'Tap "Add" to confirm' },
-              ].map(({ step, text }) => (
-                <div key={step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-primary">{step}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Android Instructions */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3 bg-surface">
-              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                <Chrome className="w-4 h-4 text-foreground" />
-              </div>
-              <span className="text-sm font-semibold text-foreground">Android (Chrome)</span>
-            </div>
-            <div className="px-4 py-3 space-y-3">
-              {[
-                { step: 1, text: `Open ${currentUrl} in Chrome` },
-                { step: 2, text: 'Tap the three-dot menu (⋮) at the top right' },
-                { step: 3, text: '"Install app" or "Add to Home screen"' },
-                { step: 4, text: 'Tap "Install" to confirm' },
-              ].map(({ step, text }) => (
-                <div key={step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-primary">{step}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
         {/* Share Both Apps Section */}
         <div className="space-y-3">
