@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SOSButton from "@/components/SOSButton";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 type AppPhase = "splash" | "auth" | "register" | "passenger";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
@@ -441,6 +442,8 @@ const Index = () => {
           <RideFeedback tripId={currentTripId} fare={estimatedFare} userId={userProfile?.id} onComplete={handleFeedbackComplete} />
         )}
       </div>
+
+      <PWAInstallPrompt />
     </div>
   );
 };
