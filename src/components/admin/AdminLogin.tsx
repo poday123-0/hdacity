@@ -67,7 +67,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
     setOtp(newOtp);
     if (value && index < 5) otpRefs.current[index + 1]?.focus();
     if (newOtp.every((d) => d !== "")) {
-      setTimeout(() => handleVerify(newOtp.join("")), 300);
+      handleVerify(newOtp.join(""));
     }
   };
 
