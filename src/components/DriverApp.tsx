@@ -777,8 +777,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             Passenger Mode
           </button>
           <div className="flex items-center gap-1.5">
-            <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
-            
+            {(() => {
+              const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
+              return vTypeImg ? (
+                <img src={vTypeImg} alt="Vehicle" className="h-8 w-auto object-contain" />
+              ) : (
+                <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
+              );
+            })()}
           </div>
           <button onClick={() => setShowProfile(true)} className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
             {avatarUrl ? (
