@@ -223,11 +223,3 @@
     width: 420px !important;
   }
 }
-
-/* Landscape: minimized panel slides out to the left */
-@media (orientation: landscape) and (min-width: 768px) {
-  .landscape-panel-minimized {
-    transform: translateX(calc(-100% + 48px)) !important;
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-  }
-}

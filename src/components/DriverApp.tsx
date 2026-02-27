@@ -32,6 +32,7 @@ import {
   CreditCard,
   IdCard,
   ChevronRight,
+  ChevronLeft,
   ChevronUp,
   ChevronDown,
   Locate,
@@ -890,13 +891,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Online */}
       {screen === "online" && (
         <>
+        {/* Expand tab when panel is hidden */}
+        <AnimatePresence>
+          {panelMinimized && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+              onClick={() => setPanelMinimized(false)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-[460] bg-card shadow-lg rounded-r-xl px-1.5 py-4 flex flex-col items-center gap-1.5 active:scale-95 transition-transform border border-l-0 border-border"
+            >
+              <ChevronRight className="w-4 h-4 text-primary" />
+              <div className="w-2 h-2 rounded-full bg-[hsl(var(--success))] animate-pulse-dot" />
+              <span className="text-[9px] font-bold text-muted-foreground writing-mode-vertical" style={{ writingMode: 'vertical-rl' }}>Online</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+
         <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
+          initial={{ x: 0 }}
+          animate={{ x: panelMinimized ? "-100%" : 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel ${panelMinimized ? "landscape-panel-minimized" : ""} ${panelMinimized ? "" : "max-h-[80vh]"}`}
+          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[80vh]"
         >
-          <div className={`p-4 ${panelMinimized ? "pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]" : "pb-2"} space-y-2.5`}>
+          <div className="p-4 pb-2 space-y-2.5">
             {/* Drag handle */}
             <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center pt-0.5 pb-1">
               <div className="w-10 h-1 rounded-full bg-border" />
@@ -913,16 +932,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {driverStats.avgRating}
                   </span>
                 )}
-                {panelMinimized && (
-                  <span className="text-xs text-muted-foreground truncate">• {driverStats.rides} rides • {driverStats.earnings.toFixed(0)} MVR</span>
-                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => setShowEarnings(!showEarnings)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title={showEarnings ? "Hide amounts" : "Show amounts"}>
                   {showEarnings ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
                 </button>
-                <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
-                  {panelMinimized ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                <button onClick={() => setPanelMinimized(true)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title="Hide panel">
+                  <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
                 <button
                   onClick={() => setScreen("offline")}
