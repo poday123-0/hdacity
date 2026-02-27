@@ -611,125 +611,15 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   </button>
                 </div>
 
-                {/* Time selection - native scroll wheel style */}
+                {/* Time selection - native input */}
                 <div>
                   <label className="text-[9px] text-muted-foreground font-medium mb-1.5 block">Pick a time</label>
-                  {(() => {
-                    const now = new Date();
-                    const isToday = scheduledDate === now.toISOString().split("T")[0];
-                    const minHour = isToday ? now.getHours() + 1 : 0;
-
-                    const selHour = scheduledTime ? parseInt(scheduledTime.split(":")[0]) : -1;
-                    const selMin = scheduledTime ? parseInt(scheduledTime.split(":")[1]) : -1;
-
-                    const setTime = (h: number, m: number) => {
-                      setScheduledTime(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
-                    };
-
-                    const formatH12 = (h: number) => {
-                      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-                      return h12.toString();
-                    };
-                    const ampm = (h: number) => (h >= 12 ? "PM" : "AM");
-
-                    const hours = Array.from({ length: 24 - minHour }, (_, i) => minHour + i);
-                    const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-
-                    const ITEM_H = 44;
-
-                    const WheelColumn = ({ items, selected, onSelect, renderItem }: {
-                      items: number[];
-                      selected: number;
-                      onSelect: (v: number) => void;
-                      renderItem: (v: number) => string;
-                    }) => {
-                      const containerRef = useRef<HTMLDivElement>(null);
-                      const scrollingRef = useRef(false);
-                      const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
-
-                      useEffect(() => {
-                        const idx = items.indexOf(selected);
-                        if (idx >= 0 && containerRef.current && !scrollingRef.current) {
-                          containerRef.current.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
-                        }
-                      }, [selected, items]);
-
-                      const handleScroll = () => {
-                        scrollingRef.current = true;
-                        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                        timeoutRef.current = setTimeout(() => {
-                          if (!containerRef.current) return;
-                          const scrollTop = containerRef.current.scrollTop;
-                          const idx = Math.round(scrollTop / ITEM_H);
-                          const clamped = Math.max(0, Math.min(idx, items.length - 1));
-                          containerRef.current.scrollTo({ top: clamped * ITEM_H, behavior: "smooth" });
-                          onSelect(items[clamped]);
-                          setTimeout(() => { scrollingRef.current = false; }, 200);
-                        }, 80);
-                      };
-
-                      return (
-                        <div className="relative h-[132px] overflow-hidden">
-                          {/* Selection highlight */}
-                          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[44px] bg-primary/10 rounded-lg border border-primary/20 pointer-events-none z-10" />
-                          {/* Fade top/bottom */}
-                          <div className="absolute inset-x-0 top-0 h-[44px] bg-gradient-to-b from-card to-transparent pointer-events-none z-20" />
-                          <div className="absolute inset-x-0 bottom-0 h-[44px] bg-gradient-to-t from-card to-transparent pointer-events-none z-20" />
-                          <div
-                            ref={containerRef}
-                            onScroll={handleScroll}
-                            className="h-full overflow-y-auto snap-y snap-mandatory no-scrollbar"
-                            style={{ scrollSnapType: "y mandatory", paddingTop: ITEM_H, paddingBottom: ITEM_H }}
-                          >
-                            {items.map((v) => (
-                              <button
-                                key={v}
-                                onClick={() => onSelect(v)}
-                                className={`w-full flex items-center justify-center snap-center transition-all ${
-                                  selected === v
-                                    ? "text-foreground font-bold text-lg"
-                                    : "text-muted-foreground/50 font-medium text-base"
-                                }`}
-                                style={{ height: ITEM_H }}
-                              >
-                                {renderItem(v)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    };
-
-                    return (
-                      <div className="flex items-center gap-0 bg-card border border-border rounded-xl p-2">
-                        {/* Hour wheel */}
-                        <div className="flex-1">
-                          <WheelColumn
-                            items={hours}
-                            selected={selHour}
-                            onSelect={(h) => setTime(h, selMin >= 0 ? selMin : 0)}
-                            renderItem={formatH12}
-                          />
-                        </div>
-                        <span className="text-xl font-bold text-foreground px-0.5">:</span>
-                        {/* Minute wheel */}
-                        <div className="flex-1">
-                          <WheelColumn
-                            items={minutes}
-                            selected={selMin}
-                            onSelect={(m) => setTime(selHour >= minHour ? selHour : minHour, m)}
-                            renderItem={(m) => m.toString().padStart(2, "0")}
-                          />
-                        </div>
-                        {/* AM/PM indicator */}
-                        <div className="w-12 flex items-center justify-center">
-                          <span className="text-sm font-bold text-primary">
-                            {selHour >= 0 ? ampm(selHour) : "--"}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <input
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="w-full bg-card border border-border rounded-xl px-3 py-3 text-base font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                  />
                 </div>
 
                 {/* Selected summary */}
