@@ -134,6 +134,13 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
 
   const isAutoNearest = dispatchMode === "auto_nearest";
 
+  // Vibrate when no driver found (no sound for passengers)
+  useEffect(() => {
+    if (showNoDriver) {
+      try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
+    }
+  }, [showNoDriver]);
+
   // ─── "No driver found" screen ───
   if (showNoDriver) {
     return (
@@ -147,13 +154,24 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
 
           <div className="flex flex-col items-center py-4">
             <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-              <Car className="w-10 h-10 text-destructive" />
+              <Phone className="w-10 h-10 text-destructive" />
             </div>
             <h3 className="text-lg font-bold text-foreground">No drivers available</h3>
             <p className="text-sm text-muted-foreground mt-1 text-center">
-              We couldn't find a driver for your trip. You can try again or contact support.
+              No driver accepted your trip. Please call our support center to arrange a ride.
             </p>
           </div>
+
+          {/* Call center - primary action */}
+          {callCenterNumber && (
+            <a
+              href={`tel:+960${callCenterNumber}`}
+              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl text-base font-bold active:scale-95 transition-transform"
+            >
+              <Phone className="w-5 h-5" />
+              Call Support: +960 {callCenterNumber}
+            </a>
+          )}
 
           {/* Route summary */}
           <div className="bg-muted/50 rounded-xl p-4 space-y-3">
@@ -168,26 +186,15 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
             </div>
           </div>
 
-          {/* Retry button */}
+          {/* Retry button - secondary */}
           {onRetry && (
             <button
               onClick={onRetry}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
+              className="w-full flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
             >
               <RotateCcw className="w-4 h-4" />
               Try Again
             </button>
-          )}
-
-          {/* Call center */}
-          {callCenterNumber && (
-            <a
-              href={`tel:+960${callCenterNumber}`}
-              className="w-full flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
-            >
-              <Phone className="w-4 h-4" />
-              Call Support: +960 {callCenterNumber}
-            </a>
           )}
 
           <button onClick={onCancel} className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-xl transition-colors">
