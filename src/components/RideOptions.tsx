@@ -19,6 +19,8 @@ interface RideOptionsProps {
   passengerCount: number;
   luggageCount: number;
   stops?: LocationData[];
+  bookingType?: "now" | "scheduled" | "hourly";
+  scheduledAt?: string;
 }
 
 const iconMap: Record<string, typeof Car> = {
@@ -40,7 +42,7 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, luggageCount, stops = [] }: RideOptionsProps) => {
+const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, luggageCount, stops = [], bookingType = "now", scheduledAt }: RideOptionsProps) => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [fareZones, setFareZones] = useState<any[]>([]);
   const [surcharges, setSurcharges] = useState<any[]>([]);
@@ -141,6 +143,14 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   };
 
   const calcFare = (vt: any): number => {
+    // Hourly booking: show per_hour_rate as estimate (1 hour minimum)
+    if (bookingType === "hourly") {
+      let fare = Number(vt.per_hour_rate) || Number(vt.base_fare);
+      // Apply passenger tax
+      fare += fare * (Number(vt.passenger_tax_pct) / 100);
+      return Math.max(Math.round(fare), Number(vt.minimum_fare));
+    }
+
     // Build the ordered list of waypoints: [pickup, ...stops, dropoff]
     const waypoints: (LocationData | null | undefined)[] = [pickup, ...stops, dropoff];
 
@@ -181,13 +191,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       }
     }
 
-    // If no stops (single segment), ensure we use the total fare as-is
-    // If only 1 segment and no zone matched, totalFare already has base_fare + distance
-
     // Apply surcharges to total
     for (const sc of surcharges) {
       if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null) {
-        // Per-bag surcharge for bags above threshold
         const extraBags = Math.max(0, luggageCount - sc.luggage_threshold);
         if (extraBags > 0) {
           totalFare += Number(sc.amount) * extraBags;
@@ -204,6 +210,11 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           totalFare += Number(sc.amount);
         }
       }
+    }
+
+    // Pre-booking fee for scheduled rides
+    if (bookingType === "scheduled") {
+      totalFare += Number(vt.pre_booking_fee) || 0;
     }
 
     // Passenger tax
@@ -326,7 +337,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                     )}
                   </div>
                   <p className="font-semibold text-[11px] text-foreground truncate w-full text-center leading-tight">{vt.name}</p>
-                  <p className="text-sm font-bold text-primary leading-none">{fare}<span className="text-[9px] font-medium text-muted-foreground ml-px">MVR</span></p>
+                  <p className="text-sm font-bold text-primary leading-none">{fare}<span className="text-[9px] font-medium text-muted-foreground ml-px">{bookingType === "hourly" ? "MVR/hr" : "MVR"}</span></p>
                   <p className="text-[9px] text-muted-foreground leading-none">{vt.capacity} seats</p>
                 </button>
               );
@@ -348,7 +359,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
               <p className="font-bold text-xs text-foreground">{selectedType.name}</p>
               <p className="text-[10px] text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats`}</p>
             </div>
-            <p className="text-base font-bold text-primary shrink-0">{selectedFare} <span className="text-[10px] font-semibold text-muted-foreground">MVR</span></p>
+            <p className="text-base font-bold text-primary shrink-0">{selectedFare} <span className="text-[10px] font-semibold text-muted-foreground">{bookingType === "hourly" ? "MVR/hr" : "MVR"}</span></p>
           </div>
         )}
 
@@ -357,7 +368,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           disabled={!selectedType || !selectedIsOnline}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
         >
-          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : `Confirm ${selectedType.name} — ${selectedFare} MVR`}
+          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : bookingType === "hourly" ? `Confirm ${selectedType.name} — ${selectedFare} MVR/hr` : `Confirm ${selectedType.name} — ${selectedFare} MVR`}
         </button>
       </div>
     </motion.div>

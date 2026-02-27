@@ -902,6 +902,8 @@ export type Database = {
         Row: {
           accepted_at: string | null
           actual_fare: number | null
+          booking_notes: string | null
+          booking_type: string
           cancel_reason: string | null
           cancelled_at: string | null
           completed_at: string | null
@@ -921,6 +923,8 @@ export type Database = {
           fare_type: string
           fare_zone_id: string | null
           feedback_text: string | null
+          hourly_ended_at: string | null
+          hourly_started_at: string | null
           id: string
           luggage_count: number
           passenger_count: number
@@ -930,6 +934,7 @@ export type Database = {
           pickup_lng: number | null
           rating: number | null
           requested_at: string
+          scheduled_at: string | null
           started_at: string | null
           status: string
           target_driver_id: string | null
@@ -940,6 +945,8 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           actual_fare?: number | null
+          booking_notes?: string | null
+          booking_type?: string
           cancel_reason?: string | null
           cancelled_at?: string | null
           completed_at?: string | null
@@ -959,6 +966,8 @@ export type Database = {
           fare_type?: string
           fare_zone_id?: string | null
           feedback_text?: string | null
+          hourly_ended_at?: string | null
+          hourly_started_at?: string | null
           id?: string
           luggage_count?: number
           passenger_count?: number
@@ -968,6 +977,7 @@ export type Database = {
           pickup_lng?: number | null
           rating?: number | null
           requested_at?: string
+          scheduled_at?: string | null
           started_at?: string | null
           status?: string
           target_driver_id?: string | null
@@ -978,6 +988,8 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           actual_fare?: number | null
+          booking_notes?: string | null
+          booking_type?: string
           cancel_reason?: string | null
           cancelled_at?: string | null
           completed_at?: string | null
@@ -997,6 +1009,8 @@ export type Database = {
           fare_type?: string
           fare_zone_id?: string | null
           feedback_text?: string | null
+          hourly_ended_at?: string | null
+          hourly_started_at?: string | null
           id?: string
           luggage_count?: number
           passenger_count?: number
@@ -1006,6 +1020,7 @@ export type Database = {
           pickup_lng?: number | null
           rating?: number | null
           requested_at?: string
+          scheduled_at?: string | null
           started_at?: string | null
           status?: string
           target_driver_id?: string | null
@@ -1093,6 +1108,7 @@ export type Database = {
           per_hour_rate: number
           per_km_rate: number
           per_minute_rate: number
+          pre_booking_fee: number
           sort_order: number
           updated_at: string
         }
@@ -1113,6 +1129,7 @@ export type Database = {
           per_hour_rate?: number
           per_km_rate?: number
           per_minute_rate?: number
+          pre_booking_fee?: number
           sort_order?: number
           updated_at?: string
         }
@@ -1133,6 +1150,7 @@ export type Database = {
           per_hour_rate?: number
           per_km_rate?: number
           per_minute_rate?: number
+          pre_booking_fee?: number
           sort_order?: number
           updated_at?: string
         }

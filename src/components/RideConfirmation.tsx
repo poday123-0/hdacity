@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, Users, Luggage, Shield, Clock, Phone, Navigation, CheckCircle } from "lucide-react";
+import { MapPin, Users, Luggage, Shield, Clock, Phone, Navigation, CheckCircle, Calendar, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,6 +21,9 @@ interface RideConfirmationProps {
   onConfirm: () => void;
   onBack: () => void;
   stops?: Array<{ name: string; lat: number; lng: number }>;
+  bookingType?: "now" | "scheduled" | "hourly";
+  scheduledAt?: string;
+  bookingNotes?: string;
 }
 
 const RideConfirmation = ({
@@ -34,6 +37,9 @@ const RideConfirmation = ({
   onConfirm,
   onBack,
   stops = [],
+  bookingType = "now",
+  scheduledAt,
+  bookingNotes,
 }: RideConfirmationProps) => {
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -135,11 +141,26 @@ const RideConfirmation = ({
           </div>
         </div>
 
+        {/* Booking Type Badge */}
+        {bookingType !== "now" && (
+          <div className={`rounded-xl p-3 flex items-center gap-3 ${bookingType === "scheduled" ? "bg-accent/10 border border-accent/20" : "bg-primary/5 border border-primary/20"}`}>
+            {bookingType === "scheduled" ? <Calendar className="w-5 h-5 text-accent-foreground" /> : <Clock className="w-5 h-5 text-primary" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">{bookingType === "scheduled" ? "Scheduled Ride" : "Hourly Booking"}</p>
+              {scheduledAt && <p className="text-[11px] text-muted-foreground">{new Date(scheduledAt).toLocaleString()}</p>}
+              {bookingNotes && <p className="text-[11px] text-muted-foreground mt-0.5">📝 {bookingNotes}</p>}
+            </div>
+          </div>
+        )}
+
         {/* Vehicle & Fare */}
         <div className="bg-primary/10 rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-primary font-semibold">{vehicleType.name}</p>
-            <p className="text-2xl font-bold text-primary">{estimatedFare.toFixed(0)} MVR</p>
+            <p className="text-2xl font-bold text-primary">{estimatedFare.toFixed(0)} MVR{bookingType === "hourly" ? "/hr" : ""}</p>
+            {bookingType === "scheduled" && Number(vehicleType.pre_booking_fee) > 0 && (
+              <p className="text-[10px] text-muted-foreground">Includes {vehicleType.pre_booking_fee} MVR pre-booking fee</p>
+            )}
           </div>
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
             <Navigation className="w-6 h-6 text-primary-foreground" />
@@ -204,7 +225,7 @@ const RideConfirmation = ({
             disabled={confirming}
             className="flex-[2] py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-60"
           >
-            {confirming ? "Requesting..." : `Request Ride — ${estimatedFare.toFixed(0)} MVR`}
+            {confirming ? "Requesting..." : bookingType === "scheduled" ? `Schedule Ride — ${estimatedFare.toFixed(0)} MVR` : bookingType === "hourly" ? `Request Hourly — ${estimatedFare.toFixed(0)} MVR/hr` : `Request Ride — ${estimatedFare.toFixed(0)} MVR`}
           </button>
         </div>
       </div>
