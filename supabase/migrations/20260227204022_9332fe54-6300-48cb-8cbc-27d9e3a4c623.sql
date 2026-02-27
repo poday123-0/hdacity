@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_types ALTER COLUMN per_km_rate SET DEFAULT 0;
