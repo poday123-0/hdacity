@@ -1,4 +1,4 @@
-import { Phone, MessageSquare, X, Star, Landmark, Copy, Check, ChevronDown, ChevronUp, Share2, Navigation, Gauge, Clock, MapPin, ArrowRight } from "lucide-react";
+import { Phone, MessageSquare, X, Star, Landmark, Copy, Check, ChevronDown, ChevronUp, Share2, Navigation, Gauge, Clock, MapPin, ArrowRight, Route } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
@@ -50,6 +50,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [bankLogos, setBankLogos] = useState<Record<string, string>>({});
   const [speed, setSpeed] = useState(0);
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripElapsed, setTripElapsed] = useState(0);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
@@ -101,10 +102,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
       }
       lastLocRef.current = { lat: loc.lat, lng: loc.lng, time: now };
 
-      // Calculate ETA to dropoff
+      // Calculate ETA and distance to dropoff
       if (trip.dropoff_lat && trip.dropoff_lng) {
         const remaining = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng));
-        const avgSpeed = speed > 5 ? speed : 30; // default 30km/h in city
+        setDistanceKm(Math.round(remaining * 10) / 10);
+        const avgSpeed = speed > 5 ? speed : 30;
         const eta = Math.max(1, Math.round((remaining / avgSpeed) * 60));
         setEtaMinutes(eta);
       }
@@ -247,59 +249,78 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-3 gap-0 border-t border-primary/10">
+            <div className="grid grid-cols-4 gap-0 border-t border-primary/10">
               {/* ETA */}
               <motion.div
-                className="flex flex-col items-center py-3 border-r border-primary/10"
+                className="flex flex-col items-center py-2.5 border-r border-primary/10"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                <Clock className="w-4 h-4 text-primary mb-1" />
+                <Clock className="w-3.5 h-3.5 text-primary mb-0.5" />
                 <motion.span
                   key={etaMinutes}
                   initial={{ scale: 1.3, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="text-lg font-bold text-foreground leading-none"
+                  className="text-base font-bold text-foreground leading-none"
                 >
                   {tripStatus === "arrived" ? "—" : etaMinutes ? `${etaMinutes}` : "..."}
                 </motion.span>
-                <span className="text-[10px] text-muted-foreground mt-0.5">
+                <span className="text-[9px] text-muted-foreground mt-0.5">
                   {tripStatus === "arrived" ? "Arrived" : "min ETA"}
                 </span>
               </motion.div>
 
+              {/* Distance */}
+              <motion.div
+                className="flex flex-col items-center py-2.5 border-r border-primary/10"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <Route className="w-3.5 h-3.5 text-primary mb-0.5" />
+                <motion.span
+                  key={distanceKm}
+                  initial={{ scale: 1.2, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-base font-bold text-foreground leading-none"
+                >
+                  {distanceKm !== null ? distanceKm : "..."}
+                </motion.span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">km left</span>
+              </motion.div>
+
               {/* Speed */}
               <motion.div
-                className="flex flex-col items-center py-3 border-r border-primary/10"
+                className="flex flex-col items-center py-2.5 border-r border-primary/10"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                <Gauge className="w-4 h-4 text-primary mb-1" />
+                <Gauge className="w-3.5 h-3.5 text-primary mb-0.5" />
                 <motion.span
                   key={speed}
                   initial={{ scale: 1.2, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="text-lg font-bold text-foreground leading-none"
+                  className="text-base font-bold text-foreground leading-none"
                 >
                   {speed}
                 </motion.span>
-                <span className="text-[10px] text-muted-foreground mt-0.5">km/h</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">km/h</span>
               </motion.div>
 
               {/* Share */}
               <motion.button
                 onClick={handleShare}
-                className="flex flex-col items-center py-3 active:bg-primary/10 transition-colors"
+                className="flex flex-col items-center py-2.5 active:bg-primary/10 transition-colors"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.25 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Share2 className="w-4 h-4 text-primary mb-1" />
-                <span className="text-xs font-semibold text-primary leading-none">Share</span>
-                <span className="text-[10px] text-muted-foreground mt-0.5">Live trip</span>
+                <Share2 className="w-3.5 h-3.5 text-primary mb-0.5" />
+                <span className="text-[11px] font-semibold text-primary leading-none">Share</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">Live trip</span>
               </motion.button>
             </div>
           </motion.div>
