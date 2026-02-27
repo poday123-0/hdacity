@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import TripChat from "./TripChat";
 
 interface BankAccountInfo {
@@ -67,9 +68,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   useEffect(() => {
     if (!tripId) return;
     let messageSoundUrl: string | null = null;
-    supabase.from("system_settings").select("value").eq("key", "passenger_sound_message").single().then(({ data }) => {
-      if (data?.value && typeof data.value === "string") messageSoundUrl = data.value;
-    });
+    fetchSoundUrl("passenger_sound_message").then(url => { messageSoundUrl = url; });
 
     const channel = supabase
       .channel(`passenger-bg-chat-${tripId}`)
@@ -84,17 +83,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
         if (!showChatRef.current) {
           setUnreadMessages(prev => prev + 1);
           if (messageSoundUrl) {
-            new Audio(messageSoundUrl).play().catch(() => {});
+            playSound(messageSoundUrl);
           } else {
-            try {
-              const ctx = new AudioContext();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain); gain.connect(ctx.destination);
-              osc.frequency.value = 880; gain.gain.value = 0.3;
-              osc.start(); osc.stop(ctx.currentTime + 0.15);
-              setTimeout(() => ctx.close(), 300);
-            } catch {}
+            playFallbackBeep();
           }
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         }
