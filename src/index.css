@@ -237,6 +237,11 @@
     margin: 0 !important;
   }
 
+  /* Trip panel: add top padding to clear the top bar */
+  .landscape-panel-trip-offset {
+    padding-top: 56px !important;
+  }
+
 }
 
 /* Extra-wide landscape (e.g. car head units > 1024px) */
