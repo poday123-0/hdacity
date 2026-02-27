@@ -47,6 +47,8 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllBanks, setShowAllBanks] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const showChatRef = useRef(false);
   const [minimized, setMinimized] = useState(false);
   const [bankLogos, setBankLogos] = useState<Record<string, string>>({});
   const [speed, setSpeed] = useState(0);
@@ -57,6 +59,50 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
   const [tripDropoffName, setTripDropoffName] = useState(dropoffName || "");
+
+  // Sync showChat ref & clear unread
+  useEffect(() => { showChatRef.current = showChat; if (showChat) setUnreadMessages(0); }, [showChat]);
+
+  // Background message listener for passenger — sound + unread count
+  useEffect(() => {
+    if (!tripId) return;
+    let messageSoundUrl: string | null = null;
+    supabase.from("system_settings").select("value").eq("key", "passenger_sound_message").single().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") messageSoundUrl = data.value;
+    });
+
+    const channel = supabase
+      .channel(`passenger-bg-chat-${tripId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "trip_messages",
+        filter: `trip_id=eq.${tripId}`,
+      }, (payload) => {
+        const msg = payload.new as any;
+        if (msg.sender_type === "passenger") return;
+        if (!showChatRef.current) {
+          setUnreadMessages(prev => prev + 1);
+          if (messageSoundUrl) {
+            new Audio(messageSoundUrl).play().catch(() => {});
+          } else {
+            try {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.frequency.value = 880; gain.gain.value = 0.3;
+              osc.start(); osc.stop(ctx.currentTime + 0.15);
+              setTimeout(() => ctx.close(), 300);
+            } catch {}
+          }
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [tripId]);
 
   // Fetch trip addresses as fallback when props are missing
   useEffect(() => {
@@ -405,11 +451,16 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               Call
             </a>
             <button
-              onClick={() => setShowChat(true)}
-              className="flex-1 flex items-center justify-center gap-2 bg-surface text-foreground rounded-xl py-3 font-semibold active:scale-[0.98] transition-transform"
+              onClick={() => { setShowChat(true); setUnreadMessages(0); }}
+              className="flex-1 flex items-center justify-center gap-2 bg-surface text-foreground rounded-xl py-3 font-semibold active:scale-[0.98] transition-transform relative"
             >
               <MessageSquare className="w-4 h-4" />
               Message
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                  {unreadMessages}
+                </span>
+              )}
             </button>
           </div>
 
