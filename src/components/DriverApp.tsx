@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/components/AuthScreen";
 import DriverMap from "@/components/DriverMap";
+import hdaLogo from "@/assets/hda-logo.png";
 import DriverEarnings from "@/components/DriverEarnings";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
@@ -87,6 +89,7 @@ interface DriverAppProps {
 }
 
 const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
+  const navigate = useNavigate();
   useTheme(); // Initialize theme
   usePushNotifications(userProfile?.id, "driver");
   const [screen, setScreen] = useState<DriverScreen>("offline");
@@ -767,9 +770,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           <button onClick={onSwitchToPassenger} className="px-3 py-2 rounded-full bg-card shadow-md text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
             Passenger Mode
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
-            <span className="text-lg font-extrabold tracking-tight text-primary">DRIVER</span>
+          <div className="flex items-center gap-1.5">
+            <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
+            <span className="text-sm font-extrabold tracking-tight text-primary">DRIVER</span>
           </div>
           <button onClick={() => setShowProfile(true)} className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
             {avatarUrl ? (
@@ -1959,7 +1962,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
               <div className="px-4 pb-2">
                 <button
-                  onClick={() => { setShowProfile(false); window.location.href = "/install"; }}
+                  onClick={() => { setShowProfile(false); navigate("/install"); }}
                   className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
                 >
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
