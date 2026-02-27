@@ -1770,38 +1770,82 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     )}
                     {driverVehicles.map((v) => {
                       const vType = vehicleTypes.find(vt => vt.id === v.vehicle_type_id);
+                      const isSelected = selectedVehicleId === v.id;
                       return (
-                        <div key={v.id} className={`bg-surface rounded-xl p-3 space-y-2 ${selectedVehicleId === v.id ? "ring-2 ring-primary" : ""}`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {vType?.image_url ? (
-                                <img src={vType.image_url} alt={vType.name} className="w-14 h-10 object-contain" />
-                              ) : (
-                                <Car className="w-4 h-4 text-primary" />
-                              )}
-                              <div>
-                                <span className="text-sm font-semibold text-foreground">{v.make} {v.model}</span>
-                                <p className="text-xs text-muted-foreground">{vType?.name || "Unknown type"}</p>
+                        <div
+                          key={v.id}
+                          className={`relative rounded-2xl overflow-hidden transition-all ${
+                            isSelected
+                              ? "bg-primary/5 ring-2 ring-primary shadow-md"
+                              : "bg-surface hover:bg-card"
+                          }`}
+                        >
+                          {/* Selected indicator strip */}
+                          {isSelected && (
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />
+                          )}
+
+                          <div className="p-4">
+                            {/* Top row: image + info + actions */}
+                            <div className="flex items-start gap-3">
+                              {/* Vehicle image */}
+                              <div className={`w-16 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                isSelected ? "bg-primary/10" : "bg-card"
+                              }`}>
+                                {vType?.image_url ? (
+                                  <img src={vType.image_url} alt={vType.name} className="w-14 h-10 object-contain" />
+                                ) : (
+                                  <Car className="w-6 h-6 text-muted-foreground" />
+                                )}
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {selectedVehicleId === v.id && (
-                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Selected</span>
-                              )}
-                              <button onClick={() => deleteVehicle(v.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10">
+
+                              {/* Vehicle details */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-sm font-bold text-foreground truncate">
+                                    {v.make} {v.model}
+                                  </h4>
+                                  {isSelected && (
+                                    <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
+                              </div>
+
+                              {/* Delete button */}
+                              <button
+                                onClick={() => deleteVehicle(v.id)}
+                                className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
+
+                            {/* Tags row */}
+                            <div className="flex items-center gap-2 mt-3">
+                              <span className="inline-flex items-center gap-1 bg-card px-2.5 py-1 rounded-lg text-xs font-semibold text-foreground">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                {v.plate_number}
+                              </span>
+                              {v.color && (
+                                <span className="bg-card px-2.5 py-1 rounded-lg text-xs text-muted-foreground">
+                                  {v.color}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Select button (only for non-selected) */}
+                            {!isSelected && (
+                              <button
+                                onClick={() => selectVehicle(v)}
+                                className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform"
+                              >
+                                Use this vehicle
+                              </button>
+                            )}
                           </div>
-                          <div className="flex gap-2 text-xs text-muted-foreground">
-                            <span className="bg-card px-2 py-1 rounded-lg font-medium text-foreground">{v.plate_number}</span>
-                            {v.color && <span className="bg-card px-2 py-1 rounded-lg">{v.color}</span>}
-                          </div>
-                          {selectedVehicleId !== v.id && (
-                            <button onClick={() => selectVehicle(v)} className="w-full py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold active:scale-95 transition-transform">
-                              Use this vehicle
-                            </button>
-                          )}
                         </div>
                       );
                     })}
