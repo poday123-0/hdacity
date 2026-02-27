@@ -835,10 +835,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
-        <div className="px-3 py-2.5 flex items-center justify-between relative">
+        <div className={`flex items-center justify-between relative transition-all duration-300 ${showProfile ? "px-2 py-1" : "px-3 py-2.5"}`}>
           {/* Left: Profile */}
           <div className="flex items-center gap-2.5">
-            <button onClick={() => setShowProfile(true)} className="w-11 h-11 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform border border-border/30">
+            <button onClick={() => setShowProfile(true)} className={`rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-all duration-300 border border-border/30 ${showProfile ? "w-8 h-8" : "w-11 h-11"}`}>
               {avatarUrl ?
               <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" /> :
 
