@@ -97,7 +97,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const navigate = useNavigate();
   useTheme(); // Initialize theme
   usePushNotifications(userProfile?.id, "driver");
-  const [screen, setScreen] = useState<DriverScreen>("offline");
+  const driverScreenKey = userProfile?.id ? `hda_driver_screen_${userProfile.id}` : "hda_driver_screen";
+  const [screen, setScreen] = useState<DriverScreen>(() => {
+    try {
+      const saved = localStorage.getItem(driverScreenKey);
+      if (saved === "online" || saved === "ride-request" || saved === "navigating") return "online";
+    } catch {}
+    return "offline";
+  });
   const [showVehicleSwitcher, setShowVehicleSwitcher] = useState(false);
   const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
   const [showDriverChat, setShowDriverChat] = useState(false);
@@ -164,6 +171,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return v ? parseFloat(v) : 1;
     } catch {return 1;}
   });
+
+  // Persist screen state so driver stays online after refresh
+  useEffect(() => {
+    try { localStorage.setItem(driverScreenKey, screen); } catch {}
+  }, [screen, driverScreenKey]);
 
   // Past trip messages state
   const [pastTripChats, setPastTripChats] = useState<Array<{trip_id: string;pickup: string;dropoff: string;date: string;message_count: number;}>>([]);
