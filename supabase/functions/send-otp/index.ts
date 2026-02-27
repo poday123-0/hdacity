@@ -40,15 +40,21 @@ serve(async (req) => {
     const fullNumber = phone_number.startsWith("960") ? phone_number : `960${phone_number}`;
     const code = generateCode();
 
-    // Store the OTP code in database
-    const { error: dbError } = await supabase.from("otp_codes").insert({
-      phone_number: fullNumber,
-      code,
-    });
+    // Store the OTP code in database (with retry for transient SSL errors)
+    let dbError: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await supabase.from("otp_codes").insert({
+        phone_number: fullNumber,
+        code,
+      });
+      if (!error) { dbError = null; break; }
+      dbError = error;
+      console.error(`DB insert attempt ${attempt + 1} failed:`, typeof error.message === "string" && error.message.length > 200 ? "SSL/connection error" : error.message);
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
 
     if (dbError) {
-      console.error("DB insert error:", dbError);
-      throw new Error("Failed to store OTP code");
+      throw new Error("Failed to store OTP code. Please try again.");
     }
 
     // Send SMS via MSG Owl REST API
