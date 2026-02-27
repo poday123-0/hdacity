@@ -897,47 +897,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Online */}
       {screen === "online" && (
         <>
-        {/* Swipe-right edge zone to reveal panel */}
+        {/* Expand tab when panel is hidden */}
         <AnimatePresence>
           {panelMinimized && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute left-0 top-0 bottom-0 w-6 z-[460]"
-                onPanEnd={(_e, info) => {
-                  if (info.offset.x > 50) setPanelMinimized(false);
-                }}
-              />
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.25 }}
-                onClick={() => setPanelMinimized(false)}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-[460] bg-card shadow-lg rounded-r-xl px-1.5 py-4 flex flex-col items-center gap-1.5 active:scale-95 transition-transform border border-l-0 border-border"
-              >
-                <ChevronRight className="w-4 h-4 text-primary" />
-                <div className="w-2 h-2 rounded-full bg-[hsl(var(--success))] animate-pulse-dot" />
-                <span className="text-[9px] font-bold text-muted-foreground" style={{ writingMode: 'vertical-rl' }}>Online</span>
-              </motion.button>
-            </>
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.25 }}
+              onClick={() => setPanelMinimized(false)}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[460] bg-card shadow-lg rounded-full px-4 py-2.5 flex items-center gap-2 active:scale-95 transition-transform border border-border"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))] animate-pulse-dot" />
+              <span className="text-xs font-bold text-foreground">Online</span>
+              <ChevronUp className="w-4 h-4 text-primary" />
+            </motion.button>
           )}
         </AnimatePresence>
 
         <motion.div
-          initial={{ x: 0 }}
-          animate={{ x: panelMinimized ? "-100%" : 0 }}
+          initial={{ y: "100%" }}
+          animate={{ y: panelMinimized ? "calc(100% - 0px)" : 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(_e, info) => {
-            if (info.offset.x < -80) setPanelMinimized(true);
-            if (info.offset.x > 80) setPanelMinimized(false);
-          }}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[80vh] touch-pan-y"
+          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[80vh]"
         >
           <div className="p-4 pb-2 space-y-2.5">
             {/* Drag handle */}
