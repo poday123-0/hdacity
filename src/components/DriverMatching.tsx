@@ -107,11 +107,13 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
       // Calculate total trip distance (pickup to dropoff) if not yet set
       if (trip.dropoff_lat && trip.dropoff_lng) {
         if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng) {
-          const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng));
+          const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
           if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
         }
 
-        const remaining = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng));
+        const straightLine = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng));
+        // Apply road-distance correction factor (~1.4x) since haversine is straight-line
+        const remaining = straightLine * 1.4;
         setDistanceKm(Math.round(remaining * 10) / 10);
         const avgSpeed = speed > 5 ? speed : 30;
         const eta = Math.max(1, Math.round((remaining / avgSpeed) * 60));
