@@ -24,9 +24,11 @@ interface DriverMapProps {
   dropoffLabel?: string;
   mapIconUrl?: string | null;
   passengerMapIconUrl?: string | null;
+  onRecenterAvailableChange?: (available: boolean) => void;
+  recenterRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -355,33 +357,27 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return <div className="absolute inset-0 bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
+  // Expose recenter function and availability to parent
+  useEffect(() => {
+    onRecenterAvailableChange?.(userPannedAway && !isNavigating);
+  }, [userPannedAway, isNavigating, onRecenterAvailableChange]);
+
+  useEffect(() => {
+    if (recenterRef) {
+      recenterRef.current = () => {
+        userInteractingRef.current = false;
+        setUserPannedAway(false);
+        if (currentPos && mapInstance.current) {
+          mapInstance.current.panTo(currentPos);
+          mapInstance.current.setZoom(16);
+        }
+      };
+    }
+  }, [currentPos, recenterRef]);
+
   return (
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
-
-      {/* Re-center button — top right, below top bar */}
-      <AnimatePresence>
-        {userPannedAway && !isNavigating && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.7 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            onClick={() => {
-              userInteractingRef.current = false;
-              setUserPannedAway(false);
-              if (currentPos && mapInstance.current) {
-                mapInstance.current.panTo(currentPos);
-                mapInstance.current.setZoom(16);
-              }
-            }}
-            className="absolute top-20 left-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90"
-            title="Re-center"
-          >
-            <Locate className="w-5 h-5 text-primary" />
-          </motion.button>
-        )}
-      </AnimatePresence>
 
       {/* Navigation map controls — bottom right */}
       {isNavigating && (
