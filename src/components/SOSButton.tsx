@@ -177,7 +177,7 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-sm p-6 space-y-4"
+              className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
