@@ -1649,25 +1649,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Navigating */}
       {screen === "navigating" && currentTrip && !navPanelMinimized &&
       <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[70vh]`}>
-          <div className="p-4 pb-2 space-y-2.5">
+          <div className="px-4 pb-2 space-y-2">
             {/* Drag handle - tap to hide */}
             <button onClick={() => setNavPanelMinimized(true)} className="w-full flex justify-center pt-0.5 pb-1">
               <div className="w-10 h-1 rounded-full bg-border" />
             </button>
 
-            {/* Status banner */}
-            <div className="bg-primary rounded-xl p-3 flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-primary-foreground/80 text-xs">
+            {/* Compact header: Status + Fare + Passenger inline */}
+            <div className="bg-primary rounded-xl p-3 flex items-center gap-3">
+              {/* Passenger avatar */}
+              <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center text-sm font-bold text-primary-foreground overflow-hidden shrink-0">
+                {passengerProfile?.avatar_url ?
+                  <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" /> :
+                  currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
+                }
+              </div>
+              {/* Name + status */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-primary-foreground truncate">
+                  {currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}
+                </p>
+                <p className="text-[10px] text-primary-foreground/70">
                   {driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup location" : "Trip in progress"}
                 </p>
-                <p className="text-xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => setNavPanelMinimized(true)} className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center active:scale-90 transition-transform">
-                  <ChevronDown className="w-4 h-4 text-primary-foreground" />
-                </button>
+              {/* Fare */}
+              <div className="text-right shrink-0">
+                <p className="text-lg font-bold text-primary-foreground leading-tight">{currentTrip.estimated_fare ?? "—"}</p>
+                <p className="text-[10px] text-primary-foreground/70">MVR</p>
               </div>
+              {/* Minimize */}
+              <button onClick={() => setNavPanelMinimized(true)} className="w-7 h-7 rounded-lg bg-primary-foreground/20 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+                <ChevronDown className="w-3.5 h-3.5 text-primary-foreground" />
+              </button>
             </div>
           </div>
 
@@ -1681,69 +1695,57 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             transition={{ duration: 0.2 }}
             className="overflow-hidden flex-1 min-h-0">
 
-                <div className="px-4 pb-4 space-y-2.5 overflow-y-auto max-h-[calc(70vh-10rem)]">
-                  {/* Passenger info */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-full bg-surface flex items-center justify-center text-base font-bold text-foreground overflow-hidden shrink-0">
-                        {passengerProfile?.avatar_url ?
-                    <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" /> :
-
-                    currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
-                    }
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm text-foreground truncate">{currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {currentTrip.customer_phone ?
-                      `+960 ${currentTrip.customer_phone}` :
-                      passengerProfile?.phone_number ?
-                      `+${passengerProfile.country_code || "960"} ${passengerProfile.phone_number}` :
-                      currentTrip.pickup_address}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => setShowDriverChat(true)} className="w-9 h-9 rounded-full bg-surface flex items-center justify-center active:scale-95 transition-transform">
-                        <MessageSquare className="w-4 h-4 text-primary" />
-                      </button>
-                      <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="w-9 h-9 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform">
-                        <Phone className="w-4 h-4 text-primary-foreground" />
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Route */}
-                  <div className="bg-surface rounded-xl p-3 space-y-1.5">
-                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" /><p className="text-xs text-foreground truncate">{currentTrip.pickup_address}</p></div>
-                    {tripStops.map((stop) =>
-                <div key={stop.id}>
-                        <div className="ml-1 w-0.5 h-2.5 bg-border" />
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-sm bg-accent shrink-0" />
-                          <p className="text-xs text-foreground truncate">Stop {stop.stop_order}: {stop.address}</p>
-                          {stop.completed_at && <span className="text-[10px] text-primary font-bold">✓</span>}
-                        </div>
-                      </div>
-                )}
-                    <div className="ml-1 w-0.5 h-2.5 bg-border" />
-                    <div className="flex items-center gap-2"><MapPin className="w-2.5 h-2.5 text-foreground shrink-0" /><p className="text-xs text-foreground truncate">{currentTrip.dropoff_address}</p></div>
-                  </div>
-
-                  {/* Passenger & Luggage */}
+                <div className="px-4 pb-3 space-y-2 overflow-y-auto max-h-[calc(70vh-10rem)]">
+                  {/* Quick actions row */}
                   <div className="flex gap-2">
-                    <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground font-semibold">Pax</p>
-                        <p className="text-sm font-bold text-foreground">{currentTrip.passenger_count}</p>
-                      </div>
+                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-1 bg-primary/10 rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                      <Phone className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-semibold text-primary">Call</span>
+                    </a>
+                    <button onClick={() => setShowDriverChat(true)} className="flex-1 bg-surface rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                      <MessageSquare className="w-4 h-4 text-foreground" />
+                      <span className="text-xs font-semibold text-foreground">Chat</span>
+                    </button>
+                    <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-bold text-foreground">{currentTrip.passenger_count}</span>
                     </div>
-                    <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
-                      <Luggage className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground font-semibold">Bags</p>
-                        <p className="text-sm font-bold text-foreground">{currentTrip.luggage_count}</p>
+                    <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
+                      <Luggage className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-bold text-foreground">{currentTrip.luggage_count}</span>
+                    </div>
+                  </div>
+
+                  {/* Route card */}
+                  <div className="bg-surface rounded-xl p-3 space-y-0">
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex flex-col items-center mt-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                        <div className="w-0.5 flex-1 min-h-[16px] bg-border" />
+                        {tripStops.map((stop) => (
+                          <div key={stop.id} className="flex flex-col items-center">
+                            <div className="w-2.5 h-2.5 rounded-sm bg-accent" />
+                            {stop.completed_at && <span className="text-[8px] text-primary font-bold">✓</span>}
+                            <div className="w-0.5 min-h-[16px] bg-border" />
+                          </div>
+                        ))}
+                        <MapPin className="w-3 h-3 text-destructive shrink-0" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-medium">Pickup</p>
+                          <p className="text-xs font-semibold text-foreground truncate">{currentTrip.pickup_address}</p>
+                        </div>
+                        {tripStops.map((stop) => (
+                          <div key={stop.id}>
+                            <p className="text-[10px] text-muted-foreground font-medium">Stop {stop.stop_order}</p>
+                            <p className="text-xs text-foreground truncate">{stop.address}</p>
+                          </div>
+                        ))}
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-medium">Drop-off</p>
+                          <p className="text-xs font-semibold text-foreground truncate">{currentTrip.dropoff_address}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
