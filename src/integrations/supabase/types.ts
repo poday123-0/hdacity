@@ -1165,10 +1165,13 @@ export type Database = {
           created_at: string
           driver_id: string | null
           id: string
+          image_url: string | null
+          insurance_url: string | null
           is_active: boolean
           make: string | null
           model: string | null
           plate_number: string
+          registration_url: string | null
           updated_at: string
           vehicle_type_id: string | null
           year: number | null
@@ -1178,10 +1181,13 @@ export type Database = {
           created_at?: string
           driver_id?: string | null
           id?: string
+          image_url?: string | null
+          insurance_url?: string | null
           is_active?: boolean
           make?: string | null
           model?: string | null
           plate_number: string
+          registration_url?: string | null
           updated_at?: string
           vehicle_type_id?: string | null
           year?: number | null
@@ -1191,10 +1197,13 @@ export type Database = {
           created_at?: string
           driver_id?: string | null
           id?: string
+          image_url?: string | null
+          insurance_url?: string | null
           is_active?: boolean
           make?: string | null
           model?: string | null
           plate_number?: string
+          registration_url?: string | null
           updated_at?: string
           vehicle_type_id?: string | null
           year?: number | null
