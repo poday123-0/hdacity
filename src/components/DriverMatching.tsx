@@ -199,8 +199,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               </motion.div>
               <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
               {tripStatus === "in_progress" && (
-                <span className="ml-auto text-xs font-mono text-muted-foreground bg-surface px-2 py-0.5 rounded-full">
-                  {formatElapsed(tripElapsed)}
+                <span className="ml-auto flex items-center gap-1.5 text-xs font-mono text-muted-foreground bg-surface px-2.5 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3" />
+                  <span>Trip time:</span>
+                  <span className="font-bold text-foreground">{formatElapsed(tripElapsed)}</span>
                 </span>
               )}
             </div>
