@@ -773,8 +773,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="w-10" /> {/* spacer */}
+        <div className="px-4 py-3 flex items-center justify-center relative">
           <div className="flex items-center gap-1.5">
             {(() => {
               const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
@@ -785,7 +784,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               );
             })()}
           </div>
-          <button onClick={() => setShowProfile(true)} className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
+          <button onClick={() => setShowProfile(true)} className="absolute right-4 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
