@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
@@ -28,7 +28,9 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [hasUnread, setHasUnread] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [contactForm, setContactForm] = useState({ name: "", phone_number: "", relationship: "" });
@@ -40,6 +42,58 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
     if (!userProfile?.id) return;
     const { data } = await supabase.from("emergency_contacts").select("id, name, phone_number, relationship").eq("user_id", userProfile.id).eq("is_active", true).order("created_at");
     setContacts((data || []) as EmergencyContact[]);
+  };
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    setLoadingNotifs(true);
+    const userType = (userProfile as any)?.user_type?.toLowerCase() || "rider";
+    const { data } = await supabase
+      .from("notifications")
+      .select("id, title, message, target_type, created_at, read_by")
+      .or(`target_type.eq.all,target_type.eq.${userType === "rider" ? "passengers" : "drivers"}`)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const notifs = (data || []) as any[];
+    setNotifications(notifs);
+
+    // Check unread
+    if (userProfile?.id) {
+      const unread = notifs.some(n => {
+        const readBy = Array.isArray(n.read_by) ? n.read_by : [];
+        return !readBy.includes(userProfile.id);
+      });
+      setHasUnread(unread);
+    }
+    setLoadingNotifs(false);
+  }, [userProfile?.id, (userProfile as any)?.user_type]);
+
+  useEffect(() => {
+    fetchNotifications();
+    // Subscribe to new notifications
+    const channel = supabase
+      .channel("user-notifications")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchNotifications]);
+
+  const handleOpenNotifications = async () => {
+    setShowNotifications(true);
+    // Mark all as read
+    if (userProfile?.id && notifications.length > 0) {
+      setHasUnread(false);
+      for (const n of notifications) {
+        const readBy = Array.isArray(n.read_by) ? n.read_by : [];
+        if (!readBy.includes(userProfile.id)) {
+          await supabase.from("notifications").update({
+            read_by: [...readBy, userProfile.id],
+          } as any).eq("id", n.id);
+        }
+      }
+    }
   };
 
   useEffect(() => {
@@ -86,8 +140,8 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
 
   return (
     <>
-      <div className="absolute top-0 left-0 right-0 z-[700] p-4 safe-area-top">
-        <div className="flex items-center justify-between">
+      <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
+        <div className="px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setShowProfile(true)}
             className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center active:scale-95 transition-transform"
@@ -103,7 +157,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setShowNotifications(true); setHasUnread(false); }}
+              onClick={handleOpenNotifications}
               className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative active:scale-95 transition-transform"
             >
               <Bell className="w-5 h-5 text-foreground" />
@@ -245,7 +299,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
               className="bg-card rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 pb-6 space-y-4">
+              <div className="p-4 pb-6 space-y-4 max-h-[70vh] flex flex-col">
                 <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-foreground">Notifications</h3>
@@ -253,16 +307,44 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
                     <X className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </div>
-                <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
-                    <BellOff className="w-7 h-7 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">No notifications yet</p>
-                  <p className="text-xs text-muted-foreground/70">You'll see ride updates and alerts here</p>
+
+                <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+                  {loadingNotifs ? (
+                    <div className="flex justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+                        <BellOff className="w-7 h-7 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">No notifications yet</p>
+                      <p className="text-xs text-muted-foreground/70">You'll see ride updates and alerts here</p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => {
+                      const readBy = Array.isArray(n.read_by) ? n.read_by : [];
+                      const isUnread = userProfile?.id ? !readBy.includes(userProfile.id) : false;
+                      return (
+                        <div key={n.id} className={`flex items-start gap-3 rounded-xl p-3 ${isUnread ? "bg-primary/5" : "bg-surface"}`}>
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isUnread ? "bg-primary/10" : "bg-muted"}`}>
+                            <Bell className={`w-4 h-4 ${isUnread ? "text-primary" : "text-muted-foreground"}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${isUnread ? "text-foreground" : "text-muted-foreground"}`}>{n.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                            <p className="text-[10px] text-muted-foreground/60 mt-1">{new Date(n.created_at).toLocaleDateString()} · {new Date(n.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                          </div>
+                          {isUnread && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
+
                 <button
                   onClick={() => setShowNotifications(false)}
-                  className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform"
+                  className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform shrink-0"
                 >
                   Close
                 </button>

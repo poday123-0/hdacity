@@ -20,6 +20,7 @@ import AdminBilling from "@/components/admin/AdminBilling";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminLostItems from "@/components/admin/AdminLostItems";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 import {
   LayoutDashboard,
   Users,
@@ -39,10 +40,11 @@ import {
   Sun,
   PackageX,
   Siren,
+  BellRing,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -57,6 +59,7 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "trips", label: "Trips", icon: MapPin },
   { id: "lost_items", label: "Lost Items", icon: PackageX },
   { id: "sos_history", label: "SOS Alerts", icon: Siren },
+  { id: "notifications", label: "Notifications", icon: BellRing },
   { id: "users", label: "Admins & Dispatch", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -231,6 +234,7 @@ const Admin = () => {
           {activeTab === "lost_items" && <AdminLostItems />}
           {activeTab === "sos_history" && <AdminSOSHistory />}
           {activeTab === "users" && <AdminUsers />}
+          {activeTab === "notifications" && <AdminNotifications />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
