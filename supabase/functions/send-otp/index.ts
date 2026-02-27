@@ -50,7 +50,7 @@ serve(async (req) => {
       if (!error) { dbError = null; break; }
       dbError = error;
       console.error(`DB insert attempt ${attempt + 1} failed:`, typeof error.message === "string" && error.message.length > 200 ? "SSL/connection error" : error.message);
-      if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      if (attempt < 2) await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
     }
 
     if (dbError) {
