@@ -97,6 +97,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showEarnings, setShowEarnings] = useState(true);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
+  const [navPanelMinimized, setNavPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileTab, setProfileTab] = useState<ProfileTab>("info");
   const [tripRadius, setTripRadius] = useState(10);
@@ -760,8 +761,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[700] p-4 safe-area-top">
-        <div className="flex items-center justify-between">
+      <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
+        <div className="px-4 py-3 flex items-center justify-between">
           <button onClick={onSwitchToPassenger} className="px-3 py-2 rounded-full bg-card shadow-md text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
             Passenger Mode
           </button>
@@ -884,9 +885,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] ${panelMinimized ? "" : "max-h-[85vh] overflow-y-auto"}`}
+          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col ${panelMinimized ? "" : "max-h-[80vh]"}`}
         >
-          <div className="p-4 pb-5 space-y-2.5">
+          <div className={`p-4 ${panelMinimized ? "pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]" : "pb-2"} space-y-2.5`}>
             {/* Drag handle */}
             <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center pt-0.5 pb-1">
               <div className="w-10 h-1 rounded-full bg-border" />
@@ -1224,95 +1225,143 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Navigating */}
       {screen === "navigating" && currentTrip && (
-        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] max-h-[70vh] overflow-y-auto">
-          <div className="p-5 space-y-3">
-            <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
+        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col ${navPanelMinimized ? "" : "max-h-[70vh]"}`}>
+          <div className={`p-4 ${navPanelMinimized ? "pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]" : "pb-2"} space-y-2.5`}>
+            {/* Drag handle */}
+            <button onClick={() => setNavPanelMinimized(!navPanelMinimized)} className="w-full flex justify-center pt-0.5 pb-1">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </button>
 
-            {/* Status banner */}
-            <div className="bg-primary rounded-xl p-4 flex items-center justify-between">
-              <div>
+            {/* Status banner - always visible */}
+            <div className="bg-primary rounded-xl p-3 flex items-center justify-between">
+              <div className="min-w-0">
                 <p className="text-primary-foreground/80 text-xs">
                   {driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup location" : "Trip in progress"}
                 </p>
-                <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
+                <p className="text-xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
               </div>
-              <Navigation className="w-8 h-8 text-primary-foreground" />
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => setNavPanelMinimized(!navPanelMinimized)} className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center active:scale-90 transition-transform">
+                  {navPanelMinimized ? <ChevronUp className="w-4 h-4 text-primary-foreground" /> : <ChevronDown className="w-4 h-4 text-primary-foreground" />}
+                </button>
+              </div>
             </div>
 
-            {/* Passenger info with avatar and phone */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-lg font-bold text-foreground overflow-hidden">
-                  {passengerProfile?.avatar_url ? (
-                    <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
-                  )}
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {currentTrip.customer_phone
-                      ? `+960 ${currentTrip.customer_phone}`
-                      : passengerProfile?.phone_number
-                        ? `+${passengerProfile.country_code || "960"} ${passengerProfile.phone_number}`
-                        : currentTrip.pickup_address}
+            {/* Minimized summary */}
+            {navPanelMinimized && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center shrink-0 overflow-hidden text-xs font-bold text-foreground">
+                    {passengerProfile?.avatar_url ? (
+                      <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}` : "?"
+                    )}
+                  </div>
+                  <p className="text-xs font-semibold text-foreground truncate">
+                    {currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setShowDriverChat(true)} className="w-10 h-10 rounded-full bg-surface flex items-center justify-center active:scale-95 transition-transform">
-                  <MessageSquare className="w-5 h-5 text-primary" />
+                <button onClick={() => setShowDriverChat(true)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center active:scale-95 transition-transform shrink-0">
+                  <MessageSquare className="w-4 h-4 text-primary" />
                 </button>
-                <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="w-10 h-10 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform">
-                  <Phone className="w-5 h-5 text-primary-foreground" />
+                <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform shrink-0">
+                  <Phone className="w-4 h-4 text-primary-foreground" />
                 </a>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Route */}
-            <div className="bg-surface rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-primary" /><p className="text-sm text-foreground">{currentTrip.pickup_address}</p></div>
-              {tripStops.map((stop) => (
-                <div key={stop.id}>
-                  <div className="ml-1 w-0.5 h-3 bg-border" />
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-sm bg-accent" />
-                    <p className="text-sm text-foreground">Stop {stop.stop_order}: {stop.address}</p>
-                    {stop.completed_at && <span className="text-[10px] text-primary font-bold">✓</span>}
+          {/* Expandable content */}
+          <AnimatePresence>
+            {!navPanelMinimized && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden flex-1 min-h-0"
+              >
+                <div className="px-4 pb-4 space-y-2.5 overflow-y-auto max-h-[calc(70vh-10rem)]">
+                  {/* Passenger info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-full bg-surface flex items-center justify-center text-base font-bold text-foreground overflow-hidden shrink-0">
+                        {passengerProfile?.avatar_url ? (
+                          <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {currentTrip.customer_phone
+                            ? `+960 ${currentTrip.customer_phone}`
+                            : passengerProfile?.phone_number
+                              ? `+${passengerProfile.country_code || "960"} ${passengerProfile.phone_number}`
+                              : currentTrip.pickup_address}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => setShowDriverChat(true)} className="w-9 h-9 rounded-full bg-surface flex items-center justify-center active:scale-95 transition-transform">
+                        <MessageSquare className="w-4 h-4 text-primary" />
+                      </button>
+                      <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="w-9 h-9 rounded-full bg-primary flex items-center justify-center active:scale-95 transition-transform">
+                        <Phone className="w-4 h-4 text-primary-foreground" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Route */}
+                  <div className="bg-surface rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" /><p className="text-xs text-foreground truncate">{currentTrip.pickup_address}</p></div>
+                    {tripStops.map((stop) => (
+                      <div key={stop.id}>
+                        <div className="ml-1 w-0.5 h-2.5 bg-border" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-sm bg-accent shrink-0" />
+                          <p className="text-xs text-foreground truncate">Stop {stop.stop_order}: {stop.address}</p>
+                          {stop.completed_at && <span className="text-[10px] text-primary font-bold">✓</span>}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="ml-1 w-0.5 h-2.5 bg-border" />
+                    <div className="flex items-center gap-2"><MapPin className="w-2.5 h-2.5 text-foreground shrink-0" /><p className="text-xs text-foreground truncate">{currentTrip.dropoff_address}</p></div>
+                  </div>
+
+                  {/* Passenger & Luggage */}
+                  <div className="flex gap-2">
+                    <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground font-semibold">Pax</p>
+                        <p className="text-sm font-bold text-foreground">{currentTrip.passenger_count}</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+                      <Luggage className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground font-semibold">Bags</p>
+                        <p className="text-sm font-bold text-foreground">{currentTrip.luggage_count}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-              <div className="ml-1 w-0.5 h-3 bg-border" />
-              <div className="flex items-center gap-2"><MapPin className="w-2.5 h-2.5 text-foreground" /><p className="text-sm text-foreground">{currentTrip.dropoff_address}</p></div>
-            </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-            {/* Passenger & Luggage */}
-            <div className="flex gap-2">
-              <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary shrink-0" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-semibold">Passengers</p>
-                  <p className="text-sm font-bold text-foreground">{currentTrip.passenger_count}</p>
-                </div>
-              </div>
-              <div className="flex-1 bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
-                <Luggage className="w-4 h-4 text-primary shrink-0" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-semibold">Luggage</p>
-                  <p className="text-sm font-bold text-foreground">{currentTrip.luggage_count}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Phase-based action buttons */}
+          {/* Sticky action button - always visible */}
+          <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 border-t border-border/40 shrink-0">
             {driverTripPhase === "heading_to_pickup" && (
               <button onClick={async () => {
                 if (!currentTrip) return;
                 await supabase.from("trips").update({ status: "arrived" }).eq("id", currentTrip.id);
                 setDriverTripPhase("arrived");
                 toast({ title: "📍 Arrived", description: "Passenger has been notified" });
-              }} className="w-full bg-accent text-accent-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">
+              }} className="w-full bg-accent text-accent-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
                 I've Arrived at Pickup
               </button>
             )}
@@ -1323,7 +1372,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 await supabase.from("trips").update({ status: "in_progress", started_at: new Date().toISOString() }).eq("id", currentTrip.id);
                 setDriverTripPhase("in_progress");
                 toast({ title: "🚗 Trip Started", description: "Navigate to destination" });
-              }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">
+              }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
                 Start Trip
               </button>
             )}
@@ -1339,7 +1388,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
                 setDriverTripPhase("heading_to_pickup");
                 setScreen("complete");
-              }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base active:scale-[0.98] transition-transform">
+              }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
                 Complete Ride
               </button>
             )}
