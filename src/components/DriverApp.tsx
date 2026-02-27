@@ -833,19 +833,38 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
-        <div className="px-4 py-3 flex items-center justify-center relative">
+      <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
+        <div className="px-3 py-2.5 flex items-center justify-between relative">
+          {/* Left: Profile + Toggle */}
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => setShowProfile(true)} className="w-11 h-11 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform border border-border/30">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-5 h-5 text-foreground" />
+              )}
+            </button>
+            <button
+              onClick={() => setScreen("offline")}
+              className="relative w-12 h-7 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0 shadow-sm"
+              title="Go Offline"
+            >
+              <div className="w-6 h-6 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[21px]" />
+            </button>
+          </div>
+
+          {/* Center: Vehicle */}
           <div className="relative">
             <button
               onClick={() => driverVehicles.length > 1 ? setShowVehicleSwitcher(!showVehicleSwitcher) : null}
-              className={`flex items-center gap-1.5 ${driverVehicles.length > 1 ? "active:scale-95 transition-transform cursor-pointer" : ""}`}
+              className={`flex items-center gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl px-3 py-1.5 shadow-md border border-border/30 ${driverVehicles.length > 1 ? "active:scale-95 transition-transform cursor-pointer" : ""}`}
             >
               {(() => {
                 const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
                 return vTypeImg ? (
-                  <img src={vTypeImg} alt="Vehicle" className="h-8 w-auto object-contain" />
+                  <img src={vTypeImg} alt="Vehicle" className="h-7 w-auto object-contain" />
                 ) : (
-                  <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
+                  <img src={hdaLogo} alt="HDA" className="h-6 w-auto object-contain" />
                 );
               })()}
               {driverVehicles.length > 1 && (
@@ -863,13 +882,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-72 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden z-[801]"
+                    className="w-[85vw] max-w-72 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden z-[801]"
                     style={{ fontSize: '14px' }}
                   >
-                    <div className="px-4 py-2.5 border-b border-border">
+                    <div className="px-4 py-3 border-b border-border">
                       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Switch Vehicle</p>
                     </div>
-                    <div className="max-h-60 overflow-y-auto py-1">
+                    <div className="max-h-[50vh] overflow-y-auto py-1">
                       {[...driverVehicles]
                         .sort((a, b) => (a.id === selectedVehicleId ? -1 : b.id === selectedVehicleId ? 1 : 0))
                         .map((v) => {
@@ -882,7 +901,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               if (!isSelected) selectVehicle(v);
                               setShowVehicleSwitcher(false);
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors ${
                               isSelected ? "bg-primary/5 border-l-2 border-primary" : "hover:bg-surface active:bg-surface border-l-2 border-transparent"
                             }`}
                           >
@@ -913,22 +932,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               )}
             </AnimatePresence>
           </div>
-          <div className="absolute left-4 flex items-center gap-2">
-            <button onClick={() => setShowProfile(true)} className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-5 h-5 text-foreground" />
-              )}
-            </button>
-            <button
-              onClick={() => setScreen("offline")}
-              className="relative w-11 h-6 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0"
-              title="Go Offline"
-            >
-              <div className="w-5 h-5 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[19px]" />
-            </button>
-          </div>
+
+          {/* Right: spacer for balance */}
+          <div className="w-11" />
         </div>
       </div>
 
@@ -951,31 +957,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         recenterRef={recenterRef}
       />
 
-      {/* Map action buttons — right side */}
-      <div className="absolute top-20 right-3 z-[460] flex flex-col gap-1.5 bg-card/80 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/50">
+      {/* Map action buttons — right side, positioned for thumb reach */}
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+280px)] right-3 z-[460] flex flex-col gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/30">
         {recenterAvailable && (
           <>
             <button
               onClick={() => recenterRef.current?.()}
-              className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
+              className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
               title="Re-center"
             >
-              <Locate className="w-4 h-4" />
+              <Locate className="w-[18px] h-[18px]" />
             </button>
             <div className="w-5 h-px bg-border mx-auto" />
           </>
         )}
         <button
           onClick={() => setGpsEnabled(!gpsEnabled)}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
+          className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
             gpsEnabled ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-surface"
           }`}
           title={gpsEnabled ? "GPS On" : "GPS Off"}
         >
-          {gpsEnabled ? <Locate className="w-4 h-4" /> : <LocateOff className="w-4 h-4" />}
+          {gpsEnabled ? <Locate className="w-[18px] h-[18px]" /> : <LocateOff className="w-[18px] h-[18px]" />}
         </button>
         <div className="w-5 h-px bg-border mx-auto" />
-        <ThemeToggle className="!w-9 !h-9 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
+        <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
         {userProfile?.id && (
           <>
             <div className="w-5 h-px bg-border mx-auto" />
@@ -1077,12 +1083,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           initial={{ y: "100%" }}
           animate={{ y: panelMinimized ? "calc(100% - 0px)" : 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[80vh]"
+          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[75vh]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
           <div className="p-4 pb-2 space-y-2.5">
-            {/* Drag handle */}
-            <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center pt-0.5 pb-1">
-              <div className="w-10 h-1 rounded-full bg-border" />
+            {/* Drag handle — larger touch area */}
+            <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center py-2 -mt-1">
+              <div className="w-12 h-1.5 rounded-full bg-border" />
             </button>
 
             {/* Status bar - always visible */}
