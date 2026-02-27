@@ -75,6 +75,37 @@ export const usePushNotifications = (
             ? JSON.parse(configSetting.value)
             : configSetting.value;
 
+          // Register the Firebase service worker for background notifications
+          let swRegistration: ServiceWorkerRegistration | undefined;
+          if ("serviceWorker" in navigator) {
+            try {
+              swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+                scope: "/",
+              });
+              console.log("Firebase SW registered:", swRegistration.scope);
+
+              // Wait for the SW to be active before posting the config
+              const sw = swRegistration.installing || swRegistration.waiting || swRegistration.active;
+              if (sw) {
+                const waitForActive = () =>
+                  new Promise<void>((resolve) => {
+                    if (sw.state === "activated") return resolve();
+                    sw.addEventListener("statechange", () => {
+                      if (sw.state === "activated") resolve();
+                    });
+                  });
+                await waitForActive();
+              }
+
+              swRegistration.active?.postMessage({
+                type: "FIREBASE_CONFIG",
+                config: firebaseConfig,
+              });
+            } catch (swErr) {
+              console.warn("Firebase SW registration failed:", swErr);
+            }
+          }
+
           // Initialize Firebase only once
           const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
           const messaging = getMessaging(app);
@@ -91,7 +122,10 @@ export const usePushNotifications = (
             return;
           }
 
-          const token = await getToken(messaging, { vapidKey: vapidKey || undefined });
+          const token = await getToken(messaging, {
+            vapidKey: vapidKey || undefined,
+            serviceWorkerRegistration: swRegistration,
+          });
           if (token) {
             console.log("FCM Token (web):", token);
             tokenRef.current = token;
@@ -102,10 +136,11 @@ export const usePushNotifications = (
           onMessage(messaging, (payload) => {
             console.log("Foreground message:", payload);
             if (payload.notification) {
-              // Show browser notification
+              // Show browser notification with sound
               new Notification(payload.notification.title || "Notification", {
                 body: payload.notification.body || "",
-                icon: "/favicon.ico",
+                icon: "/pwa-192x192.png",
+                silent: false,
               });
             }
           });
