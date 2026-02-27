@@ -1832,33 +1832,35 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 <div className="px-4 pb-3 space-y-2 overflow-y-auto max-h-[calc(70vh-10rem)]">
                   {/* Quick actions row */}
-                  <div className="flex gap-2">
-                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-1 bg-primary/10 rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="bg-primary/10 rounded-xl py-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform min-h-[52px]">
                       <Phone className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-semibold text-primary">Call</span>
+                      <span className="text-[10px] font-semibold text-primary leading-none">Call</span>
                     </a>
-                    <button onClick={() => { setShowDriverChat(true); setUnreadDriverMessages(0); }} className="flex-1 bg-surface rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform relative">
+                    <button onClick={() => { setShowDriverChat(true); setUnreadDriverMessages(0); }} className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform relative min-h-[52px]">
                       <MessageSquare className="w-4 h-4 text-foreground" />
-                      <span className="text-xs font-semibold text-foreground">Chat</span>
+                      <span className="text-[10px] font-semibold text-foreground leading-none">Chat</span>
                       {unreadDriverMessages > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                        <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
                           {unreadDriverMessages}
                         </span>
                       )}
                     </button>
-                    <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
-                      <Users className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs font-bold text-foreground">{currentTrip.passenger_count}</span>
+                    <div className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-[10px] font-bold text-foreground leading-none">{currentTrip.passenger_count}</span>
                     </div>
-                    <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
-                      <Luggage className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs font-bold text-foreground">{currentTrip.luggage_count}</span>
+                    <div className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                      <Luggage className="w-4 h-4 text-primary" />
+                      <span className="text-[10px] font-bold text-foreground leading-none">{currentTrip.luggage_count}</span>
                     </div>
-                    {/* Speedometer — visible in trip panel (mobile + landscape) */}
-                    <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
-                      <Gauge className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs font-bold text-foreground">{driverSpeed}</span>
-                      <span className="text-[9px] text-muted-foreground">km/h</span>
+                    {/* Speedometer */}
+                    <div className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-0.5 min-h-[52px]">
+                      <Gauge className="w-4 h-4 text-primary" />
+                      <div className="flex items-baseline gap-0.5">
+                        <span className="text-[10px] font-bold text-foreground leading-none">{driverSpeed}</span>
+                        <span className="text-[8px] text-muted-foreground leading-none">km/h</span>
+                      </div>
                     </div>
                   </div>
 
