@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { Download, Share2, Smartphone, Car, Users, ChevronRight, Copy, Check, ExternalLink, Apple, Chrome } from "lucide-react";
+import { Download, Share2, Smartphone, Car, Users, ChevronRight, Copy, Check, ExternalLink, Apple, Chrome, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
@@ -12,6 +13,7 @@ const PASSENGER_URL = "https://app.hda.taxi";
 const DRIVER_URL = "https://app.hda.taxi/driver";
 
 const Install = () => {
+  const navigate = useNavigate();
   useTheme();
   const { canInstall, isIOS, isInstalled, promptInstall } = usePWAInstall();
   const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
@@ -57,6 +59,9 @@ const Install = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-surface flex items-center justify-center active:scale-95 transition-transform">
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </button>
           <div className="flex items-center gap-2">
             <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
             <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
