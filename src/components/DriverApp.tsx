@@ -1149,16 +1149,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </span>
               )}
             </button>
-            {screen !== "offline" &&
+            {screen !== "offline" && !currentTrip &&
             <button
               onClick={() => {
-                if (currentTrip) {
-                  toast({ title: "Trip in progress", description: "You cannot go offline while a trip is ongoing.", variant: "destructive" });
-                  return;
-                }
                 setScreen("offline");
               }}
-              className={`relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)] ${currentTrip ? "opacity-50" : ""}`}
+              className="relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]"
               title="Go Offline">
               <motion.div
                 className="absolute inset-0 rounded-full bg-[hsl(var(--success))]"
