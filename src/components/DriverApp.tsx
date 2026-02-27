@@ -562,7 +562,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           audio.play().catch(() => {});
         }
         toast({ title: "Trip Cancelled", description: "The passenger cancelled this trip.", variant: "destructive" });
-        await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
+        await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
         setScreen("online");
         setCurrentTrip(null);
         setPassengerProfile(null);
@@ -1461,7 +1461,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
 
                 // Mark driver as on trip
-                await supabase.from("driver_locations").update({ is_on_trip: true }).eq("driver_id", userProfile.id);
+                await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
 
                 setScreen("navigating");
               }} className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 text-white rounded-xl py-3 text-sm font-bold active:scale-95 transition-transform">
@@ -1635,7 +1635,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               completed_at: new Date().toISOString(),
               actual_fare: currentTrip.estimated_fare
             }).eq("id", currentTrip.id);
-            await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", userProfile.id);
+            await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
             setDriverTripPhase("heading_to_pickup");
             setScreen("complete");
           }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
