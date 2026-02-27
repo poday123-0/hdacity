@@ -1193,9 +1193,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               onClick={() => setShowNotifications(true)}
               className="relative w-9 h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30"
             >
-              <BellIcon className="w-4.5 h-4.5 text-foreground" />
+              <BellIcon className={`w-4.5 h-4.5 text-foreground ${unreadNotifCount > 0 ? "animate-[wiggle_0.5s_ease-in-out]" : ""}`} />
               {unreadNotifCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-[0_0_8px_hsl(var(--destructive)/0.6)]">
                   {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
                 </span>
               )}
