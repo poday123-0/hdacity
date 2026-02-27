@@ -133,20 +133,30 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/live-map?trip=${tripId}`;
-    const shareData = {
-      title: "Track my ride - HDA Taxi",
-      text: `Follow my live trip with ${driverName}`,
-      url: shareUrl,
-    };
+    const shareText = `🚕 Track my HDA Taxi ride live!\nDriver: ${driverName}\n${tripPickupName ? `From: ${tripPickupName}` : ""}${tripDropoffName ? `\nTo: ${tripDropoffName}` : ""}`;
+    
     try {
       if (navigator.share) {
-        await navigator.share(shareData);
+        await navigator.share({
+          title: "Track my ride - HDA Taxi",
+          text: shareText,
+          url: shareUrl,
+        });
+        toast({ title: "Shared!", description: "Live trip link shared successfully" });
       } else {
-        await navigator.clipboard.writeText(shareUrl);
-        toast({ title: "Link copied!", description: "Share this link for live tracking" });
+        // Fallback: copy both text and URL
+        const fullText = `${shareText}\n\n${shareUrl}`;
+        await navigator.clipboard.writeText(fullText);
+        toast({ title: "Link copied!", description: "Trip tracking link copied to clipboard. Share it with anyone!" });
       }
-    } catch {
-      // User cancelled share
+    } catch (err: any) {
+      // If share was cancelled, silently ignore. Otherwise copy as fallback.
+      if (err?.name !== "AbortError") {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          toast({ title: "Link copied!", description: "Share this link for live tracking" });
+        } catch {}
+      }
     }
   };
 
