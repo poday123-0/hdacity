@@ -1013,43 +1013,79 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Offline */}
       {screen === "offline" && (
-        <div className="absolute inset-0 flex items-center justify-center z-[450] landscape-offline">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-5 px-6 w-full max-w-sm landscape-offline-card">
-            <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center ${verificationIssues.length > 0 ? "bg-destructive/10" : "bg-muted"}`}>
-              <Power className={`w-10 h-10 ${verificationIssues.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+        <div className="absolute inset-0 flex items-center justify-center z-[450] landscape-offline bg-background/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="text-center space-y-6 px-6 w-full max-w-sm landscape-offline-card"
+          >
+            {/* Icon with animated ring */}
+            <div className="relative w-24 h-24 mx-auto">
+              {verificationIssues.length === 0 && (
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-primary/30"
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0, 0.5] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+              )}
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center ${
+                verificationIssues.length > 0 ? "bg-destructive/10" : "bg-primary/10"
+              }`}>
+                <Power className={`w-10 h-10 ${verificationIssues.length > 0 ? "text-destructive" : "text-primary"}`} />
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">You're offline</h2>
-              <p className="text-muted-foreground text-sm mt-1">
+
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-bold text-foreground">You're offline</h2>
+              <p className="text-muted-foreground text-sm">
                 {verificationIssues.length > 0 ? "Complete your profile to go online" : "Go online to start receiving rides"}
               </p>
             </div>
 
             {/* Verification checklist */}
             {verificationIssues.length > 0 && (
-              <div className="bg-card rounded-xl p-4 text-left space-y-2.5">
-                <p className="text-xs font-semibold text-destructive uppercase tracking-wider">Action required</p>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-card rounded-2xl p-4 text-left space-y-3 border border-border/50 shadow-sm"
+              >
+                <p className="text-[11px] font-bold text-destructive uppercase tracking-wider">Action required</p>
                 {verificationIssues.map((issue, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 + i * 0.08 }}
+                    className="flex items-start gap-2.5"
+                  >
                     <div className="w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
                       <X className="w-3 h-3 text-destructive" />
                     </div>
                     <p className="text-sm text-foreground">{issue}</p>
-                  </div>
+                  </motion.div>
                 ))}
                 <button
                   onClick={() => { setShowProfile(true); setProfileTab(verificationIssues.some(i => i.includes("bank")) ? "banks" : verificationIssues.some(i => i.includes("ID") || i.includes("license") || i.includes("photo")) ? "documents" : "info"); }}
-                  className="w-full mt-2 bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform"
+                  className="w-full mt-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform"
                 >
                   Complete profile
                 </button>
-              </div>
+              </motion.div>
             )}
 
             {profileStatus === "Active" && verificationIssues.length === 0 ? (
-              <button onClick={() => setScreen("online")} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98]">
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                onClick={() => setScreen("online")}
+                className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-base transition-all active:scale-[0.97] shadow-lg shadow-primary/20"
+                whileTap={{ scale: 0.97 }}
+              >
                 Start driving
-              </button>
+              </motion.button>
             ) : profileStatus !== "Active" && verificationIssues.length === 0 ? (
               <div className="bg-card rounded-xl p-4 space-y-2">
                 <div className="flex items-center gap-2 justify-center">
