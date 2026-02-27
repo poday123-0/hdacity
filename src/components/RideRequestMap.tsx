@@ -56,7 +56,7 @@ const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, sto
         zIndex: 1000,
       };
       if (passengerMapIconUrl) {
-        markerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(32, 32) };
+        markerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(24, 24) };
       } else {
         markerOpts.label = { text: "P", color: "white", fontWeight: "700", fontSize: "11px" };
         markerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 };
