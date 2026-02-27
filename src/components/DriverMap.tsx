@@ -241,53 +241,59 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver]);
 
-  // Parse navigation steps from directions result
-  const parseNavSteps = useCallback((result: any) => {
-    try {
-      const route = result.routes[0];
-      const leg = route.legs[0];
-      
-      setNavEta(leg.duration?.text || "");
-      setNavDistance(leg.distance?.text || "");
-      
-      const etaMins = Math.round((leg.duration?.value || 0) / 60);
-      const distKm = Math.round((leg.distance?.value || 0) / 100) / 10;
-      onNavUpdate?.(leg.duration?.text || "", leg.distance?.text || "", etaMins, distKm);
-      
-      const steps: NavStep[] = leg.steps.map((step: any) => ({
-        instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
-        distance: step.distance?.text || '',
-        maneuver: step.maneuver || undefined,
-        endLat: step.end_location?.lat?.() ?? undefined,
-        endLng: step.end_location?.lng?.() ?? undefined,
-      }));
-      setNavSteps(steps);
-      
-      // Auto-advance step based on driver proximity
-      if (currentPos && steps.length > 0) {
-        const driverLat = currentPos.lat;
-        const driverLng = currentPos.lng;
-        let closestIdx = 0;
-        let closestDist = Infinity;
-        
-        leg.steps.forEach((step: any, idx: number) => {
-          const endLat = step.end_location.lat();
-          const endLng = step.end_location.lng();
-          const dist = Math.sqrt(Math.pow(driverLat - endLat, 2) + Math.pow(driverLng - endLng, 2));
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestIdx = idx;
-          }
-        });
-        
-        setCurrentStepIndex(Math.min(closestIdx, steps.length - 1));
-      }
-    } catch (e) {
-      console.warn("Failed to parse nav steps:", e);
-    }
-  }, [currentPos]);
+  const parseNavStepsRef = useRef<(result: any) => void>(() => {});
 
-  // Route when navigating
+  // Parse navigation steps from directions result
+  useEffect(() => {
+    parseNavStepsRef.current = (result: any) => {
+      try {
+        const route = result.routes[0];
+        const leg = route.legs[0];
+        
+        setNavEta(leg.duration?.text || "");
+        setNavDistance(leg.distance?.text || "");
+        
+        const etaMins = Math.round((leg.duration?.value || 0) / 60);
+        const distKm = Math.round((leg.distance?.value || 0) / 100) / 10;
+        onNavUpdate?.(leg.duration?.text || "", leg.distance?.text || "", etaMins, distKm);
+        
+        const steps: NavStep[] = leg.steps.map((step: any) => ({
+          instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
+          distance: step.distance?.text || '',
+          maneuver: step.maneuver || undefined,
+          endLat: step.end_location?.lat?.() ?? undefined,
+          endLng: step.end_location?.lng?.() ?? undefined,
+        }));
+        setNavSteps(steps);
+        
+        // Auto-advance step based on driver proximity
+        const pos = currentPos;
+        if (pos && steps.length > 0) {
+          let closestIdx = 0;
+          let closestDist = Infinity;
+          
+          leg.steps.forEach((step: any, idx: number) => {
+            const endLat = step.end_location.lat();
+            const endLng = step.end_location.lng();
+            const dist = Math.sqrt(Math.pow(pos.lat - endLat, 2) + Math.pow(pos.lng - endLng, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestIdx = idx;
+            }
+          });
+          
+          setCurrentStepIndex(Math.min(closestIdx, steps.length - 1));
+        }
+      } catch (e) {
+        console.warn("Failed to parse nav steps:", e);
+      }
+    };
+  });
+
+  // Route when navigating — use refs for volatile values to avoid re-triggering
+  const currentPosRef = useRef(currentPos);
+  currentPosRef.current = currentPos;
+
   useEffect(() => {
     const map = mapInstance.current;
     const g = (window as any).google;
@@ -304,29 +310,24 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       return;
     }
 
-    const driverPos = currentPos || MALE_CENTER;
     const pickup = pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null;
     const dropoff = dropoffCoords ? { lat: dropoffCoords[0], lng: dropoffCoords[1] } : null;
 
     if (!pickup || !dropoff) return;
 
-    let origin: { lat: number; lng: number };
     let destination: { lat: number; lng: number };
     let destLabel: string;
     let destColor: string;
 
     if (tripPhase === "in_progress") {
-      origin = driverPos;
       destination = dropoff;
       destLabel = "D";
       destColor = "#ef4444";
     } else if (tripPhase === "arrived") {
-      origin = pickup;
       destination = dropoff;
       destLabel = "D";
       destColor = "#ef4444";
     } else {
-      origin = driverPos;
       destination = pickup;
       destLabel = "P";
       destColor = "#22c55e";
@@ -373,7 +374,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Create a single DirectionsRenderer and reuse it to avoid flashing
     const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
-    if (directionsRendererRef.current) directionsRendererRef.current.setMap(null);
     const dr = new g.maps.DirectionsRenderer({
       map,
       suppressMarkers: true,
@@ -388,6 +388,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     directionsRendererRef.current = dr;
 
     const fetchRoute = () => {
+      const driverPos = currentPosRef.current || MALE_CENTER;
+      let origin: { lat: number; lng: number };
+      if (tripPhase === "arrived") {
+        origin = pickup;
+      } else {
+        origin = driverPos;
+      }
+
       const ds = new g.maps.DirectionsService();
       ds.route({
         origin,
@@ -397,7 +405,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       }).then((result: any) => {
         if (directionsRendererRef.current === dr) {
           dr.setDirections(result);
-          parseNavSteps(result);
+          parseNavStepsRef.current(result);
         }
       }).catch((err: any) => console.error("Directions error:", err));
     };
@@ -408,7 +416,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
     };
-  }, [isNavigating, pickupCoords, dropoffCoords, tripPhase, parseNavSteps]);
+  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase]);
 
   // Radius circle
   useEffect(() => {
