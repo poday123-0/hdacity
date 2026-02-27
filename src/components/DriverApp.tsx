@@ -382,10 +382,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       // Heartbeat every 10s
       locationIntervalRef.current = setInterval(async () => {
-        if (lastPosRef.current) {
-          upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
-        }
-        // Check if another device took over this driver's session
+        // Check if another device took over this driver's session FIRST
         const { data: locRow } = await supabase
           .from("driver_locations")
           .select("session_id")
@@ -395,9 +392,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           // Another device is now active — show alert and force offline
           if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
           if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
-          // Vibrate to alert driver
           try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
-          // Play alert sound
           try {
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             const osc = ctx.createOscillator();
@@ -413,6 +408,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           } catch {}
           setSessionKicked(true);
           setScreen("offline");
+          return; // Don't upsert — this device is no longer active
+        }
+        // Only upsert location if session is still ours
+        if (lastPosRef.current) {
+          upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
         }
       }, 10000);
     };
