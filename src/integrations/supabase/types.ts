@@ -154,6 +154,7 @@ export type Database = {
           is_online: boolean
           lat: number
           lng: number
+          session_id: string | null
           updated_at: string
           vehicle_id: string | null
           vehicle_type_id: string | null
@@ -166,6 +167,7 @@ export type Database = {
           is_online?: boolean
           lat: number
           lng: number
+          session_id?: string | null
           updated_at?: string
           vehicle_id?: string | null
           vehicle_type_id?: string | null
@@ -178,6 +180,7 @@ export type Database = {
           is_online?: boolean
           lat?: number
           lng?: number
+          session_id?: string | null
           updated_at?: string
           vehicle_id?: string | null
           vehicle_type_id?: string | null

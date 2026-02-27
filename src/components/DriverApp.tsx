@@ -158,6 +158,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
+  const deviceSessionId = useRef<string>(crypto.randomUUID());
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
     try {
@@ -274,8 +275,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           lng,
           is_online: true,
           is_on_trip: false,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "driver_id" });
+          updated_at: new Date().toISOString(),
+          session_id: deviceSessionId.current
+        } as any, { onConflict: "driver_id" });
         if (error) {
           console.error("Failed to upsert driver location:", error);
         }
@@ -301,9 +303,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
 
       // Heartbeat every 10s
-      locationIntervalRef.current = setInterval(() => {
+      locationIntervalRef.current = setInterval(async () => {
         if (lastPosRef.current) {
           upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
+        }
+        // Check if another device took over this driver's session
+        const { data: locRow } = await supabase
+          .from("driver_locations")
+          .select("session_id")
+          .eq("driver_id", userProfile.id)
+          .single();
+        if (locRow && (locRow as any).session_id && (locRow as any).session_id !== deviceSessionId.current) {
+          // Another device is now active — force this device offline
+          toast({
+            title: "Signed in on another device",
+            description: "You have been signed in on another device. This device is now offline.",
+            variant: "destructive",
+          });
+          setScreen("offline");
         }
       }, 10000);
     };
