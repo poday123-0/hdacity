@@ -170,119 +170,140 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-foreground/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => !sending && setShowConfirm(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card rounded-2xl shadow-2xl mx-4 w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-card rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm sm:mx-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-3">
-                  <AlertTriangle className="w-8 h-8 text-destructive" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground">Emergency SOS</h3>
-                <p className="text-sm text-muted-foreground mt-1">
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+              </div>
+
+              {/* Header */}
+              <div className="px-6 pt-4 pb-3 text-center">
+                <motion.div
+                  initial={{ scale: 0.5 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+                  className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-3"
+                >
+                  <AlertTriangle className="w-7 h-7 text-destructive" />
+                </motion.div>
+                <h3 className="text-lg font-bold text-foreground">Emergency SOS</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-[260px] mx-auto">
                   This will immediately alert admin and dispatch with your live location.
                   {userType === "passenger" && " SMS will also be sent to your emergency contacts."}
                 </p>
               </div>
 
-              {/* Passenger emergency contacts */}
-              {userType === "passenger" && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase">Emergency Contacts ({contacts.length})</p>
-                    <button onClick={() => setShowContacts(!showContacts)} className="text-xs text-primary font-medium">
-                      {showContacts ? "Hide" : "Manage"}
-                    </button>
-                  </div>
-                  {contacts.length > 0 && (
-                    <div className="space-y-1">
-                      {contacts.map(c => (
-                        <div key={c.id} className="flex items-center gap-2 bg-surface rounded-lg px-3 py-2 text-xs">
-                          <Phone className="w-3 h-3 text-muted-foreground" />
-                          <span className="flex-1 text-foreground font-medium">{c.name}</span>
-                          <span className="text-muted-foreground">{c.phone_number}</span>
-                          {showContacts && (
-                            <button onClick={() => removeContact(c.id)} className="text-destructive"><Trash2 className="w-3 h-3" /></button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {showContacts && (
-                    <div className="bg-surface rounded-lg p-3 space-y-2">
-                      <input
-                        value={newContact.name}
-                        onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                        placeholder="Contact name"
-                        className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs text-foreground"
-                      />
-                      <input
-                        value={newContact.phone_number}
-                        onChange={(e) => setNewContact({ ...newContact, phone_number: e.target.value.replace(/\D/g, "").slice(0, 7) })}
-                        placeholder="Phone (7XXXXXX)"
-                        className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs text-foreground"
-                      />
-                      <input
-                        value={newContact.relationship}
-                        onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
-                        placeholder="Relationship (optional)"
-                        className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs text-foreground"
-                      />
-                      <button
-                        onClick={addContact}
-                        disabled={addingContact || !newContact.name || !newContact.phone_number}
-                        className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50"
-                      >
-                        <Plus className="w-3 h-3" /> Add Contact
+              <div className="px-6 pb-6 space-y-3">
+                {/* Passenger emergency contacts */}
+                {userType === "passenger" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Emergency Contacts ({contacts.length})
+                      </p>
+                      <button onClick={() => setShowContacts(!showContacts)} className="text-[11px] text-primary font-medium">
+                        {showContacts ? "Hide" : "Manage"}
                       </button>
                     </div>
-                  )}
-                </div>
-              )}
+                    {contacts.length > 0 && (
+                      <div className="space-y-1.5">
+                        {contacts.map(c => (
+                          <div key={c.id} className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2.5 text-xs">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <Phone className="w-3 h-3 text-primary" />
+                            </div>
+                            <span className="flex-1 text-foreground font-medium truncate">{c.name}</span>
+                            <span className="text-muted-foreground text-[11px]">{c.phone_number}</span>
+                            {showContacts && (
+                              <button onClick={() => removeContact(c.id)} className="text-destructive ml-1">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {showContacts && (
+                      <div className="bg-muted/30 rounded-xl p-3 space-y-2 border border-border/50">
+                        <input
+                          value={newContact.name}
+                          onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                          placeholder="Contact name"
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground"
+                        />
+                        <input
+                          value={newContact.phone_number}
+                          onChange={(e) => setNewContact({ ...newContact, phone_number: e.target.value.replace(/\D/g, "").slice(0, 7) })}
+                          placeholder="Phone (7XXXXXX)"
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground"
+                        />
+                        <input
+                          value={newContact.relationship}
+                          onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
+                          placeholder="Relationship (optional)"
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground"
+                        />
+                        <button
+                          onClick={addContact}
+                          disabled={addingContact || !newContact.name || !newContact.phone_number}
+                          className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50"
+                        >
+                          <Plus className="w-3 h-3" /> Add Contact
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* Quick call buttons */}
-              {(callCenterNumber || policeNumber) && (
-                <div className="grid grid-cols-2 gap-2">
-                  {callCenterNumber && (
-                    <a
-                      href={`tel:${callCenterNumber.startsWith("+") ? callCenterNumber : `+960${callCenterNumber}`}`}
-                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors"
-                    >
-                      <PhoneCall className="w-4 h-4" /> Call Center
-                    </a>
-                  )}
-                  {policeNumber && (
-                    <a
-                      href={`tel:${policeNumber}`}
-                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-destructive/10 text-destructive font-semibold text-xs hover:bg-destructive/20 transition-colors"
-                    >
-                      <Shield className="w-4 h-4" /> Call Police
-                    </a>
-                  )}
-                </div>
-              )}
+                {/* Quick call buttons */}
+                {(callCenterNumber || policeNumber) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {callCenterNumber && (
+                      <a
+                        href={`tel:${callCenterNumber.startsWith("+") ? callCenterNumber : `+960${callCenterNumber}`}`}
+                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-primary/8 text-primary font-semibold text-xs hover:bg-primary/15 transition-colors border border-primary/10"
+                      >
+                        <PhoneCall className="w-4 h-4" /> Call Center
+                      </a>
+                    )}
+                    {policeNumber && (
+                      <a
+                        href={`tel:${policeNumber}`}
+                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-destructive/8 text-destructive font-semibold text-xs hover:bg-destructive/15 transition-colors border border-destructive/10"
+                      >
+                        <Shield className="w-4 h-4" /> Call Police
+                      </a>
+                    )}
+                  </div>
+                )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  disabled={sending}
-                  className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={triggerSOS}
-                  disabled={sending}
-                  className="flex-1 py-3 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
-                >
-                  {sending ? "Sending..." : "🚨 SEND SOS"}
-                </button>
+                {/* Action buttons */}
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    disabled={sending}
+                    className="flex-1 py-3 rounded-xl bg-muted text-foreground font-semibold text-sm active:scale-[0.97] transition-transform"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={triggerSOS}
+                    disabled={sending}
+                    className="flex-[1.3] py-3 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50 active:scale-[0.97] transition-transform shadow-lg shadow-destructive/25"
+                  >
+                    {sending ? "Sending..." : "🚨 SEND SOS"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
