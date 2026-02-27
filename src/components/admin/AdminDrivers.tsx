@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown } from "lucide-react";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "" };
 
@@ -12,6 +12,7 @@ const AdminDrivers = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [driverVehicles, setDriverVehicles] = useState<Record<string, any[]>>({});
   const [driverRatings, setDriverRatings] = useState<Record<string, { avg: number; count: number }>>({});
+  const [driverDeclines, setDriverDeclines] = useState<Record<string, { today: number; total: number }>>({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,14 +60,22 @@ const AdminDrivers = () => {
     });
     setDriverVehicles(vMap);
 
-    // Fetch driver ratings
-    const { data: ratedTrips } = await supabase
-      .from("trips")
-      .select("driver_id, rating")
-      .eq("status", "completed")
-      .not("rating", "is", null)
-      .not("driver_id", "is", null);
+    // Fetch driver ratings and declines
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const [ratedTripsRes, declinesRes] = await Promise.all([
+      supabase
+        .from("trips")
+        .select("driver_id, rating")
+        .eq("status", "completed")
+        .not("rating", "is", null)
+        .not("driver_id", "is", null),
+      supabase
+        .from("trip_declines")
+        .select("driver_id, declined_at")
+    ]);
     
+    const ratedTrips = ratedTripsRes.data;
     const rMap: Record<string, { sum: number; count: number }> = {};
     (ratedTrips || []).forEach((t: any) => {
       if (!rMap[t.driver_id]) rMap[t.driver_id] = { sum: 0, count: 0 };
@@ -78,6 +87,15 @@ const AdminDrivers = () => {
       ratingsMap[id] = { avg: Math.round((v.sum / v.count) * 10) / 10, count: v.count };
     });
     setDriverRatings(ratingsMap);
+
+    // Process declines
+    const dMap: Record<string, { today: number; total: number }> = {};
+    (declinesRes.data || []).forEach((d: any) => {
+      if (!dMap[d.driver_id]) dMap[d.driver_id] = { today: 0, total: 0 };
+      dMap[d.driver_id].total += 1;
+      if (new Date(d.declined_at) >= todayStart) dMap[d.driver_id].today += 1;
+    });
+    setDriverDeclines(dMap);
 
     setLoading(false);
   };
@@ -390,6 +408,7 @@ const AdminDrivers = () => {
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Rating</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Declines</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicles</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Docs</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -398,9 +417,9 @@ const AdminDrivers = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : drivers.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
             ) : (
               drivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
@@ -423,6 +442,20 @@ const AdminDrivers = () => {
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">No ratings</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {driverDeclines[d.id] ? (
+                          <div className="flex items-center gap-1.5">
+                            <ThumbsDown className="w-3.5 h-3.5 text-destructive" />
+                            <div>
+                              <span className="text-sm font-medium text-foreground">{driverDeclines[d.id].today}</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">today</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">/ {driverDeclines[d.id].total} total</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">0</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -471,7 +504,7 @@ const AdminDrivers = () => {
                     {/* Expanded vehicles row */}
                     {isExpanded && (
                       <tr key={`${d.id}-vehicles`} className="border-b border-border bg-surface/50">
-                        <td colSpan={7} className="px-4 py-3">
+                        <td colSpan={9} className="px-4 py-3">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
