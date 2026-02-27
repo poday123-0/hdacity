@@ -467,6 +467,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          image_url: string | null
           is_read: boolean
           message: string
           read_by: Json
@@ -478,6 +479,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          image_url?: string | null
           is_read?: boolean
           message?: string
           read_by?: Json
@@ -489,6 +491,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          image_url?: string | null
           is_read?: boolean
           message?: string
           read_by?: Json
