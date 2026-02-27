@@ -63,7 +63,8 @@ const AdminVehicleTypes = () => {
       .from("vehicle-images")
       .upload(filePath, file, { upsert: true });
     if (error) throw error;
-    return getPublicUrl(filePath);
+    // Add cache-busting timestamp so all clients fetch the new version immediately
+    return `${getPublicUrl(filePath)}?t=${Date.now()}`;
   };
 
   const openEdit = (vt: any) => {
@@ -346,10 +347,10 @@ const AdminVehicleTypes = () => {
                   <tr key={vt.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
                       {vt.image_url ? (
-                        <img src={vt.image_url} alt={vt.name} className="w-12 h-12 rounded-lg object-contain bg-surface" />
+                        <img src={vt.image_url} alt={vt.name} className="w-8 h-8 rounded-lg object-contain bg-surface" />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <IconComp className="w-6 h-6 text-primary" />
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <IconComp className="w-4 h-4 text-primary" />
                         </div>
                       )}
                     </td>
@@ -359,7 +360,7 @@ const AdminVehicleTypes = () => {
                     </td>
                     <td className="px-4 py-3">
                       {vt.map_icon_url ? (
-                        <img src={vt.map_icon_url} alt="Map icon" className="w-8 h-8 object-contain" />
+                        <img src={vt.map_icon_url} alt="Map icon" className="w-6 h-6 object-contain" />
                       ) : (
                         <span className="text-xs text-muted-foreground">Default</span>
                       )}
