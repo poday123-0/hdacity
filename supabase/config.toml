@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.auto-expire-trips]
 verify_jwt = false
+
+[functions.import-passengers-csv]
+verify_jwt = false

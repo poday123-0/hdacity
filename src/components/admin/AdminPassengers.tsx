@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, Pencil, Trash2, X, FileUp, Upload, Download, Loader2, UserCheck, UserX } from "lucide-react";
+import { Search, Pencil, Trash2, X, FileUp, Upload, Loader2, UserCheck, UserX, CheckSquare, Square } from "lucide-react";
 
 const AdminPassengers = () => {
   const [passengers, setPassengers] = useState<any[]>([]);
@@ -14,6 +14,7 @@ const AdminPassengers = () => {
   const [showImport, setShowImport] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState<any>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const fetchPassengers = async () => {
     setLoading(true);
@@ -37,6 +38,50 @@ const AdminPassengers = () => {
       p.email?.toLowerCase().includes(q)
     );
   });
+
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map(p => p.id)));
+    }
+  };
+
+  const bulkSetStatus = async (status: string) => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("profiles").update({ status }).in("id", ids);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${ids.length} passenger(s) set to ${status}` });
+      setSelected(new Set());
+      fetchPassengers();
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} passenger(s)? This cannot be undone.`)) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("profiles").delete().in("id", ids);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${ids.length} passenger(s) deleted` });
+      setSelected(new Set());
+      fetchPassengers();
+    }
+  };
 
   const openEdit = (p: any) => {
     setEditForm({
@@ -91,43 +136,15 @@ const AdminPassengers = () => {
     setCsvResult(null);
     try {
       const text = await file.text();
-      // Parse CSV locally and insert as Riders
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { throw new Error("No data rows found"); }
-      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
-      let created = 0, skipped = 0;
-      const errors: string[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ""));
-        const row: Record<string, string> = {};
-        headers.forEach((h, idx) => { row[h] = values[idx] || ""; });
-
-        const phone = (row.phone_number || row.phone || row.mobile || "").replace(/\D/g, "");
-        const firstName = row.first_name || row.firstname || "";
-        if (!phone || !firstName) { skipped++; errors.push(`Row ${i}: missing phone or name`); continue; }
-
-        // Check if exists
-        const { data: existing } = await supabase.from("profiles").select("id").eq("phone_number", phone).eq("user_type", "Rider").maybeSingle();
-        if (existing) { skipped++; continue; }
-
-        const { error } = await supabase.from("profiles").insert({
-          phone_number: phone,
-          first_name: firstName,
-          last_name: row.last_name || row.lastname || "",
-          email: row.email || null,
-          country_code: row.country_code || "960",
-          gender: row.gender || "1",
-          user_type: "Rider",
-          status: row.status || "Active",
-        });
-        if (error) { skipped++; errors.push(`Row ${i}: ${error.message}`); }
-        else { created++; }
+      const { data, error } = await supabase.functions.invoke("import-passengers-csv", { body: { csv: text } });
+      if (error) {
+        toast({ title: "Import failed", description: error.message, variant: "destructive" });
+        setCsvResult({ error: error.message });
+      } else {
+        setCsvResult(data);
+        toast({ title: "Import complete", description: `${data.created} passengers created` });
+        fetchPassengers();
       }
-
-      setCsvResult({ total_rows: lines.length - 1, created, skipped, errors: errors.slice(0, 20) });
-      toast({ title: "Import complete", description: `${created} passengers created, ${skipped} skipped` });
-      fetchPassengers();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
       setCsvResult({ error: err.message });
@@ -240,6 +257,26 @@ const AdminPassengers = () => {
         </div>
       )}
 
+      {/* Bulk Actions Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">{selected.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-semibold hover:bg-primary/20 transition-colors">
+            <UserCheck className="w-3.5 h-3.5" /> Activate
+          </button>
+          <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-lg text-xs font-semibold hover:bg-muted/80 transition-colors">
+            <UserX className="w-3.5 h-3.5" /> Deactivate
+          </button>
+          <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 transition-colors">
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button onClick={() => setSelected(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
@@ -261,6 +298,11 @@ const AdminPassengers = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface">
+                  <th className="px-4 py-3 w-10">
+                    <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                      {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                    </button>
+                  </th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Passenger</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Phone</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Email</th>
@@ -272,7 +314,12 @@ const AdminPassengers = () => {
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-surface/50">
+                  <tr key={p.id} className={`hover:bg-surface/50 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
+                    <td className="px-4 py-3">
+                      <button onClick={() => toggleSelect(p.id)} className="text-muted-foreground hover:text-foreground">
+                        {selected.has(p.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
@@ -313,7 +360,7 @@ const AdminPassengers = () => {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                       No passengers found
                     </td>
                   </tr>

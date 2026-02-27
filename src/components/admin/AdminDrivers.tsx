@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square } from "lucide-react";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "" };
 
@@ -31,6 +31,7 @@ const AdminDrivers = () => {
   const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm);
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [showVehicleForm, setShowVehicleForm] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const fetchAll = async () => {
     setLoading(true);
@@ -101,6 +102,58 @@ const AdminDrivers = () => {
   };
 
   useEffect(() => { fetchAll(); }, [search]);
+
+  // Bulk actions
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === drivers.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(drivers.map(d => d.id)));
+    }
+  };
+
+  const bulkSetStatus = async (status: string) => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    if (status === "Active") {
+      // Check docs for each
+      const incomplete = drivers.filter(d => ids.includes(d.id) && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4);
+      if (incomplete.length > 0) {
+        toast({ title: "Cannot approve", description: `${incomplete.length} driver(s) have incomplete documents`, variant: "destructive" });
+        return;
+      }
+    }
+    const { error } = await supabase.from("profiles").update({ status }).in("id", ids);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${ids.length} driver(s) set to ${status}` });
+      setSelected(new Set());
+      fetchAll();
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} driver(s)? This cannot be undone.`)) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("profiles").delete().in("id", ids);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${ids.length} driver(s) deleted` });
+      setSelected(new Set());
+      fetchAll();
+    }
+  };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
@@ -398,12 +451,36 @@ const AdminDrivers = () => {
           <button onClick={saveEdit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">Save Changes</button>
         </div>
       )}
+      {/* Bulk Actions Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">{selected.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-semibold hover:bg-primary/20 transition-colors">
+            <UserCheck className="w-3.5 h-3.5" /> Approve
+          </button>
+          <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-lg text-xs font-semibold hover:bg-muted/80 transition-colors">
+            <UserX className="w-3.5 h-3.5" /> Deactivate
+          </button>
+          <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 transition-colors">
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button onClick={() => setSelected(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Drivers Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-surface">
+              <th className="px-4 py-3 w-10">
+                    <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                      {selected.size === drivers.length && drivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                    </button>
+                  </th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
@@ -417,9 +494,9 @@ const AdminDrivers = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : drivers.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
             ) : (
               drivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
@@ -429,7 +506,12 @@ const AdminDrivers = () => {
                 const isExpanded = expandedDriver === d.id;
                 return (
                   <>
-                    <tr key={d.id} className="border-b border-border last:border-0">
+                    <tr key={d.id} className={`border-b border-border last:border-0 ${selected.has(d.id) ? "bg-primary/5" : ""}`}>
+                      <td className="px-4 py-3">
+                        <button onClick={() => toggleSelect(d.id)} className="text-muted-foreground hover:text-foreground">
+                          {selected.has(d.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
@@ -504,7 +586,7 @@ const AdminDrivers = () => {
                     {/* Expanded vehicles row */}
                     {isExpanded && (
                       <tr key={`${d.id}-vehicles`} className="border-b border-border bg-surface/50">
-                        <td colSpan={9} className="px-4 py-3">
+                        <td colSpan={10} className="px-4 py-3">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
