@@ -171,7 +171,19 @@
     border-radius: 0 1.5rem 1.5rem 0 !important;
     box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15) !important;
     animation: slideFromLeft 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
-    transform: none !important;
+  }
+
+  /* When minimized, slide panel off-screen to the left */
+  .landscape-panel.landscape-minimized {
+    transform: translateX(-100%) !important;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
+    animation: none !important;
+  }
+
+  /* Expand button: reposition for landscape */
+  .landscape-expand-btn {
+    bottom: auto !important;
+    top: 1rem;
   }
 
   /* Allow panel content to scroll full height */
