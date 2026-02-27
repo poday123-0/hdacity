@@ -151,8 +151,6 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
 
           <div className="flex items-center gap-1.5">
             <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
-            <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
-            <span className="text-lg font-extrabold tracking-tight text-primary">TAXI</span>
           </div>
 
           <div className="flex items-center gap-2">
