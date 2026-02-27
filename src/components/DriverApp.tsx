@@ -1802,9 +1802,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </div>
                   </div>
 
-                  {/* Navigation info — landscape only (embedded from map) */}
+                  {/* Navigation info — embedded in trip panel */}
                   {navStepData && (
-                    <div className="hidden landscape-nav-embed rounded-xl overflow-hidden">
+                    <div className="rounded-xl overflow-hidden border border-border/30">
                       <div className="bg-primary px-3 py-2 flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center shrink-0">
                           <span className="text-sm font-black text-primary-foreground">
@@ -1824,6 +1824,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <p className="text-xs font-bold text-primary-foreground leading-tight line-clamp-1">{navStepData.instruction}</p>
                           <p className="text-[10px] text-primary-foreground/70 font-medium">{navStepData.distance}</p>
                         </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] font-bold text-primary-foreground">{navStepData.eta}</span>
+                          <span className="text-[10px] text-primary-foreground/60">{navStepData.totalDistance}</span>
+                        </div>
                       </div>
                       {navStepData.nextInstruction && (
                         <div className="bg-surface px-3 py-1.5 flex items-center gap-2">
@@ -1841,18 +1845,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <span className="text-[10px] text-muted-foreground">{navStepData.nextDistance}</span>
                         </div>
                       )}
-                      <div className="bg-surface px-3 py-1.5 flex items-center justify-between border-t border-border/20">
-                        <div className="flex items-center gap-1">
-                          <Navigation className="w-3 h-3 text-primary" />
-                          <span className="text-[10px] font-semibold text-foreground">
-                            {driverTripPhase === "heading_to_pickup" ? "To Pickup" : driverTripPhase === "in_progress" ? "To Drop-off" : "Navigate"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold text-primary">{navStepData.eta}</span>
-                          <span className="text-[10px] text-muted-foreground">{navStepData.totalDistance}</span>
-                        </div>
-                      </div>
                     </div>
                   )}
 
