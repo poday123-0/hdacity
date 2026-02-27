@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { Navigation, ChevronUp, ChevronDown, Locate } from "lucide-react";
+import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair } from "lucide-react";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 
@@ -37,6 +37,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
   const userInteractingRef = useRef(false);
   const [userPannedAway, setUserPannedAway] = useState(false);
+  const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error } = useGoogleMaps();
 
@@ -134,7 +135,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12),
       });
     }
-    if (!userInteractingRef.current) {
+    if (!userInteractingRef.current && followDriver) {
       mapInstance.current.panTo(currentPos);
       if (isNavigating) mapInstance.current.setZoom(17);
     }
@@ -350,23 +351,61 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      {/* Re-center button — shown when user has panned away */}
-      {userPannedAway && (
-        <button
-          onClick={() => {
-            userInteractingRef.current = false;
-            setUserPannedAway(false);
-            if (currentPos && mapInstance.current) {
-              mapInstance.current.panTo(currentPos);
-              mapInstance.current.setZoom(16);
-            }
-          }}
-          className="absolute bottom-4 right-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90 transition-transform"
-          title="Re-center"
-        >
-          <Locate className="w-5 h-5 text-primary" />
-        </button>
-      )}
+      {/* Map control buttons */}
+      <div className="absolute bottom-4 right-3 z-[460] flex flex-col gap-2">
+        {/* Route overview / follow toggle — shown during navigation */}
+        {isNavigating && (
+          <button
+            onClick={() => {
+              if (followDriver) {
+                setFollowDriver(false);
+                userInteractingRef.current = true;
+                setUserPannedAway(false);
+                const g = (window as any).google;
+                if (g?.maps && mapInstance.current) {
+                  const bounds = new g.maps.LatLngBounds();
+                  if (currentPos) bounds.extend(currentPos);
+                  if (pickupCoords) bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] });
+                  if (dropoffCoords) bounds.extend({ lat: dropoffCoords[0], lng: dropoffCoords[1] });
+                  mapInstance.current.fitBounds(bounds, 60);
+                }
+              } else {
+                setFollowDriver(true);
+                userInteractingRef.current = false;
+                setUserPannedAway(false);
+                if (currentPos && mapInstance.current) {
+                  mapInstance.current.panTo(currentPos);
+                  mapInstance.current.setZoom(17);
+                }
+              }
+            }}
+            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all ${
+              followDriver ? "bg-card text-muted-foreground" : "bg-primary text-primary-foreground"
+            }`}
+            title={followDriver ? "Show full route" : "Follow my location"}
+          >
+            {followDriver ? <Route className="w-5 h-5" /> : <Crosshair className="w-5 h-5" />}
+          </button>
+        )}
+
+        {/* Re-center button — shown when panned away outside navigation */}
+        {userPannedAway && !isNavigating && (
+          <button
+            onClick={() => {
+              userInteractingRef.current = false;
+              setUserPannedAway(false);
+              if (currentPos && mapInstance.current) {
+                mapInstance.current.panTo(currentPos);
+                mapInstance.current.setZoom(16);
+              }
+            }}
+            className="w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90 transition-transform"
+            title="Re-center"
+          >
+            <Locate className="w-5 h-5 text-primary" />
+          </button>
+        )}
+      </div>
       {/* In-app Navigation Overlay */}
       {isNavigating && navSteps.length > 0 && (
         <div className="absolute top-16 left-3 right-3 z-[460]">
