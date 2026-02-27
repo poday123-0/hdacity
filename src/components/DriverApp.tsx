@@ -835,7 +835,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
         <div className="px-3 py-2.5 flex items-center justify-between relative">
-          {/* Left: Profile + Toggle */}
+          {/* Left: Profile */}
           <div className="flex items-center gap-2.5">
             <button onClick={() => setShowProfile(true)} className="w-11 h-11 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform border border-border/30">
               {avatarUrl ? (
@@ -843,13 +843,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               ) : (
                 <User className="w-5 h-5 text-foreground" />
               )}
-            </button>
-            <button
-              onClick={() => setScreen("offline")}
-              className="relative w-12 h-7 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0 shadow-sm"
-              title="Go Offline"
-            >
-              <div className="w-6 h-6 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[21px]" />
             </button>
           </div>
 
@@ -933,8 +926,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </AnimatePresence>
           </div>
 
-          {/* Right: spacer for balance */}
-          <div className="w-11" />
+          {/* Right: On/Off toggle */}
+          <button
+            onClick={() => setScreen("offline")}
+            className="relative w-12 h-7 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0 shadow-sm"
+            title="Go Offline"
+          >
+            <div className="w-6 h-6 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[21px]" />
+          </button>
         </div>
       </div>
 
