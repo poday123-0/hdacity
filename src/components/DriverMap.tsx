@@ -88,7 +88,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       map, position: currentPos || MALE_CENTER, zIndex: 1000,
     };
     if (mapIconUrl) {
-      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(40, 40), anchor: new g.maps.Point(20, 20) };
+      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
       markerOpts.optimized = false;
     } else {
       markerOpts.icon = {
@@ -126,7 +126,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     driverMarkerRef.current.setPosition(currentPos);
     const g = (window as any).google;
     if (mapIconUrl) {
-      driverMarkerRef.current.setIcon({ url: mapIconUrl, scaledSize: new g.maps.Size(40, 40), anchor: new g.maps.Point(20, 20) });
+      driverMarkerRef.current.setIcon({ url: mapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) });
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
       driverMarkerRef.current.setIcon({
@@ -233,7 +233,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     };
     // Use passenger icon for pickup marker when heading to pickup
     if (tripPhase === "heading_to_pickup" && passengerMapIconUrl) {
-      destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(36, 36), anchor: new g.maps.Point(18, 18) };
+      destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(24, 24), anchor: new g.maps.Point(12, 12) };
     } else {
       destMarkerOpts.label = { text: destLabel, color: "white", fontWeight: "700", fontSize: "12px" };
       destMarkerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: destColor, fillOpacity: 1, strokeColor: "white", strokeWeight: 3 };

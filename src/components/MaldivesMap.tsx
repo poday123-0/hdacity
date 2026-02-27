@@ -224,7 +224,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
           map, position: { lat: v.lat, lng: v.lng },
         };
         if (v.imageUrl) {
-          markerOpts.icon = { url: v.imageUrl, scaledSize: new g.maps.Size(40, 40), anchor: new g.maps.Point(20, 20) };
+          markerOpts.icon = { url: v.imageUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
           markerOpts.optimized = false;
         } else {
           markerOpts.icon = {
