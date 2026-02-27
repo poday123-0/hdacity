@@ -48,6 +48,7 @@ import {
   Share2,
   Type,
   Settings,
+  Route,
   Bell as BellIcon } from
 "lucide-react";
 import TripChat from "./TripChat";
@@ -163,6 +164,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const recenterRef = useRef<(() => void) | null>(null);
+  const followToggleRef = useRef<(() => void) | null>(null);
+  const [isFollowingDriver, setIsFollowingDriver] = useState(true);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
@@ -1143,7 +1146,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               distance_km: distKm,
             } as any).eq("id", currentTrip.id).then(() => {});
           }
-        }} />
+        }}
+        onFollowDriverChange={setIsFollowingDriver}
+        followToggleRef={followToggleRef} />
 
 
       {/* Map action buttons — right side, positioned for thumb reach */}
@@ -1161,6 +1166,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <div className="w-5 h-px bg-border mx-auto" />
           </>
         }
+        {screen === "navigating" && (
+          <>
+            <button
+              onClick={() => followToggleRef.current?.()}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
+                isFollowingDriver ? "text-muted-foreground hover:bg-surface" : "bg-primary text-primary-foreground"
+              }`}
+              title={isFollowingDriver ? "Show full route" : "Follow my location"}
+            >
+              {isFollowingDriver ? <Route className="w-[18px] h-[18px]" /> : <Crosshair className="w-[18px] h-[18px]" />}
+            </button>
+            <div className="w-5 h-px bg-border mx-auto" />
+          </>
+        )}
         <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
         {userProfile?.id &&
         <>
