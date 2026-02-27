@@ -102,10 +102,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     mapInstance.current = map;
 
     // Detect user interaction — stop auto-panning
-    map.addListener("dragstart", () => {
+    const handleUserInteract = () => {
       userInteractingRef.current = true;
       setUserPannedAway(true);
       if (interactTimeoutRef.current) clearTimeout(interactTimeoutRef.current);
+    };
+    map.addListener("dragstart", handleUserInteract);
+    map.addListener("zoom_changed", () => {
+      // Only treat as user interaction if not programmatic
+      if (!userInteractingRef.current) {
+        handleUserInteract();
+      }
     });
 
     return () => { mapInstance.current = null; };
