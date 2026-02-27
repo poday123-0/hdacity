@@ -82,6 +82,9 @@ const Index = () => {
 
       if (!activeTrip) return;
 
+      // Set the ref BEFORE setting state to prevent realtime from re-toasting
+      lastPlayedStatusRef.current = activeTrip.status;
+
       setCurrentTripId(activeTrip.id);
       setTripStatus(activeTrip.status);
       setEstimatedFare(activeTrip.estimated_fare || 0);
@@ -335,6 +338,7 @@ const Index = () => {
   const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});
   const passengerAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastPlayedStatusRef = useRef<string | null>(null);
+  const passengerSoundsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     const fetchSounds = async () => {
@@ -350,6 +354,7 @@ const Index = () => {
           if (url) map[status] = url;
         });
         setPassengerSounds(map);
+        passengerSoundsRef.current = map;
       }
     };
     fetchSounds();
@@ -386,7 +391,7 @@ const Index = () => {
           };
 
           const soundKey = status === "in_progress" ? "started" : status;
-          const soundUrl = passengerSounds[soundKey];
+          const soundUrl = passengerSoundsRef.current[soundKey];
           if (soundUrl) {
             try {
               if (passengerAudioRef.current) { passengerAudioRef.current.pause(); passengerAudioRef.current.currentTime = 0; }
@@ -436,7 +441,7 @@ const Index = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [currentTripId, passengerSounds]);
+  }, [currentTripId]); // removed passengerSounds — using ref instead
 
   const handleFeedbackComplete = useCallback(() => {
     setCurrentTripId(null);
