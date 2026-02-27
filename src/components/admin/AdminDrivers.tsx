@@ -289,15 +289,37 @@ const AdminDrivers = () => {
     setCsvResult(null);
     try {
       const text = await file.text();
-      const { data, error } = await supabase.functions.invoke("import-drivers-csv", { body: { csv: text } });
-      if (error) {
-        toast({ title: "Import failed", description: error.message, variant: "destructive" });
-        setCsvResult({ error: error.message });
-      } else {
-        setCsvResult(data);
-        toast({ title: "Import complete", description: `${data.drivers_created} drivers, ${data.vehicles_created} vehicles created` });
-        fetchAll();
+      const allLines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (allLines.length < 2) {
+        toast({ title: "Import failed", description: "No data rows found", variant: "destructive" });
+        setCsvImporting(false);
+        return;
       }
+      const header = allLines[0];
+      const dataLines = allLines.slice(1);
+      const BATCH_SIZE = 100;
+      let totalResult = { drivers_created: 0, drivers_skipped: 0, vehicles_created: 0, vehicles_skipped: 0, errors: [] as string[], total_rows: 0 };
+
+      for (let i = 0; i < dataLines.length; i += BATCH_SIZE) {
+        const batchLines = dataLines.slice(i, i + BATCH_SIZE);
+        const batchCsv = [header, ...batchLines].join("\n");
+        const { data, error } = await supabase.functions.invoke("import-drivers-csv", { body: { csv: batchCsv } });
+        if (error) {
+          totalResult.errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
+        } else if (data) {
+          totalResult.drivers_created += data.drivers_created || 0;
+          totalResult.drivers_skipped += data.drivers_skipped || 0;
+          totalResult.vehicles_created += data.vehicles_created || 0;
+          totalResult.vehicles_skipped += data.vehicles_skipped || 0;
+          totalResult.total_rows += data.total_rows || 0;
+          if (data.errors) totalResult.errors.push(...data.errors);
+        }
+        toast({ title: "Importing...", description: `Processed ${Math.min(i + BATCH_SIZE, dataLines.length)} / ${dataLines.length} rows` });
+      }
+
+      setCsvResult(totalResult);
+      toast({ title: "Import complete", description: `${totalResult.drivers_created} drivers, ${totalResult.vehicles_created} vehicles created` });
+      fetchAll();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
       setCsvResult({ error: err.message });
