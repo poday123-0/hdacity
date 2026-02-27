@@ -49,6 +49,7 @@ import {
   Type,
   Settings,
   Route,
+  Gauge,
   Bell as BellIcon } from
 "lucide-react";
 import TripChat from "./TripChat";
@@ -168,6 +169,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const recenterRef = useRef<(() => void) | null>(null);
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
+  const [driverSpeed, setDriverSpeed] = useState(0);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
@@ -1197,7 +1199,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           }
         }}
         onFollowDriverChange={setIsFollowingDriver}
-        followToggleRef={followToggleRef} />
+        followToggleRef={followToggleRef}
+        onSpeedChange={setDriverSpeed} />
 
 
       {/* Map action buttons — right side, positioned for thumb reach */}
@@ -1786,6 +1789,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
                       <Luggage className="w-3.5 h-3.5 text-primary" />
                       <span className="text-xs font-bold text-foreground">{currentTrip.luggage_count}</span>
+                    </div>
+                    {/* Speedometer — mobile only */}
+                    <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5 md:hidden">
+                      <Gauge className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-bold text-foreground">{driverSpeed}</span>
+                      <span className="text-[9px] text-muted-foreground">km/h</span>
                     </div>
                   </div>
 
