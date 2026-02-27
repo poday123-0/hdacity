@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X, MessageSquare } from "lucide-react";
 
@@ -56,9 +57,7 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
     // Fetch message sound URL
     const soundKey = senderType === "passenger" ? "passenger_sound_message" : "driver_sound_message";
     let messageSoundUrl: string | null = null;
-    supabase.from("system_settings").select("value").eq("key", soundKey).single().then(({ data }) => {
-      if (data?.value && typeof data.value === "string") messageSoundUrl = data.value;
-    });
+    fetchSoundUrl(soundKey).then(url => { messageSoundUrl = url; });
 
     const channel = supabase
       .channel(`trip-chat-${tripId}`)
@@ -81,22 +80,9 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
           }
           // Play notification sound
           if (messageSoundUrl) {
-            const audio = new Audio(messageSoundUrl);
-            audio.play().catch(() => {});
+            playSound(messageSoundUrl);
           } else {
-            // Fallback: use a short beep via AudioContext
-            try {
-              const ctx = new AudioContext();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.frequency.value = 880;
-              gain.gain.value = 0.3;
-              osc.start();
-              osc.stop(ctx.currentTime + 0.15);
-              setTimeout(() => ctx.close(), 300);
-            } catch {}
+            playFallbackBeep();
           }
         }
       })

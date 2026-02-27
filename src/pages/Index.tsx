@@ -15,6 +15,7 @@ import RideFeedback from "@/components/RideFeedback";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyTripRequested } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
+import { fetchSoundUrls, playSound } from "@/lib/sound-utils";
 import SOSButton from "@/components/SOSButton";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -360,20 +361,12 @@ const Index = () => {
 
   useEffect(() => {
     const fetchSounds = async () => {
-      const { data } = await supabase
-        .from("system_settings")
-        .select("key, value")
-        .in("key", ["passenger_sound_accepted", "passenger_sound_arrived", "passenger_sound_started", "passenger_sound_completed", "passenger_sound_cancelled", "passenger_sound_message"]);
-      if (data) {
-        const map: Record<string, string> = {};
-        data.forEach((s: any) => {
-          const status = s.key.replace("passenger_sound_", "");
-          const url = typeof s.value === "string" ? s.value : String(s.value);
-          if (url) map[status] = url;
-        });
-        setPassengerSounds(map);
-        passengerSoundsRef.current = map;
-      }
+      const map = await fetchSoundUrls(
+        ["passenger_sound_accepted", "passenger_sound_arrived", "passenger_sound_started", "passenger_sound_completed", "passenger_sound_cancelled", "passenger_sound_message"],
+        "passenger_sound_"
+      );
+      setPassengerSounds(map);
+      passengerSoundsRef.current = map;
     };
     fetchSounds();
   }, []);
@@ -414,11 +407,8 @@ const Index = () => {
           const soundKey = status === "in_progress" ? "started" : status;
           const soundUrl = passengerSoundsRef.current[soundKey];
           if (soundUrl) {
-            try {
-              if (passengerAudioRef.current) { passengerAudioRef.current.pause(); passengerAudioRef.current.currentTime = 0; }
-              passengerAudioRef.current = new Audio(soundUrl);
-              passengerAudioRef.current.play().catch(() => {});
-            } catch {}
+            if (passengerAudioRef.current) { passengerAudioRef.current.pause(); passengerAudioRef.current.currentTime = 0; }
+            passengerAudioRef.current = playSound(soundUrl);
           }
 
           const notif = notifications[status];

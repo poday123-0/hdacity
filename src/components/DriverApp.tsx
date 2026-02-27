@@ -59,6 +59,7 @@ import RideRequestMap from "./RideRequestMap";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
+import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -652,11 +653,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       // Trip cancelled by passenger
       if (updated.status === "cancelled") {
-        const { data: soundSetting } = await supabase.from("system_settings").select("value").eq("key", "driver_sound_cancelled").single();
-        if (soundSetting?.value && typeof soundSetting.value === "string") {
-          const audio = new Audio(soundSetting.value);
-          audio.play().catch(() => {});
-        }
+        const soundUrl = await fetchSoundUrl("driver_sound_cancelled");
+        playSound(soundUrl);
         toast({ title: "Trip Cancelled", description: "The passenger cancelled this trip.", variant: "destructive" });
         await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
         setScreen("online");
@@ -677,9 +675,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   useEffect(() => {
     if (!currentTrip?.id) return;
     let messageSoundUrl: string | null = null;
-    supabase.from("system_settings").select("value").eq("key", "driver_sound_message").single().then(({ data }) => {
-      if (data?.value && typeof data.value === "string") messageSoundUrl = data.value;
-    });
+    fetchSoundUrl("driver_sound_message").then(url => { messageSoundUrl = url; });
 
     const channel = supabase
       .channel(`driver-bg-chat-${currentTrip.id}`)
@@ -696,17 +692,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           setUnreadDriverMessages(prev => prev + 1);
           // Play sound
           if (messageSoundUrl) {
-            new Audio(messageSoundUrl).play().catch(() => {});
+            playSound(messageSoundUrl);
           } else {
-            try {
-              const ctx = new AudioContext();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain); gain.connect(ctx.destination);
-              osc.frequency.value = 880; gain.gain.value = 0.3;
-              osc.start(); osc.stop(ctx.currentTime + 0.15);
-              setTimeout(() => ctx.close(), 300);
-            } catch {}
+            playFallbackBeep();
           }
           // Vibrate
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
