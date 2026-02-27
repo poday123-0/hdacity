@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair } from "lucide-react";
+import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
@@ -62,6 +62,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [navEta, setNavEta] = useState("");
   const [navDistance, setNavDistance] = useState("");
   const [navExpanded, setNavExpanded] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [currentHeading, setCurrentHeading] = useState<number | null>(null);
 
@@ -523,8 +524,20 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
-      {/* Navigation Overlay */}
-      {isNavigating && navSteps.length > 0 && (
+      {/* Navigation Overlay — restore pill when hidden */}
+      {isNavigating && navSteps.length > 0 && navHidden && (
+        <button
+          onClick={() => setNavHidden(false)}
+          className="absolute top-12 left-2 z-[460] bg-card/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 active:scale-95 transition-transform border border-border/30"
+        >
+          <Navigation className="w-3 h-3 text-primary" />
+          <span className="text-[10px] font-bold text-primary">{navEta}</span>
+          <span className="text-[10px] text-muted-foreground">{navDistance}</span>
+          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+        </button>
+      )}
+
+      {isNavigating && navSteps.length > 0 && !navHidden && (
         <div className={`absolute top-12 z-[460] transition-all duration-300 ${tripPanelOpen ? "left-1 right-auto w-[180px]" : "left-2 right-2"}`}>
           <div className="overflow-hidden rounded-xl shadow-lg">
             {/* Current maneuver — prominent */}
@@ -544,14 +557,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                   </p>
                 )}
               </div>
-              {!tripPanelOpen && (
+              <div className="flex items-center gap-1 shrink-0">
+                {!tripPanelOpen && (
+                  <button
+                    onClick={() => setNavExpanded(!navExpanded)}
+                    className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center active:scale-90 transition-transform"
+                  >
+                    {navExpanded ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
+                  </button>
+                )}
                 <button
-                  onClick={() => setNavExpanded(!navExpanded)}
-                  className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0 active:scale-90 transition-transform"
+                  onClick={() => setNavHidden(true)}
+                  className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center active:scale-90 transition-transform"
                 >
-                  {navExpanded ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
+                  <X className="w-3.5 h-3.5 text-white" />
                 </button>
-              )}
+              </div>
             </div>
 
             {/* Next step preview — hidden when compact */}
