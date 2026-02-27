@@ -237,9 +237,10 @@
     margin: 0 !important;
   }
 
-  /* Trip panel: add top padding to clear the top bar */
+  /* Trip panel: raise above top bar and add top padding */
   .landscape-panel-trip-offset {
-    padding-top: 56px !important;
+    z-index: 750 !important;
+    padding-top: 0 !important;
   }
 
 }
