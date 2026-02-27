@@ -813,28 +813,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[801] w-64 bg-card rounded-2xl shadow-xl border border-border overflow-hidden"
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[801] w-72 bg-card rounded-2xl shadow-xl border border-border overflow-hidden"
                     style={{ fontSize: '14px' }}
                   >
-                    <div className="px-3 py-2 border-b border-border">
+                    <div className="px-4 py-2.5 border-b border-border">
                       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Switch Vehicle</p>
                     </div>
                     <div className="max-h-60 overflow-y-auto py-1">
-                      {driverVehicles.map((v) => {
+                      {[...driverVehicles]
+                        .sort((a, b) => (a.id === selectedVehicleId ? -1 : b.id === selectedVehicleId ? 1 : 0))
+                        .map((v) => {
                         const vType = vehicleTypes.find(vt => vt.id === v.vehicle_type_id);
                         const isSelected = selectedVehicleId === v.id;
                         return (
                           <button
                             key={v.id}
                             onClick={() => {
-                              selectVehicle(v);
+                              if (!isSelected) selectVehicle(v);
                               setShowVehicleSwitcher(false);
                             }}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                              isSelected ? "bg-primary/5" : "hover:bg-surface active:bg-surface"
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                              isSelected ? "bg-primary/5 border-l-2 border-primary" : "hover:bg-surface active:bg-surface border-l-2 border-transparent"
                             }`}
                           >
-                            <div className={`w-10 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            <div className={`w-11 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                               isSelected ? "bg-primary/10" : "bg-surface"
                             }`}>
                               {vType?.image_url ? (
@@ -847,7 +849,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               <p className={`text-sm font-semibold truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
                                 {v.make} {v.model}
                               </p>
-                              <p className="text-xs text-muted-foreground">{v.plate_number}</p>
+                              <p className="text-xs text-muted-foreground">{v.plate_number}{v.color ? ` · ${v.color}` : ""}</p>
                             </div>
                             {isSelected && (
                               <CheckCircle className="w-4 h-4 text-primary shrink-0" />
