@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Car, MapPin, Phone, RotateCcw } from "lucide-react";
+import hdaLogo from "@/assets/hda-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -224,8 +225,8 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
             ))}
             <div className="absolute inset-0 flex items-center justify-center">
               <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-                <Car className="w-8 h-8 text-primary-foreground" />
+                className="w-16 h-16 rounded-full bg-primary flex items-center justify-center overflow-hidden">
+                <img src={hdaLogo} alt="HDA" className="w-10 h-10 object-contain" />
               </motion.div>
             </div>
           </div>
