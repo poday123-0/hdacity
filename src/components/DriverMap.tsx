@@ -88,7 +88,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       map, position: currentPos || MALE_CENTER, zIndex: 1000,
     };
     if (mapIconUrl) {
-      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(30, 30) };
+      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(40, 40), anchor: new g.maps.Point(20, 20) };
+      markerOpts.optimized = false;
     } else {
       markerOpts.icon = {
         path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z",
@@ -125,7 +126,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     driverMarkerRef.current.setPosition(currentPos);
     const g = (window as any).google;
     if (mapIconUrl) {
-      driverMarkerRef.current.setIcon({ url: mapIconUrl, scaledSize: new g.maps.Size(30, 30) });
+      driverMarkerRef.current.setIcon({ url: mapIconUrl, scaledSize: new g.maps.Size(40, 40), anchor: new g.maps.Point(20, 20) });
+      driverMarkerRef.current.setOptions({ optimized: false });
     } else {
       driverMarkerRef.current.setIcon({
         path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z",
@@ -231,7 +233,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     };
     // Use passenger icon for pickup marker when heading to pickup
     if (tripPhase === "heading_to_pickup" && passengerMapIconUrl) {
-      destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(32, 32) };
+      destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(36, 36), anchor: new g.maps.Point(18, 18) };
     } else {
       destMarkerOpts.label = { text: destLabel, color: "white", fontWeight: "700", fontSize: "12px" };
       destMarkerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: destColor, fillOpacity: 1, strokeColor: "white", strokeWeight: 3 };
