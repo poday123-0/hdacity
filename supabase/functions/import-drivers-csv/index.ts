@@ -45,6 +45,14 @@ serve(async (req) => {
     }
 
     const rows = parseCSV(csv);
+    // Clean #N/A values
+    for (const row of rows) {
+      for (const key of Object.keys(row)) {
+        if (row[key] === "#N/A" || row[key] === "N/A") {
+          row[key] = "";
+        }
+      }
+    }
     if (rows.length === 0) {
       return new Response(JSON.stringify({ error: "No data rows found in CSV" }), {
         status: 400,
