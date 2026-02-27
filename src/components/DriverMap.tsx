@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 
@@ -352,22 +353,28 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
       {/* Re-center button — top right, below top bar */}
-      {userPannedAway && !isNavigating && (
-        <button
-          onClick={() => {
-            userInteractingRef.current = false;
-            setUserPannedAway(false);
-            if (currentPos && mapInstance.current) {
-              mapInstance.current.panTo(currentPos);
-              mapInstance.current.setZoom(16);
-            }
-          }}
-          className="absolute top-20 right-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90 transition-transform"
-          title="Re-center"
-        >
-          <Locate className="w-5 h-5 text-primary" />
-        </button>
-      )}
+      <AnimatePresence>
+        {userPannedAway && !isNavigating && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            onClick={() => {
+              userInteractingRef.current = false;
+              setUserPannedAway(false);
+              if (currentPos && mapInstance.current) {
+                mapInstance.current.panTo(currentPos);
+                mapInstance.current.setZoom(16);
+              }
+            }}
+            className="absolute top-20 right-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90"
+            title="Re-center"
+          >
+            <Locate className="w-5 h-5 text-primary" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Navigation map controls — bottom right */}
       {isNavigating && (
