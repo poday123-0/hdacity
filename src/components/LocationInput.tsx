@@ -451,7 +451,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col max-h-[calc(100dvh-3.5rem)]`}
     >
-      <div className="px-4 pt-3 pb-6 space-y-2.5 overflow-y-auto flex-1 overscroll-contain min-h-0">
+      <div className="px-4 pt-3 pb-2 space-y-2.5 overflow-y-auto flex-1 overscroll-contain min-h-0">
         {/* Handle */}
         <button onClick={() => setMinimized(!minimized)} className="w-full flex justify-center py-1">
           <div className="w-12 h-1.5 rounded-full bg-border/60" />
@@ -847,19 +847,22 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
               )}
             </AnimatePresence>
 
-            {/* Confirm button */}
-            {!activeField && !showSaveDialog && (
-              <button
-                onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount, validStops)}
-                disabled={!canConfirm}
-                className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
-              >
-                {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})` : "Find a ride") : "Select pickup & destination"}
-              </button>
-            )}
           </>
         ) : null}
       </div>
+
+      {/* Sticky confirm button - always visible */}
+      {!minimized && !activeField && !showSaveDialog && (
+        <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 bg-card border-t border-border/40 shrink-0">
+          <button
+            onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount, validStops)}
+            disabled={!canConfirm}
+            className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
+          >
+            {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})` : "Find a ride") : "Select pickup & destination"}
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 };
