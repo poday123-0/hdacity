@@ -33,9 +33,10 @@ interface DriverMapProps {
   followToggleRef?: React.MutableRefObject<(() => void) | null>;
   onSpeedChange?: (speed: number) => void;
   tripPanelOpen?: boolean;
+  onNavStepChange?: (data: { instruction: string; distance: string; maneuver?: string; eta: string; totalDistance: string; nextInstruction?: string; nextManeuver?: string; nextDistance?: string }) => void;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -65,6 +66,23 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [navHidden, setNavHidden] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [currentHeading, setCurrentHeading] = useState<number | null>(null);
+
+  // Broadcast current nav step to parent
+  useEffect(() => {
+    if (!onNavStepChange || navSteps.length === 0) return;
+    const step = navSteps[currentStepIndex];
+    const next = currentStepIndex + 1 < navSteps.length ? navSteps[currentStepIndex + 1] : undefined;
+    onNavStepChange({
+      instruction: step?.instruction || "Continue straight",
+      distance: step?.distance || "",
+      maneuver: step?.maneuver,
+      eta: navEta,
+      totalDistance: navDistance,
+      nextInstruction: next?.instruction,
+      nextManeuver: next?.maneuver,
+      nextDistance: next?.distance,
+    });
+  }, [currentStepIndex, navSteps, navEta, navDistance, onNavStepChange]);
 
   // Track GPS with heading
   useEffect(() => {

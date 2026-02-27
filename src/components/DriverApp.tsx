@@ -171,6 +171,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
   const [driverSpeed, setDriverSpeed] = useState(0);
+  const [navStepData, setNavStepData] = useState<{ instruction: string; distance: string; maneuver?: string; eta: string; totalDistance: string; nextInstruction?: string; nextManeuver?: string; nextDistance?: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
@@ -1202,7 +1203,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         onFollowDriverChange={setIsFollowingDriver}
         followToggleRef={followToggleRef}
         onSpeedChange={setDriverSpeed}
-        tripPanelOpen={screen === "navigating" && !navPanelMinimized} />
+        tripPanelOpen={screen === "navigating" && !navPanelMinimized}
+        onNavStepChange={setNavStepData} />
 
 
       {/* Map action buttons — right side, positioned for thumb reach */}
@@ -1799,6 +1801,60 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <span className="text-[9px] text-muted-foreground">km/h</span>
                     </div>
                   </div>
+
+                  {/* Navigation info — landscape only (embedded from map) */}
+                  {navStepData && (
+                    <div className="hidden landscape-nav-embed rounded-xl overflow-hidden">
+                      <div className="bg-primary px-3 py-2 flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-black text-primary-foreground">
+                            {(() => {
+                              const m = navStepData.maneuver;
+                              if (!m) return "↑";
+                              if (m.includes("turn-left") || m === "left") return "↰";
+                              if (m.includes("turn-right") || m === "right") return "↱";
+                              if (m.includes("uturn")) return "↩";
+                              if (m.includes("roundabout")) return "↻";
+                              if (m.includes("merge") || m.includes("ramp")) return "↗";
+                              return "↑";
+                            })()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-primary-foreground leading-tight line-clamp-1">{navStepData.instruction}</p>
+                          <p className="text-[10px] text-primary-foreground/70 font-medium">{navStepData.distance}</p>
+                        </div>
+                      </div>
+                      {navStepData.nextInstruction && (
+                        <div className="bg-surface px-3 py-1.5 flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground font-medium">Then</span>
+                          <span className="text-xs font-bold text-foreground">
+                            {(() => {
+                              const m = navStepData.nextManeuver;
+                              if (!m) return "↑";
+                              if (m.includes("left")) return "↰";
+                              if (m.includes("right")) return "↱";
+                              return "↑";
+                            })()}
+                          </span>
+                          <p className="text-[10px] text-foreground font-medium line-clamp-1 flex-1">{navStepData.nextInstruction}</p>
+                          <span className="text-[10px] text-muted-foreground">{navStepData.nextDistance}</span>
+                        </div>
+                      )}
+                      <div className="bg-surface px-3 py-1.5 flex items-center justify-between border-t border-border/20">
+                        <div className="flex items-center gap-1">
+                          <Navigation className="w-3 h-3 text-primary" />
+                          <span className="text-[10px] font-semibold text-foreground">
+                            {driverTripPhase === "heading_to_pickup" ? "To Pickup" : driverTripPhase === "in_progress" ? "To Drop-off" : "Navigate"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-primary">{navStepData.eta}</span>
+                          <span className="text-[10px] text-muted-foreground">{navStepData.totalDistance}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Route card */}
                   <div className="bg-surface rounded-xl p-3 space-y-0">
