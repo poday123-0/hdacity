@@ -459,6 +459,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_read: boolean
+          message: string
+          read_by: Json
+          target_type: string
+          target_user_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          read_by?: Json
+          target_type?: string
+          target_user_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          read_by?: Json
+          target_type?: string
+          target_user_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       otp_codes: {
         Row: {
           code: string
