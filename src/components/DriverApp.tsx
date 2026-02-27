@@ -1057,8 +1057,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
             {/* Status bar - always visible */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))] animate-pulse-dot shrink-0" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  onClick={() => setScreen("offline")}
+                  className="relative w-11 h-6 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0"
+                  title="Go Offline"
+                >
+                  <div className="w-5 h-5 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[19px]" />
+                </button>
                 <span className="font-semibold text-sm text-foreground">Online</span>
                 {driverStats.avgRating > 0 && (
                   <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
@@ -1073,13 +1079,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
                 <button onClick={() => setPanelMinimized(true)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title="Hide panel">
                   <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-                <button
-                  onClick={() => setScreen("offline")}
-                  className="relative w-11 h-6 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0"
-                  title="Go Offline"
-                >
-                  <div className="w-5 h-5 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[19px]" />
                 </button>
               </div>
             </div>
