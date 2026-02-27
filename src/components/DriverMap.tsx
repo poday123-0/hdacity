@@ -31,9 +31,10 @@ interface DriverMapProps {
   onNavUpdate?: (etaText: string, distanceText: string, etaMinutes: number, distanceKm: number) => void;
   onFollowDriverChange?: (following: boolean) => void;
   followToggleRef?: React.MutableRefObject<(() => void) | null>;
+  onSpeedChange?: (speed: number) => void;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -78,7 +79,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (pos.coords.speed != null && pos.coords.speed >= 0) setCurrentSpeed(Math.round(pos.coords.speed * 3.6));
+        if (pos.coords.speed != null && pos.coords.speed >= 0) {
+          const spd = Math.round(pos.coords.speed * 3.6);
+          setCurrentSpeed(spd);
+          onSpeedChange?.(spd);
+        }
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) setCurrentHeading(pos.coords.heading);
       },
       () => {},
@@ -507,9 +512,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
       {/* Route/follow toggle removed — now in DriverApp sidebar */}
 
-      {/* Speed indicator — bottom left, always visible during navigation */}
+      {/* Speed indicator — only show on map when navigating AND on larger screens (moved to trip panel on mobile) */}
       {isNavigating && (
-        <div className="absolute bottom-4 left-3 z-[460]">
+        <div className="absolute bottom-4 left-3 z-[460] hidden md:block">
           <div className="w-14 h-14 rounded-full bg-card/95 backdrop-blur-md shadow-lg border-2 border-border/30 flex flex-col items-center justify-center">
             <span className="text-base font-black text-foreground leading-none">{currentSpeed}</span>
             <span className="text-[8px] text-muted-foreground font-medium mt-0.5">km/h</span>
