@@ -170,60 +170,57 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3"
             onClick={() => !sending && setShowConfirm(false)}
           >
             <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-card rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm sm:mx-4 max-h-[90vh] overflow-y-auto"
+              className="bg-card rounded-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+              {/* Compact header with icon + text side by side in landscape */}
+              <div className="p-5 pb-3">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    initial={{ scale: 0.5 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+                    className="w-11 h-11 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0"
+                  >
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                  </motion.div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-foreground leading-tight">Emergency SOS</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      Alert admin &amp; dispatch with your live location
+                      {userType === "passenger" && " + SMS to emergency contacts"}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Header */}
-              <div className="px-6 pt-4 pb-3 text-center">
-                <motion.div
-                  initial={{ scale: 0.5 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-                  className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-3"
-                >
-                  <AlertTriangle className="w-7 h-7 text-destructive" />
-                </motion.div>
-                <h3 className="text-lg font-bold text-foreground">Emergency SOS</h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-[260px] mx-auto">
-                  This will immediately alert admin and dispatch with your live location.
-                  {userType === "passenger" && " SMS will also be sent to your emergency contacts."}
-                </p>
-              </div>
-
-              <div className="px-6 pb-6 space-y-3">
+              <div className="px-5 pb-5 space-y-2.5">
                 {/* Passenger emergency contacts */}
                 {userType === "passenger" && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                         Emergency Contacts ({contacts.length})
                       </p>
-                      <button onClick={() => setShowContacts(!showContacts)} className="text-[11px] text-primary font-medium">
+                      <button onClick={() => setShowContacts(!showContacts)} className="text-[10px] text-primary font-medium">
                         {showContacts ? "Hide" : "Manage"}
                       </button>
                     </div>
                     {contacts.length > 0 && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         {contacts.map(c => (
-                          <div key={c.id} className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2.5 text-xs">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                              <Phone className="w-3 h-3 text-primary" />
-                            </div>
+                          <div key={c.id} className="flex items-center gap-2 bg-muted/50 rounded-lg px-2.5 py-2 text-xs">
+                            <Phone className="w-3 h-3 text-primary shrink-0" />
                             <span className="flex-1 text-foreground font-medium truncate">{c.name}</span>
-                            <span className="text-muted-foreground text-[11px]">{c.phone_number}</span>
+                            <span className="text-muted-foreground text-[10px]">{c.phone_number}</span>
                             {showContacts && (
                               <button onClick={() => removeContact(c.id)} className="text-destructive ml-1">
                                 <Trash2 className="w-3 h-3" />
@@ -234,29 +231,29 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                       </div>
                     )}
                     {showContacts && (
-                      <div className="bg-muted/30 rounded-xl p-3 space-y-2 border border-border/50">
+                      <div className="bg-muted/30 rounded-lg p-2.5 space-y-1.5 border border-border/50">
                         <input
                           value={newContact.name}
                           onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
                           placeholder="Contact name"
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground"
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground"
                         />
                         <input
                           value={newContact.phone_number}
                           onChange={(e) => setNewContact({ ...newContact, phone_number: e.target.value.replace(/\D/g, "").slice(0, 7) })}
                           placeholder="Phone (7XXXXXX)"
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground"
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground"
                         />
                         <input
                           value={newContact.relationship}
                           onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
                           placeholder="Relationship (optional)"
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground"
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground"
                         />
                         <button
                           onClick={addContact}
                           disabled={addingContact || !newContact.name || !newContact.phone_number}
-                          className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-semibold disabled:opacity-50"
                         >
                           <Plus className="w-3 h-3" /> Add Contact
                         </button>
@@ -265,41 +262,41 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                   </div>
                 )}
 
-                {/* Quick call buttons */}
+                {/* Quick call + action buttons in a compact grid */}
                 {(callCenterNumber || policeNumber) && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1.5">
                     {callCenterNumber && (
                       <a
                         href={`tel:${callCenterNumber.startsWith("+") ? callCenterNumber : `+960${callCenterNumber}`}`}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-primary/8 text-primary font-semibold text-xs hover:bg-primary/15 transition-colors border border-primary/10"
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-primary/10 text-primary font-semibold text-[11px] hover:bg-primary/20 transition-colors"
                       >
-                        <PhoneCall className="w-4 h-4" /> Call Center
+                        <PhoneCall className="w-3.5 h-3.5" /> Call Center
                       </a>
                     )}
                     {policeNumber && (
                       <a
                         href={`tel:${policeNumber}`}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-destructive/8 text-destructive font-semibold text-xs hover:bg-destructive/15 transition-colors border border-destructive/10"
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-destructive/10 text-destructive font-semibold text-[11px] hover:bg-destructive/20 transition-colors"
                       >
-                        <Shield className="w-4 h-4" /> Call Police
+                        <Shield className="w-3.5 h-3.5" /> Call Police
                       </a>
                     )}
                   </div>
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-2.5 pt-1">
+                <div className="flex gap-2 pt-0.5">
                   <button
                     onClick={() => setShowConfirm(false)}
                     disabled={sending}
-                    className="flex-1 py-3 rounded-xl bg-muted text-foreground font-semibold text-sm active:scale-[0.97] transition-transform"
+                    className="flex-1 py-2.5 rounded-xl bg-muted text-foreground font-semibold text-sm active:scale-[0.97] transition-transform"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={triggerSOS}
                     disabled={sending}
-                    className="flex-[1.3] py-3 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50 active:scale-[0.97] transition-transform shadow-lg shadow-destructive/25"
+                    className="flex-[1.4] py-2.5 rounded-xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50 active:scale-[0.97] transition-transform shadow-lg shadow-destructive/25"
                   >
                     {sending ? "Sending..." : "🚨 SEND SOS"}
                   </button>
