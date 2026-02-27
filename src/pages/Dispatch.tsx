@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyTripRequested, notifyTripAccepted } from "@/lib/push-notifications";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -293,6 +294,25 @@ const Dispatch = () => {
       }
 
       toast({ title: "Trip created!", description: dispatchMethod === "specific" ? "Assigned to driver" : "Broadcasting to nearby drivers" });
+
+      // Send push notifications
+      try {
+        if (dispatchMethod === "specific" && selectedDriverId) {
+          await notifyTripAccepted(selectedDriverId, "Dispatch", trip.id);
+        } else {
+          const { data: onlineDrivers } = await supabase
+            .from("driver_locations")
+            .select("driver_id")
+            .eq("is_online", true)
+            .eq("is_on_trip", false);
+          if (onlineDrivers && onlineDrivers.length > 0) {
+            const driverIds = onlineDrivers.map((d: any) => d.driver_id);
+            await notifyTripRequested(driverIds, trip.id, tripPayload.pickup_address);
+          }
+        }
+      } catch (pushErr) {
+        console.warn("Push notification failed:", pushErr);
+      }
 
       // Reset form
       setCustomerName("");

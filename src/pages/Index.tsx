@@ -13,6 +13,7 @@ import SearchingDriver from "@/components/SearchingDriver";
 import DriverMatching from "@/components/DriverMatching";
 import RideFeedback from "@/components/RideFeedback";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyTripRequested } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
 import SOSButton from "@/components/SOSButton";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
@@ -329,6 +330,23 @@ const Index = () => {
 
       setCurrentTripId(data.id);
       setPassengerScreen("searching");
+
+      // Send push notification to online drivers
+      if (data.status === "requested") {
+        try {
+          const { data: onlineDrivers } = await supabase
+            .from("driver_locations")
+            .select("driver_id")
+            .eq("is_online", true)
+            .eq("is_on_trip", false);
+          if (onlineDrivers && onlineDrivers.length > 0) {
+            const driverIds = onlineDrivers.map((d: any) => d.driver_id);
+            await notifyTripRequested(driverIds, data.id, pickup.name);
+          }
+        } catch (pushErr) {
+          console.warn("Push notification failed:", pushErr);
+        }
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
