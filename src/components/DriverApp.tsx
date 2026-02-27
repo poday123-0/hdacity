@@ -1122,7 +1122,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           initial={{ y: "100%" }}
           animate={{ y: panelMinimized ? "calc(100% - 0px)" : 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[65vh] ${panelMinimized ? "landscape-minimized" : ""}`}
+          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel max-h-[65vh] ${panelMinimized ? "landscape-minimized" : ""}`}
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
 
           <div className="px-3 pt-2 pb-1.5 space-y-1.5">
