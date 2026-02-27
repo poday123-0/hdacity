@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone } from "lucide-react";
 
 interface SoundFile {
   id: string;
@@ -60,6 +60,11 @@ const AdminSettings = () => {
   const [uploadCategory, setUploadCategory] = useState("");
   const [adminBank, setAdminBank] = useState<Record<string, string>>({ bank_name: "", account_number: "", account_name: "" });
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
+  // Driver registration notification recipients
+  const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
+  const [notifyPhones, setNotifyPhones] = useState<string[]>([]);
+  const [newNotifyEmail, setNewNotifyEmail] = useState("");
+  const [newNotifyPhone, setNewNotifyPhone] = useState("");
   const [uploadingPassengerIcon, setUploadingPassengerIcon] = useState(false);
   const [pwaAppIconUrl, setPwaAppIconUrl] = useState<string | null>(null);
   const [uploadingPwaIcon, setUploadingPwaIcon] = useState(false);
@@ -92,6 +97,12 @@ const AdminSettings = () => {
     }
     if (map["driver_app_icon_url"] && typeof map["driver_app_icon_url"] === "string") {
       setDriverAppIconUrl(map["driver_app_icon_url"]);
+    }
+    // Load notification recipients
+    if (map["driver_registration_notify"]) {
+      const nv = typeof map["driver_registration_notify"] === "string" ? JSON.parse(map["driver_registration_notify"]) : map["driver_registration_notify"];
+      setNotifyEmails(nv.emails || []);
+      setNotifyPhones(nv.phones || []);
     }
     setLoading(false);
   };
@@ -288,7 +299,87 @@ const AdminSettings = () => {
         </button>
       </div>
 
-      {/* Passenger Map Icon */}
+      {/* Driver Registration Notification Recipients */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Bell className="w-5 h-5 text-primary" /> New Driver Registration Alerts
+      </h2>
+      <p className="text-sm text-muted-foreground">Add email addresses and phone numbers to receive SMS when a new driver registers.</p>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        {/* Emails */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-foreground flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-primary" /> Email Addresses</label>
+          <div className="flex flex-wrap gap-2">
+            {notifyEmails.map((em, i) => (
+              <span key={i} className="flex items-center gap-1 px-2.5 py-1 bg-surface rounded-lg text-xs font-medium text-foreground">
+                {em}
+                <button onClick={() => {
+                  const updated = notifyEmails.filter((_, idx) => idx !== i);
+                  setNotifyEmails(updated);
+                  updateSetting("driver_registration_notify", { emails: updated, phones: notifyPhones });
+                }} className="text-muted-foreground hover:text-destructive"><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={newNotifyEmail}
+              onChange={(e) => setNewNotifyEmail(e.target.value)}
+              placeholder="admin@example.com"
+              type="email"
+              className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              onClick={() => {
+                if (!newNotifyEmail.trim() || !newNotifyEmail.includes("@")) return;
+                const updated = [...notifyEmails, newNotifyEmail.trim()];
+                setNotifyEmails(updated);
+                setNewNotifyEmail("");
+                updateSetting("driver_registration_notify", { emails: updated, phones: notifyPhones });
+              }}
+              className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Phone Numbers */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-foreground flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-primary" /> SMS Phone Numbers</label>
+          <div className="flex flex-wrap gap-2">
+            {notifyPhones.map((ph, i) => (
+              <span key={i} className="flex items-center gap-1 px-2.5 py-1 bg-surface rounded-lg text-xs font-medium text-foreground">
+                {ph}
+                <button onClick={() => {
+                  const updated = notifyPhones.filter((_, idx) => idx !== i);
+                  setNotifyPhones(updated);
+                  updateSetting("driver_registration_notify", { emails: notifyEmails, phones: updated });
+                }} className="text-muted-foreground hover:text-destructive"><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={newNotifyPhone}
+              onChange={(e) => setNewNotifyPhone(e.target.value.replace(/[^\d+]/g, ""))}
+              placeholder="7XXXXXX"
+              className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              onClick={() => {
+                if (!newNotifyPhone.trim()) return;
+                const updated = [...notifyPhones, newNotifyPhone.trim()];
+                setNotifyPhones(updated);
+                setNewNotifyPhone("");
+                updateSetting("driver_registration_notify", { emails: notifyEmails, phones: updated });
+              }}
+              className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
       <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
         <User className="w-5 h-5 text-primary" /> Passenger Map Icon
       </h2>
