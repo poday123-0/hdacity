@@ -351,10 +351,27 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      {/* Map control buttons */}
-      <div className="absolute bottom-4 right-3 z-[460] flex flex-col gap-2">
-        {/* Route overview / follow toggle — shown during navigation */}
-        {isNavigating && (
+      {/* Re-center button — top right, below top bar */}
+      {userPannedAway && !isNavigating && (
+        <button
+          onClick={() => {
+            userInteractingRef.current = false;
+            setUserPannedAway(false);
+            if (currentPos && mapInstance.current) {
+              mapInstance.current.panTo(currentPos);
+              mapInstance.current.setZoom(16);
+            }
+          }}
+          className="absolute top-20 right-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90 transition-transform"
+          title="Re-center"
+        >
+          <Locate className="w-5 h-5 text-primary" />
+        </button>
+      )}
+
+      {/* Navigation map controls — bottom right */}
+      {isNavigating && (
+        <div className="absolute bottom-4 right-3 z-[460]">
           <button
             onClick={() => {
               if (followDriver) {
@@ -386,26 +403,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           >
             {followDriver ? <Route className="w-5 h-5" /> : <Crosshair className="w-5 h-5" />}
           </button>
-        )}
-
-        {/* Re-center button — shown when panned away outside navigation */}
-        {userPannedAway && !isNavigating && (
-          <button
-            onClick={() => {
-              userInteractingRef.current = false;
-              setUserPannedAway(false);
-              if (currentPos && mapInstance.current) {
-                mapInstance.current.panTo(currentPos);
-                mapInstance.current.setZoom(16);
-              }
-            }}
-            className="w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90 transition-transform"
-            title="Re-center"
-          >
-            <Locate className="w-5 h-5 text-primary" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
       {/* In-app Navigation Overlay */}
       {isNavigating && navSteps.length > 0 && (
         <div className="absolute top-16 left-3 right-3 z-[460]">
