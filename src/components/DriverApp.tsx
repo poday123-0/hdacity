@@ -2037,7 +2037,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </div>
               </div>
 
-              <div className="px-4 pb-2">
+              <div className="px-4 pb-2" style={{ fontSize: '16px' }}>
                 <button
                   onClick={() => { setShowProfile(false); navigate("/install"); }}
                   className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
