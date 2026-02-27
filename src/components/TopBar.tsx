@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
@@ -37,6 +37,44 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [showContactForm, setShowContactForm] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(userProfile?.avatar_url || null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userProfile?.id) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${userProfile.id}/avatar.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userProfile.id);
+      setAvatarUrl(publicUrl);
+      // Update local session
+      const sessionRaw = localStorage.getItem("hda_user_session");
+      if (sessionRaw) {
+        try {
+          const session = JSON.parse(sessionRaw);
+          session.profile.avatar_url = publicUrl;
+          localStorage.setItem("hda_user_session", JSON.stringify(session));
+        } catch {}
+      }
+      toast({ title: "Photo updated", description: "Your profile photo has been saved." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  };
 
   const fetchContacts = async () => {
     if (!userProfile?.id) return;
@@ -194,8 +232,26 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
-                    {userProfile?.first_name?.[0]}{userProfile?.last_name?.[0]}
+                  <div className="relative">
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Profile" className="w-16 h-16 rounded-2xl object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
+                        {userProfile?.first_name?.[0]}{userProfile?.last_name?.[0]}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow-md active:scale-90 transition-transform"
+                    >
+                      {uploadingAvatar ? (
+                        <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Camera className="w-3.5 h-3.5 text-primary-foreground" />
+                      )}
+                    </button>
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-foreground">
