@@ -928,11 +928,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
           {/* Right: On/Off toggle */}
           <button
-            onClick={() => setScreen("offline")}
-            className="relative w-12 h-7 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0 shadow-sm"
-            title="Go Offline"
+            onClick={() => setScreen(screen === "offline" ? "online" : "offline")}
+            className={`relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 shadow-sm ${
+              screen !== "offline"
+                ? "bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]"
+                : "bg-muted"
+            }`}
+            title={screen !== "offline" ? "Go Offline" : "Go Online"}
           >
-            <div className="w-6 h-6 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[21px]" />
+            <motion.div
+              className="w-6 h-6 rounded-full bg-primary-foreground shadow-md"
+              animate={{ x: screen !== "offline" ? 24 : 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            />
           </button>
         </div>
       </div>
