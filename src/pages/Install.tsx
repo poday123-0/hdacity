@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { Download, Share2, Smartphone, Car, Users, ChevronRight, Copy, Check, ExternalLink, Apple, Chrome, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
@@ -12,27 +12,36 @@ import ThemeToggle from "@/components/ThemeToggle";
 const PASSENGER_URL = "https://app.hda.taxi";
 const DRIVER_URL = "https://app.hda.taxi/driver";
 
-const Install = () => {
+interface InstallProps {
+  defaultTab?: "passenger" | "driver";
+}
+
+const Install = ({ defaultTab }: InstallProps) => {
   const navigate = useNavigate();
   useTheme();
   const { canInstall, isIOS, isInstalled, promptInstall } = usePWAInstall();
-  const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
+  const [passengerIconUrl, setPassengerIconUrl] = useState<string | null>(null);
+  const [driverIconUrl, setDriverIconUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"passenger" | "driver">("passenger");
+  const [activeTab, setActiveTab] = useState<"passenger" | "driver">(defaultTab || "passenger");
 
   useEffect(() => {
-    supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "pwa_app_icon_url")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value && typeof data.value === "string") setAppIconUrl(data.value);
+    const loadIcons = async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("key, value")
+        .in("key", ["pwa_app_icon_url", "driver_app_icon_url"]);
+      data?.forEach((s: any) => {
+        if (s.key === "pwa_app_icon_url" && typeof s.value === "string") setPassengerIconUrl(s.value);
+        if (s.key === "driver_app_icon_url" && typeof s.value === "string") setDriverIconUrl(s.value);
       });
+    };
+    loadIcons();
   }, []);
 
   const currentUrl = activeTab === "passenger" ? PASSENGER_URL : DRIVER_URL;
   const currentLabel = activeTab === "passenger" ? "Passenger App" : "Driver App";
+  const currentIcon = activeTab === "passenger" ? passengerIconUrl : driverIconUrl;
 
   const handleCopy = async (url: string) => {
     await navigator.clipboard.writeText(url);
@@ -79,13 +88,13 @@ const Install = () => {
           className="text-center space-y-3"
         >
           <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto overflow-hidden border-2 border-primary/20 shadow-lg">
-            {appIconUrl ? (
-              <img src={appIconUrl} alt="HDA TAXI" className="w-full h-full object-cover rounded-2xl" />
+            {currentIcon ? (
+              <img src={currentIcon} alt={currentLabel} className="w-full h-full object-cover rounded-2xl" />
             ) : (
               <img src={hdaLogo} alt="HDA TAXI" className="w-12 h-12 object-contain" />
             )}
           </div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Install HDA TAXI</h1>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Install {currentLabel}</h1>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">Get the app on your phone for the best experience. Works offline, loads instantly.</p>
 
           {isInstalled && (
@@ -136,8 +145,8 @@ const Install = () => {
                 size={180}
                 level="H"
                 includeMargin={false}
-                imageSettings={appIconUrl ? {
-                  src: appIconUrl,
+                imageSettings={currentIcon ? {
+                  src: currentIcon,
                   height: 36,
                   width: 36,
                   excavate: true,
@@ -165,7 +174,7 @@ const Install = () => {
               className="flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90"
             >
               <Share2 className="w-4 h-4" />
-              Share {currentLabel}
+              Share
             </button>
             <a
               href={currentUrl}
@@ -174,7 +183,7 @@ const Install = () => {
               className="flex items-center justify-center gap-2 bg-surface text-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:bg-muted border border-border"
             >
               <ExternalLink className="w-4 h-4" />
-              Open in Browser
+              Open
             </a>
           </div>
         </motion.div>
@@ -212,9 +221,9 @@ const Install = () => {
             </div>
             <div className="px-4 py-3 space-y-3">
               {[
-                { step: 1, text: 'Open the link in Safari browser' },
+                { step: 1, text: `Open ${currentUrl} in Safari` },
                 { step: 2, text: 'Tap the Share button (square with arrow)' },
-                { step: 3, text: 'Scroll down and tap "Add to Home Screen"' },
+                { step: 3, text: '"Add to Home Screen"' },
                 { step: 4, text: 'Tap "Add" to confirm' },
               ].map(({ step, text }) => (
                 <div key={step} className="flex items-start gap-3">
@@ -237,9 +246,9 @@ const Install = () => {
             </div>
             <div className="px-4 py-3 space-y-3">
               {[
-                { step: 1, text: 'Open the link in Chrome browser' },
+                { step: 1, text: `Open ${currentUrl} in Chrome` },
                 { step: 2, text: 'Tap the three-dot menu (⋮) at the top right' },
-                { step: 3, text: 'Tap "Install app" or "Add to Home screen"' },
+                { step: 3, text: '"Install app" or "Add to Home screen"' },
                 { step: 4, text: 'Tap "Install" to confirm' },
               ].map(({ step, text }) => (
                 <div key={step} className="flex items-start gap-3">
@@ -258,12 +267,16 @@ const Install = () => {
           <h2 className="text-lg font-bold text-foreground">Share with Others</h2>
           <div className="grid grid-cols-1 gap-3">
             {[
-              { label: "Passenger App", desc: "For riders looking for a taxi", url: PASSENGER_URL, icon: Users, color: "bg-primary/10 text-primary" },
-              { label: "Driver App", desc: "For drivers to accept trips", url: DRIVER_URL, icon: Car, color: "bg-accent/50 text-accent-foreground" },
-            ].map(({ label, desc, url, icon: Icon, color }) => (
+              { label: "Passenger App", desc: "For riders looking for a taxi", url: PASSENGER_URL, icon: Users, iconUrl: passengerIconUrl },
+              { label: "Driver App", desc: "For drivers to accept trips", url: DRIVER_URL, icon: Car, iconUrl: driverIconUrl },
+            ].map(({ label, desc, url, icon: Icon, iconUrl }) => (
               <div key={label} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center shrink-0`}>
-                  <Icon className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                  {iconUrl ? (
+                    <img src={iconUrl} alt={label} className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    <Icon className="w-5 h-5 text-primary" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">{label}</p>
