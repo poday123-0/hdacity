@@ -55,13 +55,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "sounds" | "billing";
-type TextSize = "small" | "medium" | "large";
-
-const TEXT_SIZE_CLASSES: Record<TextSize, string> = {
-  small: "driver-text-sm",
-  medium: "driver-text-md",
-  large: "driver-text-lg",
-};
+type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
   id: string;
@@ -152,7 +146,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const [textSize, setTextSize] = useState<TextSize>(() => {
-    try { return (localStorage.getItem("hda_driver_text_size") as TextSize) || "medium"; } catch { return "medium"; }
+    try { const v = localStorage.getItem("hda_driver_text_size"); return v ? parseFloat(v) : 1; } catch { return 1; }
   });
 
   // Default fallback location (Male, Maldives) when GPS not available
@@ -772,7 +766,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
 
   return (
-    <div className={`relative w-full h-screen h-[100dvh] md:max-w-none max-w-lg mx-auto overflow-hidden bg-surface ${TEXT_SIZE_CLASSES[textSize]}`}>
+    <div className="relative w-full h-screen h-[100dvh] md:max-w-none max-w-lg mx-auto overflow-hidden bg-surface" style={{ fontSize: `${textSize}rem` }}>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Top bar */}
@@ -1980,27 +1974,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <p className="text-xs text-muted-foreground">Adjust app text size</p>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-3">
-                    {(["small", "medium", "large"] as TextSize[]).map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => {
-                          setTextSize(size);
-                          try { localStorage.setItem("hda_driver_text_size", size); } catch {}
-                        }}
-                        className={`flex-1 py-2 rounded-lg text-center font-semibold transition-all active:scale-95 ${
-                          textSize === size
-                            ? "bg-primary text-primary-foreground shadow-md"
-                            : "bg-card text-muted-foreground"
-                        }`}
-                        style={{ fontSize: size === "small" ? "11px" : size === "medium" ? "13px" : "16px" }}
-                      >
-                        {size === "small" ? "A" : size === "medium" ? "A" : "A"}
-                        <span className="block text-[9px] font-medium mt-0.5 opacity-70" style={{ fontSize: "9px" }}>
-                          {size.charAt(0).toUpperCase() + size.slice(1)}
-                        </span>
-                      </button>
-                    ))}
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground" style={{ fontSize: '11px' }}>A</span>
+                      <span className="font-semibold text-foreground" style={{ fontSize: '12px' }}>{Math.round(textSize * 100)}%</span>
+                      <span className="text-muted-foreground font-bold" style={{ fontSize: '18px' }}>A</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.75"
+                      max="1.35"
+                      step="0.05"
+                      value={textSize}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setTextSize(val);
+                        try { localStorage.setItem("hda_driver_text_size", String(val)); } catch {}
+                      }}
+                      className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border"
+                    />
                   </div>
                 </div>
               </div>
