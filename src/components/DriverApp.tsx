@@ -916,9 +916,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button onClick={() => setShowEarnings(!showEarnings)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title={showEarnings ? "Hide amounts" : "Show amounts"}>
                   {showEarnings ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
                 </button>
-                <button onClick={() => { setShowProfile(true); setProfileTab("info"); }} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform" title="Profile">
-                  <User className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
                 <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
                   {panelMinimized ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                 </button>
