@@ -913,7 +913,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               )}
             </AnimatePresence>
           </div>
-          <button onClick={() => setShowProfile(true)} className="absolute right-4 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
+          <button onClick={() => setShowProfile(true)} className="absolute left-4 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
