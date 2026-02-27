@@ -134,7 +134,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12),
       });
     }
-    if (!isNavigating && !userInteractingRef.current) mapInstance.current.panTo(currentPos);
+    if (!userInteractingRef.current) {
+      mapInstance.current.panTo(currentPos);
+      if (isNavigating) mapInstance.current.setZoom(17);
+    }
   }, [currentPos, isNavigating, mapIconUrl]);
 
   // Parse navigation steps from directions result
@@ -267,7 +270,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         map,
         suppressMarkers: true,
         suppressInfoWindows: true,
-        preserveViewport: false,
+        preserveViewport: true,
         polylineOptions: {
           strokeColor: tripPhase === "in_progress" ? "#4285F4" : "#22c55e",
           strokeWeight: 6,
