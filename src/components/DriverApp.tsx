@@ -1051,9 +1051,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
                       return (
                         <div className="bg-surface rounded-2xl p-2.5 flex items-center gap-2.5 flex-1 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden p-1">
                             {vTypeImg ? (
-                              <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" />
+                              <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain drop-shadow-sm" />
                             ) : (
                               <Car className="w-4 h-4 text-primary" />
                             )}
