@@ -836,8 +836,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Offline */}
       {screen === "offline" && (
-        <div className="absolute inset-0 flex items-center justify-center z-[450]">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-5 px-6 w-full max-w-sm">
+        <div className="absolute inset-0 flex items-center justify-center z-[450] landscape-md:items-center landscape-md:justify-end landscape-md:pr-8">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-5 px-6 w-full max-w-sm landscape-md:bg-card landscape-md:rounded-3xl landscape-md:shadow-2xl landscape-md:p-8">
             <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center ${verificationIssues.length > 0 ? "bg-destructive/10" : "bg-muted"}`}>
               <Power className={`w-10 h-10 ${verificationIssues.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
             </div>
@@ -900,7 +900,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col ${panelMinimized ? "" : "max-h-[80vh]"}`}
+          className={`absolute bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel ${panelMinimized ? "" : "max-h-[80vh] landscape-md:max-h-full"} bottom-0 left-0 right-0 landscape-md:bottom-0 landscape-md:right-0 landscape-md:top-0 landscape-md:left-auto landscape-md:w-[380px] landscape-md:rounded-t-none landscape-md:rounded-l-3xl`}
         >
           <div className={`p-4 ${panelMinimized ? "pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]" : "pb-2"} space-y-2.5`}>
             {/* Drag handle */}
@@ -1237,7 +1237,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Navigating */}
       {screen === "navigating" && currentTrip && (
-        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col ${navPanelMinimized ? "" : "max-h-[70vh]"}`}>
+        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className={`absolute bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel ${navPanelMinimized ? "" : "max-h-[70vh] landscape-md:max-h-full"} bottom-0 left-0 right-0 landscape-md:bottom-0 landscape-md:right-0 landscape-md:top-0 landscape-md:left-auto landscape-md:w-[380px] landscape-md:rounded-t-none landscape-md:rounded-l-3xl`}>
           <div className={`p-4 ${navPanelMinimized ? "pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]" : "pb-2"} space-y-2.5`}>
             {/* Drag handle */}
             <button onClick={() => setNavPanelMinimized(!navPanelMinimized)} className="w-full flex justify-center pt-0.5 pb-1">

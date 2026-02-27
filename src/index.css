@@ -146,16 +146,37 @@
 .driver-text-lg .text-2xl { font-size: 1.875rem; }
 .driver-text-lg .text-3xl { font-size: 2.25rem; }
 
-/* Tablet / car screen optimizations for driver app */
-@media (min-width: 768px) {
-  .driver-text-sm,
-  .driver-text-md,
-  .driver-text-lg {
-    /* Wider panels for tablet */
+/* Landscape mode for car dashboard screens */
+@media (orientation: landscape) and (min-width: 768px) {
+  .landscape-md\:max-h-full { max-height: 100% !important; }
+  .landscape-md\:bottom-0 { bottom: 0; }
+  .landscape-md\:right-0 { right: 0; }
+  .landscape-md\:top-0 { top: 0; }
+  .landscape-md\:left-auto { left: auto; }
+  .landscape-md\:w-\[380px\] { width: 380px; }
+  .landscape-md\:rounded-t-none { border-top-left-radius: 0; border-top-right-radius: 0; }
+  .landscape-md\:rounded-l-3xl { border-top-left-radius: 1.5rem; border-bottom-left-radius: 1.5rem; }
+  .landscape-md\:items-center { align-items: center; }
+  .landscape-md\:justify-end { justify-content: flex-end; }
+  .landscape-md\:pr-8 { padding-right: 2rem; }
+  .landscape-md\:bg-card { background: hsl(var(--card)); }
+  .landscape-md\:rounded-3xl { border-radius: 1.5rem; }
+  .landscape-md\:shadow-2xl { box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); }
+  .landscape-md\:p-8 { padding: 2rem; }
+
+  /* Panel slides from right instead of bottom */
+  .landscape-panel {
+    animation: slideFromRight 0.3s ease-out !important;
+    transform: none !important;
   }
-  .driver-text-sm .rounded-t-3xl,
-  .driver-text-md .rounded-t-3xl,
-  .driver-text-lg .rounded-t-3xl {
-    border-radius: 1.5rem 1.5rem 0 0;
+
+  @keyframes slideFromRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  /* Expand navigating panel content for landscape */
+  .landscape-panel .overflow-y-auto {
+    max-height: calc(100vh - 14rem) !important;
   }
 }
