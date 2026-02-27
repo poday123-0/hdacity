@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import type { BookingType } from "@/components/LocationInput";
 import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
@@ -55,6 +56,9 @@ const Index = () => {
   const [intermediateStops, setIntermediateStops] = useState<StopLocation[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
+  const [bookingType, setBookingType] = useState<BookingType>("now");
+  const [scheduledAt, setScheduledAt] = useState<string | undefined>();
+  const [bookingNotes, setBookingNotes] = useState<string | undefined>();
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
   const [tripStatus, setTripStatus] = useState<string>("accepted");
@@ -170,12 +174,15 @@ const Index = () => {
     localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
   }, []);
 
-  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[]) => {
+  const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[], bType?: BookingType, schedAt?: string, bNotes?: string) => {
     setPickup(p);
     setDropoff(d);
     setPassengerCount(passengers);
     setLuggageCount(luggage);
     setIntermediateStops(stops || []);
+    setBookingType(bType || "now");
+    setScheduledAt(schedAt);
+    setBookingNotes(bNotes);
     setPassengerScreen("ride-options");
   }, []);
 
@@ -229,12 +236,15 @@ const Index = () => {
         dropoff_lng: dropoff.lng,
         vehicle_type_id: selectedVehicleType.id,
         estimated_fare: estimatedFare,
-        fare_type: "distance",
-        status: "requested",
+        fare_type: bookingType === "hourly" ? "hourly" : "distance",
+        status: bookingType === "scheduled" ? "scheduled" : "requested",
         passenger_count: passengerCount,
         luggage_count: luggageCount,
         passenger_id: userProfile?.id || null,
-      }).select().single();
+        booking_type: bookingType,
+        scheduled_at: scheduledAt || null,
+        booking_notes: bookingNotes || null,
+      } as any).select().single();
 
       if (error) throw error;
 
@@ -255,7 +265,7 @@ const Index = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id, intermediateStops]);
+  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id, intermediateStops, bookingType, scheduledAt, bookingNotes]);
 
   // Passenger notification sounds
   const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});
@@ -410,10 +420,10 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} userId={userProfile?.id} />}
           {passengerScreen === "ride-options" && (
-            <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} />
+            <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} />
           )}
           {passengerScreen === "confirmation" && pickup && dropoff && selectedVehicleType && (
-            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} />
+            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} bookingNotes={bookingNotes} />
           )}
           {passengerScreen === "searching" && (
             <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng} onCancel={() => {

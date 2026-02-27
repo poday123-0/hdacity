@@ -1,4 +1,4 @@
-import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Home, Briefcase, Star, Heart, MapPinned, Trash2, Pencil } from "lucide-react";
+import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Home, Briefcase, Star, Heart, MapPinned, Trash2, Pencil, Calendar, Clock, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,8 +32,10 @@ interface SavedLocation {
   icon: string;
 }
 
+export type BookingType = "now" | "scheduled" | "hourly";
+
 interface LocationInputProps {
-  onSearch: (pickup: ServiceLocation, dropoff: ServiceLocation, passengers: number, luggage: number, stops?: ServiceLocation[]) => void;
+  onSearch: (pickup: ServiceLocation, dropoff: ServiceLocation, passengers: number, luggage: number, stops?: ServiceLocation[], bookingType?: BookingType, scheduledAt?: string, bookingNotes?: string) => void;
   userId?: string;
 }
 
@@ -73,6 +75,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [settingOnMap, setSettingOnMap] = useState(false);
   const [saveMapPicker, setSaveMapPicker] = useState(false);
   const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
+  const [bookingType, setBookingType] = useState<BookingType>("now");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [bookingNotes, setBookingNotes] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
@@ -376,8 +382,9 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     setSettingOnMap(false);
   };
 
-  const canConfirm = pickup && dropoff;
+  const canConfirm = pickup && (bookingType === "hourly" || dropoff);
   const validStops = stops.filter((s): s is ServiceLocation => s !== null);
+  const scheduledAtIso = scheduledDate && scheduledTime ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString() : undefined;
 
   // Check which preset labels already exist
   const existingLabels = savedLocations.map(s => s.label.toLowerCase());
@@ -518,6 +525,87 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                 </div>
               </div>
             </div>
+
+            {/* Booking Type Toggle */}
+            <div className="flex gap-1 bg-surface rounded-xl p-1">
+              {([
+                { key: "now" as BookingType, label: "Now", icon: Navigation },
+                { key: "scheduled" as BookingType, label: "Schedule", icon: Calendar },
+                { key: "hourly" as BookingType, label: "Hourly", icon: Clock },
+              ]).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setBookingType(key)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    bookingType === key
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Schedule fields */}
+            {bookingType === "scheduled" && (
+              <div className="bg-surface rounded-xl p-3 space-y-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Schedule Pickup</p>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-[9px] text-muted-foreground">Date</label>
+                    <input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[9px] text-muted-foreground">Time</label>
+                    <input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[9px] text-muted-foreground">Notes (optional)</label>
+                  <textarea
+                    value={bookingNotes}
+                    onChange={(e) => setBookingNotes(e.target.value)}
+                    placeholder="Special instructions..."
+                    rows={2}
+                    className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Hourly booking note */}
+            {bookingType === "hourly" && (
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  <p className="text-xs font-semibold text-foreground">Hourly Booking</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Driver will start a timer when the trip begins. You'll be charged per hour based on vehicle type rate.</p>
+                <div>
+                  <label className="text-[9px] text-muted-foreground">Notes (optional)</label>
+                  <textarea
+                    value={bookingNotes}
+                    onChange={(e) => setBookingNotes(e.target.value)}
+                    placeholder="What do you need the vehicle for?"
+                    rows={2}
+                    className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Pickup, Stops & Dropoff */}
             <div className="flex items-start gap-2.5">
@@ -855,11 +943,25 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       {!minimized && !activeField && !showSaveDialog && (
         <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 bg-card border-t border-border/40 shrink-0">
           <button
-            onClick={() => canConfirm && onSearch(pickup!, dropoff!, passengerCount, luggageCount, validStops)}
-            disabled={!canConfirm}
+            onClick={() => {
+              if (!canConfirm) return;
+              const dummyDropoff = bookingType === "hourly" && !dropoff ? { ...pickup!, name: pickup!.name + " (Hourly)" } : dropoff!;
+              onSearch(pickup!, dummyDropoff, passengerCount, luggageCount, validStops, bookingType, scheduledAtIso, bookingNotes || undefined);
+            }}
+            disabled={!canConfirm || (bookingType === "scheduled" && (!scheduledDate || !scheduledTime))}
             className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
           >
-            {canConfirm ? (validStops.length > 0 ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})` : "Find a ride") : "Select pickup & destination"}
+            {!canConfirm
+              ? (bookingType === "hourly" ? "Select pickup location" : "Select pickup & destination")
+              : bookingType === "scheduled" && (!scheduledDate || !scheduledTime)
+                ? "Set date & time"
+                : bookingType === "scheduled"
+                  ? "Schedule ride"
+                  : bookingType === "hourly"
+                    ? "Find hourly ride"
+                    : validStops.length > 0
+                      ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})`
+                      : "Find a ride"}
           </button>
         </div>
       )}

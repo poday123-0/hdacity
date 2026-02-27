@@ -24,7 +24,9 @@ const emptyForm = {
   capacity: "4",
   base_fare: "25",
   per_km_rate: "10",
+  per_hour_rate: "100",
   minimum_fare: "25",
+  pre_booking_fee: "0",
   sort_order: "0",
 };
 
@@ -75,7 +77,9 @@ const AdminVehicleTypes = () => {
       capacity: vt.capacity?.toString() || "4",
       base_fare: vt.base_fare?.toString() || "25",
       per_km_rate: vt.per_km_rate?.toString() || "10",
+      per_hour_rate: vt.per_hour_rate?.toString() || "100",
       minimum_fare: vt.minimum_fare?.toString() || "25",
+      pre_booking_fee: vt.pre_booking_fee?.toString() || "0",
       sort_order: vt.sort_order?.toString() || "0",
     });
     setImagePreview(vt.image_url || null);
@@ -121,7 +125,9 @@ const AdminVehicleTypes = () => {
         capacity: parseInt(form.capacity) || 4,
         base_fare: parseFloat(form.base_fare) || 25,
         per_km_rate: parseFloat(form.per_km_rate) || 10,
+        per_hour_rate: parseFloat(form.per_hour_rate) || 100,
         minimum_fare: parseFloat(form.minimum_fare) || 25,
+        pre_booking_fee: parseFloat(form.pre_booking_fee) || 0,
         sort_order: parseInt(form.sort_order) || 0,
       };
 
@@ -181,7 +187,9 @@ const AdminVehicleTypes = () => {
     { key: "sort_order", label: "Sort Order", placeholder: "0", type: "number" },
     { key: "base_fare", label: "Base Fare (MVR)", placeholder: "25", type: "number" },
     { key: "per_km_rate", label: "Per KM Rate (MVR)", placeholder: "10", type: "number" },
+    { key: "per_hour_rate", label: "Per Hour Rate (MVR)", placeholder: "100", type: "number" },
     { key: "minimum_fare", label: "Minimum Fare (MVR)", placeholder: "25", type: "number" },
+    { key: "pre_booking_fee", label: "Pre-Booking Fee (MVR)", placeholder: "0", type: "number" },
   ];
 
   return (

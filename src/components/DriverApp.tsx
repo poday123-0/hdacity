@@ -77,6 +77,9 @@ interface TripRequest {
   customer_name?: string;
   customer_phone?: string;
   dispatch_type?: string;
+  booking_type?: string;
+  scheduled_at?: string;
+  booking_notes?: string;
 }
 
 interface BankAccount {
@@ -1353,10 +1356,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {/* Header with countdown */}
             <div className="bg-primary px-4 py-3 text-center relative">
               <p className="text-primary-foreground/80 text-xs">
-                New ride{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
+                {currentTrip.booking_type === "scheduled" ? "📅 Scheduled ride" : currentTrip.booking_type === "hourly" ? "⏱ Hourly booking" : "New ride"}{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
               </p>
-              <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR</p>
+              <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}</p>
               {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
+              {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at && (
+                <p className="text-primary-foreground/70 text-xs mt-0.5">Pickup: {new Date(currentTrip.scheduled_at).toLocaleString()}</p>
+              )}
               {/* Countdown timer */}
               <div className="absolute top-3 right-3 w-10 h-10 rounded-full border-2 border-primary-foreground/40 flex items-center justify-center">
                 <span className={`text-sm font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-primary-foreground"}`}>
@@ -1449,6 +1455,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
                 </div>
               </div>
+
+              {/* Booking notes */}
+              {currentTrip.booking_notes && (
+                <div className="bg-surface rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-muted-foreground font-semibold">Notes</p>
+                  <p className="text-xs text-foreground mt-0.5">{currentTrip.booking_notes}</p>
+                </div>
+              )}
 
               {/* Accept / Decline buttons */}
               <div className="flex gap-2">
@@ -1674,7 +1688,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {driverTripPhase === "arrived" &&
           <button onClick={async () => {
             if (!currentTrip) return;
-            await supabase.from("trips").update({ status: "in_progress", started_at: new Date().toISOString() }).eq("id", currentTrip.id);
+            const now = new Date().toISOString();
+            await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
             setDriverTripPhase("in_progress");
             toast({ title: "🚗 Trip Started", description: "Navigate to destination" });
           }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
@@ -1682,19 +1697,37 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
           }
 
+            {driverTripPhase === "in_progress" && currentTrip?.booking_type === "hourly" && (
+              <div className="bg-primary/10 border border-primary/20 rounded-xl px-3 py-2 flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <p className="text-xs font-semibold text-foreground">Hourly trip — {currentTrip.estimated_fare ?? "—"} MVR/hr</p>
+              </div>
+            )}
+
             {driverTripPhase === "in_progress" &&
           <button onClick={async () => {
             if (!currentTrip || !userProfile?.id) return;
+            const now = new Date().toISOString();
+            // For hourly trips, calculate actual fare based on duration
+            let actualFare = currentTrip.estimated_fare;
+            if (currentTrip.booking_type === "hourly") {
+              const startedAt = (currentTrip as any).started_at || (currentTrip as any).accepted_at;
+              if (startedAt) {
+                const hours = Math.max(1, (Date.now() - new Date(startedAt).getTime()) / 3600000);
+                actualFare = Math.round(hours * (currentTrip.estimated_fare || 0));
+              }
+            }
             await supabase.from("trips").update({
               status: "completed",
-              completed_at: new Date().toISOString(),
-              actual_fare: currentTrip.estimated_fare
-            }).eq("id", currentTrip.id);
+              completed_at: now,
+              actual_fare: actualFare,
+              hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
+            } as any).eq("id", currentTrip.id);
             await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
             setDriverTripPhase("heading_to_pickup");
             setScreen("complete");
           }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
-                Complete Ride
+                {currentTrip?.booking_type === "hourly" ? "End Hourly Trip" : "Complete Ride"}
               </button>
           }
           </div>
