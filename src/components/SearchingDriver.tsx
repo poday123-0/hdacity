@@ -144,45 +144,61 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
 
   // ─── "No driver found" screen ───
   if (showNoDriver) {
-    return (
-      <div className="fixed inset-0 z-50 bg-foreground/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="bg-card rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
-        >
-          <div className="p-6 space-y-5">
-            <div className="flex flex-col items-center pt-2">
-              <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-                <Phone className="w-10 h-10 text-destructive" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground">No drivers available</h3>
-              <p className="text-sm text-muted-foreground mt-1 text-center">
-                No driver accepted your trip. Please call our support center to arrange a ride.
-              </p>
-            </div>
+    const cleanNumber = callCenterNumber.replace(/"/g, "").trim();
+    const telHref = cleanNumber.startsWith("+") ? `tel:${cleanNumber}` : `tel:+960${cleanNumber}`;
+    const displayNumber = cleanNumber.startsWith("+") ? cleanNumber : `+960 ${cleanNumber}`;
 
-            {callCenterNumber && (
-              <a
-                href={`tel:+960${callCenterNumber}`}
-                className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl text-base font-bold active:scale-95 transition-transform"
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <motion.div
+          initial={{ scale: 0.85, opacity: 0, y: 30 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", damping: 22, stiffness: 280 }}
+          className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+        >
+          {/* Header */}
+          <div className="px-6 pt-8 pb-5 text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 18 }}
+              className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4"
+            >
+              <Car className="w-8 h-8 text-destructive" />
+            </motion.div>
+            <h3 className="text-lg font-bold text-foreground">No drivers available</h3>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              No driver accepted your trip. Please call our support center to arrange a ride.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="px-6 pb-6 space-y-3">
+            {cleanNumber && (
+              <motion.a
+                href={telHref}
+                whileTap={{ scale: 0.97 }}
+                className="w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground py-4 rounded-2xl text-base font-bold shadow-lg shadow-primary/25 active:scale-95 transition-transform"
               >
                 <Phone className="w-5 h-5" />
-                Call Support: +960 {callCenterNumber}
-              </a>
+                Call Support: {displayNumber}
+              </motion.a>
             )}
 
             {onRetry && (
               <button
                 onClick={onRetry}
-                className="w-full flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
+                className="w-full flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3.5 rounded-2xl text-sm font-semibold active:scale-95 transition-transform"
               >
                 <RotateCcw className="w-4 h-4" />
                 Try Again
               </button>
             )}
 
-            <button onClick={onCancel} className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-xl transition-colors">
+            <button
+              onClick={onCancel}
+              className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-2xl transition-colors"
+            >
               Go back
             </button>
           </div>

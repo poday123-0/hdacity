@@ -397,7 +397,10 @@ const Index = () => {
         // Only play sound and show toast when status actually changes
         const statusChanged = lastPlayedStatusRef.current !== status;
 
-        if (statusChanged) {
+        // Suppress sound/toast for "no driver found" cancellations — the SearchingDriver popup handles that
+        const isNoDriverCancel = status === "cancelled" && trip.cancel_reason === "No driver found";
+
+        if (statusChanged && !isNoDriverCancel) {
           lastPlayedStatusRef.current = status;
 
           const notifications: Record<string, { title: string; description: string }> = {
@@ -450,7 +453,8 @@ const Index = () => {
           // Stay on driver-matching, show bank details
         } else if (status === "completed") {
           setPassengerScreen("feedback");
-        } else if (status === "cancelled") {
+        } else if (status === "cancelled" && !isNoDriverCancel) {
+          // Only go home if it's a real cancellation (not "no driver found" — SearchingDriver handles that)
           setPassengerScreen("home");
           setCurrentTripId(null);
           setMatchedDriver(null);
