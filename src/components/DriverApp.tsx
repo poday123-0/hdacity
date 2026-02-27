@@ -97,6 +97,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   useTheme(); // Initialize theme
   usePushNotifications(userProfile?.id, "driver");
   const [screen, setScreen] = useState<DriverScreen>("offline");
+  const [showVehicleSwitcher, setShowVehicleSwitcher] = useState(false);
   const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
   const [showDriverChat, setShowDriverChat] = useState(false);
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
@@ -784,15 +785,81 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
         <div className="px-4 py-3 flex items-center justify-center relative">
-          <div className="flex items-center gap-1.5">
-            {(() => {
-              const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
-              return vTypeImg ? (
-                <img src={vTypeImg} alt="Vehicle" className="h-8 w-auto object-contain" />
-              ) : (
-                <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
-              );
-            })()}
+          <div className="relative">
+            <button
+              onClick={() => driverVehicles.length > 1 ? setShowVehicleSwitcher(!showVehicleSwitcher) : null}
+              className={`flex items-center gap-1.5 ${driverVehicles.length > 1 ? "active:scale-95 transition-transform cursor-pointer" : ""}`}
+            >
+              {(() => {
+                const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find(t => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
+                return vTypeImg ? (
+                  <img src={vTypeImg} alt="Vehicle" className="h-8 w-auto object-contain" />
+                ) : (
+                  <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
+                );
+              })()}
+              {driverVehicles.length > 1 && (
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+            </button>
+
+            {/* Vehicle quick-switcher dropdown */}
+            <AnimatePresence>
+              {showVehicleSwitcher && driverVehicles.length > 1 && (
+                <>
+                  <div className="fixed inset-0 z-[800]" onClick={() => setShowVehicleSwitcher(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[801] w-64 bg-card rounded-2xl shadow-xl border border-border overflow-hidden"
+                    style={{ fontSize: '14px' }}
+                  >
+                    <div className="px-3 py-2 border-b border-border">
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Switch Vehicle</p>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto py-1">
+                      {driverVehicles.map((v) => {
+                        const vType = vehicleTypes.find(vt => vt.id === v.vehicle_type_id);
+                        const isSelected = selectedVehicleId === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            onClick={() => {
+                              selectVehicle(v);
+                              setShowVehicleSwitcher(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                              isSelected ? "bg-primary/5" : "hover:bg-surface active:bg-surface"
+                            }`}
+                          >
+                            <div className={`w-10 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                              isSelected ? "bg-primary/10" : "bg-surface"
+                            }`}>
+                              {vType?.image_url ? (
+                                <img src={vType.image_url} alt={vType.name} className="w-9 h-7 object-contain" />
+                              ) : (
+                                <Car className="w-4 h-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                {v.make} {v.model}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{v.plate_number}</p>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
           <button onClick={() => setShowProfile(true)} className="absolute right-4 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
             {avatarUrl ? (
