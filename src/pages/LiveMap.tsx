@@ -4,6 +4,7 @@ import MaldivesMap from "@/components/MaldivesMap";
 import { useTheme } from "@/hooks/use-theme";
 import hdaLogo from "@/assets/hda-logo.png";
 import { Users, Navigation, Maximize2, Minimize2 } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface TripRoute {
   id: string;
@@ -19,10 +20,15 @@ interface TripRoute {
 
 const LiveMap = () => {
   useTheme();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const sharedTripId = searchParams.get("trip");
+
   const [vehicleMarkers, setVehicleMarkers] = useState<any[]>([]);
   const [activeTrips, setActiveTrips] = useState<TripRoute[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [sharedTripEnded, setSharedTripEnded] = useState(false);
 
   // Fetch online driver locations
   useEffect(() => {
@@ -49,31 +55,96 @@ const LiveMap = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch active trips with coordinates
+  // Fetch active trips — if shared trip mode, only track that trip
   useEffect(() => {
     const fetchTrips = async () => {
-      const { data } = await supabase
-        .from("trips")
-        .select("id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address, status, driver_id, profiles:driver_id(first_name, last_name)")
-        .in("status", ["accepted", "in_progress"]);
-      if (data) {
-        setActiveTrips(data.filter((t: any) => t.pickup_lat && t.dropoff_lat).map((t: any) => ({
-          id: t.id,
-          pickupLat: t.pickup_lat,
-          pickupLng: t.pickup_lng,
-          dropoffLat: t.dropoff_lat,
-          dropoffLng: t.dropoff_lng,
-          pickupAddress: t.pickup_address,
-          dropoffAddress: t.dropoff_address,
-          driverName: t.profiles ? `${t.profiles.first_name} ${t.profiles.last_name}` : undefined,
-          status: t.status,
-        })));
+      if (sharedTripId) {
+        // Shared trip mode: fetch only this trip
+        const { data } = await supabase
+          .from("trips")
+          .select("id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address, status, driver_id, profiles:driver_id(first_name, last_name)")
+          .eq("id", sharedTripId)
+          .single();
+
+        if (!data) {
+          // Trip doesn't exist — redirect
+          setSharedTripEnded(true);
+          return;
+        }
+
+        const endedStatuses = ["completed", "cancelled", "expired"];
+        if (endedStatuses.includes(data.status)) {
+          setSharedTripEnded(true);
+          return;
+        }
+
+        if (data.pickup_lat && data.dropoff_lat) {
+          setActiveTrips([{
+            id: data.id,
+            pickupLat: data.pickup_lat,
+            pickupLng: data.pickup_lng,
+            dropoffLat: data.dropoff_lat,
+            dropoffLng: data.dropoff_lng,
+            pickupAddress: data.pickup_address,
+            dropoffAddress: data.dropoff_address,
+            driverName: data.profiles ? `${(data.profiles as any).first_name} ${(data.profiles as any).last_name}` : undefined,
+            status: data.status,
+          }]);
+        }
+      } else {
+        // Admin live map mode: fetch all active trips
+        const { data } = await supabase
+          .from("trips")
+          .select("id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address, status, driver_id, profiles:driver_id(first_name, last_name)")
+          .in("status", ["accepted", "in_progress"]);
+        if (data) {
+          setActiveTrips(data.filter((t: any) => t.pickup_lat && t.dropoff_lat).map((t: any) => ({
+            id: t.id,
+            pickupLat: t.pickup_lat,
+            pickupLng: t.pickup_lng,
+            dropoffLat: t.dropoff_lat,
+            dropoffLng: t.dropoff_lng,
+            pickupAddress: t.pickup_address,
+            dropoffAddress: t.dropoff_address,
+            driverName: t.profiles ? `${t.profiles.first_name} ${t.profiles.last_name}` : undefined,
+            status: t.status,
+          })));
+        }
       }
     };
     fetchTrips();
     const interval = setInterval(fetchTrips, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sharedTripId]);
+
+  // Redirect when shared trip ends
+  useEffect(() => {
+    if (!sharedTripEnded) return;
+    const timer = setTimeout(() => {
+      navigate("/", { replace: true });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [sharedTripEnded, navigate]);
+
+  // Subscribe to realtime trip status changes for shared trip
+  useEffect(() => {
+    if (!sharedTripId) return;
+    const channel = supabase
+      .channel(`shared-trip-${sharedTripId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "trips",
+        filter: `id=eq.${sharedTripId}`,
+      }, (payload) => {
+        const newStatus = (payload.new as any).status;
+        if (["completed", "cancelled", "expired"].includes(newStatus)) {
+          setSharedTripEnded(true);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [sharedTripId]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -88,6 +159,18 @@ const LiveMap = () => {
   const onlineCount = vehicleMarkers.length;
   const onTripCount = vehicleMarkers.filter(v => v.isOnTrip).length;
 
+  // Trip ended overlay for shared links
+  if (sharedTripEnded) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-background gap-4">
+        <img src={hdaLogo} alt="HDA" className="w-16 h-16 object-contain" />
+        <h1 className="text-xl font-bold text-foreground">Trip has ended</h1>
+        <p className="text-sm text-muted-foreground">This ride tracking link is no longer active.</p>
+        <p className="text-xs text-muted-foreground animate-pulse">Redirecting to home page...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
       {/* Header */}
@@ -96,7 +179,7 @@ const LiveMap = () => {
           <img src={hdaLogo} alt="HDA" className="w-8 h-8 object-contain" />
           <div>
             <h1 className="text-base font-extrabold text-foreground">
-              HDA <span className="text-primary">LIVE MAP</span>
+              HDA <span className="text-primary">{sharedTripId ? "TRIP TRACKING" : "LIVE MAP"}</span>
             </h1>
             <p className="text-[10px] text-muted-foreground">
               Last updated: {lastUpdated.toLocaleTimeString()}
@@ -105,14 +188,18 @@ const LiveMap = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="text-xs font-bold text-primary">{onlineCount} online</span>
-          </div>
-          <div className="flex items-center gap-2 bg-accent/50 px-3 py-1.5 rounded-full">
-            <Navigation className="w-4 h-4 text-foreground" />
-            <span className="text-xs font-bold text-foreground">{onTripCount} on trip</span>
-          </div>
+          {!sharedTripId && (
+            <>
+              <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full">
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-primary">{onlineCount} online</span>
+              </div>
+              <div className="flex items-center gap-2 bg-accent/50 px-3 py-1.5 rounded-full">
+                <Navigation className="w-4 h-4 text-foreground" />
+                <span className="text-xs font-bold text-foreground">{onTripCount} on trip</span>
+              </div>
+            </>
+          )}
           <button onClick={toggleFullscreen} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground">
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -121,31 +208,49 @@ const LiveMap = () => {
 
       {/* Map */}
       <div className="flex-1 relative">
-        <MaldivesMap vehicleMarkers={vehicleMarkers} tripRoutes={activeTrips} />
+        <MaldivesMap vehicleMarkers={sharedTripId ? vehicleMarkers.filter(v => activeTrips.some(t => t.driverName)) : vehicleMarkers} tripRoutes={activeTrips} />
 
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2">
-          <p className="text-xs font-semibold text-foreground">Legend</p>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#4285F4]" />
-            <span className="text-[10px] text-muted-foreground">Online Driver</span>
+        {/* Legend - hide for shared trip */}
+        {!sharedTripId && (
+          <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-foreground">Legend</p>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#4285F4]" />
+              <span className="text-[10px] text-muted-foreground">Online Driver</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+              <span className="text-[10px] text-muted-foreground">Pickup Point</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
+              <span className="text-[10px] text-muted-foreground">Dropoff Point</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-1 bg-[#4285F4] rounded" />
+              <span className="text-[10px] text-muted-foreground">Active Trip Route</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
-            <span className="text-[10px] text-muted-foreground">Pickup Point</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
-            <span className="text-[10px] text-muted-foreground">Dropoff Point</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-1 bg-[#4285F4] rounded" />
-            <span className="text-[10px] text-muted-foreground">Active Trip Route</span>
-          </div>
-        </div>
+        )}
 
-        {/* Active trips sidebar */}
-        {activeTrips.length > 0 && (
+        {/* Shared trip info card */}
+        {sharedTripId && activeTrips.length > 0 && (
+          <div className="absolute bottom-4 left-4 right-4 bg-card/95 backdrop-blur border border-border rounded-2xl p-4 space-y-2">
+            {activeTrips[0].driverName && (
+              <p className="text-sm font-bold text-foreground">🚕 {activeTrips[0].driverName}</p>
+            )}
+            <p className="text-xs text-muted-foreground truncate">📍 {activeTrips[0].pickupAddress}</p>
+            <p className="text-xs text-muted-foreground truncate">📌 {activeTrips[0].dropoffAddress}</p>
+            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTrips[0].status === "in_progress" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"
+            }`}>
+              {activeTrips[0].status === "in_progress" ? "Trip in progress" : activeTrips[0].status === "arrived" ? "Driver arrived" : "Driver on the way"}
+            </span>
+          </div>
+        )}
+
+        {/* Active trips sidebar - admin view only */}
+        {!sharedTripId && activeTrips.length > 0 && (
           <div className="absolute top-4 right-4 w-64 max-h-[calc(100%-2rem)] overflow-y-auto bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2">
             <p className="text-xs font-semibold text-foreground">{activeTrips.length} Active Trip{activeTrips.length !== 1 ? "s" : ""}</p>
             {activeTrips.map(trip => (
