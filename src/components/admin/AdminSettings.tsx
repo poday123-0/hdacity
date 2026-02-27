@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download } from "lucide-react";
 
 interface SoundFile {
   id: string;
@@ -61,6 +61,9 @@ const AdminSettings = () => {
   const [adminBank, setAdminBank] = useState<Record<string, string>>({ bank_name: "", account_number: "", account_name: "" });
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [uploadingPassengerIcon, setUploadingPassengerIcon] = useState(false);
+  const [pwaAppIconUrl, setPwaAppIconUrl] = useState<string | null>(null);
+  const [uploadingPwaIcon, setUploadingPwaIcon] = useState(false);
+  const pwaIconInputRef = useRef<HTMLInputElement>(null);
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -79,6 +82,9 @@ const AdminSettings = () => {
     }
     if (map["passenger_map_icon_url"] && typeof map["passenger_map_icon_url"] === "string") {
       setPassengerMapIconUrl(map["passenger_map_icon_url"]);
+    }
+    if (map["pwa_app_icon_url"] && typeof map["pwa_app_icon_url"] === "string") {
+      setPwaAppIconUrl(map["pwa_app_icon_url"]);
     }
     setLoading(false);
   };
@@ -322,6 +328,57 @@ const AdminSettings = () => {
           >
             <Upload className="w-3.5 h-3.5" />
             {uploadingPassengerIcon ? "Uploading..." : "Upload Icon"}
+          </button>
+        </div>
+      </div>
+
+      {/* PWA App Icon */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Download className="w-5 h-5 text-primary" /> PWA App Icon
+      </h2>
+      <p className="text-sm text-muted-foreground">Upload the app icon shown in the install prompt banner. PNG recommended, 512x512px.</p>
+      <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0">
+          {pwaAppIconUrl ? (
+            <img src={pwaAppIconUrl} alt="PWA App icon" className="w-full h-full object-cover rounded-xl" />
+          ) : (
+            <Download className="w-8 h-8 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1 space-y-2">
+          <p className="text-sm text-foreground font-medium">{pwaAppIconUrl ? "Icon uploaded" : "No icon set (uses default)"}</p>
+          <input
+            ref={pwaIconInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploadingPwaIcon(true);
+              const path = `pwa-icons/app_${Date.now()}.${file.name.split(".").pop()}`;
+              const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+              if (error) {
+                toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+                setUploadingPwaIcon(false);
+                return;
+              }
+              const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+              const url = urlData.publicUrl;
+              await updateSetting("pwa_app_icon_url", url);
+              setPwaAppIconUrl(url);
+              setUploadingPwaIcon(false);
+              toast({ title: "PWA app icon updated!" });
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => pwaIconInputRef.current?.click()}
+            disabled={uploadingPwaIcon}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {uploadingPwaIcon ? "Uploading..." : "Upload Icon"}
           </button>
         </div>
       </div>

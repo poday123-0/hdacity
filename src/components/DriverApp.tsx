@@ -46,6 +46,7 @@ import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
 import RideRequestMap from "./RideRequestMap";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -1921,6 +1922,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PWAInstallPrompt />
     </div>
   );
 };
