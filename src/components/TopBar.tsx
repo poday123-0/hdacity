@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
 import RideHistory from "@/components/RideHistory";
+import LostItemReport from "@/components/LostItemReport";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,23 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
   const [showContactForm, setShowContactForm] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(userProfile?.avatar_url || null);
+  const [showLostItem, setShowLostItem] = useState(false);
+  const [lostItemTrips, setLostItemTrips] = useState<Array<{ id: string; pickup_address: string; dropoff_address: string; completed_at: string }>>([]);
+  const [selectedLostTripId, setSelectedLostTripId] = useState<string | null>(null);
+
+  const openLostItems = async () => {
+    if (!userProfile?.id) return;
+    const { data } = await supabase
+      .from("trips")
+      .select("id, pickup_address, dropoff_address, completed_at")
+      .eq("passenger_id", userProfile.id)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(10);
+    setLostItemTrips((data || []) as any);
+    setShowLostItem(true);
+    setShowProfile(false);
+  };
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -291,6 +309,13 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
                     <span className="text-xs font-semibold text-foreground">Contacts</span>
                   </button>
                   <button
+                    onClick={openLostItems}
+                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                  >
+                    <PackageSearch className="w-4 h-4 text-orange-500 shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">Lost Item</span>
+                  </button>
+                  <button
                     onClick={() => { setShowProfile(false); window.location.href = "/install"; }}
                     className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
                   >
@@ -317,6 +342,68 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
       <AnimatePresence>
         {showHistory && (
           <RideHistory userId={userProfile?.id} onClose={() => setShowHistory(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Lost Item Report - Trip Picker */}
+      <AnimatePresence>
+        {showLostItem && !selectedLostTripId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
+            onClick={() => setShowLostItem(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[70dvh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 pb-6 space-y-3">
+                <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-foreground">Report Lost Item</h3>
+                  <button onClick={() => setShowLostItem(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">Select the trip where you lost your item:</p>
+                <div className="space-y-2 overflow-y-auto max-h-[50dvh]">
+                  {lostItemTrips.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">No completed trips found.</p>
+                  ) : (
+                    lostItemTrips.map((trip) => (
+                      <button
+                        key={trip.id}
+                        onClick={() => setSelectedLostTripId(trip.id)}
+                        className="w-full text-left bg-muted/50 rounded-xl p-3 active:scale-[0.98] transition-transform"
+                      >
+                        <p className="text-xs font-semibold text-foreground">{trip.pickup_address} → {trip.dropoff_address}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {trip.completed_at ? new Date(trip.completed_at).toLocaleString() : "—"}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Lost Item Report Form */}
+      <AnimatePresence>
+        {selectedLostTripId && (
+          <LostItemReport
+            tripId={selectedLostTripId}
+            reporterId={userProfile?.id}
+            onClose={() => { setSelectedLostTripId(null); setShowLostItem(false); }}
+          />
         )}
       </AnimatePresence>
 
