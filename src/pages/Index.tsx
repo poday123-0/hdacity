@@ -63,6 +63,68 @@ const Index = () => {
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
   const [tripStatus, setTripStatus] = useState<string>("accepted");
 
+  // Restore ongoing trip on app load
+  useEffect(() => {
+    if (!userProfile?.id || phase !== "passenger") return;
+
+    const restoreTrip = async () => {
+      // Find any active trip for this passenger
+      const { data: activeTrip } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("passenger_id", userProfile.id)
+        .in("status", ["requested", "accepted", "arrived", "in_progress"])
+        .order("requested_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!activeTrip) return;
+
+      setCurrentTripId(activeTrip.id);
+      setTripStatus(activeTrip.status);
+      setEstimatedFare(activeTrip.estimated_fare || 0);
+
+      // Restore pickup/dropoff locations
+      if (activeTrip.pickup_lat && activeTrip.pickup_lng) {
+        setPickup({ id: "restored-pickup", name: activeTrip.pickup_address || "Pickup", address: activeTrip.pickup_address || "", lat: Number(activeTrip.pickup_lat), lng: Number(activeTrip.pickup_lng) });
+      }
+      if (activeTrip.dropoff_lat && activeTrip.dropoff_lng) {
+        setDropoff({ id: "restored-dropoff", name: activeTrip.dropoff_address || "Dropoff", address: activeTrip.dropoff_address || "", lat: Number(activeTrip.dropoff_lat), lng: Number(activeTrip.dropoff_lng) });
+      }
+
+      if (activeTrip.status === "requested") {
+        setPassengerScreen("searching");
+      } else if (["accepted", "arrived", "in_progress"].includes(activeTrip.status)) {
+        // Fetch driver info
+        if (activeTrip.driver_id) {
+          const [profileRes, banksRes, vehicleRes] = await Promise.all([
+            supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", activeTrip.driver_id).single(),
+            supabase.from("driver_bank_accounts").select("*").eq("driver_id", activeTrip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+            activeTrip.vehicle_id
+              ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", activeTrip.vehicle_id).single()
+              : Promise.resolve({ data: null }),
+          ]);
+          const p = profileRes.data;
+          const v = vehicleRes.data;
+          setMatchedDriver({
+            name: p ? `${p.first_name} ${p.last_name}` : "Driver",
+            initials: p ? `${p.first_name?.[0] || ""}${p.last_name?.[0] || ""}` : "D",
+            phone: p ? `+${p.country_code || "960"} ${p.phone_number}` : "",
+            avatar_url: p?.avatar_url || null,
+            vehicle: v ? `${v.make} ${v.model}` : "",
+            plate: v?.plate_number || "",
+            bank_accounts: banksRes.data || [],
+          });
+        }
+        setPassengerScreen("driver-matching");
+      }
+
+      toast({ title: "Trip restored", description: "Your ongoing trip has been restored." });
+    };
+
+    restoreTrip();
+  }, [userProfile?.id, phase]);
+
   // Build ride data for the map
   const rideMapData = useMemo(() => {
     const isRiding = ["searching", "driver-matching", "feedback"].includes(passengerScreen);
