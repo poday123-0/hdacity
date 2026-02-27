@@ -913,13 +913,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               )}
             </AnimatePresence>
           </div>
-          <button onClick={() => setShowProfile(true)} className="absolute left-4 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <User className="w-5 h-5 text-foreground" />
-            )}
-          </button>
+          <div className="absolute left-4 flex items-center gap-2">
+            <button onClick={() => setShowProfile(true)} className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-5 h-5 text-foreground" />
+              )}
+            </button>
+            <button
+              onClick={() => setScreen("offline")}
+              className="relative w-11 h-6 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0"
+              title="Go Offline"
+            >
+              <div className="w-5 h-5 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[19px]" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1079,13 +1088,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {/* Status bar - always visible */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
-                <button
-                  onClick={() => setScreen("offline")}
-                  className="relative w-11 h-6 rounded-full bg-[hsl(var(--success))] transition-colors active:scale-95 flex items-center px-0.5 shrink-0"
-                  title="Go Offline"
-                >
-                  <div className="w-5 h-5 rounded-full bg-primary-foreground shadow-sm transition-transform translate-x-[19px]" />
-                </button>
                 <span className="font-semibold text-sm text-foreground">Online</span>
                 {driverStats.avgRating > 0 && (
                   <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
