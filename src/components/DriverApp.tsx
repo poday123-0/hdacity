@@ -984,7 +984,44 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </>
         }
         <button
-          onClick={() => setGpsEnabled(!gpsEnabled)}
+          onClick={() => {
+            if (gpsEnabled) {
+              // Stop GPS tracking
+              if (locationWatchRef.current !== null) {
+                navigator.geolocation.clearWatch(locationWatchRef.current);
+                locationWatchRef.current = null;
+              }
+              setGpsEnabled(false);
+              toast({ title: "GPS disabled", description: "Using fallback location" });
+            } else {
+              // Request GPS permission and start watching
+              if (!navigator.geolocation) {
+                toast({ title: "GPS not supported", description: "Your device doesn't support GPS", variant: "destructive" });
+                return;
+              }
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  setGpsEnabled(true);
+                  // Start watching
+                  locationWatchRef.current = navigator.geolocation.watchPosition(
+                    (p) => {
+                      if (lastPosRef.current) {
+                        lastPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude };
+                      }
+                    },
+                    () => setGpsEnabled(false),
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+                  );
+                  toast({ title: "GPS enabled", description: "Tracking your real location" });
+                },
+                (err) => {
+                  setGpsEnabled(false);
+                  toast({ title: "GPS permission denied", description: "Please enable location access in your browser settings", variant: "destructive" });
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+              );
+            }
+          }}
           className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
           gpsEnabled ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-surface"}`
           }
