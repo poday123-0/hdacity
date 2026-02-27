@@ -25,6 +25,7 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
   const [messages, setMessages] = useState<TripMessage[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [quickReplies, setQuickReplies] = useState<{ text: string; target: string }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +40,16 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
       setMessages((data as TripMessage[]) || []);
     };
     fetchMessages();
+
+    // Fetch quick replies
+    supabase.from("system_settings").select("value").eq("key", "chat_quick_replies").single().then(({ data }) => {
+      if (data?.value && Array.isArray(data.value)) {
+        const filtered = (data.value as { text: string; target: string }[]).filter(
+          qr => qr.target === "both" || qr.target === senderType
+        );
+        setQuickReplies(filtered);
+      }
+    });
 
     if (readOnly) return;
 
@@ -100,16 +111,17 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
     }
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!text.trim() || sending || !tripId) return;
+  const sendMessage = async (msg?: string) => {
+    const messageText = msg || text.trim();
+    if (!messageText || sending || !tripId) return;
     setSending(true);
     await supabase.from("trip_messages").insert({
       trip_id: tripId,
       sender_id: senderId || null,
       sender_type: senderType,
-      message: text.trim(),
+      message: messageText,
     } as any);
-    setText("");
+    if (!msg) setText("");
     setSending(false);
   };
 
@@ -188,7 +200,22 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
 
           {/* Input */}
           {!readOnly && (
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-border space-y-2">
+              {/* Quick replies */}
+              {quickReplies.length > 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                  {quickReplies.map((qr, i) => (
+                    <button
+                      key={i}
+                      onClick={() => sendMessage(qr.text)}
+                      disabled={sending}
+                      className="shrink-0 px-3 py-1.5 rounded-full bg-surface text-xs font-medium text-foreground border border-border active:scale-95 transition-transform disabled:opacity-40"
+                    >
+                      {qr.text}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
                   value={text}
@@ -198,7 +225,7 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
                   className="flex-1 px-4 py-2.5 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <button
-                  onClick={sendMessage}
+                  onClick={() => sendMessage()}
                   disabled={!text.trim() || sending}
                   className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
                 >
