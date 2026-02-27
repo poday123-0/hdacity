@@ -24,7 +24,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/driver" element={<Driver />} />
           <Route path="/import-users" element={<ImportUsers />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={<NotFound />} />
+          <Route path="/hda-control" element={<Admin />} />
           <Route path="/dispatch" element={<Dispatch />} />
           <Route path="/live-map" element={<LiveMap />} />
           <Route path="/install" element={<Install />} />
