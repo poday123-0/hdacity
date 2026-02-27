@@ -352,7 +352,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-foreground">Taxi Permit</p>
+                <p className="text-xs font-semibold text-foreground">Taxi Permit <span className="font-normal text-muted-foreground">(optional)</span></p>
                 <div className="grid grid-cols-2 gap-3">
                   <DocUploadCard label="Front" url={taxiPermitFront} target="permit_front" />
                   <DocUploadCard label="Back" url={taxiPermitBack} target="permit_back" />
