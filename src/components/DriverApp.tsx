@@ -1489,7 +1489,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col landscape-panel"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 space-y-4 overflow-y-auto flex-1">
+              <div className="p-4 space-y-4 overflow-y-auto flex-1" style={{ fontSize: '16px' }}>
                 <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
 
                 {/* Avatar + Name */}
