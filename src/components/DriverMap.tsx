@@ -55,17 +55,24 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [navEta, setNavEta] = useState("");
   const [navDistance, setNavDistance] = useState("");
   const [navExpanded, setNavExpanded] = useState(false);
+  const [currentSpeed, setCurrentSpeed] = useState(0); // km/h
 
   // Track GPS
   useEffect(() => {
     if (!navigator.geolocation) { setCurrentPos(MALE_CENTER); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (pos.coords.speed != null && pos.coords.speed >= 0) setCurrentSpeed(Math.round(pos.coords.speed * 3.6));
+      },
       () => setCurrentPos(MALE_CENTER),
       { enableHighAccuracy: true, timeout: 10000 }
     );
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (pos.coords.speed != null && pos.coords.speed >= 0) setCurrentSpeed(Math.round(pos.coords.speed * 3.6));
+      },
       () => {},
       { enableHighAccuracy: true, maximumAge: 3000 }
     );
@@ -435,6 +442,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-foreground bg-muted/60 rounded px-1.5 py-0.5">{currentSpeed} km/h</span>
                 <span className="text-[10px] font-bold text-primary">{navEta}</span>
                 <span className="text-[10px] text-muted-foreground">{navDistance}</span>
               </div>
