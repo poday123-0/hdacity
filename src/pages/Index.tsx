@@ -264,17 +264,20 @@ const Index = () => {
   const handleConfirmRide = useCallback(async () => {
     if (!pickup || !dropoff || !selectedVehicleType) return;
 
-    const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-    const { count } = await supabase
-      .from("driver_locations")
-      .select("id", { count: "exact", head: true })
-      .eq("is_online", true)
-      .eq("is_on_trip", false)
-      .gte("updated_at", twoMinAgo);
+    // For scheduled rides, skip driver availability check
+    if (bookingType !== "scheduled") {
+      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      const { count } = await supabase
+        .from("driver_locations")
+        .select("id", { count: "exact", head: true })
+        .eq("is_online", true)
+        .eq("is_on_trip", false)
+        .gte("updated_at", twoMinAgo);
 
-    if (!count || count === 0) {
-      toast({ title: "No drivers available", description: "There are no drivers online right now. Please try again later.", variant: "destructive" });
-      return;
+      if (!count || count === 0) {
+        toast({ title: "No drivers available", description: "There are no drivers online right now. Please try again later.", variant: "destructive" });
+        return;
+      }
     }
 
     try {
@@ -330,6 +333,18 @@ const Index = () => {
       }
 
       setCurrentTripId(data.id);
+
+      // For scheduled rides, show confirmation and go back to home
+      if (bookingType === "scheduled") {
+        toast({
+          title: "📅 Ride Scheduled!",
+          description: `Your ride has been scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}. Drivers will be notified when the time arrives.`,
+        });
+        setPassengerScreen("home");
+        setCurrentTripId(null);
+        return;
+      }
+
       setPassengerScreen("searching");
 
       // Send push notification to online drivers

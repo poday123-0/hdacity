@@ -86,6 +86,8 @@ interface TripRequest {
   booking_type?: string;
   scheduled_at?: string;
   booking_notes?: string;
+  started_at?: string;
+  accepted_at?: string;
 }
 
 interface BankAccount {
@@ -1954,6 +1956,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             if (!currentTrip) return;
             const now = new Date().toISOString();
             await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
+            setCurrentTrip({ ...currentTrip, started_at: now } as any);
             setDriverTripPhase("in_progress");
             toast({ title: "🚗 Trip Started", description: "Navigate to destination" });
           }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
