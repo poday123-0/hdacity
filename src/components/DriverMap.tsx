@@ -29,9 +29,11 @@ interface DriverMapProps {
   onRecenterAvailableChange?: (available: boolean) => void;
   recenterRef?: React.MutableRefObject<(() => void) | null>;
   onNavUpdate?: (etaText: string, distanceText: string, etaMinutes: number, distanceKm: number) => void;
+  onFollowDriverChange?: (following: boolean) => void;
+  followToggleRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -454,6 +456,42 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, recenterRef]);
 
+  // Expose follow toggle to parent
+  useEffect(() => {
+    onFollowDriverChange?.(followDriver);
+  }, [followDriver, onFollowDriverChange]);
+
+  useEffect(() => {
+    if (followToggleRef) {
+      followToggleRef.current = () => {
+        if (followDriver) {
+          setFollowDriver(false);
+          userInteractingRef.current = true;
+          setUserPannedAway(false);
+          const g = (window as any).google;
+          if (g?.maps && mapInstance.current) {
+            mapInstance.current.setTilt(0);
+            if (mapInstance.current.setHeading) mapInstance.current.setHeading(0);
+            const bounds = new g.maps.LatLngBounds();
+            if (currentPos) bounds.extend(currentPos);
+            if (pickupCoords) bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] });
+            if (dropoffCoords) bounds.extend({ lat: dropoffCoords[0], lng: dropoffCoords[1] });
+            mapInstance.current.fitBounds(bounds, 60);
+          }
+        } else {
+          setFollowDriver(true);
+          userInteractingRef.current = false;
+          setUserPannedAway(false);
+          if (currentPos && mapInstance.current) {
+            mapInstance.current.panTo(currentPos);
+            mapInstance.current.setZoom(18);
+            mapInstance.current.setTilt(45);
+          }
+        }
+      };
+    }
+  }, [followDriver, followToggleRef, currentPos, pickupCoords, dropoffCoords]);
+
   if (error) {
     return <div className="absolute inset-0 bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
   }
@@ -467,45 +505,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      {/* Navigation map controls — bottom right */}
-      {isNavigating && (
-        <div className="absolute bottom-4 right-3 z-[460] flex flex-col gap-2">
-          <button
-            onClick={() => {
-              if (followDriver) {
-                setFollowDriver(false);
-                userInteractingRef.current = true;
-                setUserPannedAway(false);
-                const g = (window as any).google;
-                if (g?.maps && mapInstance.current) {
-                  mapInstance.current.setTilt(0);
-                  if (mapInstance.current.setHeading) mapInstance.current.setHeading(0);
-                  const bounds = new g.maps.LatLngBounds();
-                  if (currentPos) bounds.extend(currentPos);
-                  if (pickupCoords) bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] });
-                  if (dropoffCoords) bounds.extend({ lat: dropoffCoords[0], lng: dropoffCoords[1] });
-                  mapInstance.current.fitBounds(bounds, 60);
-                }
-              } else {
-                setFollowDriver(true);
-                userInteractingRef.current = false;
-                setUserPannedAway(false);
-                if (currentPos && mapInstance.current) {
-                  mapInstance.current.panTo(currentPos);
-                  mapInstance.current.setZoom(18);
-                  mapInstance.current.setTilt(45);
-                }
-              }
-            }}
-            className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all ${
-              followDriver ? "bg-card text-muted-foreground" : "bg-primary text-primary-foreground"
-            }`}
-            title={followDriver ? "Show full route" : "Follow my location"}
-          >
-            {followDriver ? <Route className="w-5 h-5" /> : <Crosshair className="w-5 h-5" />}
-          </button>
-        </div>
-      )}
+      {/* Route/follow toggle removed — now in DriverApp sidebar */}
 
       {/* Speed indicator — bottom left, always visible during navigation */}
       {isNavigating && (
