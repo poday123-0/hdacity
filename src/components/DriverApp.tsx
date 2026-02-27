@@ -1317,7 +1317,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            onClick={() => setScreen("online")}
+            onClick={async () => {
+              // Check if another device is already online
+              const { data: existingLoc } = await supabase
+                .from("driver_locations")
+                .select("session_id, is_online")
+                .eq("driver_id", userProfile!.id)
+                .single();
+              if (existingLoc?.is_online && existingLoc.session_id && existingLoc.session_id !== deviceSessionId.current) {
+                toast({ title: "Already Online", description: "You are already online on another device. Go offline there first.", variant: "destructive" });
+                return;
+              }
+              setScreen("online");
+            }}
             className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-base transition-all active:scale-[0.97] shadow-lg shadow-primary/20"
             whileTap={{ scale: 0.97 }}>
 
