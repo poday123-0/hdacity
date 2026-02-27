@@ -2003,15 +2003,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
 
               {/* Text Size Preference */}
-              <div className="px-4 pb-2">
+              <div className="px-4 pb-2" style={{ fontSize: '16px' }}>
                 <div className="bg-surface rounded-xl px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                       <Type className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">Text Size</p>
-                      <p className="text-xs text-muted-foreground">Adjust app text size</p>
+                    <div className="flex-1 min-w-0">
+                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Text Size</p>
+                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Adjust app text size</p>
                     </div>
                   </div>
                   <div className="mt-3 space-y-2">
