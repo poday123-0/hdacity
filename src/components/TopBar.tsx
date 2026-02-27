@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
@@ -249,6 +249,20 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
                   <div className="text-left">
                     <p className="text-sm font-semibold text-foreground">Emergency Contacts</p>
                     <p className="text-xs text-muted-foreground">Manage safety contacts</p>
+                  </div>
+                </button>
+
+                {/* Share App button */}
+                <button
+                  onClick={() => { setShowProfile(false); window.location.href = "/install"; }}
+                  className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <Share2 className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-foreground">Share App</p>
+                    <p className="text-xs text-muted-foreground">Install & share with others</p>
                   </div>
                 </button>
 
