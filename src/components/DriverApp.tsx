@@ -147,8 +147,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
-    try { const v = localStorage.getItem("hda_driver_text_size"); return v ? parseFloat(v) : 1; } catch { return 1; }
+    try {
+      // Try user-specific key first, fall back to generic key
+      const uid = userProfile?.id;
+      if (uid) {
+        const v = localStorage.getItem(`hda_driver_text_size_${uid}`);
+        if (v) return parseFloat(v);
+      }
+      const v = localStorage.getItem("hda_driver_text_size");
+      return v ? parseFloat(v) : 1;
+    } catch { return 1; }
   });
 
   // Default fallback location (Male, Maldives) when GPS not available
@@ -2011,7 +2021,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
                           setTextSize(val);
-                          try { localStorage.setItem("hda_driver_text_size", String(val)); } catch {}
+                          try { localStorage.setItem(textSizeKey, String(val)); } catch {}
                         }}
                         className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border"
                       />
