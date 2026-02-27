@@ -506,6 +506,8 @@ const Index = () => {
               userId={userProfile?.id}
               tripStatus={tripStatus}
               showBankDetails={tripStatus === "in_progress"}
+              pickupName={pickup?.name}
+              dropoffName={dropoff?.name}
             />
           )}
         </AnimatePresence>
