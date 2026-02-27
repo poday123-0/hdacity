@@ -318,6 +318,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           // Another device is now active — show alert and force offline
           if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
           if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
+          // Vibrate to alert driver
+          try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
+          // Play alert sound
+          try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.5);
+          } catch {}
           setSessionKicked(true);
           setScreen("offline");
         }
