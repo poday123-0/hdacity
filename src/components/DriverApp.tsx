@@ -928,7 +928,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
 
           {/* Right: On/Off toggle */}
-          {screen !== "offline" && (
+          {screen !== "offline" &&
           <button
             onClick={() => setScreen("offline")}
             className="relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]"
@@ -946,7 +946,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               transition={{ type: "spring", stiffness: 500, damping: 30 }} />
 
           </button>
-          )}
+          }
         </div>
       </div>
 
@@ -971,7 +971,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Map action buttons — right side, positioned for thumb reach */}
       {screen !== "offline" &&
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+340px)] right-3 z-[460] flex flex-col gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/30 mx-0 my-[191px]">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+340px)] right-3 z-[460] flex flex-col gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/30 mx-0 my-[46px] mb-[70px] mt-[70px]">
         {recenterAvailable &&
         <>
             <button
@@ -1184,18 +1184,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Time</p>
                       </div>
                       {driverStats.declinedToday > 0 &&
-                      <>
+                    <>
                         <div className="w-px h-6 bg-border/40" />
                         <div className="text-center">
                           <p className="text-sm font-bold text-destructive tabular-nums leading-none">{driverStats.declinedToday}</p>
                           <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Declined</p>
                         </div>
                       </>
-                      }
+                    }
                     </div>
                     <button
-                      onClick={() => setShowEarningsHistory(true)}
-                      className="flex items-center gap-0.5 px-2 py-1 rounded-lg bg-primary/10 active:scale-95 transition-transform shrink-0 ml-2">
+                    onClick={() => setShowEarningsHistory(true)}
+                    className="flex items-center gap-0.5 px-2 py-1 rounded-lg bg-primary/10 active:scale-95 transition-transform shrink-0 ml-2">
                       <DollarSign className="w-3 h-3 text-primary" />
                       <span className="text-[9px] font-semibold text-primary">History</span>
                     </button>
@@ -1208,16 +1208,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <Radar className="w-3.5 h-3.5 text-primary shrink-0" />
                       <div className="flex items-center gap-0">
                         <button
-                          onClick={() => updateRadius(Math.max(0.1, +(tripRadius - (tripRadius <= 1 ? 0.1 : 1)).toFixed(1)))}
-                          className="w-5 h-5 rounded-md bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
+                        onClick={() => updateRadius(Math.max(0.1, +(tripRadius - (tripRadius <= 1 ? 0.1 : 1)).toFixed(1)))}
+                        className="w-5 h-5 rounded-md bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
                           <span className="text-[10px] font-bold leading-none">−</span>
                         </button>
                         <span className="text-[10px] font-bold text-foreground tabular-nums w-9 text-center">
                           {tripRadius < 1 ? `${(tripRadius * 1000).toFixed(0)}m` : `${tripRadius}km`}
                         </span>
                         <button
-                          onClick={() => updateRadius(Math.min(50, +(tripRadius + (tripRadius < 1 ? 0.1 : 1)).toFixed(1)))}
-                          className="w-5 h-5 rounded-md bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
+                        onClick={() => updateRadius(Math.min(50, +(tripRadius + (tripRadius < 1 ? 0.1 : 1)).toFixed(1)))}
+                        className="w-5 h-5 rounded-md bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
                           <span className="text-[10px] font-bold leading-none">+</span>
                         </button>
                       </div>
@@ -1225,26 +1225,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                     {/* Vehicle */}
                     {vehicleInfo && (() => {
-                      const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
-                      return (
-                        <div className="bg-surface rounded-xl px-2 py-1.5 flex items-center gap-2 flex-1 min-w-0">
+                    const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
+                    return (
+                      <div className="bg-surface rounded-xl px-2 py-1.5 flex items-center gap-2 flex-1 min-w-0">
                           <div className="w-7 h-7 flex items-center justify-center shrink-0 overflow-hidden">
                             {vTypeImg ?
-                              <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" /> :
-                              <Car className="w-3.5 h-3.5 text-primary" />
-                            }
+                          <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" /> :
+                          <Car className="w-3.5 h-3.5 text-primary" />
+                          }
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
                             <p className="text-[9px] text-muted-foreground truncate">{vehicleInfo.plate_number}{vehicleInfo.color ? ` • ${vehicleInfo.color}` : ""}</p>
                           </div>
                           {driverVehicles.length > 1 &&
-                            <button onClick={() => {setShowProfile(true);setProfileTab("vehicles");}} className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md shrink-0 active:scale-95 transition-transform">
+                        <button onClick={() => {setShowProfile(true);setProfileTab("vehicles");}} className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md shrink-0 active:scale-95 transition-transform">
                               Switch
                             </button>
-                          }
+                        }
                         </div>);
-                    })()}
+                  })()}
                   </div>
 
                 </motion.div>
