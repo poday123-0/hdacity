@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import SOSButton from "@/components/SOSButton";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import NotificationPanel from "@/components/DriverNotifications";
 
 type AppPhase = "splash" | "auth" | "register" | "passenger";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
@@ -48,6 +49,7 @@ const Index = () => {
   const [isDriver] = useState(false);
   usePushNotifications(userProfile?.id, "passenger");
   const [pendingPhone, setPendingPhone] = useState("");
+  const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
@@ -463,7 +465,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
-      <TopBar onLogout={handleLogout} userName={userProfile?.first_name} userProfile={userProfile} />
+      <TopBar onLogout={handleLogout} userName={userProfile?.first_name} userProfile={userProfile} onNotificationPress={() => setShowPassengerNotifs(true)} />
 
       {/* Passenger SOS - visible during active trip */}
       {userProfile?.id && (tripStatus === "in_progress" || tripStatus === "accepted" || tripStatus === "arrived") && currentTripId && (
@@ -518,6 +520,7 @@ const Index = () => {
       </div>
 
       <PWAInstallPrompt />
+      <NotificationPanel userId={userProfile?.id} userType="passenger" visible={showPassengerNotifs} onClose={() => setShowPassengerNotifs(false)} />
     </div>
   );
 };

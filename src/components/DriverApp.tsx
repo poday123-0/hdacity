@@ -2560,7 +2560,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </AnimatePresence>
 
       <PWAInstallPrompt />
-      <DriverNotifications userId={userProfile?.id} visible={showNotifications} onClose={() => setShowNotifications(false)} />
+      <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
     </div>);
 
 };
