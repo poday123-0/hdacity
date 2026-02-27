@@ -129,6 +129,14 @@
 .driver-text-root .text-xl   { font-size: 1.25em;  line-height: 1.75rem; }
 .driver-text-root .text-2xl  { font-size: 1.5em;   line-height: 2rem; }
 .driver-text-root .text-3xl  { font-size: 1.875em; line-height: 2.25rem; }
+.driver-text-root .text-\[7px\]  { font-size: calc(7em / 16); }
+.driver-text-root .text-\[8px\]  { font-size: calc(8em / 16); }
+.driver-text-root .text-\[9px\]  { font-size: calc(9em / 16); }
+.driver-text-root .text-\[10px\] { font-size: calc(10em / 16); }
+.driver-text-root .text-\[11px\] { font-size: calc(11em / 16); }
+.driver-text-root .text-\[12px\] { font-size: calc(12em / 16); }
+.driver-text-root .text-\[14px\] { font-size: calc(14em / 16); }
+.driver-text-root .text-\[18px\] { font-size: calc(18em / 16); }
 
 /* ─── Landscape car-dashboard mode ─── */
 @media (orientation: landscape) and (min-width: 768px) {
