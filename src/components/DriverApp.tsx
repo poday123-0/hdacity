@@ -927,29 +927,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
 
           {/* Right: On/Off toggle */}
+          {screen !== "offline" && (
           <button
-            onClick={() => setScreen(screen === "offline" ? "online" : "offline")}
-            className={`relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 ${
-            screen !== "offline" ?
-            "bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]" :
-            "bg-muted shadow-sm"}`
-            }
-            title={screen !== "offline" ? "Go Offline" : "Go Online"}>
+            onClick={() => setScreen("offline")}
+            className="relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-[hsl(var(--success))] shadow-[0_0_12px_hsl(var(--success)/0.4)]"
+            title="Go Offline">
 
-            {screen !== "offline" &&
             <motion.div
               className="absolute inset-0 rounded-full bg-[hsl(var(--success))]"
               animate={{ opacity: [0.4, 0, 0.4] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               style={{ boxShadow: "0 0 16px hsl(var(--success) / 0.5)" }} />
 
-            }
             <motion.div
               className="relative z-10 w-6 h-6 rounded-full bg-primary-foreground shadow-md"
-              animate={{ x: screen !== "offline" ? 24 : 0 }}
+              animate={{ x: 24 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }} />
 
           </button>
+          )}
         </div>
       </div>
 
