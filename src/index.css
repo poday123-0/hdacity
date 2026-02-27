@@ -170,27 +170,30 @@
     max-height: 100% !important;
     border-radius: 0 1.5rem 1.5rem 0 !important;
     box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15) !important;
-    animation: slideFromLeft 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
+    /* Override framer-motion inline transform completely */
+    transform: translateX(0) translateY(0) !important;
+    opacity: 1 !important;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease !important;
+    animation: none !important;
   }
 
   /* When minimized, slide panel off-screen to the left */
   .landscape-panel.landscape-minimized {
-    transform: translateX(-110%) translateY(0%) !important;
+    transform: translateX(-105%) translateY(0) !important;
     opacity: 0 !important;
     pointer-events: none !important;
-    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease !important;
-    animation: none !important;
-  }
-
-  /* Override framer-motion inline transform in landscape */
-  .landscape-panel:not(.landscape-minimized) {
-    transform: translateX(0) translateY(0%) !important;
   }
 
   /* Expand button: reposition for landscape */
   .landscape-expand-btn {
     bottom: auto !important;
-    top: 1rem;
+    top: 50% !important;
+    left: 0.5rem !important;
+    transform: translateY(-50%) !important;
+    flex-direction: column !important;
+    padding: 0.75rem 0.5rem !important;
+    gap: 0.5rem !important;
+    border-radius: 1rem !important;
   }
 
   /* Allow panel content to scroll full height */
