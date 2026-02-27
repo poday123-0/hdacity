@@ -148,17 +148,17 @@
 
 /* ─── Landscape car-dashboard mode ─── */
 @media (orientation: landscape) and (min-width: 768px) {
-  /* Side panel: pin to right edge, full height */
+  /* Online panel: pin to LEFT edge, full height, slide horizontally */
   .landscape-panel {
     top: 0 !important;
     bottom: 0 !important;
-    left: auto !important;
-    right: 0 !important;
+    left: 0 !important;
+    right: auto !important;
     width: 380px !important;
     max-height: 100% !important;
-    border-radius: 1.5rem 0 0 1.5rem !important;
-    box-shadow: -4px 0 30px rgba(0, 0, 0, 0.15) !important;
-    animation: slideFromRight 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
+    border-radius: 0 1.5rem 1.5rem 0 !important;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15) !important;
+    animation: slideFromLeft 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
     transform: none !important;
   }
 
@@ -168,10 +168,10 @@
     max-height: none !important;
   }
 
-  /* Offline screen: position card on the right side */
+  /* Offline screen: position card on the left side */
   .landscape-offline {
-    justify-content: flex-end !important;
-    padding-right: 2rem;
+    justify-content: flex-start !important;
+    padding-left: 2rem;
   }
   .landscape-offline-card {
     background: hsl(var(--card));
@@ -181,7 +181,7 @@
     max-width: 380px;
   }
 
-  /* Ride request modal: side panel instead of bottom sheet */
+  /* Ride request modal: side panel on right (doesn't conflict) */
   .ride-request-overlay {
     align-items: stretch !important;
     justify-content: flex-end !important;
@@ -193,14 +193,14 @@
     height: 100%;
   }
 
-  /* Complete modal: also right-aligned */
+  /* Complete modal: right-aligned */
   .complete-overlay {
     justify-content: flex-end !important;
     padding-right: 2rem;
   }
 
-  @keyframes slideFromRight {
-    from { transform: translateX(100%); opacity: 0.8; }
+  @keyframes slideFromLeft {
+    from { transform: translateX(-100%); opacity: 0.8; }
     to { transform: translateX(0); opacity: 1; }
   }
 }
@@ -209,5 +209,13 @@
 @media (orientation: landscape) and (min-width: 1024px) {
   .landscape-panel {
     width: 420px !important;
+  }
+}
+
+/* Landscape: minimized panel slides out to the left */
+@media (orientation: landscape) and (min-width: 768px) {
+  .landscape-panel-minimized {
+    transform: translateX(calc(-100% + 48px)) !important;
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   }
 }
