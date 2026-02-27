@@ -29,6 +29,8 @@ const App = () => (
           <Route path="/dispatch" element={<Dispatch />} />
           <Route path="/live-map" element={<LiveMap />} />
           <Route path="/install" element={<Install />} />
+          <Route path="/install-passenger" element={<Install defaultTab="passenger" />} />
+          <Route path="/install-driver" element={<Install defaultTab="driver" />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
