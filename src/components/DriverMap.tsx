@@ -32,9 +32,10 @@ interface DriverMapProps {
   onFollowDriverChange?: (following: boolean) => void;
   followToggleRef?: React.MutableRefObject<(() => void) | null>;
   onSpeedChange?: (speed: number) => void;
+  tripPanelOpen?: boolean;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -524,33 +525,37 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
       {/* Navigation Overlay */}
       {isNavigating && navSteps.length > 0 && (
-        <div className="absolute top-12 left-2 right-2 z-[460]">
+        <div className={`absolute top-12 z-[460] transition-all duration-300 ${tripPanelOpen ? "left-1 right-auto w-[180px]" : "left-2 right-2"}`}>
           <div className="overflow-hidden rounded-xl shadow-lg">
             {/* Current maneuver — prominent */}
-            <div className={`${getManeuverColor(navSteps[currentStepIndex]?.maneuver)} px-3 py-2 flex items-center gap-3`}>
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <span className="text-xl font-black text-white">
+            <div className={`${getManeuverColor(navSteps[currentStepIndex]?.maneuver)} ${tripPanelOpen ? "px-2 py-1.5" : "px-3 py-2"} flex items-center gap-2`}>
+              <div className={`${tripPanelOpen ? "w-7 h-7 rounded-lg" : "w-10 h-10 rounded-xl"} bg-white/20 flex items-center justify-center shrink-0`}>
+                <span className={`${tripPanelOpen ? "text-sm" : "text-xl"} font-black text-white`}>
                   {getManeuverIcon(navSteps[currentStepIndex]?.maneuver)}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-white leading-tight line-clamp-1">
+                <p className={`${tripPanelOpen ? "text-[10px]" : "text-[13px]"} font-bold text-white leading-tight line-clamp-1`}>
                   {navSteps[currentStepIndex]?.instruction || "Continue straight"}
                 </p>
-                <p className="text-[11px] text-white/70 font-medium mt-0.5">
-                  {navSteps[currentStepIndex]?.distance}
-                </p>
+                {!tripPanelOpen && (
+                  <p className="text-[11px] text-white/70 font-medium mt-0.5">
+                    {navSteps[currentStepIndex]?.distance}
+                  </p>
+                )}
               </div>
-              <button
-                onClick={() => setNavExpanded(!navExpanded)}
-                className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0 active:scale-90 transition-transform"
-              >
-                {navExpanded ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
-              </button>
+              {!tripPanelOpen && (
+                <button
+                  onClick={() => setNavExpanded(!navExpanded)}
+                  className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0 active:scale-90 transition-transform"
+                >
+                  {navExpanded ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
+                </button>
+              )}
             </div>
 
-            {/* Next step preview */}
-            {nextStep && !navExpanded && (
+            {/* Next step preview — hidden when compact */}
+            {nextStep && !navExpanded && !tripPanelOpen && (
               <div className="bg-card/95 backdrop-blur-md px-3 py-1.5 flex items-center gap-2 border-t border-border/20">
                 <span className="text-[10px] text-muted-foreground font-medium">Then</span>
                 <span className="text-sm font-bold text-foreground">{getManeuverIcon(nextStep.maneuver)}</span>
@@ -559,17 +564,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               </div>
             )}
 
-            {/* ETA bar */}
-            <div className="bg-card/95 backdrop-blur-md px-3 py-1.5 flex items-center justify-between border-t border-border/20">
-              <div className="flex items-center gap-1.5">
+            {/* ETA bar — compact when panel open */}
+            <div className={`bg-card/95 backdrop-blur-md ${tripPanelOpen ? "px-2 py-1" : "px-3 py-1.5"} flex items-center justify-between border-t border-border/20`}>
+              <div className="flex items-center gap-1">
                 <Navigation className="w-3 h-3 text-primary" />
-                <span className="text-[10px] font-semibold text-foreground">
-                  {tripPhase === "heading_to_pickup" ? "To Pickup" : tripPhase === "in_progress" ? "To Drop-off" : "Preview"}
-                </span>
+                {!tripPanelOpen && (
+                  <span className="text-[10px] font-semibold text-foreground">
+                    {tripPhase === "heading_to_pickup" ? "To Pickup" : tripPhase === "in_progress" ? "To Drop-off" : "Preview"}
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-primary">{navEta}</span>
-                <span className="text-[10px] text-muted-foreground">{navDistance}</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`${tripPanelOpen ? "text-[9px]" : "text-[10px]"} font-bold text-primary`}>{navEta}</span>
+                <span className={`${tripPanelOpen ? "text-[9px]" : "text-[10px]"} text-muted-foreground`}>{navDistance}</span>
               </div>
             </div>
 

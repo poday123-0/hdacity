@@ -1201,7 +1201,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }}
         onFollowDriverChange={setIsFollowingDriver}
         followToggleRef={followToggleRef}
-        onSpeedChange={setDriverSpeed} />
+        onSpeedChange={setDriverSpeed}
+        tripPanelOpen={screen === "navigating" && !navPanelMinimized} />
 
 
       {/* Map action buttons — right side, positioned for thumb reach */}
