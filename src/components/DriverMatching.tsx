@@ -1,6 +1,6 @@
-import { Phone, MessageSquare, X, Star, Landmark, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Phone, MessageSquare, X, Star, Landmark, Copy, Check, ChevronDown, ChevronUp, Share2, Navigation, Gauge, Clock, MapPin, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import TripChat from "./TripChat";
@@ -46,6 +46,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [showAllBanks, setShowAllBanks] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [bankLogos, setBankLogos] = useState<Record<string, string>>({});
+  const [speed, setSpeed] = useState(0);
+  const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
+  const [tripElapsed, setTripElapsed] = useState(0);
+  const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
 
   // Fetch bank logos
   useEffect(() => {
@@ -58,6 +62,49 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     });
   }, []);
 
+  // Track driver location for speed & ETA
+  useEffect(() => {
+    if (!tripId) return;
+
+    const fetchDriverLocation = async () => {
+      const { data: trip } = await supabase.from("trips").select("driver_id, dropoff_lat, dropoff_lng").eq("id", tripId).single();
+      if (!trip?.driver_id) return;
+
+      const { data: loc } = await supabase.from("driver_locations").select("lat, lng, heading").eq("driver_id", trip.driver_id).single();
+      if (!loc) return;
+
+      const now = Date.now();
+      if (lastLocRef.current) {
+        const dist = haversine(lastLocRef.current.lat, lastLocRef.current.lng, loc.lat, loc.lng);
+        const timeDiffH = (now - lastLocRef.current.time) / 3600000;
+        if (timeDiffH > 0) {
+          const currentSpeed = Math.round(dist / timeDiffH);
+          setSpeed(currentSpeed > 200 ? speed : currentSpeed); // filter GPS noise
+        }
+      }
+      lastLocRef.current = { lat: loc.lat, lng: loc.lng, time: now };
+
+      // Calculate ETA to dropoff
+      if (trip.dropoff_lat && trip.dropoff_lng) {
+        const remaining = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng));
+        const avgSpeed = speed > 5 ? speed : 30; // default 30km/h in city
+        const eta = Math.max(1, Math.round((remaining / avgSpeed) * 60));
+        setEtaMinutes(eta);
+      }
+    };
+
+    fetchDriverLocation();
+    const interval = setInterval(fetchDriverLocation, 5000);
+    return () => clearInterval(interval);
+  }, [tripId, speed]);
+
+  // Trip elapsed timer
+  useEffect(() => {
+    if (tripStatus !== "in_progress") return;
+    const timer = setInterval(() => setTripElapsed(prev => prev + 1), 1000);
+    return () => clearInterval(timer);
+  }, [tripStatus]);
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -65,20 +112,41 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/live-map?trip=${tripId}`;
+    const shareData = {
+      title: "Track my ride - HDA Taxi",
+      text: `Follow my live trip with ${driverName}`,
+      url: shareUrl,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: "Link copied!", description: "Share this link for live tracking" });
+      }
+    } catch {
+      // User cancelled share
+    }
+  };
+
+  const formatElapsed = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
   const primaryBank = bankAccounts.find((b) => b.is_primary) || bankAccounts[0];
   const otherBanks = bankAccounts.filter((b) => b.id !== primaryBank?.id);
 
-  const statusLabel = tripStatus === "in_progress"
-    ? "Trip in progress"
-    : tripStatus === "arrived"
-      ? "Driver has arrived!"
-      : "Driver is on the way";
-
-  const etaLabel = tripStatus === "in_progress"
-    ? "In progress"
-    : tripStatus === "arrived"
-      ? "At pickup"
-      : "3 min";
+  const statusConfig = {
+    in_progress: { label: "Trip in progress", icon: Navigation, color: "text-primary" },
+    arrived: { label: "Driver has arrived!", icon: MapPin, color: "text-green-500" },
+    accepted: { label: "Driver is on the way", icon: Navigation, color: "text-primary" },
+  };
+  const status = statusConfig[tripStatus as keyof typeof statusConfig] || statusConfig.accepted;
+  const StatusIcon = status.icon;
 
   return (
     <>
@@ -105,7 +173,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 )}
               </div>
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h3 className="text-lg font-bold text-foreground">{driverName}</h3>
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Star className="w-4 h-4 text-primary fill-primary" />
@@ -116,14 +184,106 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             </div>
           </div>
 
-          {/* ETA / Status */}
-          <div className="bg-primary/10 rounded-xl p-4 text-center">
-            <p className="text-xs text-primary font-semibold">
-              {tripStatus === "arrived" ? "Driver arrived" : tripStatus === "in_progress" ? "Trip status" : "Estimated arrival"}
-            </p>
-            <p className="text-2xl font-bold text-primary">{etaLabel}</p>
-            <p className="text-xs text-muted-foreground">{statusLabel}</p>
-          </div>
+          {/* Enhanced Status Card */}
+          <motion.div
+            layout
+            className="rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20"
+          >
+            {/* Status Header */}
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+              <motion.div
+                animate={{ rotate: tripStatus === "in_progress" ? [0, 15, -15, 0] : 0 }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              >
+                <StatusIcon className={`w-5 h-5 ${status.color}`} />
+              </motion.div>
+              <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
+              {tripStatus === "in_progress" && (
+                <span className="ml-auto text-xs font-mono text-muted-foreground bg-surface px-2 py-0.5 rounded-full">
+                  {formatElapsed(tripElapsed)}
+                </span>
+              )}
+            </div>
+
+            {/* Animated Progress Bar */}
+            <div className="px-4 pb-3">
+              <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  initial={{ width: "0%" }}
+                  animate={{
+                    width: tripStatus === "arrived" ? "33%" : tripStatus === "in_progress" ? "66%" : "15%",
+                  }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                  <MapPin className="w-3 h-3" /> Pickup
+                </span>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                  Dropoff <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-0 border-t border-primary/10">
+              {/* ETA */}
+              <motion.div
+                className="flex flex-col items-center py-3 border-r border-primary/10"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Clock className="w-4 h-4 text-primary mb-1" />
+                <motion.span
+                  key={etaMinutes}
+                  initial={{ scale: 1.3, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-lg font-bold text-foreground leading-none"
+                >
+                  {tripStatus === "arrived" ? "—" : etaMinutes ? `${etaMinutes}` : "..."}
+                </motion.span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">
+                  {tripStatus === "arrived" ? "Arrived" : "min ETA"}
+                </span>
+              </motion.div>
+
+              {/* Speed */}
+              <motion.div
+                className="flex flex-col items-center py-3 border-r border-primary/10"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Gauge className="w-4 h-4 text-primary mb-1" />
+                <motion.span
+                  key={speed}
+                  initial={{ scale: 1.2, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-lg font-bold text-foreground leading-none"
+                >
+                  {speed}
+                </motion.span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">km/h</span>
+              </motion.div>
+
+              {/* Share */}
+              <motion.button
+                onClick={handleShare}
+                className="flex flex-col items-center py-3 active:bg-primary/10 transition-colors"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Share2 className="w-4 h-4 text-primary mb-1" />
+                <span className="text-xs font-semibold text-primary leading-none">Share</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Live trip</span>
+              </motion.button>
+            </div>
+          </motion.div>
 
           {/* Actions */}
           <div className="flex gap-2">
@@ -140,7 +300,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             </button>
           </div>
 
-          {/* Bank accounts - show during trip or when explicitly requested */}
+          {/* Bank accounts */}
           {(showBankDetails || tripStatus === "in_progress") && primaryBank && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -197,6 +357,15 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     </>
   );
 };
+
+// Haversine formula for distance in km
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 const BankCard = ({
   bank,
