@@ -182,6 +182,51 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     try { localStorage.setItem(driverScreenKey, screen); } catch {}
   }, [screen, driverScreenKey]);
 
+  // Restore ongoing trip on app reload
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    const restoreTrip = async () => {
+      const { data } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("driver_id", userProfile.id)
+        .in("status", ["accepted", "arrived", "in_progress"])
+        .order("accepted_at", { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const trip = data[0] as any;
+        setCurrentTrip(trip);
+
+        // Determine trip phase from status
+        if (trip.status === "in_progress") {
+          setDriverTripPhase("in_progress");
+        } else if (trip.status === "arrived") {
+          setDriverTripPhase("arrived");
+        } else {
+          setDriverTripPhase("heading_to_pickup");
+        }
+
+        // Fetch passenger profile
+        if (trip.passenger_id) {
+          const { data: profile } = await supabase.from("profiles")
+            .select("first_name, last_name, phone_number, avatar_url, country_code")
+            .eq("id", trip.passenger_id).single();
+          if (profile) setPassengerProfile(profile);
+        }
+
+        // Fetch trip stops
+        const { data: stops } = await supabase.from("trip_stops")
+          .select("id, stop_order, address, lat, lng, completed_at")
+          .eq("trip_id", trip.id).order("stop_order");
+        if (stops) setTripStops(stops as any[]);
+
+        setScreen("navigating");
+      }
+    };
+    restoreTrip();
+  }, [userProfile?.id]);
+
   // Past trip messages state
   const [pastTripChats, setPastTripChats] = useState<Array<{trip_id: string;pickup: string;dropoff: string;date: string;message_count: number;}>>([]);
   const [selectedChatTripId, setSelectedChatTripId] = useState<string | null>(null);
@@ -404,6 +449,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   }, [userProfile?.id]);
 
   const handleNewTrip = async (trip: TripRequest) => {
+    // Block new trips if driver already has an active trip
+    if (currentTrip) return;
     // Play sound
     if (tripRequestSoundUrl) {
       try {
