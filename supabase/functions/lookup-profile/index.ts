@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -26,14 +27,27 @@ serve(async (req) => {
       });
     }
 
-    // Get all profiles for this phone number (could be both Rider and Driver)
-    const { data: profiles, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("phone_number", phone_number);
+    // Retry DB query for transient SSL errors
+    let profiles: any[] | null = null;
+    let lastError: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("phone_number", phone_number);
 
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
+      if (!error) {
+        profiles = data;
+        lastError = null;
+        break;
+      }
+      lastError = error;
+      console.error(`Profile lookup attempt ${attempt + 1} failed:`, error.message?.length > 200 ? "SSL/connection error" : error.message);
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+    }
+
+    if (lastError) {
+      return new Response(JSON.stringify({ error: "Database connection error. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -50,12 +64,10 @@ serve(async (req) => {
       });
     }
 
-    // Check user types
     const userTypes = profiles.map((p: any) => p.user_type);
     const isDriver = userTypes.includes("Driver");
     const isRider = userTypes.includes("Rider");
 
-    // Use the Rider profile as primary, fallback to first profile
     const primaryProfile = profiles.find((p: any) => p.user_type === "Rider") || profiles[0];
 
     return new Response(JSON.stringify({
@@ -75,6 +87,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("Lookup profile error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
