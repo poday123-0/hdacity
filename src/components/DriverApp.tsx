@@ -46,6 +46,7 @@ import {
   MessageSquare,
   Share2,
   Type,
+  Settings,
 } from "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
@@ -55,7 +56,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
-type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "sounds" | "billing";
+type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "sounds" | "billing" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
@@ -1505,6 +1506,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     { key: "banks", label: "Banks", icon: Landmark },
                     { key: "sounds", label: "Sounds", icon: Volume2 },
                     { key: "billing", label: "Billing", icon: DollarSign },
+                    { key: "settings", label: "Settings", icon: Settings },
                   ] as const).map(({ key, label, icon: Icon }) => (
                     <button
                       key={key}
@@ -1984,55 +1986,69 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 )}
               </div>
 
-              {/* Text Size Preference */}
-              <div className="px-4 pb-2" style={{ fontSize: '16px' }}>
-                <div className="bg-surface rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-3">
+              {profileTab === "settings" && (
+                <div className="space-y-3" style={{ fontSize: '16px' }}>
+                  {/* Text Size */}
+                  <div className="bg-surface rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Type className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Text Size</p>
+                        <p style={{ fontSize: '12px' }} className="text-muted-foreground">Adjust app text size</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground" style={{ fontSize: '11px' }}>A</span>
+                        <span className="font-semibold text-foreground" style={{ fontSize: '12px' }}>{Math.round(textSize * 100)}%</span>
+                        <span className="text-muted-foreground font-bold" style={{ fontSize: '18px' }}>A</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.75"
+                        max="1.35"
+                        step="0.05"
+                        value={textSize}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setTextSize(val);
+                          try { localStorage.setItem("hda_driver_text_size", String(val)); } catch {}
+                        }}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Theme */}
+                  <div className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <Type className="w-5 h-5 text-primary" />
+                      <Settings className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Text Size</p>
-                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Adjust app text size</p>
+                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Theme</p>
+                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Switch light / dark mode</p>
                     </div>
+                    <ThemeToggle />
                   </div>
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground" style={{ fontSize: '11px' }}>A</span>
-                      <span className="font-semibold text-foreground" style={{ fontSize: '12px' }}>{Math.round(textSize * 100)}%</span>
-                      <span className="text-muted-foreground font-bold" style={{ fontSize: '18px' }}>A</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.75"
-                      max="1.35"
-                      step="0.05"
-                      value={textSize}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        setTextSize(val);
-                        try { localStorage.setItem("hda_driver_text_size", String(val)); } catch {}
-                      }}
-                      className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border"
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div className="px-4 pb-2" style={{ fontSize: '16px' }}>
-                <button
-                  onClick={() => { setShowProfile(false); navigate("/install"); }}
-                  className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <Share2 className="w-5 h-5 text-accent-foreground" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-foreground">Share App</p>
-                    <p className="text-xs text-muted-foreground">Install & share with others</p>
-                  </div>
-                </button>
-              </div>
+                  {/* Share App */}
+                  <button
+                    onClick={() => { setShowProfile(false); navigate("/install"); }}
+                    className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Share2 className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Share App</p>
+                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Install & share with others</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
+                  </button>
+                </div>
+              )}
 
               <div className="p-4 pt-2 border-t border-border space-y-2" style={{ fontSize: '16px' }}>
                 {onLogout && (
