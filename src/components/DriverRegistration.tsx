@@ -35,7 +35,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState("");
+  const [showUploadSheet, setShowUploadSheet] = useState(false);
 
   // Vehicle fields
   const [vehicleTypes, setVehicleTypes] = useState<Array<{ id: string; name: string }>>([]);
@@ -92,7 +94,17 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
   const triggerUpload = (target: string) => {
     setUploadTarget(target);
+    setShowUploadSheet(true);
+  };
+
+  const pickFromGallery = () => {
+    setShowUploadSheet(false);
     setTimeout(() => fileInputRef.current?.click(), 50);
+  };
+
+  const takePhoto = () => {
+    setShowUploadSheet(false);
+    setTimeout(() => cameraInputRef.current?.click(), 50);
   };
 
   const handleSubmit = async () => {
@@ -199,6 +211,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
   return (
     <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-lg mx-auto">
+      {/* Gallery picker */}
       <input
         ref={fileInputRef}
         type="file"
@@ -210,6 +223,55 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           e.target.value = "";
         }}
       />
+      {/* Camera capture */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && uploadTarget) handleFileUpload(file, uploadTarget);
+          e.target.value = "";
+        }}
+      />
+
+      {/* Upload action sheet */}
+      {showUploadSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowUploadSheet(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <motion.div
+            initial={{ y: 200, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="relative w-full max-w-lg mx-auto p-4 space-y-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-card rounded-2xl overflow-hidden">
+              <button
+                onClick={takePhoto}
+                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-semibold text-foreground hover:bg-surface transition-colors border-b border-border"
+              >
+                <Camera className="w-5 h-5 text-primary" />
+                Take Photo
+              </button>
+              <button
+                onClick={pickFromGallery}
+                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-semibold text-foreground hover:bg-surface transition-colors"
+              >
+                <Upload className="w-5 h-5 text-primary" />
+                Choose from Gallery
+              </button>
+            </div>
+            <button
+              onClick={() => setShowUploadSheet(false)}
+              className="w-full bg-card rounded-2xl px-5 py-4 text-sm font-semibold text-destructive hover:bg-surface transition-colors"
+            >
+              Cancel
+            </button>
+          </motion.div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="px-6 pt-6 pb-3">
