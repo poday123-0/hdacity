@@ -22,9 +22,10 @@ interface TopBarProps {
   onLogout?: () => void;
   userName?: string;
   userProfile?: UserProfile | null;
+  onNotificationPress?: () => void;
 }
 
-const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
+const TopBar = ({ onLogout, userName, userProfile, onNotificationPress }: TopBarProps) => {
   useTheme();
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -211,7 +212,7 @@ const TopBar = ({ onLogout, userName, userProfile }: TopBarProps) => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleOpenNotifications}
+              onClick={() => onNotificationPress ? onNotificationPress() : handleOpenNotifications()}
               className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative active:scale-95 transition-transform"
             >
               <Bell className="w-5 h-5 text-foreground" />

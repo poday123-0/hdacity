@@ -91,6 +91,23 @@ const AdminNotifications = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Notification sent!" });
+
+      // Send push notification to all relevant devices
+      try {
+        const userTypeFilter = targetType === "drivers" ? "driver" : targetType === "passengers" ? "passenger" : undefined;
+        let tokenQuery = supabase.from("device_tokens").select("user_id").eq("is_active", true);
+        if (userTypeFilter) tokenQuery = tokenQuery.eq("user_type", userTypeFilter);
+        const { data: tokenUsers } = await tokenQuery;
+        if (tokenUsers && tokenUsers.length > 0) {
+          const userIds = [...new Set(tokenUsers.map((t: any) => t.user_id))];
+          await supabase.functions.invoke("send-push-notification", {
+            body: { user_ids: userIds, title: title.trim(), body: message.trim() },
+          });
+        }
+      } catch (pushErr) {
+        console.warn("Push notification failed:", pushErr);
+      }
+
       setTitle("");
       setMessage("");
       setImageUrl(null);

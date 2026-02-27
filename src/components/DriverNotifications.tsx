@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Bell, X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,42 +14,74 @@ interface DriverNotification {
 
 interface Props {
   userId?: string;
+  userType?: "driver" | "passenger";
   onClose: () => void;
   visible: boolean;
 }
 
-const DriverNotifications = ({ userId, onClose, visible }: Props) => {
+const NotificationPanel = ({ userId, userType = "driver", onClose, visible }: Props) => {
   const [notifications, setNotifications] = useState<DriverNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasLoadedRef = useRef(false);
+
+  const targetTypes = userType === "driver" ? ["all", "drivers"] : ["all", "passengers"];
+
+  // Play notification sound
+  const playNotifSound = () => {
+    try {
+      const ctx = new AudioContext();
+      // Two-tone chime
+      const playTone = (freq: number, start: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur);
+      };
+      playTone(880, 0, 0.15);
+      playTone(1100, 0.15, 0.2);
+    } catch {}
+  };
 
   useEffect(() => {
-    if (!visible) return;
-    const fetch = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("notifications")
-        .select("id, title, message, image_url, created_at, target_type")
-        .in("target_type", ["all", "drivers"])
-        .order("created_at", { ascending: false })
-        .limit(30);
-      setNotifications((data as any[]) || []);
-      setLoading(false);
-    };
-    fetch();
-
-    // Realtime
+    // Always listen for realtime notifications (even when panel is closed)
     const channel = supabase
-      .channel("driver-notifications")
+      .channel(`notif-alert-${userType}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
         const n = payload.new as any;
-        if (n.target_type === "all" || n.target_type === "drivers") {
+        if (targetTypes.includes(n.target_type)) {
+          playNotifSound();
           setNotifications((prev) => [n, ...prev]);
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+  }, [userType]);
+
+  useEffect(() => {
+    if (!visible && hasLoadedRef.current) return;
+    if (!visible) return;
+    hasLoadedRef.current = true;
+    const fetchNotifs = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("notifications")
+        .select("id, title, message, image_url, created_at, target_type")
+        .in("target_type", targetTypes)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      setNotifications((data as any[]) || []);
+      setLoading(false);
+    };
+    fetchNotifs();
   }, [visible]);
 
   const timeAgo = (d: string) => {
@@ -127,18 +159,13 @@ const DriverNotifications = ({ userId, onClose, visible }: Props) => {
                           <p className={`text-xs text-muted-foreground mt-0.5 ${expandedId === n.id ? "" : "line-clamp-2"}`}>
                             {n.message}
                           </p>
-                          {/* Image/GIF */}
                           {n.image_url && expandedId === n.id && (
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: "auto" }}
                               className="mt-2 rounded-xl overflow-hidden"
                             >
-                              <img
-                                src={n.image_url}
-                                alt="Notification"
-                                className="w-full max-h-60 object-cover rounded-xl"
-                              />
+                              <img src={n.image_url} alt="Notification" className="w-full max-h-60 object-cover rounded-xl" />
                             </motion.div>
                           )}
                           {n.image_url && expandedId !== n.id && (
@@ -161,4 +188,4 @@ const DriverNotifications = ({ userId, onClose, visible }: Props) => {
   );
 };
 
-export default DriverNotifications;
+export default NotificationPanel;
