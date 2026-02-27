@@ -157,10 +157,10 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
       {/* SOS Button */}
       <button
         onClick={() => setShowConfirm(true)}
-        className="w-12 h-12 rounded-full bg-destructive text-destructive-foreground shadow-lg flex items-center justify-center active:scale-90 transition-transform animate-pulse"
+        className="w-9 h-9 rounded-xl bg-destructive text-destructive-foreground flex items-center justify-center active:scale-90 transition-transform"
         title="Emergency SOS"
       >
-        <AlertTriangle className="w-5 h-5" />
+        <AlertTriangle className="w-4 h-4" />
       </button>
 
       {/* Confirm modal */}

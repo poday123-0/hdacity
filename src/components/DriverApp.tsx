@@ -938,25 +938,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         passengerMapIconUrl={passengerMapIconUrl}
       />
 
-      {/* GPS Toggle, Theme Toggle & SOS */}
-      <div className="absolute top-36 right-4 z-[460] flex flex-col gap-2">
+      {/* Map action buttons — right side */}
+      <div className="absolute top-20 right-3 z-[460] flex flex-col gap-1.5 bg-card/80 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/50">
         <button
           onClick={() => setGpsEnabled(!gpsEnabled)}
-          className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-90 transition-all duration-300 ${
-            gpsEnabled ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+          className={`w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
+            gpsEnabled ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-surface"
           }`}
+          title={gpsEnabled ? "GPS On" : "GPS Off"}
         >
           {gpsEnabled ? <Locate className="w-4 h-4" /> : <LocateOff className="w-4 h-4" />}
         </button>
-        <ThemeToggle />
+        <div className="w-5 h-px bg-border mx-auto" />
+        <ThemeToggle className="!w-9 !h-9 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
         {userProfile?.id && (
-          <SOSButton
-            userId={userProfile.id}
-            userType="driver"
-            userName={`${userProfile.first_name} ${userProfile.last_name}`}
-            userPhone={userProfile.phone_number || ""}
-            tripId={currentTrip?.id}
-          />
+          <>
+            <div className="w-5 h-px bg-border mx-auto" />
+            <SOSButton
+              userId={userProfile.id}
+              userType="driver"
+              userName={`${userProfile.first_name} ${userProfile.last_name}`}
+              userPhone={userProfile.phone_number || ""}
+              tripId={currentTrip?.id}
+            />
+          </>
         )}
       </div>
 

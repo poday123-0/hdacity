@@ -368,7 +368,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                 mapInstance.current.setZoom(16);
               }
             }}
-            className="absolute top-20 right-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90"
+            className="absolute top-20 left-3 z-[460] w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center active:scale-90"
             title="Re-center"
           >
             <Locate className="w-5 h-5 text-primary" />
