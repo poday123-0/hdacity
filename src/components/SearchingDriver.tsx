@@ -145,64 +145,49 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
   // ─── "No driver found" screen ───
   if (showNoDriver) {
     return (
-      <motion.div
-        initial={{ y: "100%" }} animate={{ y: 0 }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-10"
-      >
-        <div className="p-6 space-y-5">
-          <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
-
-          <div className="flex flex-col items-center py-4">
-            <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-              <Phone className="w-10 h-10 text-destructive" />
+      <div className="fixed inset-0 z-50 bg-foreground/50 backdrop-blur-sm flex items-center justify-center p-6">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="bg-card rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+        >
+          <div className="p-6 space-y-5">
+            <div className="flex flex-col items-center pt-2">
+              <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <Phone className="w-10 h-10 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">No drivers available</h3>
+              <p className="text-sm text-muted-foreground mt-1 text-center">
+                No driver accepted your trip. Please call our support center to arrange a ride.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-foreground">No drivers available</h3>
-            <p className="text-sm text-muted-foreground mt-1 text-center">
-              No driver accepted your trip. Please call our support center to arrange a ride.
-            </p>
-          </div>
 
-          {/* Call center - primary action */}
-          {callCenterNumber && (
-            <a
-              href={`tel:+960${callCenterNumber}`}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl text-base font-bold active:scale-95 transition-transform"
-            >
-              <Phone className="w-5 h-5" />
-              Call Support: +960 {callCenterNumber}
-            </a>
-          )}
+            {callCenterNumber && (
+              <a
+                href={`tel:+960${callCenterNumber}`}
+                className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl text-base font-bold active:scale-95 transition-transform"
+              >
+                <Phone className="w-5 h-5" />
+                Call Support: +960 {callCenterNumber}
+              </a>
+            )}
 
-          {/* Route summary */}
-          <div className="bg-muted/50 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <div><p className="text-xs text-muted-foreground">Pickup</p><p className="text-sm font-medium text-foreground">{pickupName}</p></div>
-            </div>
-            <div className="ml-1.5 w-0.5 h-4 bg-border" />
-            <div className="flex items-center gap-3">
-              <MapPin className="w-3 h-3 text-foreground shrink-0" />
-              <div><p className="text-xs text-muted-foreground">Destination</p><p className="text-sm font-medium text-foreground">{dropoffName}</p></div>
-            </div>
-          </div>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="w-full flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Try Again
+              </button>
+            )}
 
-          {/* Retry button - secondary */}
-          {onRetry && (
-            <button
-              onClick={onRetry}
-              className="w-full flex items-center justify-center gap-2 bg-secondary text-secondary-foreground py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Try Again
+            <button onClick={onCancel} className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-xl transition-colors">
+              Go back
             </button>
-          )}
-
-          <button onClick={onCancel} className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-xl transition-colors">
-            Go back
-          </button>
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
+      </div>
     );
   }
 
