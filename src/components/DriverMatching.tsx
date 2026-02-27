@@ -1,4 +1,4 @@
-import { Phone, MessageSquare, X, Star, Landmark, Copy, Check, ChevronDown, ChevronUp, Share2, Navigation, Gauge, Clock, MapPin, ArrowRight, Route } from "lucide-react";
+import { Phone, MessageSquare, X, Star, Landmark, Copy, Check, ChevronDown, ChevronUp, Share2, Navigation, Gauge, Clock, MapPin, ArrowRight, Route, ChevronRight, Minimize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
@@ -47,6 +47,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllBanks, setShowAllBanks] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [bankLogos, setBankLogos] = useState<Record<string, string>>({});
   const [speed, setSpeed] = useState(0);
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
@@ -179,15 +180,60 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
 
   return (
     <>
+      {/* Minimized floating pill */}
+      <AnimatePresence>
+        {minimized && (
+          <motion.button
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            onClick={() => setMinimized(false)}
+            className="absolute bottom-6 left-4 right-4 z-10 bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+          >
+            <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center overflow-hidden shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Driver" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-foreground">{initials}</span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-bold text-foreground truncate">{driverName}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className={`font-semibold ${status.color}`}>{status.label}</span>
+                {etaMinutes && tripStatus !== "arrived" && (
+                  <span className="text-foreground font-mono">• {etaMinutes} min</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-primary">
+              <span className="text-xs font-semibold">Open</span>
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Full panel */}
+      <AnimatePresence>
+        {!minimized && (
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
+        exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-10 max-h-[80vh] overflow-y-auto"
       >
         <div className="p-4 pb-6 space-y-4">
-          <div className="flex justify-center">
+          <div className="flex items-center justify-between">
+            <div className="w-10" />
             <div className="w-10 h-1 rounded-full bg-border" />
+            <button
+              onClick={() => setMinimized(true)}
+              className="w-8 h-8 rounded-full bg-surface flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <Minimize2 className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
 
           {/* Driver info */}
@@ -393,6 +439,8 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
           )}
         </div>
       </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Chat modal */}
       {tripId && (
