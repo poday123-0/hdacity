@@ -1116,7 +1116,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             exit={{ opacity: 0, scale: 0.8, y: 30 }}
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
             onClick={() => setPanelMinimized(false)}
-            className="absolute bottom-6 left-4 z-[460] rounded-2xl px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform bg-card dark:bg-card border border-border shadow-xl">
+            className="absolute bottom-6 left-4 z-[460] rounded-2xl px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform bg-card dark:bg-card border border-border shadow-xl landscape-expand-btn">
 
               <div className="relative flex items-center justify-center w-5 h-5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))]" />
@@ -1132,7 +1132,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           initial={{ y: "100%" }}
           animate={{ y: panelMinimized ? "calc(100% - 0px)" : 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[75vh]"
+          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[450] flex flex-col landscape-panel max-h-[65vh] ${panelMinimized ? "landscape-minimized" : ""}`}
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
 
           <div className="p-4 pb-2 space-y-2.5">
