@@ -87,7 +87,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     if (!tripId) return;
 
     const fetchDriverLocation = async () => {
-      const { data: trip } = await supabase.from("trips").select("driver_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng").eq("id", tripId).single();
+      const { data: trip } = await supabase.from("trips").select("driver_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, duration_minutes, distance_km").eq("id", tripId).single();
       if (!trip?.driver_id) return;
 
       const { data: loc } = await supabase.from("driver_locations").select("lat, lng, heading").eq("driver_id", trip.driver_id).single();
@@ -99,25 +99,30 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
         const timeDiffH = (now - lastLocRef.current.time) / 3600000;
         if (timeDiffH > 0) {
           const currentSpeed = Math.round(dist / timeDiffH);
-          setSpeed(currentSpeed > 200 ? speed : currentSpeed); // filter GPS noise
+          setSpeed(currentSpeed > 200 ? speed : currentSpeed);
         }
       }
       lastLocRef.current = { lat: loc.lat, lng: loc.lng, time: now };
 
-      // Calculate total trip distance (pickup to dropoff) if not yet set
-      if (trip.dropoff_lat && trip.dropoff_lng) {
+      // Use driver's Google Directions data if available, otherwise fallback to haversine
+      if (trip.distance_km && trip.duration_minutes) {
+        setDistanceKm(Number(trip.distance_km));
+        setEtaMinutes(Math.max(1, Number(trip.duration_minutes)));
+        // Set total distance for progress bar
+        if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng) {
+          const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
+          if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
+        }
+      } else if (trip.dropoff_lat && trip.dropoff_lng) {
+        // Fallback: haversine with road correction
         if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng) {
           const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
           if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
         }
-
-        const straightLine = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng));
-        // Apply road-distance correction factor (~1.4x) since haversine is straight-line
-        const remaining = straightLine * 1.4;
+        const remaining = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
         setDistanceKm(Math.round(remaining * 10) / 10);
         const avgSpeed = speed > 5 ? speed : 30;
-        const eta = Math.max(1, Math.round((remaining / avgSpeed) * 60));
-        setEtaMinutes(eta);
+        setEtaMinutes(Math.max(1, Math.round((remaining / avgSpeed) * 60)));
       }
     };
 

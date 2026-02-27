@@ -1051,7 +1051,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         })()}
         passengerMapIconUrl={passengerMapIconUrl}
         onRecenterAvailableChange={setRecenterAvailable}
-        recenterRef={recenterRef} />
+        recenterRef={recenterRef}
+        onNavUpdate={(etaText, distText, etaMins, distKm) => {
+          if (currentTrip?.id) {
+            supabase.from("trips").update({
+              duration_minutes: etaMins,
+              distance_km: distKm,
+            } as any).eq("id", currentTrip.id).then(() => {});
+          }
+        }} />
 
 
       {/* Map action buttons — right side, positioned for thumb reach */}

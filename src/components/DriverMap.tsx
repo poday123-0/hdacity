@@ -26,9 +26,10 @@ interface DriverMapProps {
   passengerMapIconUrl?: string | null;
   onRecenterAvailableChange?: (available: boolean) => void;
   recenterRef?: React.MutableRefObject<(() => void) | null>;
+  onNavUpdate?: (etaText: string, distanceText: string, etaMinutes: number, distanceKm: number) => void;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -159,6 +160,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       
       setNavEta(leg.duration?.text || "");
       setNavDistance(leg.distance?.text || "");
+      
+      // Report nav data to parent
+      const etaMins = Math.round((leg.duration?.value || 0) / 60);
+      const distKm = Math.round((leg.distance?.value || 0) / 100) / 10;
+      onNavUpdate?.(leg.duration?.text || "", leg.distance?.text || "", etaMins, distKm);
       
       const steps: NavStep[] = leg.steps.map((step: any) => ({
         instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
