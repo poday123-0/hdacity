@@ -148,6 +148,18 @@
 
 /* ─── Landscape car-dashboard mode ─── */
 @media (orientation: landscape) and (min-width: 768px) {
+  /* Profile overlay: align to left side */
+  .landscape-profile-overlay {
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+  .landscape-profile-overlay > div {
+    max-width: 400px !important;
+    max-height: 100% !important;
+    height: 100%;
+    border-radius: 0 1.5rem 1.5rem 0 !important;
+  }
+
   /* Online panel: pin to LEFT edge, full height, slide horizontally */
   .landscape-panel {
     top: 0 !important;

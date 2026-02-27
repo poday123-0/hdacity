@@ -1446,13 +1446,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Profile Panel */}
       <AnimatePresence>
         {showProfile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setShowProfile(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[600] flex items-end justify-center landscape-profile-overlay bg-foreground/50 backdrop-blur-sm" onClick={() => setShowProfile(false)}>
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col landscape-panel"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 space-y-4 overflow-y-auto flex-1">
