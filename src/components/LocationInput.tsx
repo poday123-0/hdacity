@@ -551,29 +551,121 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
             {/* Schedule fields */}
             {bookingType === "scheduled" && (
-              <div className="bg-surface rounded-xl p-3 space-y-2">
+              <div className="bg-surface rounded-xl p-3 space-y-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Schedule Pickup</p>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-[9px] text-muted-foreground">Date</label>
-                    <input
-                      type="date"
-                      value={scheduledDate}
-                      onChange={(e) => setScheduledDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                
+                {/* Date selection - quick buttons */}
+                <div>
+                  <label className="text-[9px] text-muted-foreground font-medium mb-1.5 block">Pick a date</label>
+                  <div className="flex gap-1.5 mb-2">
+                    {(() => {
+                      const today = new Date();
+                      const dates = [];
+                      for (let i = 0; i < 5; i++) {
+                        const d = new Date(today);
+                        d.setDate(today.getDate() + i);
+                        const iso = d.toISOString().split("T")[0];
+                        const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en", { weekday: "short" });
+                        const dateNum = d.getDate();
+                        const month = d.toLocaleDateString("en", { month: "short" });
+                        dates.push({ iso, dayName, dateNum, month });
+                      }
+                      return dates.map(({ iso, dayName, dateNum, month }) => (
+                        <button
+                          key={iso}
+                          onClick={() => setScheduledDate(iso)}
+                          className={`flex-1 flex flex-col items-center py-2 rounded-xl text-center transition-all ${
+                            scheduledDate === iso
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-card border border-border text-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          <span className="text-[9px] font-semibold leading-tight">{dayName}</span>
+                          <span className="text-base font-bold leading-tight">{dateNum}</span>
+                          <span className="text-[9px] opacity-70 leading-tight">{month}</span>
+                        </button>
+                      ));
+                    })()}
                   </div>
-                  <div className="flex-1">
-                    <label className="text-[9px] text-muted-foreground">Time</label>
-                    <input
-                      type="time"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                  {/* Fallback calendar input for dates further out */}
+                  <button
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "date";
+                      input.min = new Date().toISOString().split("T")[0];
+                      input.value = scheduledDate;
+                      input.style.position = "fixed";
+                      input.style.opacity = "0";
+                      document.body.appendChild(input);
+                      input.addEventListener("change", (e) => {
+                        setScheduledDate((e.target as HTMLInputElement).value);
+                        input.remove();
+                      });
+                      input.addEventListener("blur", () => input.remove());
+                      input.showPicker?.();
+                      input.focus();
+                    }}
+                    className="text-[10px] text-primary font-semibold hover:underline"
+                  >
+                    Pick another date →
+                  </button>
+                </div>
+
+                {/* Time selection - scrollable chips */}
+                <div>
+                  <label className="text-[9px] text-muted-foreground font-medium mb-1.5 block">Pick a time</label>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar">
+                    {(() => {
+                      const now = new Date();
+                      const isToday = scheduledDate === now.toISOString().split("T")[0];
+                      const slots: string[] = [];
+                      const startHour = isToday ? now.getHours() + 1 : 0;
+                      for (let h = startHour; h < 24; h++) {
+                        for (const m of [0, 30]) {
+                          const hh = h.toString().padStart(2, "0");
+                          const mm = m.toString().padStart(2, "0");
+                          slots.push(`${hh}:${mm}`);
+                        }
+                      }
+                      return slots.map((slot) => {
+                        const [hh, mm] = slot.split(":");
+                        const hour = parseInt(hh);
+                        const ampm = hour >= 12 ? "PM" : "AM";
+                        const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                        const display = `${h12}:${mm} ${ampm}`;
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => setScheduledTime(slot)}
+                            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                              scheduledTime === slot
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "bg-card border border-border text-foreground hover:border-primary/40"
+                            }`}
+                          >
+                            {display}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
+
+                {/* Selected summary */}
+                {scheduledDate && scheduledTime && (
+                  <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2">
+                    <Calendar className="w-4 h-4 text-primary shrink-0" />
+                    <p className="text-xs font-semibold text-foreground">
+                      {(() => {
+                        const d = new Date(scheduledDate + "T" + scheduledTime);
+                        return d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }) +
+                          " at " +
+                          d.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true });
+                      })()}
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="text-[9px] text-muted-foreground">Notes (optional)</label>
                   <textarea
