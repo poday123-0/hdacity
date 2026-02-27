@@ -62,10 +62,31 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
           if (prev.some(m => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
-        // Play sound if message is from the other party
-        if (msg.sender_type !== senderType && messageSoundUrl) {
-          const audio = new Audio(messageSoundUrl);
-          audio.play().catch(() => {});
+        // Play sound + vibrate if message is from the other party
+        if (msg.sender_type !== senderType) {
+          // Vibrate (short burst)
+          if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+          }
+          // Play notification sound
+          if (messageSoundUrl) {
+            const audio = new Audio(messageSoundUrl);
+            audio.play().catch(() => {});
+          } else {
+            // Fallback: use a short beep via AudioContext
+            try {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.frequency.value = 880;
+              gain.gain.value = 0.3;
+              osc.start();
+              osc.stop(ctx.currentTime + 0.15);
+              setTimeout(() => ctx.close(), 300);
+            } catch {}
+          }
         }
       })
       .subscribe();
