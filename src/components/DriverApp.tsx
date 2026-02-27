@@ -778,7 +778,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </button>
           <div className="flex items-center gap-1.5">
             <img src={hdaLogo} alt="HDA" className="h-7 w-auto object-contain" />
-            <span className="text-sm font-extrabold tracking-tight text-primary">DRIVER</span>
+            
           </div>
           <button onClick={() => setShowProfile(true)} className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-transform">
             {avatarUrl ? (
