@@ -145,6 +145,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [savingProfile, setSavingProfile] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
+  const [recenterAvailable, setRecenterAvailable] = useState(false);
+  const recenterRef = useRef<(() => void) | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -936,10 +938,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           return vt?.map_icon_url || null;
         })()}
         passengerMapIconUrl={passengerMapIconUrl}
+        onRecenterAvailableChange={setRecenterAvailable}
+        recenterRef={recenterRef}
       />
 
       {/* Map action buttons — right side */}
       <div className="absolute top-20 right-3 z-[460] flex flex-col gap-1.5 bg-card/80 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/50">
+        {recenterAvailable && (
+          <>
+            <button
+              onClick={() => recenterRef.current?.()}
+              className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
+              title="Re-center"
+            >
+              <Locate className="w-4 h-4" />
+            </button>
+            <div className="w-5 h-px bg-border mx-auto" />
+          </>
+        )}
         <button
           onClick={() => setGpsEnabled(!gpsEnabled)}
           className={`w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
