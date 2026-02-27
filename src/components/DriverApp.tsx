@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronUp,
   ChevronDown,
+  Crosshair,
   Locate,
   LocateOff,
   Car,
@@ -978,7 +979,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
             title="Re-center">
 
-              <Locate className="w-[18px] h-[18px]" />
+              <Crosshair className="w-[18px] h-[18px]" />
             </button>
             <div className="w-5 h-px bg-border mx-auto" />
           </>
