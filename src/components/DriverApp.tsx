@@ -328,6 +328,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         rideRequestTimerRef.current = null;
         // Mark as declined so it won't come back
         declinedTripIdsRef.current.add(trip.id);
+        if (userProfile?.id) {
+          supabase.from("trip_declines").upsert({ driver_id: userProfile.id, trip_id: trip.id }, { onConflict: "driver_id,trip_id" });
+        }
         // Auto-dismiss ride request
         setScreen("online");
         setCurrentTrip(null);
@@ -344,6 +347,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Track last seen trip id and declined trips to avoid duplicate handling
   const lastSeenTripRef = useRef<string | null>(null);
   const declinedTripIdsRef = useRef<Set<string>>(new Set());
+
+  // Load declined trips from DB on mount
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    supabase.from("trip_declines").select("trip_id").eq("driver_id", userProfile.id)
+      .then(({ data }) => {
+        if (data) data.forEach((r: any) => declinedTripIdsRef.current.add(r.trip_id));
+      });
+  }, [userProfile?.id]);
 
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) return;
@@ -1119,7 +1131,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button onClick={async () => {
                   if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
                   if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
-                  if (currentTrip?.id) declinedTripIdsRef.current.add(currentTrip.id);
+                  if (currentTrip?.id) {
+                    declinedTripIdsRef.current.add(currentTrip.id);
+                    if (userProfile?.id) {
+                      supabase.from("trip_declines").upsert({ driver_id: userProfile.id, trip_id: currentTrip.id }, { onConflict: "driver_id,trip_id" });
+                    }
+                  }
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);

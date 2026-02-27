@@ -419,6 +419,9 @@ const Index = () => {
               if (currentTripId) supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
               setCurrentTripId(null);
               setPassengerScreen("home");
+            }} onRetry={() => {
+              setCurrentTripId(null);
+              setPassengerScreen("confirmation");
             }} pickupName={pickup?.name || "Pickup"} dropoffName={dropoff?.name || "Destination"} />
           )}
           {passengerScreen === "driver-matching" && (

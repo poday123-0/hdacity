@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.trigger-sos]
 verify_jwt = false
+
+[functions.auto-expire-trips]
+verify_jwt = false
