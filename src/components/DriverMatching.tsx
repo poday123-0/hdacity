@@ -53,6 +53,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripElapsed, setTripElapsed] = useState(0);
+  const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
   const [tripDropoffName, setTripDropoffName] = useState(dropoffName || "");
@@ -86,7 +87,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     if (!tripId) return;
 
     const fetchDriverLocation = async () => {
-      const { data: trip } = await supabase.from("trips").select("driver_id, dropoff_lat, dropoff_lng").eq("id", tripId).single();
+      const { data: trip } = await supabase.from("trips").select("driver_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng").eq("id", tripId).single();
       if (!trip?.driver_id) return;
 
       const { data: loc } = await supabase.from("driver_locations").select("lat, lng, heading").eq("driver_id", trip.driver_id).single();
@@ -103,8 +104,13 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
       }
       lastLocRef.current = { lat: loc.lat, lng: loc.lng, time: now };
 
-      // Calculate ETA and distance to dropoff
+      // Calculate total trip distance (pickup to dropoff) if not yet set
       if (trip.dropoff_lat && trip.dropoff_lng) {
+        if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng) {
+          const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng));
+          if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
+        }
+
         const remaining = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng));
         setDistanceKm(Math.round(remaining * 10) / 10);
         const avgSpeed = speed > 5 ? speed : 30;
@@ -287,9 +293,13 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               <div className="h-1.5 bg-surface rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-primary rounded-full"
-                  initial={{ width: "0%" }}
+                  initial={{ width: "5%" }}
                   animate={{
-                    width: tripStatus === "arrived" ? "33%" : tripStatus === "in_progress" ? "66%" : "15%",
+                    width: tripStatus === "arrived" ? "33%" 
+                      : tripStatus === "in_progress" && totalDistanceKm && distanceKm !== null 
+                        ? `${Math.min(95, Math.max(5, ((totalDistanceKm - distanceKm) / totalDistanceKm) * 100))}%`
+                        : tripStatus === "in_progress" ? "50%" 
+                        : "15%",
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                 />
