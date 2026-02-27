@@ -117,3 +117,45 @@
     text-wrap: balance;
   }
 }
+
+/* Driver app text size preferences */
+.driver-text-sm {
+  font-size: 14px;
+}
+.driver-text-sm .text-base { font-size: 0.8125rem; }
+.driver-text-sm .text-sm { font-size: 0.6875rem; }
+.driver-text-sm .text-xs { font-size: 0.625rem; }
+.driver-text-sm .text-\[9px\] { font-size: 8px; }
+.driver-text-sm .text-\[10px\] { font-size: 9px; }
+.driver-text-sm .text-\[11px\] { font-size: 10px; }
+
+.driver-text-md {
+  /* Default — no overrides needed */
+}
+
+.driver-text-lg {
+  font-size: 18px;
+}
+.driver-text-lg .text-base { font-size: 1.125rem; }
+.driver-text-lg .text-sm { font-size: 0.9375rem; }
+.driver-text-lg .text-xs { font-size: 0.8125rem; }
+.driver-text-lg .text-\[9px\] { font-size: 11px; }
+.driver-text-lg .text-\[10px\] { font-size: 12px; }
+.driver-text-lg .text-\[11px\] { font-size: 13px; }
+.driver-text-lg .text-xl { font-size: 1.5rem; }
+.driver-text-lg .text-2xl { font-size: 1.875rem; }
+.driver-text-lg .text-3xl { font-size: 2.25rem; }
+
+/* Tablet / car screen optimizations for driver app */
+@media (min-width: 768px) {
+  .driver-text-sm,
+  .driver-text-md,
+  .driver-text-lg {
+    /* Wider panels for tablet */
+  }
+  .driver-text-sm .rounded-t-3xl,
+  .driver-text-md .rounded-t-3xl,
+  .driver-text-lg .rounded-t-3xl {
+    border-radius: 1.5rem 1.5rem 0 0;
+  }
+}
