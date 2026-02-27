@@ -752,6 +752,27 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_declines: {
+        Row: {
+          declined_at: string
+          driver_id: string
+          id: string
+          trip_id: string
+        }
+        Insert: {
+          declined_at?: string
+          driver_id: string
+          id?: string
+          trip_id: string
+        }
+        Update: {
+          declined_at?: string
+          driver_id?: string
+          id?: string
+          trip_id?: string
+        }
+        Relationships: []
+      }
       trip_messages: {
         Row: {
           created_at: string
