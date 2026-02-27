@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, TrendingUp } from "lucide-react";
+import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, TrendingUp, MapPin, Users, Luggage, Star, ChevronDown } from "lucide-react";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths, addDays, addWeeks, addMonths } from "date-fns";
 
 type Period = "day" | "week" | "month" | "custom";
@@ -11,11 +11,20 @@ interface TripRecord {
   actual_fare: number | null;
   estimated_fare: number | null;
   duration_minutes: number | null;
+  distance_km: number | null;
   status: string;
   created_at: string;
   pickup_address: string;
   dropoff_address: string;
   completed_at: string | null;
+  accepted_at: string | null;
+  started_at: string | null;
+  passenger_count: number;
+  luggage_count: number;
+  rating: number | null;
+  feedback_text: string | null;
+  customer_name: string | null;
+  fare_type: string;
 }
 
 interface DriverEarningsProps {
@@ -31,6 +40,7 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
   const [customTo, setCustomTo] = useState("");
   const [trips, setTrips] = useState<TripRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
 
   const dateRange = useMemo(() => {
     if (period === "custom" && customFrom && customTo) {
@@ -62,7 +72,7 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
       setLoading(true);
       const { data } = await supabase
         .from("trips")
-        .select("id, actual_fare, estimated_fare, duration_minutes, status, created_at, pickup_address, dropoff_address, completed_at")
+        .select("id, actual_fare, estimated_fare, duration_minutes, distance_km, status, created_at, pickup_address, dropoff_address, completed_at, accepted_at, started_at, passenger_count, luggage_count, rating, feedback_text, customer_name, fare_type")
         .eq("driver_id", driverId)
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString())
@@ -201,13 +211,28 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
               trips.map(trip => {
                 const fare = Number(trip.actual_fare) || Number(trip.estimated_fare) || 0;
                 const isCancelled = trip.status === "cancelled";
+                const isExpanded = expandedTripId === trip.id;
                 return (
-                  <div key={trip.id} className="bg-surface rounded-xl p-3 space-y-1">
+                  <button
+                    key={trip.id}
+                    onClick={() => setExpandedTripId(isExpanded ? null : trip.id)}
+                    className="w-full text-left bg-surface rounded-xl p-3 space-y-1 active:scale-[0.98] transition-transform"
+                  >
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isCancelled ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
-                        {trip.status}
-                      </span>
-                      <span className="text-sm font-bold text-foreground">{fare > 0 ? `${fare} MVR` : "—"}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isCancelled ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
+                          {trip.status}
+                        </span>
+                        {trip.rating && (
+                          <span className="flex items-center gap-0.5 text-xs text-amber-500">
+                            <Star className="w-3 h-3 fill-amber-500" />{trip.rating}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-foreground">{fare > 0 ? `${fare} MVR` : "—"}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="mt-1 space-y-1">
@@ -224,7 +249,88 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
                       {format(new Date(trip.created_at), "h:mm a")}
                       {trip.duration_minutes ? ` • ${Math.round(Number(trip.duration_minutes))}min` : ""}
                     </p>
-                  </div>
+
+                    {/* Expanded details */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="pt-2 mt-2 border-t border-border space-y-2">
+                            {/* Passenger */}
+                            {trip.customer_name && (
+                              <div className="flex items-center gap-2">
+                                <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <p className="text-xs text-foreground">{trip.customer_name}</p>
+                              </div>
+                            )}
+
+                            {/* Trip details grid */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-card rounded-lg px-2.5 py-1.5">
+                                <p className="text-[10px] text-muted-foreground">Passengers</p>
+                                <p className="text-xs font-semibold text-foreground">{trip.passenger_count}</p>
+                              </div>
+                              <div className="bg-card rounded-lg px-2.5 py-1.5">
+                                <p className="text-[10px] text-muted-foreground">Luggage</p>
+                                <p className="text-xs font-semibold text-foreground">{trip.luggage_count}</p>
+                              </div>
+                              {trip.distance_km && (
+                                <div className="bg-card rounded-lg px-2.5 py-1.5">
+                                  <p className="text-[10px] text-muted-foreground">Distance</p>
+                                  <p className="text-xs font-semibold text-foreground">{Number(trip.distance_km).toFixed(1)} km</p>
+                                </div>
+                              )}
+                              <div className="bg-card rounded-lg px-2.5 py-1.5">
+                                <p className="text-[10px] text-muted-foreground">Fare Type</p>
+                                <p className="text-xs font-semibold text-foreground capitalize">{trip.fare_type}</p>
+                              </div>
+                            </div>
+
+                            {/* Timeline */}
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Timeline</p>
+                              <div className="space-y-0.5 text-[10px] text-muted-foreground">
+                                <p>Requested: {format(new Date(trip.created_at), "h:mm:ss a")}</p>
+                                {trip.accepted_at && <p>Accepted: {format(new Date(trip.accepted_at), "h:mm:ss a")}</p>}
+                                {trip.started_at && <p>Started: {format(new Date(trip.started_at), "h:mm:ss a")}</p>}
+                                {trip.completed_at && <p>Completed: {format(new Date(trip.completed_at), "h:mm:ss a")}</p>}
+                              </div>
+                            </div>
+
+                            {/* Fare breakdown */}
+                            {(trip.estimated_fare || trip.actual_fare) && (
+                              <div className="space-y-0.5">
+                                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Fare</p>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">Estimated</span>
+                                  <span className="text-foreground font-medium">{Number(trip.estimated_fare) || 0} MVR</span>
+                                </div>
+                                {trip.actual_fare && (
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Actual</span>
+                                    <span className="text-foreground font-bold">{Number(trip.actual_fare)} MVR</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Feedback */}
+                            {trip.feedback_text && (
+                              <div className="bg-card rounded-lg p-2.5">
+                                <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Passenger Feedback</p>
+                                <p className="text-xs text-foreground italic">"{trip.feedback_text}"</p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
                 );
               })
             )}
