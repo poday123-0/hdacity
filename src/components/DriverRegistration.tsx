@@ -302,14 +302,14 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground font-medium">Company</label>
+                <label className="text-xs text-muted-foreground font-medium">Company *</label>
                 <div className="relative mt-1">
                   <select
                     value={selectedCompanyId}
                     onChange={(e) => setSelectedCompanyId(e.target.value)}
                     className={`${inputClass} appearance-none pr-10`}
                   >
-                    <option value="">No company (independent)</option>
+                    <option value="">Select company</option>
                     {companies.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -320,7 +320,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
               <button
                 onClick={() => setStep("documents")}
-                disabled={!firstName.trim()}
+                disabled={!firstName.trim() || !selectedCompanyId}
                 className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
               >
                 Next: Upload Documents
