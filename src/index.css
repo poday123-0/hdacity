@@ -236,6 +236,11 @@
     bottom: auto !important;
     margin: 0 !important;
   }
+
+  /* Show embedded nav in trip panel for landscape */
+  .landscape-nav-embed {
+    display: block !important;
+  }
 }
 
 /* Extra-wide landscape (e.g. car head units > 1024px) */
