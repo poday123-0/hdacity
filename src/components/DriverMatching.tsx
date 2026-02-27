@@ -31,9 +31,11 @@ interface DriverMatchingProps {
   userId?: string;
   tripStatus?: string;
   showBankDetails?: boolean;
+  pickupName?: string;
+  dropoffName?: string;
 }
 
-const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBankDetails = false }: DriverMatchingProps) => {
+const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBankDetails = false, pickupName, dropoffName }: DriverMatchingProps) => {
   const driverName = driver?.name || "Driver";
   const initials = driver?.initials || driverName.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const rating = driver?.rating || 4.9;
@@ -220,11 +222,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 />
               </div>
               <div className="flex justify-between mt-1.5">
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <MapPin className="w-3 h-3" /> Pickup
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 max-w-[45%] truncate">
+                  <MapPin className="w-3 h-3 shrink-0" /> {pickupName || "Pickup"}
                 </span>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  Dropoff <ArrowRight className="w-3 h-3" />
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 max-w-[45%] truncate">
+                  {dropoffName || "Dropoff"} <ArrowRight className="w-3 h-3 shrink-0" />
                 </span>
               </div>
             </div>
