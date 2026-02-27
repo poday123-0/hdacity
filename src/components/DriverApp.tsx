@@ -1031,7 +1031,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               exit={{ opacity: 0, scale: 0.8, y: 30 }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
               onClick={() => setPanelMinimized(false)}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[460] rounded-2xl px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform bg-card dark:bg-card border border-border shadow-xl"
+              className="absolute bottom-6 left-4 z-[460] rounded-2xl px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform bg-card dark:bg-card border border-border shadow-xl"
             >
               <div className="relative flex items-center justify-center w-5 h-5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))]" />
