@@ -1026,19 +1026,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         <AnimatePresence>
           {panelMinimized && (
             <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.25 }}
+              initial={{ opacity: 0, scale: 0.8, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 30 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
               onClick={() => setPanelMinimized(false)}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[460] rounded-full px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform border border-[hsl(var(--success)/0.3)] bg-gradient-to-r from-[hsl(var(--success)/0.12)] to-[hsl(var(--success)/0.06)] dark:from-[hsl(var(--success)/0.2)] dark:to-[hsl(var(--success)/0.08)] shadow-[0_4px_20px_-4px_hsl(var(--success)/0.3)] dark:shadow-[0_4px_24px_-4px_hsl(var(--success)/0.4)] backdrop-blur-md"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[460] rounded-2xl px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform bg-card dark:bg-card border border-border shadow-xl"
             >
-              <div className="relative">
-                <div className="w-3 h-3 rounded-full bg-[hsl(var(--success))]" />
-                <div className="absolute inset-0 w-3 h-3 rounded-full bg-[hsl(var(--success))] animate-ping opacity-40" />
+              <div className="relative flex items-center justify-center w-5 h-5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))]" />
+                <div className="absolute w-5 h-5 rounded-full border-2 border-[hsl(var(--success)/0.4)] animate-ping" />
               </div>
-              <span className="text-sm font-bold text-[hsl(var(--success))] dark:text-[hsl(142,71%,55%)]">Online</span>
-              <ChevronUp className="w-4 h-4 text-[hsl(var(--success))]" />
+              <span className="text-sm font-bold text-foreground">Online</span>
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
             </motion.button>
           )}
         </AnimatePresence>
