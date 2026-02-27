@@ -939,7 +939,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       />
 
       {/* GPS Toggle, Theme Toggle & SOS */}
-      <div className="absolute top-20 right-4 z-[460] flex flex-col gap-2">
+      <div className="absolute top-36 right-4 z-[460] flex flex-col gap-2">
         <button
           onClick={() => setGpsEnabled(!gpsEnabled)}
           className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-90 transition-all duration-300 ${
