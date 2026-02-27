@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare } from "lucide-react";
 
 interface SoundFile {
   id: string;
@@ -73,6 +73,10 @@ const AdminSettings = () => {
   const [driverAppIconUrl, setDriverAppIconUrl] = useState<string | null>(null);
   const [uploadingDriverIcon, setUploadingDriverIcon] = useState(false);
   const driverIconInputRef = useRef<HTMLInputElement>(null);
+  // Quick replies
+  const [quickReplies, setQuickReplies] = useState<{ text: string; target: string }[]>([]);
+  const [newQuickReply, setNewQuickReply] = useState("");
+  const [newQuickReplyTarget, setNewQuickReplyTarget] = useState("both");
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -103,6 +107,10 @@ const AdminSettings = () => {
       const nv = typeof map["driver_registration_notify"] === "string" ? JSON.parse(map["driver_registration_notify"]) : map["driver_registration_notify"];
       setNotifyEmails(nv.emails || []);
       setNotifyPhones(nv.phones || []);
+    }
+    // Load quick replies
+    if (map["chat_quick_replies"] && Array.isArray(map["chat_quick_replies"])) {
+      setQuickReplies(map["chat_quick_replies"]);
     }
     setLoading(false);
   };
@@ -627,6 +635,68 @@ const AdminSettings = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Quick Reply Messages */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <MessageSquare className="w-5 h-5 text-primary" /> Quick Reply Messages
+      </h2>
+      <p className="text-sm text-muted-foreground">Pre-configured messages passengers and drivers can tap to quickly send during a trip chat.</p>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        {/* Add new */}
+        <div className="flex gap-2">
+          <input
+            value={newQuickReply}
+            onChange={(e) => setNewQuickReply(e.target.value)}
+            placeholder="e.g. I'm waiting outside"
+            className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <select
+            value={newQuickReplyTarget}
+            onChange={(e) => setNewQuickReplyTarget(e.target.value)}
+            className="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none"
+          >
+            <option value="both">Both</option>
+            <option value="passenger">Passenger only</option>
+            <option value="driver">Driver only</option>
+          </select>
+          <button
+            onClick={() => {
+              if (!newQuickReply.trim()) return;
+              const updated = [...quickReplies, { text: newQuickReply.trim(), target: newQuickReplyTarget }];
+              setQuickReplies(updated);
+              setNewQuickReply("");
+              updateSetting("chat_quick_replies", updated);
+            }}
+            className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* List */}
+        {quickReplies.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-2">No quick replies configured yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {quickReplies.map((qr, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-surface rounded-lg">
+                <span className="flex-1 text-sm text-foreground">{qr.text}</span>
+                <span className="text-[10px] font-semibold text-muted-foreground bg-card px-2 py-0.5 rounded-full capitalize">{qr.target}</span>
+                <button
+                  onClick={() => {
+                    const updated = quickReplies.filter((_, idx) => idx !== i);
+                    setQuickReplies(updated);
+                    updateSetting("chat_quick_replies", updated);
+                  }}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
