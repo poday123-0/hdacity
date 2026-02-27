@@ -52,6 +52,21 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const [tripElapsed, setTripElapsed] = useState(0);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
+  const [tripPickupName, setTripPickupName] = useState(pickupName || "");
+  const [tripDropoffName, setTripDropoffName] = useState(dropoffName || "");
+
+  // Fetch trip addresses as fallback when props are missing
+  useEffect(() => {
+    if (pickupName) setTripPickupName(pickupName);
+    if (dropoffName) setTripDropoffName(dropoffName);
+    if ((pickupName && dropoffName) || !tripId) return;
+    supabase.from("trips").select("pickup_address, dropoff_address").eq("id", tripId).single().then(({ data }) => {
+      if (data) {
+        if (!pickupName && data.pickup_address) setTripPickupName(data.pickup_address);
+        if (!dropoffName && data.dropoff_address) setTripDropoffName(data.dropoff_address);
+      }
+    });
+  }, [tripId, pickupName, dropoffName]);
 
   // Fetch bank logos
   useEffect(() => {
@@ -223,10 +238,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               </div>
               <div className="flex justify-between mt-1.5">
                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 max-w-[45%] truncate">
-                  <MapPin className="w-3 h-3 shrink-0" /> {pickupName || "Pickup"}
+                  <MapPin className="w-3 h-3 shrink-0" /> {tripPickupName || "Pickup"}
                 </span>
                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 max-w-[45%] truncate">
-                  {dropoffName || "Dropoff"} <ArrowRight className="w-3 h-3 shrink-0" />
+                  {tripDropoffName || "Dropoff"} <ArrowRight className="w-3 h-3 shrink-0" />
                 </span>
               </div>
             </div>
