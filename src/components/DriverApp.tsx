@@ -125,7 +125,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
-  const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h", avgRating: 0, totalRatings: 0 });
+  const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h", avgRating: 0, totalRatings: 0, declinedToday: 0 });
   const [acceptTimeoutSeconds, setAcceptTimeoutSeconds] = useState(30);
   const [rideRequestCountdown, setRideRequestCountdown] = useState(0);
   const rideRequestTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -546,11 +546,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Fetch today's stats
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
-        const { data: trips } = await supabase
-          .from("trips")
-          .select("actual_fare, estimated_fare, duration_minutes, completed_at, accepted_at, status")
-          .eq("driver_id", userProfile.id)
-          .gte("created_at", todayStart.toISOString());
+        const [tripsRes, declinesRes] = await Promise.all([
+          supabase
+            .from("trips")
+            .select("actual_fare, estimated_fare, duration_minutes, completed_at, accepted_at, status")
+            .eq("driver_id", userProfile.id)
+            .gte("created_at", todayStart.toISOString()),
+          supabase
+            .from("trip_declines")
+            .select("id")
+            .eq("driver_id", userProfile.id)
+            .gte("declined_at", todayStart.toISOString()),
+        ]);
+        const trips = tripsRes.data;
+        const declinedToday = declinesRes.data?.length || 0;
 
         // Fetch all-time ratings
         const { data: ratedTrips } = await supabase
@@ -577,6 +586,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             hours: h > 0 ? `${h}h${m > 0 ? m.toString().padStart(2, "0") : ""}` : `${m}m`,
             avgRating: Math.round(avgRating * 10) / 10,
             totalRatings,
+            declinedToday,
           });
         }
       } else {
@@ -940,10 +950,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">MVR</p>
                         </div>
                         <div className="w-px h-7 bg-border/60" />
-                        <div className="text-center min-w-0">
+                         <div className="text-center min-w-0">
                           <p className="text-base font-bold text-foreground tabular-nums">{driverStats.hours}</p>
                           <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Time</p>
                         </div>
+                        {driverStats.declinedToday > 0 && (
+                          <>
+                            <div className="w-px h-7 bg-border/60" />
+                            <div className="text-center min-w-0">
+                              <p className="text-base font-bold text-destructive tabular-nums">{driverStats.declinedToday}</p>
+                              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Declined</p>
+                            </div>
+                          </>
+                        )}
                       </div>
                       <button
                         onClick={() => setShowEarningsHistory(true)}
