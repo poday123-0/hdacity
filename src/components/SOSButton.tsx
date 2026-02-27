@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, X, Plus, Trash2, Phone, Shield, PhoneCall } from "lucide-react";
@@ -163,24 +164,26 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
         <Shield className="w-[18px] h-[18px]" />
       </button>
 
-      {/* Confirm modal */}
-      <AnimatePresence>
-        {showConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3"
-            onClick={() => !sending && setShowConfirm(false)}
-          >
+      {/* Confirm modal — portaled to document.body so it's always viewport-centered */}
+      {createPortal(
+        <AnimatePresence>
+          {showConfirm && (
             <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 24 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 12 }}
-              transition={{ type: "spring", damping: 28, stiffness: 350 }}
-              className="bg-card rounded-3xl w-[calc(100%-2rem)] max-w-[360px] max-h-[85vh] overflow-y-auto shadow-2xl border border-border/40"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+              onClick={() => !sending && setShowConfirm(false)}
             >
+              <motion.div
+                initial={{ scale: 0.92, opacity: 0, y: 24 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 12 }}
+                transition={{ type: "spring", damping: 28, stiffness: 350 }}
+                className="bg-card rounded-3xl w-[calc(100%-2rem)] max-w-[360px] max-h-[85vh] overflow-y-auto shadow-2xl border border-border/40"
+                onClick={(e) => e.stopPropagation()}
+              >
+                
               {/* Header */}
               <div className="px-6 pt-6 pb-4 text-center border-b border-border/40">
                 <motion.div
@@ -323,7 +326,9 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 };
