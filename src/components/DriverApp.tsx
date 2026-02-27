@@ -54,6 +54,7 @@ import {
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
+import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -1869,30 +1870,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             )}
 
             {driverTripPhase === "in_progress" &&
-          <button onClick={async () => {
-            if (!currentTrip || !userProfile?.id) return;
-            const now = new Date().toISOString();
-            // For hourly trips, calculate actual fare based on duration
-            let actualFare = currentTrip.estimated_fare;
-            if (currentTrip.booking_type === "hourly") {
-              const startedAt = (currentTrip as any).started_at || (currentTrip as any).accepted_at;
-              if (startedAt) {
-                const hours = Math.max(1, (Date.now() - new Date(startedAt).getTime()) / 3600000);
-                actualFare = Math.round(hours * (currentTrip.estimated_fare || 0));
+          <SlideToConfirm
+            label={currentTrip?.booking_type === "hourly" ? "Slide to End Trip" : "Slide to Complete"}
+            onConfirm={async () => {
+              if (!currentTrip || !userProfile?.id) return;
+              const now = new Date().toISOString();
+              let actualFare = currentTrip.estimated_fare;
+              if (currentTrip.booking_type === "hourly") {
+                const startedAt = (currentTrip as any).started_at || (currentTrip as any).accepted_at;
+                if (startedAt) {
+                  const hours = Math.max(1, (Date.now() - new Date(startedAt).getTime()) / 3600000);
+                  actualFare = Math.round(hours * (currentTrip.estimated_fare || 0));
+                }
               }
-            }
-            await supabase.from("trips").update({
-              status: "completed",
-              completed_at: now,
-              actual_fare: actualFare,
-              hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
-            } as any).eq("id", currentTrip.id);
-            await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-            setDriverTripPhase("heading_to_pickup");
-            setScreen("complete");
-          }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
-                {currentTrip?.booking_type === "hourly" ? "End Hourly Trip" : "Complete Ride"}
-              </button>
+              await supabase.from("trips").update({
+                status: "completed",
+                completed_at: now,
+                actual_fare: actualFare,
+                hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
+              } as any).eq("id", currentTrip.id);
+              await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+              setDriverTripPhase("heading_to_pickup");
+              setScreen("complete");
+            }}
+          />
           }
           </div>
         </motion.div>
