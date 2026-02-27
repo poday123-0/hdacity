@@ -340,7 +340,7 @@ const AdminSettings = () => {
       <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
         <div className="w-16 h-16 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0">
           {pwaAppIconUrl ? (
-            <img src={pwaAppIconUrl} alt="PWA App icon" className="w-full h-full object-cover rounded-xl" />
+            <img src={pwaAppIconUrl} alt="PWA App icon" className="w-full h-full object-contain rounded-xl" />
           ) : (
             <Download className="w-8 h-8 text-muted-foreground" />
           )}
