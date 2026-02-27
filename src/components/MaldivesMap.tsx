@@ -278,6 +278,11 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
           strokeColor: trip.status === "in_progress" ? "#4285F4" : "#f59e0b",
           strokeWeight: 4,
           strokeOpacity: 0.7,
+          icons: [{
+            icon: { path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3, fillColor: trip.status === "in_progress" ? "#4285F4" : "#f59e0b", fillOpacity: 1, strokeWeight: 0 },
+            offset: "50%",
+            repeat: "100px",
+          }],
         },
       });
       tripRenderersRef.current.push(dr);
