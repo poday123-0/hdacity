@@ -430,45 +430,39 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       )}
       {/* In-app Navigation Overlay */}
       {isNavigating && navSteps.length > 0 && (
-          <div className="absolute top-14 left-2 right-2 z-[460]">
-          {/* Current step card */}
-          <div className="bg-card/95 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
-            {/* ETA bar */}
-            <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-border/30">
-              <div className="flex items-center gap-1.5">
-                <Navigation className="w-3 h-3 text-primary" />
-                <span className="text-[10px] font-semibold text-foreground">
-                  {tripPhase === "heading_to_pickup" ? "To Pickup" : tripPhase === "in_progress" ? "To Destination" : "Route Preview"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-foreground bg-muted/60 rounded px-1.5 py-0.5">{currentSpeed} km/h</span>
-                <span className="text-[10px] font-bold text-primary">{navEta}</span>
-                <span className="text-[10px] text-muted-foreground">{navDistance}</span>
-              </div>
-            </div>
-
-            {/* Current instruction */}
-            <div className="flex items-center gap-2 px-3 py-2">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-primary-foreground">
+          <div className="absolute top-12 left-2 right-2 z-[460]">
+          <div className="bg-card/90 backdrop-blur-lg rounded-lg shadow-sm overflow-hidden border border-border/20">
+            {/* Single compact row: icon + instruction + speed/eta */}
+            <div className="flex items-center gap-2 px-2.5 py-1.5">
+              <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-primary-foreground">
                   {getManeuverIcon(navSteps[currentStepIndex]?.maneuver)}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground leading-snug line-clamp-1">
+                <p className="text-[11px] font-semibold text-foreground leading-tight line-clamp-1">
                   {navSteps[currentStepIndex]?.instruction || "Continue"}
                 </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {navSteps[currentStepIndex]?.distance}
-                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[9px] text-muted-foreground">{navSteps[currentStepIndex]?.distance}</span>
+                  <span className="text-[9px] text-muted-foreground">·</span>
+                  <span className="text-[9px] font-semibold text-primary">{navEta}</span>
+                  <span className="text-[9px] text-muted-foreground">·</span>
+                  <span className="text-[9px] text-muted-foreground">{navDistance}</span>
+                </div>
               </div>
-              <button
-                onClick={() => setNavExpanded(!navExpanded)}
-                className="w-6 h-6 rounded-md bg-surface flex items-center justify-center shrink-0 active:scale-90 transition-transform"
-              >
-                {navExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="bg-foreground/10 rounded-md px-1.5 py-0.5 text-center min-w-[38px]">
+                  <p className="text-xs font-bold text-foreground leading-tight">{currentSpeed}</p>
+                  <p className="text-[7px] text-muted-foreground leading-none">km/h</p>
+                </div>
+                <button
+                  onClick={() => setNavExpanded(!navExpanded)}
+                  className="w-5 h-5 rounded flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  {navExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+                </button>
+              </div>
             </div>
 
             {/* Expanded step list */}
