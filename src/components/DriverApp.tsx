@@ -114,6 +114,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showVehicleSwitcher, setShowVehicleSwitcher] = useState(false);
   const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
   const [showDriverChat, setShowDriverChat] = useState(false);
+  const [unreadDriverMessages, setUnreadDriverMessages] = useState(0);
+  const showDriverChatRef = useRef(false);
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
@@ -662,6 +664,53 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     return () => {supabase.removeChannel(channel);};
   }, [currentTrip?.id, screen, userProfile?.id]);
+
+  // Sync showDriverChat ref
+  useEffect(() => { showDriverChatRef.current = showDriverChat; if (showDriverChat) setUnreadDriverMessages(0); }, [showDriverChat]);
+
+  // Background message listener — play sound + count unread when chat is closed
+  useEffect(() => {
+    if (!currentTrip?.id) return;
+    let messageSoundUrl: string | null = null;
+    supabase.from("system_settings").select("value").eq("key", "driver_sound_message").single().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") messageSoundUrl = data.value;
+    });
+
+    const channel = supabase
+      .channel(`driver-bg-chat-${currentTrip.id}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "trip_messages",
+        filter: `trip_id=eq.${currentTrip.id}`,
+      }, (payload) => {
+        const msg = payload.new as any;
+        if (msg.sender_type === "driver") return; // own message
+        // Increment unread if chat is closed
+        if (!showDriverChatRef.current) {
+          setUnreadDriverMessages(prev => prev + 1);
+          // Play sound
+          if (messageSoundUrl) {
+            new Audio(messageSoundUrl).play().catch(() => {});
+          } else {
+            try {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.frequency.value = 880; gain.gain.value = 0.3;
+              osc.start(); osc.stop(ctx.currentTime + 0.15);
+              setTimeout(() => ctx.close(), 300);
+            } catch {}
+          }
+          // Vibrate
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentTrip?.id]);
 
   // Fetch available banks from admin-configured banks table
   useEffect(() => {
@@ -1721,9 +1770,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <Phone className="w-4 h-4 text-primary" />
                       <span className="text-xs font-semibold text-primary">Call</span>
                     </a>
-                    <button onClick={() => setShowDriverChat(true)} className="flex-1 bg-surface rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                    <button onClick={() => { setShowDriverChat(true); setUnreadDriverMessages(0); }} className="flex-1 bg-surface rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform relative">
                       <MessageSquare className="w-4 h-4 text-foreground" />
                       <span className="text-xs font-semibold text-foreground">Chat</span>
+                      {unreadDriverMessages > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                          {unreadDriverMessages}
+                        </span>
+                      )}
                     </button>
                     <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-2.5">
                       <Users className="w-3.5 h-3.5 text-primary" />
