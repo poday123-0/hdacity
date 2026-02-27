@@ -1188,6 +1188,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
           {/* Right: Bell + On/Off toggle */}
           <div className="flex items-center gap-2">
+            {!currentTrip && (
             <button
               onClick={() => setShowNotifications(true)}
               className="relative w-9 h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30"
@@ -1199,6 +1200,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </span>
               )}
             </button>
+            )}
             {screen !== "offline" && !currentTrip &&
             <button
               onClick={() => {
