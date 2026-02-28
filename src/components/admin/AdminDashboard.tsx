@@ -179,13 +179,13 @@ const AdminDashboard = () => {
       {/* SOS Alerts */}
       <SOSAlertPanel />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h2>
         <a
           href="/live-map"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           <ExternalLink className="w-4 h-4" />
           Open Live Map
@@ -193,16 +193,16 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {cards.map((card) => (
-          <div key={card.label} className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-                <p className="text-2xl font-bold text-foreground mt-0.5">{card.value}</p>
+          <div key={card.label} className="bg-card border border-border rounded-xl p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.label}</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground mt-0.5 truncate">{card.value}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <card.icon className={`w-5 h-5 ${card.color}`} />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <card.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${card.color}`} />
               </div>
             </div>
           </div>
@@ -223,7 +223,7 @@ const AdminDashboard = () => {
             <ExternalLink className="w-3 h-3" /> Fullscreen / TV
           </a>
         </div>
-        <div className="h-[400px]">
+        <div className="h-[250px] sm:h-[400px]">
           <MaldivesMap vehicleMarkers={vehicleMarkers} tripRoutes={tripRoutes} />
         </div>
       </div>
@@ -238,22 +238,22 @@ const AdminDashboard = () => {
             <div className="px-5 py-8 text-center text-sm text-muted-foreground">No trips yet</div>
           )}
           {recentTrips.map((trip) => (
-            <div key={trip.id} onClick={() => viewTripDetail(trip)} className="px-5 py-3 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors">
+            <div key={trip.id} onClick={() => viewTripDetail(trip)} className="px-3 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 cursor-pointer hover:bg-surface transition-colors">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{trip.pickup_address}</p>
                 <p className="text-xs text-muted-foreground truncate">→ {trip.dropoff_address}</p>
               </div>
-              <div className="text-right shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadge(trip.status)}`}>
                   {trip.status.replace("_", " ")}
                 </span>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground">
                   {trip.actual_fare ? `MVR ${trip.actual_fare}` : trip.estimated_fare ? `~MVR ${trip.estimated_fare}` : ""}
                 </p>
-              </div>
-              <div className="text-xs text-muted-foreground shrink-0">
-                <Clock className="w-3 h-3 inline mr-1" />
-                {new Date(trip.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                <p className="text-xs text-muted-foreground shrink-0">
+                  <Clock className="w-3 h-3 inline mr-1" />
+                  {new Date(trip.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </p>
               </div>
             </div>
           ))}
