@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle } from "lucide-react";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "" };
 
@@ -112,6 +112,18 @@ const AdminVehicles = () => {
   const toggleActive = async (id: string, current: boolean) => {
     await supabase.from("vehicles").update({ is_active: !current }).eq("id", id);
     toast({ title: current ? "Vehicle deactivated" : "Vehicle activated" });
+    fetchAll();
+  };
+
+  const approveVehicle = async (id: string) => {
+    await supabase.from("vehicles").update({ vehicle_status: "approved" } as any).eq("id", id);
+    toast({ title: "Vehicle approved" });
+    fetchAll();
+  };
+
+  const rejectVehicle = async (id: string) => {
+    await supabase.from("vehicles").update({ vehicle_status: "rejected" } as any).eq("id", id);
+    toast({ title: "Vehicle rejected" });
     fetchAll();
   };
 
@@ -240,12 +252,31 @@ const AdminVehicles = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                      {v.is_active ? "Active" : "Inactive"}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full inline-block w-fit ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                        {v.is_active ? "Active" : "Inactive"}
+                      </span>
+                      {v.vehicle_status && v.vehicle_status !== "approved" && (
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full inline-block w-fit ${
+                          v.vehicle_status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                        }`}>
+                          {v.vehicle_status === "pending" ? "⏳ Pending" : "❌ Rejected"}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
+                      {(v.vehicle_status === "pending") && (
+                        <>
+                          <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 text-xs font-medium text-green-600 hover:underline">
+                            <Check className="w-3.5 h-3.5" /> Approve
+                          </button>
+                          <button onClick={() => rejectVehicle(v.id)} className="flex items-center gap-1 text-xs font-medium text-destructive hover:underline">
+                            <XCircle className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </>
+                      )}
                       <button onClick={() => toggleActive(v.id, v.is_active)} className="text-xs font-medium text-primary hover:underline">
                         {v.is_active ? "Deactivate" : "Activate"}
                       </button>

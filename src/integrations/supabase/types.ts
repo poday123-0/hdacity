@@ -1223,6 +1223,7 @@ export type Database = {
           plate_number: string
           registration_url: string | null
           updated_at: string
+          vehicle_status: string
           vehicle_type_id: string | null
           year: number | null
         }
@@ -1239,6 +1240,7 @@ export type Database = {
           plate_number: string
           registration_url?: string | null
           updated_at?: string
+          vehicle_status?: string
           vehicle_type_id?: string | null
           year?: number | null
         }
@@ -1255,6 +1257,7 @@ export type Database = {
           plate_number?: string
           registration_url?: string | null
           updated_at?: string
+          vehicle_status?: string
           vehicle_type_id?: string | null
           year?: number | null
         }
