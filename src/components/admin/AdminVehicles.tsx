@@ -16,6 +16,9 @@ const AdminVehicles = () => {
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState("");
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<string | null>(null);
 
   const handleDocUpload = async (file: File, target: string) => {
     setUploading(target);
@@ -116,14 +119,16 @@ const AdminVehicles = () => {
   };
 
   const approveVehicle = async (id: string) => {
-    await supabase.from("vehicles").update({ vehicle_status: "approved" } as any).eq("id", id);
-    toast({ title: "Vehicle approved" });
+    await supabase.from("vehicles").update({ vehicle_status: "approved", rejection_reason: null } as any).eq("id", id);
+    toast({ title: "Vehicle approved ✅" });
     fetchAll();
   };
 
-  const rejectVehicle = async (id: string) => {
-    await supabase.from("vehicles").update({ vehicle_status: "rejected" } as any).eq("id", id);
-    toast({ title: "Vehicle rejected" });
+  const rejectVehicle = async (id: string, reason: string) => {
+    await supabase.from("vehicles").update({ vehicle_status: "rejected", rejection_reason: reason || "Documents not acceptable" } as any).eq("id", id);
+    toast({ title: "Vehicle rejected", description: reason || "Documents not acceptable" });
+    setRejectingId(null);
+    setRejectReason("");
     fetchAll();
   };
 
@@ -137,6 +142,45 @@ const AdminVehicles = () => {
 
   return (
     <div className="space-y-6">
+      {/* Document preview modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
+          <div className="relative max-w-2xl max-h-[80vh]">
+            <button onClick={() => setPreviewDoc(null)} className="absolute -top-3 -right-3 bg-card rounded-full p-1.5 shadow-lg"><X className="w-5 h-5" /></button>
+            <img src={previewDoc} alt="Document" className="max-w-full max-h-[80vh] rounded-xl" />
+          </div>
+        </div>
+      )}
+
+      {/* Rejection reason modal */}
+      {rejectingId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => { setRejectingId(null); setRejectReason(""); }}>
+          <div className="bg-card rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl border border-border" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-foreground">Reject Vehicle</h3>
+            <p className="text-sm text-muted-foreground">Provide a reason so the driver knows what to fix and re-upload.</p>
+            <div className="space-y-2">
+              {["Blurry or unreadable document", "Wrong document uploaded", "Expired document", "Missing required document"].map((r) => (
+                <button key={r} onClick={() => setRejectReason(r)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors ${rejectReason === r ? "bg-primary/10 text-primary font-semibold border border-primary/30" : "bg-surface text-foreground hover:bg-surface/80 border border-border"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Or type a custom reason..."
+              className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              rows={2}
+            />
+            <div className="flex gap-3">
+              <button onClick={() => { setRejectingId(null); setRejectReason(""); }} className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
+              <button onClick={() => rejectVehicle(rejectingId, rejectReason)} className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground">Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Vehicles</h2>
         <button onClick={() => { showForm ? resetForm() : setShowForm(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
@@ -245,9 +289,9 @@ const AdminVehicles = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      {v.registration_url && <a href={v.registration_url} target="_blank" rel="noreferrer" className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">Reg</a>}
-                      {v.insurance_url && <a href={v.insurance_url} target="_blank" rel="noreferrer" className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Ins</a>}
-                      {v.image_url && <a href={v.image_url} target="_blank" rel="noreferrer" className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">Img</a>}
+                      {v.registration_url && <button onClick={() => setPreviewDoc(v.registration_url)} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded hover:opacity-80">Reg</button>}
+                      {v.insurance_url && <button onClick={() => setPreviewDoc(v.insurance_url)} className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded hover:opacity-80">Ins</button>}
+                      {v.image_url && <button onClick={() => setPreviewDoc(v.image_url)} className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded hover:opacity-80">Img</button>}
                       {!v.registration_url && !v.insurance_url && !v.image_url && <span className="text-xs text-muted-foreground">—</span>}
                     </div>
                   </td>
@@ -256,25 +300,37 @@ const AdminVehicles = () => {
                       <span className={`text-xs font-medium px-2 py-1 rounded-full inline-block w-fit ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {v.is_active ? "Active" : "Inactive"}
                       </span>
-                      {v.vehicle_status && v.vehicle_status !== "approved" && (
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full inline-block w-fit ${
-                          v.vehicle_status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
-                        }`}>
-                          {v.vehicle_status === "pending" ? "⏳ Pending" : "❌ Rejected"}
-                        </span>
+                      {v.vehicle_status === "approved" && (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full inline-block w-fit bg-green-100 text-green-700">✅ Approved</span>
+                      )}
+                      {v.vehicle_status === "pending" && (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full inline-block w-fit bg-yellow-100 text-yellow-700">⏳ Pending</span>
+                      )}
+                      {v.vehicle_status === "rejected" && (
+                        <>
+                          <span className="text-xs font-medium px-2 py-1 rounded-full inline-block w-fit bg-red-100 text-red-700">❌ Rejected</span>
+                          {v.rejection_reason && <span className="text-[10px] text-muted-foreground italic max-w-[150px] truncate block" title={v.rejection_reason}>{v.rejection_reason}</span>}
+                        </>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      {(v.vehicle_status === "pending") && (
+                      {(v.vehicle_status === "pending" || v.vehicle_status === "rejected") && (
                         <>
                           <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 text-xs font-medium text-green-600 hover:underline">
                             <Check className="w-3.5 h-3.5" /> Approve
                           </button>
-                          <button onClick={() => rejectVehicle(v.id)} className="flex items-center gap-1 text-xs font-medium text-destructive hover:underline">
-                            <XCircle className="w-3.5 h-3.5" /> Reject
-                          </button>
+                          {v.vehicle_status !== "rejected" && (
+                            <button onClick={() => { setRejectingId(v.id); setRejectReason(""); }} className="flex items-center gap-1 text-xs font-medium text-destructive hover:underline">
+                              <XCircle className="w-3.5 h-3.5" /> Reject
+                            </button>
+                          )}
+                          {v.vehicle_status === "rejected" && (
+                            <button onClick={() => { setRejectingId(v.id); setRejectReason(""); }} className="flex items-center gap-1 text-xs font-medium text-destructive hover:underline">
+                              <XCircle className="w-3.5 h-3.5" /> Re-reject
+                            </button>
+                          )}
                         </>
                       )}
                       <button onClick={() => toggleActive(v.id, v.is_active)} className="text-xs font-medium text-primary hover:underline">

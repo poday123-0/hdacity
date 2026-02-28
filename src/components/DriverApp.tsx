@@ -57,6 +57,7 @@ import {
   Route,
   Gauge,
   Upload,
+  AlertTriangle,
   Bell as BellIcon } from
 "lucide-react";
 import TripChat from "./TripChat";
@@ -2738,6 +2739,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       Active
                                     </span>}
                                 </div>
+                                {isRejected && v.rejection_reason && (
+                                  <p className="text-[11px] text-destructive mt-1 flex items-start gap-1">
+                                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                                    <span>{v.rejection_reason} — Please re-upload your documents below.</span>
+                                  </p>
+                                )}
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
                               </div>
 
