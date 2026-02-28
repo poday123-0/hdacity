@@ -204,6 +204,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
+  const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
@@ -458,9 +459,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     loadSounds();
   }, [userProfile?.id]);
 
+  // Haversine distance in km
+  const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
   const handleNewTrip = async (trip: TripRequest) => {
     // Block new trips if driver already has an active trip
     if (currentTrip) return;
+
+    // Skip trips outside driver's radius (fail-open if no GPS)
+    if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
+      const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
+      if (dist > tripRadiusRef.current) return;
+    }
 
     // Verify the trip is still valid before showing it (prevents stale/old trip requests)
     const { data: freshTrip } = await supabase.
@@ -759,7 +775,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (userProfile?.id) {
         const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status").eq("id", userProfile.id).single();
-        setTripRadius(data?.trip_radius_km ?? defaultRadius);
+        const radius = data?.trip_radius_km ?? defaultRadius;
+        setTripRadius(radius);
+        tripRadiusRef.current = radius;
         setAvatarUrl(data?.avatar_url || null);
         setIdCardFrontUrl(data?.id_card_front_url || null);
         setIdCardBackUrl(data?.id_card_back_url || null);
@@ -885,6 +903,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       } else {
         setTripRadius(defaultRadius);
+        tripRadiusRef.current = defaultRadius;
       }
     };
     load();
@@ -892,6 +911,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   const updateRadius = async (val: number) => {
     setTripRadius(val);
+    tripRadiusRef.current = val;
     if (userProfile?.id) {
       await supabase.from("profiles").update({ trip_radius_km: val }).eq("id", userProfile.id);
     }
