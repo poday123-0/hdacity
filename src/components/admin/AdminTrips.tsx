@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone } from "lucide-react";
+import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar } from "lucide-react";
 
-const statusColors: Record<string, string> = {
-  requested: "bg-yellow-100 text-yellow-700",
-  scheduled: "bg-purple-100 text-purple-700",
-  accepted: "bg-blue-100 text-blue-700",
-  arrived: "bg-indigo-100 text-indigo-700",
-  in_progress: "bg-primary/10 text-primary",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-};
+const statusOptions = [
+  { value: "all", label: "All", color: "bg-surface text-foreground" },
+  { value: "requested", label: "Requested", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
+  { value: "scheduled", label: "Scheduled", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400" },
+  { value: "accepted", label: "Accepted", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
+  { value: "arrived", label: "Arrived", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400" },
+  { value: "in_progress", label: "In Progress", color: "bg-primary/10 text-primary" },
+  { value: "completed", label: "Completed", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
+  { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
+];
 
 const bookingTypeLabels: Record<string, string> = {
   now: "Instant",
@@ -22,6 +23,11 @@ const AdminTrips = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [bookingFilter, setBookingFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [lostItems, setLostItems] = useState<any[]>([]);
@@ -32,15 +38,22 @@ const AdminTrips = () => {
       .from("trips")
       .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (filter !== "all") query = query.eq("status", filter);
+    if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
+    if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
+    if (dateTo) {
+      const endDate = new Date(dateTo);
+      endDate.setHours(23, 59, 59, 999);
+      query = query.lte("created_at", endDate.toISOString());
+    }
     const { data } = await query;
     setTrips(data || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchTrips(); }, [filter]);
+  useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     const channel = supabase
@@ -48,7 +61,7 @@ const AdminTrips = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => fetchTrips())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [filter]);
+  }, [filter, bookingFilter, dateFrom, dateTo]);
 
   const viewMessages = async (tripId: string) => {
     setSelectedTripId(tripId);
@@ -62,92 +75,172 @@ const AdminTrips = () => {
 
   const selectedTrip = trips.find(t => t.id === selectedTripId);
 
+  // Client-side search filter
+  const filteredTrips = trips.filter(t => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const passengerName = t.passenger ? `${t.passenger.first_name} ${t.passenger.last_name}`.toLowerCase() : (t.customer_name || "").toLowerCase();
+    const driverName = t.driver ? `${t.driver.first_name} ${t.driver.last_name}`.toLowerCase() : "";
+    const phone = t.passenger?.phone_number || t.customer_phone || "";
+    return passengerName.includes(q) || driverName.includes(q) || phone.includes(q) || (t.pickup_address || "").toLowerCase().includes(q) || (t.dropoff_address || "").toLowerCase().includes(q);
+  });
+
+  const activeFilterCount = [bookingFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Trips</h2>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-          <option value="all">All Trips</option>
-          <option value="requested">Requested</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="accepted">Accepted</option>
-          <option value="arrived">Arrived</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-extrabold text-foreground">Trips</h2>
+          <p className="text-sm text-muted-foreground">{filteredTrips.length} trip{filteredTrips.length !== 1 ? "s" : ""}</p>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${showFilters ? "bg-primary text-primary-foreground border-primary" : "bg-surface text-foreground border-border hover:bg-muted"}`}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="w-4.5 h-4.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ml-0.5">{activeFilterCount}</span>
+          )}
+        </button>
       </div>
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-surface">
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Passenger</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Driver</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Route</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Fare</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Type</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Pax</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Time</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
-            ) : trips.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No trips found</td></tr>
-            ) : (
-              trips.map((t) => (
-                <tr key={t.id} className="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="text-sm text-foreground">{t.passenger ? `${t.passenger.first_name} ${t.passenger.last_name}` : t.customer_name || "—"}</p>
-                    <p className="text-[10px] text-muted-foreground">{t.passenger?.phone_number || t.customer_phone || ""}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-sm text-muted-foreground">{t.driver ? `${t.driver.first_name} ${t.driver.last_name}` : "—"}</p>
-                    <p className="text-[10px] text-muted-foreground">{t.driver?.phone_number || ""}</p>
-                  </td>
-                  <td className="px-4 py-3 max-w-[200px]">
-                    <p className="text-xs text-foreground truncate">{t.pickup_address || "—"}</p>
-                    <p className="text-xs text-muted-foreground truncate">→ {t.dropoff_address || "—"}</p>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">
-                    {t.actual_fare ? `${t.actual_fare} MVR` : t.estimated_fare ? `~${t.estimated_fare} MVR` : "—"}
-                    {t.fare_type === "hourly" && <span className="text-[10px] text-muted-foreground">/hr</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-surface text-muted-foreground whitespace-nowrap">
-                      {bookingTypeLabels[t.booking_type] || t.booking_type || "—"}
-                    </span>
-                    {t.dispatch_type === "operator" && (
-                      <span className="ml-1 text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[t.status] || "bg-muted text-muted-foreground"}`}>{t.status}</span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                    <span className="flex items-center gap-1"><Users className="w-3 h-3" />{t.passenger_count || 1}</span>
-                    <span className="flex items-center gap-1"><Luggage className="w-3 h-3" />{t.luggage_count || 0}</span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(t.created_at).toLocaleString()}
-                    {t.booking_type === "scheduled" && t.scheduled_at && (
-                      <p className="text-[10px] text-primary font-medium">📅 {new Date(t.scheduled_at).toLocaleString()}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => viewMessages(t.id)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                      <MessageSquare className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by passenger, driver, phone, or address..."
+          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </div>
+
+      {/* Status chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {statusOptions.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => setFilter(s.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              filter === s.value
+                ? `${s.color} ring-2 ring-primary/30 shadow-sm`
+                : "bg-surface text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Advanced filters */}
+      {showFilters && (
+        <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Booking Type</label>
+            <select
+              value={bookingFilter}
+              onChange={(e) => setBookingFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Types</option>
+              <option value="now">Instant</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> From</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> To</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          {activeFilterCount > 0 && (
+            <div className="sm:col-span-3">
+              <button onClick={() => { setBookingFilter("all"); setDateFrom(""); setDateTo(""); }} className="text-xs text-primary font-semibold hover:underline">
+                Clear all filters
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Passenger</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Driver</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Route</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Fare</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Type</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Pax</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Time</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">Loading...</td></tr>
+              ) : filteredTrips.length === 0 ? (
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">No trips found</td></tr>
+              ) : (
+                filteredTrips.map((t) => (
+                  <tr key={t.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium text-foreground">{t.passenger ? `${t.passenger.first_name} ${t.passenger.last_name}` : t.customer_name || "—"}</p>
+                      <p className="text-[10px] text-muted-foreground">{t.passenger?.phone_number || t.customer_phone || ""}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-foreground">{t.driver ? `${t.driver.first_name} ${t.driver.last_name}` : "—"}</p>
+                      <p className="text-[10px] text-muted-foreground">{t.driver?.phone_number || ""}</p>
+                    </td>
+                    <td className="px-4 py-3 max-w-[200px]">
+                      <p className="text-xs text-foreground truncate">{t.pickup_address || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate">→ {t.dropoff_address || "—"}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-foreground whitespace-nowrap">
+                      {t.actual_fare ? `${t.actual_fare} MVR` : t.estimated_fare ? `~${t.estimated_fare} MVR` : "—"}
+                      {t.fare_type === "hourly" && <span className="text-[10px] text-muted-foreground">/hr</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-muted-foreground whitespace-nowrap">
+                        {bookingTypeLabels[t.booking_type] || t.booking_type || "—"}
+                      </span>
+                      {t.dispatch_type === "operator" && (
+                        <span className="ml-1 text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusOptions.find(s => s.value === t.status)?.color || "bg-muted text-muted-foreground"}`}>{t.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{t.passenger_count || 1}</span>
+                    </td>
+                    <td className="px-4 py-3 text-[10px] text-muted-foreground whitespace-nowrap">
+                      {new Date(t.created_at).toLocaleString()}
+                      {t.booking_type === "scheduled" && t.scheduled_at && (
+                        <p className="text-[10px] text-primary font-medium">📅 {new Date(t.scheduled_at).toLocaleString()}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => viewMessages(t.id)} className="w-8 h-8 rounded-xl bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                        <MessageSquare className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Trip detail modal */}

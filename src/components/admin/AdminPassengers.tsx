@@ -3,10 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, Pencil, Trash2, X, FileUp, Upload, Loader2, UserCheck, UserX, CheckSquare, Square } from "lucide-react";
 
+type StatusFilter = "all" | "Active" | "Inactive";
+
+const statusChips: { value: StatusFilter; label: string; color: string }[] = [
+  { value: "all", label: "All", color: "bg-surface text-foreground" },
+  { value: "Active", label: "Active", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
+  { value: "Inactive", label: "Inactive", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
+];
+
 const AdminPassengers = () => {
   const [passengers, setPassengers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     first_name: "", last_name: "", phone_number: "", email: "", country_code: "960", gender: "1",
@@ -18,11 +27,7 @@ const AdminPassengers = () => {
 
   const fetchPassengers = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_type", "Rider")
-      .order("created_at", { ascending: false });
+    const { data } = await supabase.from("profiles").select("*").eq("user_type", "Rider").order("created_at", { ascending: false });
     setPassengers(data || []);
     setLoading(false);
   };
@@ -31,12 +36,9 @@ const AdminPassengers = () => {
 
   const filtered = passengers.filter((p) => {
     const q = search.toLowerCase();
-    return (
-      p.first_name?.toLowerCase().includes(q) ||
-      p.last_name?.toLowerCase().includes(q) ||
-      p.phone_number?.includes(q) ||
-      p.email?.toLowerCase().includes(q)
-    );
+    const matchesSearch = !q || p.first_name?.toLowerCase().includes(q) || p.last_name?.toLowerCase().includes(q) || p.phone_number?.includes(q) || p.email?.toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   // Selection helpers
@@ -49,24 +51,16 @@ const AdminPassengers = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === filtered.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(filtered.map(p => p.id)));
-    }
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map(p => p.id)));
   };
 
   const bulkSetStatus = async (status: string) => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
     const { error } = await supabase.from("profiles").update({ status }).in("id", ids);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `${ids.length} passenger(s) set to ${status}` });
-      setSelected(new Set());
-      fetchPassengers();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: `${ids.length} passenger(s) set to ${status}` }); setSelected(new Set()); fetchPassengers(); }
   };
 
   const bulkDelete = async () => {
@@ -74,13 +68,8 @@ const AdminPassengers = () => {
     if (!confirm(`Delete ${selected.size} passenger(s)? This cannot be undone.`)) return;
     const ids = Array.from(selected);
     const { error } = await supabase.from("profiles").delete().in("id", ids);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `${ids.length} passenger(s) deleted` });
-      setSelected(new Set());
-      fetchPassengers();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: `${ids.length} passenger(s) deleted` }); setSelected(new Set()); fetchPassengers(); }
   };
 
   const openEdit = (p: any) => {
@@ -95,20 +84,12 @@ const AdminPassengers = () => {
   const saveEdit = async () => {
     if (!editingId) return;
     const { error } = await supabase.from("profiles").update({
-      first_name: editForm.first_name,
-      last_name: editForm.last_name,
-      phone_number: editForm.phone_number,
-      email: editForm.email || null,
-      country_code: editForm.country_code,
-      gender: editForm.gender,
+      first_name: editForm.first_name, last_name: editForm.last_name,
+      phone_number: editForm.phone_number, email: editForm.email || null,
+      country_code: editForm.country_code, gender: editForm.gender,
     }).eq("id", editingId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Passenger updated!" });
-      setEditingId(null);
-      fetchPassengers();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Passenger updated!" }); setEditingId(null); fetchPassengers(); }
   };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
@@ -121,12 +102,8 @@ const AdminPassengers = () => {
   const deletePassenger = async (id: string) => {
     if (!confirm("Delete this passenger? This cannot be undone.")) return;
     const { error } = await supabase.from("profiles").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Passenger deleted" });
-      fetchPassengers();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Passenger deleted" }); fetchPassengers(); }
   };
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,18 +114,9 @@ const AdminPassengers = () => {
     try {
       const text = await file.text();
       const { data, error } = await supabase.functions.invoke("import-passengers-csv", { body: { csv: text } });
-      if (error) {
-        toast({ title: "Import failed", description: error.message, variant: "destructive" });
-        setCsvResult({ error: error.message });
-      } else {
-        setCsvResult(data);
-        toast({ title: "Import complete", description: `${data.created} passengers created` });
-        fetchPassengers();
-      }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-      setCsvResult({ error: err.message });
-    }
+      if (error) { toast({ title: "Import failed", description: error.message, variant: "destructive" }); setCsvResult({ error: error.message }); }
+      else { setCsvResult(data); toast({ title: "Import complete", description: `${data.created} passengers created` }); fetchPassengers(); }
+    } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); setCsvResult({ error: err.message }); }
     setCsvImporting(false);
     e.target.value = "";
   };
@@ -156,7 +124,7 @@ const AdminPassengers = () => {
   const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Edit Modal */}
       {editingId && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditingId(null)}>
@@ -202,16 +170,15 @@ const AdminPassengers = () => {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Passengers</h2>
-          <p className="text-sm text-muted-foreground">{passengers.length} total passengers</p>
+          <h2 className="text-2xl font-extrabold text-foreground">Passengers</h2>
+          <p className="text-sm text-muted-foreground">{filtered.length} of {passengers.length} passengers</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-            <FileUp className="w-4 h-4" />Import CSV
-          </button>
-        </div>
+        <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity">
+          <FileUp className="w-3.5 h-3.5" /> Import CSV
+        </button>
       </div>
 
       {/* CSV Import Panel */}
@@ -257,64 +224,87 @@ const AdminPassengers = () => {
         </div>
       )}
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, phone, or email..."
+          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </div>
+
+      {/* Status chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {statusChips.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => setStatusFilter(s.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              statusFilter === s.value
+                ? `${s.color} ring-2 ring-primary/30 shadow-sm`
+                : "bg-surface text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {s.label}
+            {s.value !== "all" && (
+              <span className="ml-1.5 text-[10px] opacity-70">
+                ({passengers.filter(p => p.status === s.value).length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
         <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
           <span className="text-sm font-semibold text-foreground">{selected.size} selected</span>
           <div className="flex-1" />
-          <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-semibold hover:bg-primary/20 transition-colors">
+          <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition-colors">
             <UserCheck className="w-3.5 h-3.5" /> Activate
           </button>
-          <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-lg text-xs font-semibold hover:bg-muted/80 transition-colors">
+          <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-xl text-xs font-semibold hover:bg-muted/80 transition-colors">
             <UserX className="w-3.5 h-3.5" /> Deactivate
           </button>
-          <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 transition-colors">
+          <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-semibold hover:bg-destructive/20 transition-colors">
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
-          <button onClick={() => setSelected(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">
-            Clear
-          </button>
+          <button onClick={() => setSelected(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">Clear</button>
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by name, phone, or email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-surface rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
+      {/* Table */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-surface">
+                <tr className="border-b border-border bg-muted/30">
                   <th className="px-4 py-3 w-10">
                     <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
                       {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                     </button>
                   </th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Passenger</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Phone</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Email</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Gender</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Joined</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Actions</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Passenger</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phone</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Email</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Gender</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Joined</th>
+                  <th className="text-right px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((p) => (
-                  <tr key={p.id} className={`hover:bg-surface/50 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No passengers found</td></tr>
+                ) : filtered.map((p) => (
+                  <tr key={p.id} className={`hover:bg-muted/20 transition-colors ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
                     <td className="px-4 py-3">
                       <button onClick={() => toggleSelect(p.id)} className="text-muted-foreground hover:text-foreground">
                         {selected.has(p.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
@@ -334,8 +324,8 @@ const AdminPassengers = () => {
                       {p.gender === "1" ? "Male" : p.gender === "2" ? "Female" : p.gender || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        p.status === "Active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                        p.status === "Active" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
                       }`}>
                         {p.status}
                       </span>
@@ -348,23 +338,12 @@ const AdminPassengers = () => {
                         <button onClick={() => toggleStatus(p.id, p.status)} className="p-1.5 rounded-lg hover:bg-surface transition-colors" title={p.status === "Active" ? "Deactivate" : "Activate"}>
                           {p.status === "Active" ? <UserX className="w-4 h-4 text-muted-foreground" /> : <UserCheck className="w-4 h-4 text-primary" />}
                         </button>
-                        <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-surface transition-colors" title="Edit">
-                          <Pencil className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                        <button onClick={() => deletePassenger(p.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </button>
+                        <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-surface transition-colors"><Pencil className="w-4 h-4 text-muted-foreground" /></button>
+                        <button onClick={() => deletePassenger(p.id)} className="p-1.5 rounded-lg hover:bg-surface transition-colors"><Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
-                      No passengers found
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
