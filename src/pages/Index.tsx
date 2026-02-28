@@ -81,6 +81,7 @@ const Index = () => {
   const [scheduledAt, setScheduledAt] = useState<string | undefined>();
   const [bookingNotes, setBookingNotes] = useState<string | undefined>();
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverIconUrl, setDriverIconUrl] = useState<string | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
   const [tripStatus, setTripStatus] = useState<string>("accepted");
 
@@ -205,9 +206,10 @@ const Index = () => {
       dropoff: { lat: dropoff.lat, lng: dropoff.lng, name: dropoff.name },
       driverLat: driverLocation?.lat,
       driverLng: driverLocation?.lng,
+      driverIconUrl: driverIconUrl,
       showRoute: true,
     };
-  }, [passengerScreen, pickup, dropoff, driverLocation]);
+  }, [passengerScreen, pickup, dropoff, driverLocation, driverIconUrl]);
 
   // Fetch actual online driver locations
   const [vehicleMarkers, setVehicleMarkers] = useState<Array<{ id: string; lat: number; lng: number; name: string; imageUrl?: string; icon?: string }>>([]);
@@ -248,8 +250,17 @@ const Index = () => {
     if (!currentTripId || passengerScreen !== "driver-matching") return;
 
     const trackDriver = async () => {
-      const { data: trip } = await supabase.from("trips").select("driver_id").eq("id", currentTripId).single();
+      const { data: trip } = await supabase.from("trips").select("driver_id, vehicle_id").eq("id", currentTripId).single();
       if (!trip?.driver_id) return;
+
+      // Fetch vehicle map icon URL
+      if (trip.vehicle_id) {
+        const { data: vehicle } = await supabase.from("vehicles").select("vehicle_type_id").eq("id", trip.vehicle_id).single();
+        if (vehicle?.vehicle_type_id) {
+          const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", vehicle.vehicle_type_id).single();
+          if (vt?.map_icon_url) setDriverIconUrl(vt.map_icon_url);
+        }
+      }
 
       const fetchPos = async () => {
         const { data: loc } = await supabase
@@ -598,6 +609,7 @@ const Index = () => {
     setMatchedDriver(null);
     setTripStatus("accepted");
     setDriverLocation(null);
+    setDriverIconUrl(null);
     lastPlayedStatusRef.current = null;
     setPassengerScreen("home");
   }, []);
