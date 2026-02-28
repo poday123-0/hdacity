@@ -141,7 +141,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex overflow-hidden">
+    <div className="h-dvh bg-background flex overflow-hidden">
       {/* Sidebar overlay on mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
