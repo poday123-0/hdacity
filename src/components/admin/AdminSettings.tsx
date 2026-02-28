@@ -841,16 +841,26 @@ const AdminSettings = () => {
             onClick={async () => {
               try {
                 toast({ title: "Sending test notification…" });
+                // Get all active device token user_ids
+                const { data: tokens } = await supabase
+                  .from("device_tokens")
+                  .select("user_id")
+                  .eq("is_active", true);
+                const userIds = [...new Set((tokens || []).map((t: any) => t.user_id))];
+                if (userIds.length === 0) {
+                  toast({ title: "No devices registered", description: "No active device tokens found. Make sure at least one device has notifications enabled.", variant: "destructive" });
+                  return;
+                }
                 const { error } = await supabase.functions.invoke("send-push-notification", {
                   body: {
-                    topic: "test",
+                    user_ids: userIds,
                     title: "🔔 Test Notification",
-                    body: "Firebase push notifications are working!",
+                    body: "Push notifications are working!",
                     data: { type: "test" },
                   },
                 });
                 if (error) throw error;
-                toast({ title: "✅ Test sent!", description: "Check your device for the notification." });
+                toast({ title: "✅ Test sent!", description: `Sent to ${userIds.length} user(s). Check your device.` });
               } catch (err: any) {
                 toast({ title: "Test failed", description: err?.message || "Could not send test notification.", variant: "destructive" });
               }
