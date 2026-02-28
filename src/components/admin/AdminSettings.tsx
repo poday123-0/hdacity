@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet } from "lucide-react";
 
 interface SoundFile {
   id: string;
@@ -46,6 +46,17 @@ const settingsConfig = [
   { key: "local_police_number", label: "Local Police Number (shown in SOS dialog, e.g. 119)", type: "text" },
   { key: "privacy_notice", label: "Privacy Notice", type: "textarea" },
   { key: "terms_of_service", label: "Terms of Service", type: "textarea" },
+  { key: "passenger_trip_reward", label: "Passenger Trip Reward (amount or %)", type: "text" },
+  { key: "passenger_trip_reward_type", label: "Passenger Reward Type", type: "select", options: [
+    { value: '"fixed"', label: "Fixed Amount (MVR)" },
+    { value: '"percentage"', label: "Percentage of Fare" },
+  ]},
+  { key: "driver_trip_reward", label: "Driver Trip Reward (amount or %)", type: "text" },
+  { key: "driver_trip_reward_type", label: "Driver Reward Type", type: "select", options: [
+    { value: '"fixed"', label: "Fixed Amount (MVR)" },
+    { value: '"percentage"', label: "Percentage of Fare" },
+  ]},
+  { key: "min_withdrawal_amount", label: "Minimum Withdrawal Amount (MVR)", type: "number" },
 ];
 
 const AdminSettings = () => {
