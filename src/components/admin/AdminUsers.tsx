@@ -5,18 +5,23 @@ import { Search, Plus, Trash2, Shield, Radio, X, UserCheck, Loader2 } from "luci
 import { Checkbox } from "@/components/ui/checkbox";
 
 const AVAILABLE_PERMISSIONS = [
+  { key: "dispatch_trips", label: "Dispatch Trips" },
   { key: "manage_trips", label: "Manage Trips" },
   { key: "manage_drivers", label: "Manage Drivers" },
   { key: "manage_vehicles", label: "Manage Vehicles" },
   { key: "manage_passengers", label: "Manage Passengers" },
-  { key: "manage_billing", label: "Manage Billing" },
-  { key: "manage_settings", label: "Manage Settings" },
-  { key: "manage_lost_items", label: "Manage Lost Items" },
-  { key: "view_live_map", label: "View Live Map" },
-  { key: "manage_companies", label: "Manage Companies" },
-  { key: "manage_locations", label: "Manage Locations" },
   { key: "manage_fares", label: "Manage Fares" },
-  { key: "dispatch_trips", label: "Dispatch Trips" },
+  { key: "manage_billing", label: "Manage Billing" },
+  { key: "manage_locations", label: "Manage Locations" },
+  { key: "manage_companies", label: "Manage Companies" },
+  { key: "manage_lost_items", label: "Manage Lost Items" },
+  { key: "manage_notifications", label: "Manage Notifications" },
+  { key: "manage_sos", label: "Manage SOS Alerts" },
+  { key: "manage_settings", label: "Manage Settings" },
+  { key: "view_live_map", label: "View Live Map" },
+  { key: "view_dashboard", label: "View Dashboard" },
+  { key: "manage_wallets", label: "Manage Wallets" },
+  { key: "manage_banks", label: "Manage Banks" },
 ];
 
 const AdminUsers = () => {
