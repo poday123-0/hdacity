@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square } from "lucide-react";
+import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "" };
 
@@ -655,14 +656,13 @@ const AdminDrivers = () => {
                                       {vehicleTypes.map((vt) => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
                                     </select>
                                   </div>
-                                  <div>
-                                    <label className="text-xs text-muted-foreground">Make</label>
-                                    <input value={vehicleForm.make} onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })} placeholder="Toyota" className={inputCls} />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-muted-foreground">Model</label>
-                                    <input value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="Yaris" className={inputCls} />
-                                  </div>
+                                  <VehicleMakeModelSelect
+                                    make={vehicleForm.make}
+                                    model={vehicleForm.model}
+                                    onMakeChange={(v) => setVehicleForm({ ...vehicleForm, make: v })}
+                                    onModelChange={(v) => setVehicleForm({ ...vehicleForm, model: v })}
+                                    inputClassName={inputCls}
+                                  />
                                   <div>
                                     <label className="text-xs text-muted-foreground">Color</label>
                                     <input value={vehicleForm.color} onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })} placeholder="White" className={inputCls} />

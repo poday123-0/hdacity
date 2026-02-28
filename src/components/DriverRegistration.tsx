@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { User, Phone, Loader2, UserPlus, Camera, Car, Building2, Upload, ChevronDown } from "lucide-react";
+import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import hdaLogo from "@/assets/hda-logo.png";
@@ -447,16 +448,13 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium">Make</label>
-                  <input value={make} onChange={(e) => setMake(e.target.value.slice(0, 30))} placeholder="Toyota" className={inputClass} />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium">Model</label>
-                  <input value={model} onChange={(e) => setModel(e.target.value.slice(0, 30))} placeholder="Axio" className={inputClass} />
-                </div>
-              </div>
+              <VehicleMakeModelSelect
+                make={make}
+                model={model}
+                onMakeChange={setMake}
+                onModelChange={setModel}
+                inputClassName="w-full mt-1 px-3 py-3 bg-surface rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
 
               <div>
                 <label className="text-xs text-muted-foreground font-medium">Color</label>
