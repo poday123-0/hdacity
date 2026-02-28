@@ -124,6 +124,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  const [passengerLiveLocation, setPassengerLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showEarnings, setShowEarnings] = useState(true);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
@@ -707,6 +708,37 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => { supabase.removeChannel(channel); };
   }, [currentTrip?.id]);
 
+  // Track passenger live location before trip starts
+  useEffect(() => {
+    if (!currentTrip?.id) { setPassengerLiveLocation(null); return; }
+    if (driverTripPhase === "in_progress") { setPassengerLiveLocation(null); return; }
+
+    // Initial fetch
+    supabase.from("trips").select("passenger_lat, passenger_lng").eq("id", currentTrip.id).single().then(({ data }) => {
+      if (data?.passenger_lat && data?.passenger_lng) {
+        setPassengerLiveLocation({ lat: Number(data.passenger_lat), lng: Number(data.passenger_lng) });
+      }
+    });
+
+    // Subscribe to updates
+    const channel = supabase
+      .channel(`passenger-loc-${currentTrip.id}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "trips",
+        filter: `id=eq.${currentTrip.id}`,
+      }, (payload) => {
+        const t = payload.new as any;
+        if (t.passenger_lat && t.passenger_lng) {
+          setPassengerLiveLocation({ lat: Number(t.passenger_lat), lng: Number(t.passenger_lng) });
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentTrip?.id, driverTripPhase]);
+
   // Fetch available banks from admin-configured banks table
   useEffect(() => {
     supabase.from("banks").select("id, name, logo_url").eq("is_active", true).order("name").then(({ data }) => {
@@ -1228,6 +1260,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           return vt?.map_icon_url || null;
         })()}
         passengerMapIconUrl={passengerMapIconUrl}
+        passengerLiveLocation={passengerLiveLocation}
         onRecenterAvailableChange={setRecenterAvailable}
         recenterRef={recenterRef}
         onNavUpdate={(etaText, distText, etaMins, distKm) => {
