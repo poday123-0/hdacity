@@ -25,7 +25,7 @@ interface TopBarProps {
   onNotificationPress?: () => void;
 }
 
-const TopBar = ({ onLogout, userName, userProfile, onNotificationPress }: TopBarProps) => {
+const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationPress }: TopBarProps) => {
   useTheme();
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -295,6 +295,15 @@ const TopBar = ({ onLogout, userName, userProfile, onNotificationPress }: TopBar
 
                 {/* Action buttons - compact grid */}
                 <div className="grid grid-cols-2 gap-2">
+                  {onDriverMode && (
+                    <button
+                      onClick={() => { setShowProfile(false); onDriverMode(); }}
+                      className="col-span-2 flex items-center gap-2.5 bg-primary/10 rounded-xl px-3 py-3 active:scale-[0.98] transition-transform"
+                    >
+                      <Car className="w-5 h-5 text-primary shrink-0" />
+                      <span className="text-sm font-bold text-primary">Switch to Driver Mode</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => { setShowProfile(false); setShowHistory(true); }}
                     className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
