@@ -14,7 +14,6 @@ const AdminBilling = () => {
   const [paymentFilter, setPaymentFilter] = useState("submitted");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [billingDueDay, setBillingDueDay] = useState(25);
-  const [adminPhone, setAdminPhone] = useState("");
   const [tab, setTab] = useState<"drivers" | "payments">("drivers");
 
   const fetchDrivers = async () => {
@@ -26,14 +25,13 @@ const AdminBilling = () => {
         return q;
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
-      supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "admin_sms_phone"]),
+      supabase.from("system_settings").select("key, value").in("key", ["billing_due_day"]),
     ]);
     setDrivers((driversRes.data as any[]) || []);
     setCompanies((companiesRes.data as any[]) || []);
     
     settingsRes.data?.forEach((s: any) => {
       if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 25);
-      if (s.key === "admin_sms_phone") setAdminPhone(typeof s.value === "string" ? s.value : String(s.value || ""));
     });
     setLoading(false);
   };
@@ -71,7 +69,7 @@ const AdminBilling = () => {
   };
 
   const saveBillingSettings = async () => {
-    const entries: [string, any][] = [["billing_due_day", billingDueDay], ["admin_sms_phone", adminPhone]];
+    const entries: [string, any][] = [["billing_due_day", billingDueDay]];
     for (const [key, value] of entries) {
       const { data: existing } = await supabase.from("system_settings").select("id").eq("key", key as string).single();
       if (existing) {
@@ -127,21 +125,19 @@ const AdminBilling = () => {
       {/* Billing Settings */}
       <div className="bg-card border border-border rounded-xl p-5 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Billing Settings</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Billing Due Day (of month)</label>
             <input type="number" min={1} max={28} value={billingDueDay} onChange={(e) => setBillingDueDay(parseInt(e.target.value) || 25)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             <p className="text-[10px] text-muted-foreground mt-1">Drivers not paid by this date will be deactivated</p>
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Admin SMS Phone (Dhiraagu)</label>
-            <input value={adminPhone} onChange={(e) => setAdminPhone(e.target.value.replace(/\D/g, "").slice(0, 7))} placeholder="7XXXXXX" className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-            <p className="text-[10px] text-muted-foreground mt-1">Receive SMS when driver submits payment</p>
-          </div>
           <div className="flex items-end">
             <button onClick={saveBillingSettings} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold">Save Settings</button>
           </div>
         </div>
+        <p className="text-[11px] text-muted-foreground bg-surface rounded-lg px-3 py-2">
+          💡 Admin notification phones are managed in <strong>Settings → Admin Notification Recipients</strong>
+        </p>
       </div>
 
       {/* Stats */}
