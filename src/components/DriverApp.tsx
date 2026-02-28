@@ -8,6 +8,7 @@ import DriverMap from "@/components/DriverMap";
 import hdaLogo from "@/assets/hda-logo.png";
 import DriverEarnings from "@/components/DriverEarnings";
 import DriverWallet from "@/components/DriverWallet";
+import DriverCompleteScreen from "@/components/DriverCompleteScreen";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -2289,28 +2290,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Complete */}
       {screen === "complete" &&
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="absolute inset-0 z-[500] flex items-center justify-center bg-foreground/50 backdrop-blur-sm complete-overlay">
-          <motion.div initial={{ y: 30 }} animate={{ y: 0 }} className="bg-card rounded-2xl shadow-2xl mx-6 w-full max-w-sm p-6 text-center space-y-5">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }} className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-              <CheckCircle className="w-10 h-10 text-primary" />
-            </motion.div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground">Ride complete!</h3>
-              <p className="text-muted-foreground text-sm mt-1">Well done, {userProfile?.first_name || "Driver"}</p>
-            </div>
-            <div className="bg-surface rounded-xl p-4">
-              <p className="text-3xl font-bold text-primary">{completionFare || currentTrip?.estimated_fare || "—"} MVR</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Paid via <span className="font-semibold capitalize">{confirmedPaymentMethod}</span>
-              </p>
-            </div>
-            <button onClick={() => {
-            setScreen("online");
-            setCurrentTrip(null);
-            setPassengerProfile(null);
-          }} className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform">Continue</button>
-          </motion.div>
-        </motion.div>
+      <DriverCompleteScreen
+        completionFare={completionFare}
+        currentTrip={currentTrip}
+        confirmedPaymentMethod={confirmedPaymentMethod}
+        passengerProfile={passengerProfile}
+        userProfile={userProfile}
+        onContinue={() => {
+          setScreen("online");
+          setCurrentTrip(null);
+          setPassengerProfile(null);
+        }}
+      />
       }
 
       {/* Profile Panel */}

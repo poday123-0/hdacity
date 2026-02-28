@@ -956,6 +956,7 @@ export type Database = {
           dispatch_type: string | null
           distance_km: number | null
           driver_id: string | null
+          driver_rating: number | null
           dropoff_address: string
           dropoff_lat: number | null
           dropoff_lng: number | null
@@ -1003,6 +1004,7 @@ export type Database = {
           dispatch_type?: string | null
           distance_km?: number | null
           driver_id?: string | null
+          driver_rating?: number | null
           dropoff_address?: string
           dropoff_lat?: number | null
           dropoff_lng?: number | null
@@ -1050,6 +1052,7 @@ export type Database = {
           dispatch_type?: string | null
           distance_km?: number | null
           driver_id?: string | null
+          driver_rating?: number | null
           dropoff_address?: string
           dropoff_lat?: number | null
           dropoff_lng?: number | null
