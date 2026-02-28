@@ -1514,7 +1514,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Map action buttons — right side, positioned for thumb reach */}
       {screen !== "offline" &&
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+340px)] right-3 z-[455] flex flex-col gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/30 mx-0 my-[46px] mb-[100px] mt-[100px] landscape-map-controls">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+340px)] right-3 z-[455] flex flex-col gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-border/30 mx-0 mb-[60px] landscape-map-controls">
         {recenterAvailable &&
         <>
             <button
