@@ -1214,7 +1214,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </p>
               </div>
               <button
-                onClick={() => setSessionKicked(false)}
+                onClick={() => {
+                  deviceSessionId.current = crypto.randomUUID();
+                  setSessionKicked(false);
+                }}
                 className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-95 transition-transform"
               >
                 I Understand
@@ -1261,7 +1264,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button
                   onClick={() => {
                     setShowTakeoverConfirm(false);
-                    setScreen("online");
+                    deviceSessionId.current = crypto.randomUUID();
+                    // Force effect re-trigger by going offline then online
+                    setScreen("offline");
+                    setTimeout(() => setScreen("online"), 100);
                   }}
                   className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm active:scale-95 transition-transform"
                 >
