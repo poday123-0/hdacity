@@ -284,54 +284,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     restoreTrip();
   }, [userProfile?.id]);
 
-  // Past trip messages state
-  const [pastTripChats, setPastTripChats] = useState<Array<{trip_id: string;pickup: string;dropoff: string;date: string;message_count: number;}>>([]);
-  const [selectedChatTripId, setSelectedChatTripId] = useState<string | null>(null);
-  const [loadingChats, setLoadingChats] = useState(false);
-
-  // Load past trip chats when messages tab is opened
-  useEffect(() => {
-    if (profileTab !== "messages" || !userProfile?.id) return;
-    setLoadingChats(true);
-    const fetchChats = async () => {
-      // Get trips with messages for this driver
-      const { data: trips } = await supabase.
-      from("trips").
-      select("id, pickup_address, dropoff_address, completed_at, created_at").
-      eq("driver_id", userProfile.id).
-      in("status", ["completed", "cancelled"]).
-      order("completed_at", { ascending: false }).
-      limit(50);
-
-      if (!trips || trips.length === 0) {setPastTripChats([]);setLoadingChats(false);return;}
-
-      // Get message counts per trip
-      const tripIds = trips.map((t) => t.id);
-      const { data: msgs } = await supabase.
-      from("trip_messages").
-      select("trip_id").
-      in("trip_id", tripIds);
-
-      const countMap: Record<string, number> = {};
-      (msgs || []).forEach((m) => {countMap[m.trip_id] = (countMap[m.trip_id] || 0) + 1;});
-
-      // Only show trips that have messages
-      const withMessages = trips.
-      filter((t) => (countMap[t.id] || 0) > 0).
-      map((t) => ({
-        trip_id: t.id,
-        pickup: t.pickup_address || "Unknown",
-        dropoff: t.dropoff_address || "Unknown",
-        date: t.completed_at || t.created_at,
-        message_count: countMap[t.id] || 0
-      }));
-
-      setPastTripChats(withMessages);
-      setLoadingChats(false);
-    };
-    fetchChats();
-  }, [profileTab, userProfile?.id]);
-
    // No fallback location — only use actual GPS
 
   // Push driver location to driver_locations when online
@@ -2404,7 +2356,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "favara", label: "Favara", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
                 { key: "billing", label: "Billing", icon: DollarSign },
-                { key: "messages", label: "Chats", icon: MessageSquare },
                 { key: "settings", label: "Settings", icon: Settings }] as
                 const).map(({ key, label, icon: Icon }) =>
                 <button
@@ -3060,58 +3011,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               }
               </div>
 
-              {profileTab === "messages" &&
-            <div className="space-y-2">
-                  {loadingChats ?
-              <div className="text-center py-8">
-                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">Loading chats...</p>
-                    </div> :
-              pastTripChats.length === 0 ?
-              <div className="text-center py-8">
-                      <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm font-medium text-muted-foreground">No chat history</p>
-                      <p className="text-xs text-muted-foreground mt-1">Messages from past trips will appear here</p>
-                    </div> :
 
-              pastTripChats.map((chat) =>
-              <button
-                key={chat.trip_id}
-                onClick={() => setSelectedChatTripId(chat.trip_id)}
-                className="w-full bg-surface rounded-xl p-3 text-left active:scale-[0.98] transition-transform">
 
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <MessageSquare className="w-5 h-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-semibold text-foreground truncate">{chat.pickup.split(",")[0]}</p>
-                              <span className="text-[10px] text-muted-foreground shrink-0">
-                                {new Date(chat.date).toLocaleDateString([], { month: "short", day: "numeric" })}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">→ {chat.dropoff.split(",")[0]}</p>
-                            <p className="text-[10px] text-primary font-medium mt-1">{chat.message_count} message{chat.message_count !== 1 ? "s" : ""}</p>
-                          </div>
-                        </div>
-                      </button>
-              )
-              }
-                </div>
-            }
-
-              {/* Read-only chat viewer for past trips */}
-              {selectedChatTripId &&
-            <TripChat
-              tripId={selectedChatTripId}
-              senderId={userProfile?.id}
-              senderType="driver"
-              isOpen={true}
-              onClose={() => setSelectedChatTripId(null)}
-              readOnly />
-
-            }
 
               {profileTab === "settings" &&
             <div className="space-y-3" style={{ fontSize: '16px' }}>

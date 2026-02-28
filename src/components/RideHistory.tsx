@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download } from "lucide-react";
+import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
+import TripChat from "@/components/TripChat";
 
 interface RideHistoryProps {
   userId?: string;
+  userType?: "passenger" | "driver";
   onClose: () => void;
 }
 
@@ -26,10 +28,12 @@ interface TripRecord {
   vehicle_type: { name: string } | null;
 }
 
-const RideHistory = ({ userId, onClose }: RideHistoryProps) => {
+const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryProps) => {
   const [trips, setTrips] = useState<TripRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
+  const [chatTripId, setChatTripId] = useState<string | null>(null);
+  const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -40,15 +44,33 @@ const RideHistory = ({ userId, onClose }: RideHistoryProps) => {
         .limit(50);
 
       if (userId) {
-        query.eq("passenger_id", userId);
+        if (userType === "driver") {
+          query.eq("driver_id", userId);
+        } else {
+          query.eq("passenger_id", userId);
+        }
       }
 
       const { data } = await query;
-      setTrips((data || []).map((t: any) => ({ ...t, vehicle_type: t.vehicle_types })));
+      const tripData = (data || []).map((t: any) => ({ ...t, vehicle_type: t.vehicle_types }));
+      setTrips(tripData);
+
+      // Fetch message counts
+      if (tripData.length > 0) {
+        const tripIds = tripData.map((t: any) => t.id);
+        const { data: msgs } = await supabase
+          .from("trip_messages")
+          .select("trip_id")
+          .in("trip_id", tripIds);
+        const counts: Record<string, number> = {};
+        (msgs || []).forEach((m: any) => { counts[m.trip_id] = (counts[m.trip_id] || 0) + 1; });
+        setMessageCounts(counts);
+      }
+
       setLoading(false);
     };
     fetchTrips();
-  }, [userId]);
+  }, [userId, userType]);
 
   const statusColor = (s: string) => {
     if (s === "completed") return "text-primary bg-primary/10";
@@ -58,6 +80,7 @@ const RideHistory = ({ userId, onClose }: RideHistoryProps) => {
 
   if (selectedTrip) {
     return (
+      <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[700] flex items-end justify-center bg-foreground/50 backdrop-blur-sm" onClick={onClose}>
         <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div className="p-4 pb-6 space-y-4">
@@ -133,10 +156,25 @@ const RideHistory = ({ userId, onClose }: RideHistoryProps) => {
               )}
             </div>
 
+            {/* View Chat button */}
+            {(messageCounts[selectedTrip.id] || 0) > 0 && (
+              <button
+                onClick={() => setChatTripId(selectedTrip.id)}
+                className="w-full py-2.5 rounded-xl bg-surface flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              >
+                <MessageSquare className="w-4 h-4 text-primary" />
+                <span className="text-xs font-semibold text-foreground">View Chat ({messageCounts[selectedTrip.id]} messages)</span>
+              </button>
+            )}
+
             <p className="text-center text-[10px] text-muted-foreground">Trip ID: {selectedTrip.id.slice(0, 8)}</p>
           </div>
         </motion.div>
       </motion.div>
+      {chatTripId && (
+        <TripChat tripId={chatTripId} senderId={userId} senderType={userType} isOpen={true} onClose={() => setChatTripId(null)} readOnly />
+      )}
+      </>
     );
   }
 
@@ -174,6 +212,11 @@ const RideHistory = ({ userId, onClose }: RideHistoryProps) => {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(trip.status)}`}>{trip.status}</span>
                     <span className="text-xs text-muted-foreground">{format(new Date(trip.created_at), "dd MMM, hh:mm a")}</span>
+                    {(messageCounts[trip.id] || 0) > 0 && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-primary font-medium">
+                        <MessageSquare className="w-3 h-3" />{messageCounts[trip.id]}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right shrink-0">

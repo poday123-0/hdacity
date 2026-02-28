@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, TrendingUp, MapPin, Users, Luggage, Star, ChevronDown } from "lucide-react";
+import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, TrendingUp, MapPin, Users, Luggage, Star, ChevronDown, MessageSquare } from "lucide-react";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths, addDays, addWeeks, addMonths } from "date-fns";
+import TripChat from "@/components/TripChat";
 
 type Period = "day" | "week" | "month" | "custom";
 
@@ -41,6 +42,8 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
   const [trips, setTrips] = useState<TripRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
+  const [chatTripId, setChatTripId] = useState<string | null>(null);
+  const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
 
   const dateRange = useMemo(() => {
     if (period === "custom" && customFrom && customTo) {
@@ -77,7 +80,18 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString())
         .order("created_at", { ascending: false });
-      setTrips((data as TripRecord[]) || []);
+      const tripData = (data as TripRecord[]) || [];
+      setTrips(tripData);
+      // Fetch message counts
+      if (tripData.length > 0) {
+        const tripIds = tripData.map(t => t.id);
+        const { data: msgs } = await supabase.from("trip_messages").select("trip_id").in("trip_id", tripIds);
+        const counts: Record<string, number> = {};
+        (msgs || []).forEach((m: any) => { counts[m.trip_id] = (counts[m.trip_id] || 0) + 1; });
+        setMessageCounts(counts);
+      } else {
+        setMessageCounts({});
+      }
       setLoading(false);
     };
     fetchTrips();
@@ -245,10 +259,17 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
                         <p className="text-xs text-muted-foreground truncate">{trip.dropoff_address || "—"}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {format(new Date(trip.created_at), "h:mm a")}
-                      {trip.duration_minutes ? ` • ${Math.round(Number(trip.duration_minutes))}min` : ""}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(trip.created_at), "h:mm a")}
+                        {trip.duration_minutes ? ` • ${Math.round(Number(trip.duration_minutes))}min` : ""}
+                      </p>
+                      {(messageCounts[trip.id] || 0) > 0 && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-primary font-medium">
+                          <MessageSquare className="w-3 h-3" />{messageCounts[trip.id]}
+                        </span>
+                      )}
+                    </div>
 
                     {/* Expanded details */}
                     <AnimatePresence>
@@ -326,6 +347,17 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
                                 <p className="text-xs text-foreground italic">"{trip.feedback_text}"</p>
                               </div>
                             )}
+
+                            {/* View Chat */}
+                            {(messageCounts[trip.id] || 0) > 0 && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setChatTripId(trip.id); }}
+                                className="w-full py-2 rounded-lg bg-primary/10 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                                <span className="text-[10px] font-semibold text-primary">{messageCounts[trip.id]} messages</span>
+                              </button>
+                            )}
                           </div>
                         </motion.div>
                       )}
@@ -337,6 +369,9 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
           </div>
         </motion.div>
       </motion.div>
+      {chatTripId && (
+        <TripChat tripId={chatTripId} senderId={driverId} senderType="driver" isOpen={true} onClose={() => setChatTripId(null)} readOnly />
+      )}
     </AnimatePresence>
   );
 };
