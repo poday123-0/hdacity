@@ -141,14 +141,18 @@ Deno.serve(async (req) => {
     // FCM v1 sends one message at a time (or use batch endpoint)
     const results = await Promise.allSettled(
       tokens.map(async (t: any) => {
+        // Send as data-only message so the service worker ALWAYS handles it,
+        // even when the app is closed/minimized. The SW will show the notification.
         const result = await sendOne({
           token: t.token,
-          notification: { title, body },
-          data: data || {},
-          android: { priority: "high", notification: { sound: "default" } },
+          data: {
+            title: title || "Notification",
+            body: body || "",
+            ...(data || {}),
+          },
+          android: { priority: "high" },
           webpush: {
-            headers: { Urgency: "high" },
-            notification: { icon: "/pwa-192x192.png", badge: "/pwa-192x192.png" },
+            headers: { Urgency: "high", TTL: "86400" },
           },
         });
 
