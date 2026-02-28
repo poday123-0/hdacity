@@ -478,26 +478,12 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Payment</p>
               </div>
 
-              <BankCard bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />
-
-              {otherBanks.length > 0 && (
-                <>
-                  <button
-                    onClick={() => setShowAllBanks(!showAllBanks)}
-                    className="w-full flex items-center justify-center gap-1 text-xs text-primary font-semibold py-1"
-                  >
-                    {showAllBanks ? "Hide" : `Show ${otherBanks.length} more`}
-                    {showAllBanks ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
-                  <AnimatePresence>
-                    {showAllBanks && otherBanks.map((bank) => (
-                      <motion.div key={bank.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                        <BankCard bank={bank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[bank.bank_name]} />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </>
-              )}
+              <div className={`grid gap-1.5 ${otherBanks.length > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
+                <BankCard bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />
+                {otherBanks.map((bank) => (
+                  <BankCard key={bank.id} bank={bank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[bank.bank_name]} />
+                ))}
+              </div>
             </div>
           )}
 
