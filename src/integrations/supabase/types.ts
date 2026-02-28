@@ -972,6 +972,8 @@ export type Database = {
           passenger_id: string | null
           passenger_lat: number | null
           passenger_lng: number | null
+          payment_confirmed_method: string | null
+          payment_method: string
           pickup_address: string
           pickup_lat: number | null
           pickup_lng: number | null
@@ -1017,6 +1019,8 @@ export type Database = {
           passenger_id?: string | null
           passenger_lat?: number | null
           passenger_lng?: number | null
+          payment_confirmed_method?: string | null
+          payment_method?: string
           pickup_address?: string
           pickup_lat?: number | null
           pickup_lng?: number | null
@@ -1062,6 +1066,8 @@ export type Database = {
           passenger_id?: string | null
           passenger_lat?: number | null
           passenger_lng?: number | null
+          payment_confirmed_method?: string | null
+          payment_method?: string
           pickup_address?: string
           pickup_lat?: number | null
           pickup_lng?: number | null
@@ -1268,6 +1274,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          proof_url: string | null
+          reason: string
+          status: string
+          trip_id: string | null
+          type: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          proof_url?: string | null
+          reason?: string
+          status?: string
+          trip_id?: string | null
+          type?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          proof_url?: string | null
+          reason?: string
+          status?: string
+          trip_id?: string | null
+          type?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

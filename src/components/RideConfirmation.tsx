@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, Users, Luggage, Shield, Clock, Phone, Navigation, CheckCircle, Calendar, FileText } from "lucide-react";
+import { MapPin, Users, Luggage, Shield, Clock, Phone, Navigation, CheckCircle, Calendar, FileText, Banknote, CreditCard, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,6 +10,8 @@ interface EmergencyContact {
   relationship: string;
 }
 
+type PaymentMethod = "cash" | "transfer" | "wallet";
+
 interface RideConfirmationProps {
   pickup: { name: string; lat: number; lng: number };
   dropoff: { name: string; lat: number; lng: number };
@@ -18,7 +20,7 @@ interface RideConfirmationProps {
   passengerCount: number;
   luggageCount: number;
   userId?: string;
-  onConfirm: () => void;
+  onConfirm: (paymentMethod: PaymentMethod) => void;
   onBack: () => void;
   stops?: Array<{ name: string; lat: number; lng: number }>;
   bookingType?: "now" | "scheduled" | "hourly";
@@ -46,13 +48,19 @@ const RideConfirmation = ({
   const [newContact, setNewContact] = useState({ name: "", phone_number: "", relationship: "" });
   const [shareWithContact, setShareWithContact] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [walletBalance, setWalletBalance] = useState<number>(0);
 
   useEffect(() => {
     if (!userId) return;
     const fetch = async () => {
-      const { data } = await supabase.from("emergency_contacts").select("*").eq("user_id", userId).eq("is_active", true);
-      setEmergencyContacts(data || []);
-      if (data && data.length > 0) setShareWithContact(data[0].id);
+      const [contactsRes, walletRes] = await Promise.all([
+        supabase.from("emergency_contacts").select("*").eq("user_id", userId).eq("is_active", true),
+        supabase.from("wallets").select("balance").eq("user_id", userId).maybeSingle(),
+      ]);
+      setEmergencyContacts(contactsRes.data || []);
+      if (contactsRes.data && contactsRes.data.length > 0) setShareWithContact(contactsRes.data[0].id);
+      setWalletBalance(Number(walletRes.data?.balance) || 0);
     };
     fetch();
   }, [userId]);
@@ -74,13 +82,15 @@ const RideConfirmation = ({
   };
 
   const handleConfirm = async () => {
+    if (paymentMethod === "wallet" && walletBalance < estimatedFare) return;
     setConfirming(true);
-    onConfirm();
+    onConfirm(paymentMethod);
   };
 
-  // Simple ETA estimate based on distance
   const distKm = Math.sqrt(Math.pow(pickup.lat - dropoff.lat, 2) + Math.pow(pickup.lng - dropoff.lng, 2)) * 111;
   const etaMin = Math.max(5, Math.round(distKm * 3));
+
+  const walletInsufficient = paymentMethod === "wallet" && walletBalance < estimatedFare;
 
   return (
     <motion.div
@@ -95,7 +105,7 @@ const RideConfirmation = ({
         <h2 className="text-lg font-bold text-foreground text-center">Confirm Your Ride</h2>
 
         {/* Route & ETA */}
-          <div className="bg-surface rounded-xl p-3 space-y-2">
+        <div className="bg-surface rounded-xl p-3 space-y-2">
           <div className="flex items-start gap-3">
             <div className="flex flex-col items-center gap-0.5 mt-1">
               <div className="w-2.5 h-2.5 rounded-full bg-primary" />
@@ -167,6 +177,39 @@ const RideConfirmation = ({
           </div>
         </div>
 
+        {/* Payment Method */}
+        <div className="bg-surface rounded-xl p-3 space-y-2">
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Payment Method</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { id: "cash" as PaymentMethod, label: "Cash", icon: Banknote, color: "text-green-500" },
+              { id: "transfer" as PaymentMethod, label: "Transfer", icon: CreditCard, color: "text-blue-500" },
+              { id: "wallet" as PaymentMethod, label: "Wallet", icon: Wallet, color: "text-amber-500" },
+            ]).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setPaymentMethod(m.id)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                  paymentMethod === m.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card"
+                }`}
+              >
+                <m.icon className={`w-5 h-5 ${paymentMethod === m.id ? "text-primary" : m.color}`} />
+                <span className={`text-xs font-semibold ${paymentMethod === m.id ? "text-primary" : "text-foreground"}`}>{m.label}</span>
+                {m.id === "wallet" && (
+                  <span className={`text-[10px] ${walletBalance >= estimatedFare ? "text-green-600" : "text-destructive"}`}>
+                    {walletBalance.toFixed(0)} MVR
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          {walletInsufficient && (
+            <p className="text-[11px] text-destructive text-center">Insufficient wallet balance. Need {estimatedFare.toFixed(0)} MVR.</p>
+          )}
+        </div>
+
         {/* Emergency contact */}
         <div className="bg-surface rounded-xl p-3 space-y-2">
           <div className="flex items-center gap-2">
@@ -222,7 +265,7 @@ const RideConfirmation = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={confirming}
+            disabled={confirming || walletInsufficient}
             className="flex-[2] py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-60"
           >
             {confirming ? "Requesting..." : bookingType === "scheduled" ? `Schedule Ride — ${estimatedFare.toFixed(0)} MVR` : bookingType === "hourly" ? `Request Hourly — ${estimatedFare.toFixed(0)} MVR/hr` : `Request Ride — ${estimatedFare.toFixed(0)} MVR`}
