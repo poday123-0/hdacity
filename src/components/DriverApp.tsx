@@ -521,6 +521,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           tripSoundRef.current.currentTime = 0;
         }
         tripSoundRef.current = new Audio(tripRequestSoundUrl);
+        tripSoundRef.current.loop = true;
         tripSoundRef.current.play().catch(() => {});
       } catch {}
     }
