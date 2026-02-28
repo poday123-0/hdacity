@@ -99,13 +99,20 @@ const AdminSettings = () => {
   // Firebase push notification config
   const [firebaseConfig, setFirebaseConfig] = useState("");
   const [firebaseVapidKey, setFirebaseVapidKey] = useState("");
+  // Default company & center codes
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [defaultCompanyId, setDefaultCompanyId] = useState("");
+  const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
+  const [newBlockedCode, setNewBlockedCode] = useState("");
 
   const fetchSettings = async () => {
     setLoading(true);
-    const [settingsRes, soundsRes] = await Promise.all([
+    const [settingsRes, soundsRes, companiesRes] = await Promise.all([
       supabase.from("system_settings").select("*"),
       supabase.from("notification_sounds").select("*").order("created_at", { ascending: false }),
+      supabase.from("companies").select("id, name").eq("is_active", true).order("name"),
     ]);
+    setCompanies(companiesRes.data || []);
     const map: Record<string, any> = {};
     settingsRes.data?.forEach((s: any) => { map[s.key] = s.value; });
     setSettings(map);
@@ -143,6 +150,9 @@ const AdminSettings = () => {
       const fv = map["firebase_vapid_key"];
       setFirebaseVapidKey(typeof fv === "string" ? fv : String(fv));
     }
+    // Load default company & blocked codes
+    if (map["default_company_id"]) setDefaultCompanyId(typeof map["default_company_id"] === "string" ? map["default_company_id"] : "");
+    if (map["blocked_center_codes"] && Array.isArray(map["blocked_center_codes"])) setBlockedCodes(map["blocked_center_codes"].map(String));
     setLoading(false);
   };
 
@@ -334,7 +344,86 @@ const AdminSettings = () => {
         ))}
       </div>
 
-      {/* Admin Bank Account */}
+      {/* Default Company & Center Codes */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Car className="w-5 h-5 text-primary" /> Default Company & Center Codes
+      </h2>
+      <p className="text-sm text-muted-foreground">Set the default company (e.g. HDA TAXI). Vehicles in the default company can be assigned center codes for dispatch.</p>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-5">
+        {/* Default Company Selector */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-foreground">Default Company</label>
+          <div className="flex items-center gap-2">
+            <select
+              value={defaultCompanyId}
+              onChange={(e) => {
+                setDefaultCompanyId(e.target.value);
+                updateSetting("default_company_id", e.target.value);
+              }}
+              className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">— None —</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          {defaultCompanyId && (
+            <p className="text-[11px] text-muted-foreground">
+              All vehicles belonging to drivers in this company can have a center code assigned.
+            </p>
+          )}
+        </div>
+
+        {/* Blocked Center Codes */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-foreground">Blocked / Reserved Center Codes</label>
+          <p className="text-[11px] text-muted-foreground">These codes are reserved for internal use and cannot be assigned to any vehicle.</p>
+          <div className="flex flex-wrap gap-2">
+            {blockedCodes.map((code, i) => (
+              <span key={i} className="flex items-center gap-1 px-2.5 py-1 bg-destructive/10 text-destructive rounded-lg text-xs font-bold">
+                #{code}
+                <button onClick={() => {
+                  const updated = blockedCodes.filter((_, idx) => idx !== i);
+                  setBlockedCodes(updated);
+                  updateSetting("blocked_center_codes", updated);
+                }} className="hover:text-destructive/70"><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+            {blockedCodes.length === 0 && <span className="text-[11px] text-muted-foreground/60">No blocked codes yet</span>}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={newBlockedCode}
+              onChange={(e) => setNewBlockedCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="e.g. 20"
+              className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newBlockedCode.trim()) {
+                  const updated = [...blockedCodes, newBlockedCode.trim()];
+                  setBlockedCodes(updated);
+                  setNewBlockedCode("");
+                  updateSetting("blocked_center_codes", updated);
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                if (!newBlockedCode.trim()) return;
+                if (blockedCodes.includes(newBlockedCode.trim())) { toast({ title: "Already blocked" }); return; }
+                const updated = [...blockedCodes, newBlockedCode.trim()];
+                setBlockedCodes(updated);
+                setNewBlockedCode("");
+                updateSetting("blocked_center_codes", updated);
+              }}
+              className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
         <Building2 className="w-5 h-5 text-primary" /> Admin Payment Account
       </h2>
