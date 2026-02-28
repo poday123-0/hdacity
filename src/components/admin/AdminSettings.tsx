@@ -821,23 +821,47 @@ const AdminSettings = () => {
             className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
-        <button
-          onClick={async () => {
-            try {
-              const parsed = JSON.parse(firebaseConfig.trim());
-              await updateSetting("firebase_config", parsed);
-              if (firebaseVapidKey.trim()) {
-                await updateSetting("firebase_vapid_key", firebaseVapidKey.trim());
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={async () => {
+              try {
+                const parsed = JSON.parse(firebaseConfig.trim());
+                await updateSetting("firebase_config", parsed);
+                if (firebaseVapidKey.trim()) {
+                  await updateSetting("firebase_vapid_key", firebaseVapidKey.trim());
+                }
+                toast({ title: "Firebase config saved!", description: "Push notifications are now configured." });
+              } catch {
+                toast({ title: "Invalid JSON", description: "Please enter a valid Firebase config JSON object.", variant: "destructive" });
               }
-              toast({ title: "Firebase config saved!", description: "Push notifications are now configured." });
-            } catch {
-              toast({ title: "Invalid JSON", description: "Please enter a valid Firebase config JSON object.", variant: "destructive" });
-            }
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-        >
-          <Save className="w-4 h-4" /> Save Firebase Config
-        </button>
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+          >
+            <Save className="w-4 h-4" /> Save Firebase Config
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                toast({ title: "Sending test notification…" });
+                const { error } = await supabase.functions.invoke("send-push-notification", {
+                  body: {
+                    topic: "test",
+                    title: "🔔 Test Notification",
+                    body: "Firebase push notifications are working!",
+                    data: { type: "test" },
+                  },
+                });
+                if (error) throw error;
+                toast({ title: "✅ Test sent!", description: "Check your device for the notification." });
+              } catch (err: any) {
+                toast({ title: "Test failed", description: err?.message || "Could not send test notification.", variant: "destructive" });
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium"
+          >
+            <Bell className="w-4 h-4" /> Send Test Notification
+          </button>
+        </div>
       </div>
     </div>
   );
