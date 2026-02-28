@@ -112,10 +112,24 @@ const Dispatch = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setDispatcherProfile(parsed.profile || parsed);
+        const profile = parsed.profile || parsed;
+        setDispatcherProfile(profile);
         setDispatcherPermissions(parsed.permissions || []);
         setDispatcherRole(parsed.role || "dispatcher");
         setIsAuthed(true);
+
+        // Refresh permissions from DB to avoid stale cache
+        if (profile?.id) {
+          supabase.from("user_roles").select("role, permissions").eq("user_id", profile.id).single().then(({ data }) => {
+            if (data) {
+              const freshPerms = Array.isArray(data.permissions) ? data.permissions as string[] : [];
+              const freshRole = data.role as string;
+              setDispatcherPermissions(freshPerms);
+              setDispatcherRole(freshRole);
+              localStorage.setItem("hda_dispatcher", JSON.stringify({ profile, permissions: freshPerms, role: freshRole }));
+            }
+          });
+        }
       } catch {}
     }
     setLoading(false);
