@@ -5,6 +5,7 @@ import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
 import PassengerRegistration from "@/components/PassengerRegistration";
+import DriverRegistration from "@/components/DriverRegistration";
 import TopBar from "@/components/TopBar";
 import LocationInput from "@/components/LocationInput";
 import RideOptions from "@/components/RideOptions";
@@ -12,6 +13,7 @@ import RideConfirmation from "@/components/RideConfirmation";
 import SearchingDriver from "@/components/SearchingDriver";
 import DriverMatching from "@/components/DriverMatching";
 import RideFeedback from "@/components/RideFeedback";
+import DriverApp from "@/components/DriverApp";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyTripRequested } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
@@ -21,7 +23,7 @@ import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPanel from "@/components/DriverNotifications";
 
-type AppPhase = "splash" | "auth" | "register" | "passenger";
+type AppPhase = "splash" | "auth" | "register" | "driver-register" | "driver-pending" | "passenger" | "driver";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
 
 interface SelectedLocation {
@@ -35,21 +37,36 @@ interface SelectedLocation {
 interface StopLocation extends SelectedLocation {}
 
 const SESSION_KEY = "hda_user_session";
+const MODE_KEY = "hda_app_mode";
 
 const Index = () => {
-  const [savedSession] = useState<{ profile: UserProfile; isDriver: boolean } | null>(() => {
+  // Determine initial mode from localStorage
+  const initialMode = (() => {
+    try { return localStorage.getItem(MODE_KEY) as "passenger" | "driver" || "passenger"; } catch { return "passenger" as const; }
+  })();
+
+  const [savedSession] = useState<{ profile: UserProfile; isDriver: boolean; driverProfile?: UserProfile } | null>(() => {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) return JSON.parse(raw) as { profile: UserProfile; isDriver: boolean };
+      if (raw) return JSON.parse(raw);
     } catch {}
     return null;
   });
 
-  const [phase, setPhase] = useState<AppPhase>(() => savedSession ? "passenger" : "splash");
+  const [appMode, setAppMode] = useState<"passenger" | "driver">(
+    savedSession?.driverProfile && initialMode === "driver" ? "driver" : 
+    savedSession?.isDriver && initialMode === "driver" ? "driver" : "passenger"
+  );
+  const [phase, setPhase] = useState<AppPhase>(() => {
+    if (!savedSession) return "splash";
+    if (appMode === "driver" && savedSession.driverProfile) return "driver";
+    return "passenger";
+  });
   const [passengerScreen, setPassengerScreen] = useState<PassengerScreen>("home");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
-  const [isDriver] = useState(false);
-  usePushNotifications(userProfile?.id, "passenger");
+  const [driverProfile, setDriverProfile] = useState<UserProfile | null>(savedSession?.driverProfile || null);
+  const [hasDriverProfile, setHasDriverProfile] = useState(savedSession?.isDriver || false);
+  usePushNotifications(userProfile?.id, appMode === "driver" ? "driver" : "passenger");
   const [pendingPhone, setPendingPhone] = useState("");
   const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
@@ -66,6 +83,53 @@ const Index = () => {
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
   const [tripStatus, setTripStatus] = useState<string>("accepted");
+
+  // Save mode preference
+  useEffect(() => {
+    try { localStorage.setItem(MODE_KEY, appMode); } catch {}
+  }, [appMode]);
+
+  // Check if user has a driver profile on login
+  const checkDriverProfile = useCallback(async (phone: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("phone_number", phone)
+      .eq("user_type", "Driver")
+      .single();
+    
+    if (data && data.status === "Active") {
+      const dp: UserProfile = {
+        id: data.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone_number: data.phone_number,
+        gender: data.gender || "1",
+        status: data.status,
+      };
+      setDriverProfile(dp);
+      setHasDriverProfile(true);
+      return dp;
+    }
+    setHasDriverProfile(false);
+    setDriverProfile(null);
+    return null;
+  }, []);
+
+  // Switch between modes
+  const handleSwitchMode = useCallback((mode: "passenger" | "driver") => {
+    setAppMode(mode);
+    if (mode === "driver" && driverProfile) {
+      setPhase("driver");
+    } else if (mode === "driver" && !driverProfile) {
+      // User wants driver mode but has no driver profile — show driver registration
+      setPendingPhone(userProfile?.phone_number || "");
+      setPhase("driver-register");
+    } else {
+      setPhase("passenger");
+    }
+  }, [driverProfile, userProfile]);
 
   // Restore ongoing trip on app load
   useEffect(() => {
@@ -184,11 +248,9 @@ const Index = () => {
     if (!currentTripId || passengerScreen !== "driver-matching") return;
 
     const trackDriver = async () => {
-      // Get trip to find driver_id
       const { data: trip } = await supabase.from("trips").select("driver_id").eq("id", currentTripId).single();
       if (!trip?.driver_id) return;
 
-      // Fetch current position
       const fetchPos = async () => {
         const { data: loc } = await supabase
           .from("driver_locations")
@@ -199,7 +261,6 @@ const Index = () => {
       };
       fetchPos();
 
-      // Subscribe to realtime updates
       const channel = supabase
         .channel(`driver-track-${trip.driver_id}`)
         .on("postgres_changes", {
@@ -221,11 +282,14 @@ const Index = () => {
   }, [currentTripId, passengerScreen]);
 
   const handleSplashComplete = useCallback(() => {
-    if (savedSession) setPhase("passenger");
+    if (savedSession) {
+      if (appMode === "driver" && savedSession.driverProfile) setPhase("driver");
+      else setPhase("passenger");
+    }
     else setPhase("auth");
-  }, [savedSession]);
+  }, [savedSession, appMode]);
 
-  const handleLogin = useCallback((profile: UserProfile | null, _isDriverUser: boolean, phoneNumber?: string) => {
+  const handleLogin = useCallback(async (profile: UserProfile | null, _isDriverUser: boolean, phoneNumber?: string) => {
     if (!profile) {
       // No profile found — show registration
       setPendingPhone(phoneNumber || "");
@@ -233,14 +297,32 @@ const Index = () => {
       return;
     }
     setUserProfile(profile);
-    setPhase("passenger");
-    if (profile) localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
-  }, []);
+    
+    // Check if this phone also has a driver profile
+    const dp = await checkDriverProfile(profile.phone_number);
+    
+    // Save session with driver info
+    const sessionData = { profile, isDriver: !!dp, driverProfile: dp || undefined };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
 
-  const handleRegistrationComplete = useCallback((profile: UserProfile) => {
+    // If initial mode was driver and they have a driver profile, go to driver mode
+    if (initialMode === "driver" && dp) {
+      setAppMode("driver");
+      setPhase("driver");
+    } else {
+      setPhase("passenger");
+    }
+  }, [checkDriverProfile, initialMode]);
+
+  const handleRegistrationComplete = useCallback(async (profile: UserProfile) => {
     setUserProfile(profile);
+    const dp = await checkDriverProfile(profile.phone_number);
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: !!dp, driverProfile: dp || undefined }));
     setPhase("passenger");
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ profile, isDriver: false }));
+  }, [checkDriverProfile]);
+
+  const handleDriverRegistrationComplete = useCallback(() => {
+    setPhase("driver-pending");
   }, []);
 
   const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[], bType?: BookingType, schedAt?: string, bNotes?: string) => {
@@ -459,7 +541,6 @@ const Index = () => {
         } else if (status === "completed") {
           setPassengerScreen("feedback");
         } else if (status === "cancelled" && !isNoDriverCancel) {
-          // Only go home if it's a real cancellation (not "no driver found" — SearchingDriver handles that)
           setPassengerScreen("home");
           setCurrentTripId(null);
           setMatchedDriver(null);
@@ -468,7 +549,7 @@ const Index = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [currentTripId]); // removed passengerSounds — using ref instead
+  }, [currentTripId]);
 
   const handleFeedbackComplete = useCallback(() => {
     setCurrentTripId(null);
@@ -487,8 +568,14 @@ const Index = () => {
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(MODE_KEY);
+    // Also remove old driver session key
+    localStorage.removeItem("hda_driver_session");
     setUserProfile(null);
+    setDriverProfile(null);
+    setHasDriverProfile(false);
     setPhase("auth");
+    setAppMode("passenger");
     setPassengerScreen("home");
     setCurrentTripId(null);
     setPickup(null);
@@ -496,9 +583,51 @@ const Index = () => {
   }, []);
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
-  if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode="passenger" />;
+  if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode={initialMode} />;
   if (phase === "register") return <PassengerRegistration phoneNumber={pendingPhone} onComplete={handleRegistrationComplete} />;
+  if (phase === "driver-register") {
+    return (
+      <DriverRegistration
+        phoneNumber={pendingPhone || userProfile?.phone_number || ""}
+        onComplete={handleDriverRegistrationComplete}
+        onBack={() => { setPhase("passenger"); setAppMode("passenger"); }}
+      />
+    );
+  }
+  if (phase === "driver-pending") {
+    return (
+      <div className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center max-w-lg mx-auto px-8 text-center">
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-foreground mb-2">Registration Under Review</h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          Your driver registration has been submitted and is awaiting admin approval. You'll be able to switch to driver mode once approved.
+        </p>
+        <button
+          onClick={() => { setPhase("passenger"); setAppMode("passenger"); }}
+          className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
+        >
+          Continue as Passenger
+        </button>
+      </div>
+    );
+  }
 
+  // DRIVER MODE
+  if (phase === "driver" && driverProfile) {
+    return (
+      <DriverApp
+        onSwitchToPassenger={() => handleSwitchMode("passenger")}
+        userProfile={driverProfile}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // PASSENGER MODE
   return (
     <div className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background">
       <div className="absolute inset-0">
@@ -506,7 +635,13 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
       </div>
 
-      <TopBar onLogout={handleLogout} userName={userProfile?.first_name} userProfile={userProfile} onNotificationPress={() => setShowPassengerNotifs(true)} />
+      <TopBar 
+        onLogout={handleLogout} 
+        userName={userProfile?.first_name} 
+        userProfile={userProfile} 
+        onNotificationPress={() => setShowPassengerNotifs(true)}
+        onDriverMode={hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
+      />
 
       {/* Passenger SOS - visible during active trip */}
       {userProfile?.id && (tripStatus === "in_progress" || tripStatus === "accepted" || tripStatus === "arrived") && currentTripId && (
