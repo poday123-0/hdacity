@@ -48,7 +48,7 @@ const AdminDashboard = () => {
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "in_progress"]),
-        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Passenger"),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
         supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStart.toISOString()),
         supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayStart.toISOString()),
