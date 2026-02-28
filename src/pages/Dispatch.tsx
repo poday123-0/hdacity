@@ -42,6 +42,25 @@ interface OnlineDriver {
 
 type DispatchTab = "dispatch" | "dashboard" | "trips" | "drivers" | "passengers" | "vehicle_types" | "fares" | "billing" | "wallets" | "locations" | "lost_items" | "sos_history" | "notifications" | "banks" | "companies";
 
+// Map each tab to the permission key required to access it
+const tabPermissionMap: Record<DispatchTab, string | null> = {
+  dispatch: "dispatch_trips",
+  dashboard: null,
+  trips: "manage_trips",
+  drivers: "manage_drivers",
+  passengers: "manage_passengers",
+  vehicle_types: "manage_vehicles",
+  fares: "manage_fares",
+  billing: "manage_billing",
+  wallets: "manage_billing",
+  locations: "manage_locations",
+  lost_items: "manage_lost_items",
+  sos_history: null,
+  notifications: null,
+  banks: "manage_billing",
+  companies: "manage_companies",
+};
+
 const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dispatch", label: "Dispatch", icon: Navigation },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -65,6 +84,8 @@ const Dispatch = () => {
   const [loading, setLoading] = useState(true);
   const { theme, toggleTheme } = useTheme();
   const [dispatcherProfile, setDispatcherProfile] = useState<any>(null);
+  const [dispatcherPermissions, setDispatcherPermissions] = useState<string[]>([]);
+  const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
 
@@ -91,7 +112,9 @@ const Dispatch = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setDispatcherProfile(parsed);
+        setDispatcherProfile(parsed.profile || parsed);
+        setDispatcherPermissions(parsed.permissions || []);
+        setDispatcherRole(parsed.role || "dispatcher");
         setIsAuthed(true);
       } catch {}
     }
@@ -165,17 +188,23 @@ const Dispatch = () => {
       if (!profiles || profiles.length === 0) throw new Error("Profile not found");
 
       const profileIds = profiles.map(p => p.id);
-      const { data: allRoles } = await supabase.from("user_roles").select("user_id, role").in("user_id", profileIds);
+      const { data: allRoles } = await supabase.from("user_roles").select("user_id, role, permissions").in("user_id", profileIds);
 
-      const matchedProfile = profiles.find(p =>
-        allRoles?.some((r: any) => r.user_id === p.id && (r.role === "dispatcher" || r.role === "admin"))
+      const matchedRole = allRoles?.find((r: any) =>
+        (r.role === "dispatcher" || r.role === "admin") && profiles.some(p => p.id === r.user_id)
       );
 
-      if (!matchedProfile) throw new Error("You don't have dispatcher access");
+      if (!matchedRole) throw new Error("You don't have dispatcher access");
+
+      const matchedProfile = profiles.find(p => p.id === matchedRole.user_id)!;
+      const permissions = Array.isArray(matchedRole.permissions) ? matchedRole.permissions as string[] : [];
+      const role = matchedRole.role as string;
 
       setDispatcherProfile(matchedProfile);
+      setDispatcherPermissions(permissions);
+      setDispatcherRole(role);
       setIsAuthed(true);
-      localStorage.setItem("hda_dispatcher", JSON.stringify(matchedProfile));
+      localStorage.setItem("hda_dispatcher", JSON.stringify({ profile: matchedProfile, permissions, role }));
     } catch (err: any) {
       setLoginError(err.message || "Verification failed");
       setOtp(["", "", "", "", "", ""]);
@@ -292,7 +321,15 @@ const Dispatch = () => {
       {/* Tab navigation - scrollable */}
       <div className="bg-card border-b border-border shrink-0 overflow-x-auto">
         <div className="flex px-2 py-1.5 gap-1 min-w-max">
-          {dispatchTabs.map(tab => (
+          {dispatchTabs.filter(tab => {
+            // Admins see everything
+            if (dispatcherRole === "admin") return true;
+            // Tabs with no permission requirement are always visible
+            const requiredPerm = tabPermissionMap[tab.id];
+            if (!requiredPerm) return true;
+            // Check if dispatcher has the required permission
+            return dispatcherPermissions.includes(requiredPerm);
+          }).map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
