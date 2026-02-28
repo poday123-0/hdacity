@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { driver_name, phone_number, plate_number, update_type } = await req.json();
+    const { driver_name, phone_number, plate_number, update_type, rejection_reason, notify_driver } = await req.json();
 
     // Get notification recipients from system settings
     const { data: setting } = await supabaseAdmin
@@ -26,9 +26,9 @@ serve(async (req) => {
       .eq("key", "driver_registration_notify")
       .single();
 
-    const message = `Vehicle update from ${driver_name} (+960 ${phone_number}): ${update_type} for plate ${plate_number || "N/A"}. Please review in admin panel.`;
+    const adminMessage = `Vehicle update from ${driver_name} (+960 ${phone_number}): ${update_type} for plate ${plate_number || "N/A"}. Please review in admin panel.`;
 
-    // Send SMS to configured phones
+    // Send SMS to configured admin phones
     const MSGOWL_API_KEY = Deno.env.get("MSGOWL_API_KEY");
     if (MSGOWL_API_KEY && setting?.value) {
       const config = typeof setting.value === "string" ? JSON.parse(setting.value) : setting.value;
@@ -43,7 +43,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               to: phone.startsWith("+") ? phone : `+960${phone}`,
-              message,
+              message: adminMessage,
             }),
           });
         } catch (e) {
@@ -52,10 +52,36 @@ serve(async (req) => {
       }
     }
 
+    // Send SMS to the driver when vehicle is approved/rejected
+    if (notify_driver && phone_number && MSGOWL_API_KEY) {
+      let driverMessage = "";
+      if (update_type === "approved") {
+        driverMessage = `Hi ${driver_name}, your vehicle (${plate_number || "N/A"}) has been approved! You can now start accepting trips. - HDA Taxi`;
+      } else if (update_type === "rejected") {
+        driverMessage = `Hi ${driver_name}, your vehicle (${plate_number || "N/A"}) was not approved. Reason: ${rejection_reason || "Documents not acceptable"}. Please update your documents in the app. - HDA Taxi`;
+      }
+      if (driverMessage) {
+        try {
+          const driverPhone = phone_number.startsWith("+") ? phone_number : `+960${phone_number}`;
+          await fetch("https://api.msgowl.com/api/sms", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${MSGOWL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ to: driverPhone, message: driverMessage }),
+          });
+          console.log("SMS sent to driver:", driverPhone);
+        } catch (e) {
+          console.error("Driver SMS failed:", e);
+        }
+      }
+    }
+
     // Create admin notification
     await supabaseAdmin.from("notifications").insert({
       title: "Vehicle Document Updated",
-      message,
+      message: adminMessage,
       target_type: "admin",
     });
 
