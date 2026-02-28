@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square } from "lucide-react";
 
-const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "" };
+const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "" };
 
 const AdminDrivers = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -239,6 +239,8 @@ const AdminDrivers = () => {
       setVehicleForm({
         plate_number: v.plate_number || "", make: v.make || "", model: v.model || "",
         color: v.color || "", year: v.year?.toString() || "", vehicle_type_id: v.vehicle_type_id || "",
+        image_url: v.image_url || "", registration_url: v.registration_url || "", insurance_url: v.insurance_url || "",
+        vehicle_status: v.vehicle_status || "pending", rejection_reason: v.rejection_reason || "",
       });
     } else {
       setEditingVehicleId(null);
@@ -254,6 +256,11 @@ const AdminDrivers = () => {
       year: vehicleForm.year ? parseInt(vehicleForm.year) : null,
       vehicle_type_id: vehicleForm.vehicle_type_id || null,
       driver_id: expandedDriver,
+      image_url: vehicleForm.image_url || null,
+      registration_url: vehicleForm.registration_url || null,
+      insurance_url: vehicleForm.insurance_url || null,
+      vehicle_status: vehicleForm.vehicle_status || "pending",
+      rejection_reason: vehicleForm.rejection_reason || null,
     };
     const { error } = editingVehicleId
       ? await supabase.from("vehicles").update(payload).eq("id", editingVehicleId)
@@ -267,6 +274,21 @@ const AdminDrivers = () => {
       setVehicleForm(emptyVehicleForm);
       fetchAll();
     }
+  };
+
+  const uploadVehicleDoc = async (field: string, file: File) => {
+    setUploading(`vehicle_${field}`);
+    const ext = file.name.split(".").pop();
+    const path = `vehicle-docs/${expandedDriver}/${field}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("vehicle-images").upload(path, file);
+    if (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      setUploading(null);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+    setVehicleForm((prev: any) => ({ ...prev, [field]: urlData.publicUrl }));
+    setUploading(null);
   };
 
   const deleteVehicle = async (id: string) => {
@@ -650,6 +672,48 @@ const AdminDrivers = () => {
                                     <input value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="2023" className={inputCls} />
                                   </div>
                                 </div>
+                                {/* Vehicle Status */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs text-muted-foreground">Status</label>
+                                    <select value={vehicleForm.vehicle_status} onChange={(e) => setVehicleForm({ ...vehicleForm, vehicle_status: e.target.value })} className={selectCls}>
+                                      <option value="pending">Pending</option>
+                                      <option value="approved">Approved</option>
+                                      <option value="rejected">Rejected</option>
+                                    </select>
+                                  </div>
+                                  {vehicleForm.vehicle_status === "rejected" && (
+                                    <div>
+                                      <label className="text-xs text-muted-foreground">Rejection Reason</label>
+                                      <input value={vehicleForm.rejection_reason} onChange={(e) => setVehicleForm({ ...vehicleForm, rejection_reason: e.target.value })} placeholder="e.g. Blurry image, expired document" className={inputCls} />
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Vehicle Documents */}
+                                <p className="text-xs font-semibold text-muted-foreground pt-1">Vehicle Documents</p>
+                                <div className="grid grid-cols-3 gap-3">
+                                  {[
+                                    { field: "image_url", label: "Vehicle Photo" },
+                                    { field: "registration_url", label: "Registration" },
+                                    { field: "insurance_url", label: "Insurance" },
+                                  ].map((item) => (
+                                    <div key={item.field}>
+                                      <label className="text-xs text-muted-foreground">{item.label}</label>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {(vehicleForm as any)[item.field] ? (
+                                          <button onClick={() => setPreviewImg((vehicleForm as any)[item.field])} className="text-xs text-primary hover:underline flex items-center gap-1">
+                                            <Eye className="w-3 h-3" /> View
+                                          </button>
+                                        ) : <span className="text-xs text-muted-foreground">None</span>}
+                                        <label className="flex items-center gap-1 px-2 py-1 bg-surface border border-border rounded-lg text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                                          <Upload className="w-3 h-3" />
+                                          {uploading === `vehicle_${item.field}` ? "..." : "Upload"}
+                                          <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadVehicleDoc(item.field, e.target.files[0])} disabled={uploading === `vehicle_${item.field}`} />
+                                        </label>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                                 <div className="flex gap-2">
                                   <button onClick={() => { setShowVehicleForm(false); setEditingVehicleId(null); }} className="px-4 py-2 bg-surface text-foreground rounded-lg text-xs font-semibold">Cancel</button>
                                   <button onClick={saveVehicle} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold">{editingVehicleId ? "Update" : "Add"}</button>
@@ -663,28 +727,52 @@ const AdminDrivers = () => {
                             ) : (
                               <div className="grid gap-2">
                                 {vehicles.map((v) => (
-                                  <div key={v.id} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2">
-                                    <div className="flex items-center gap-3">
-                                      {v.vehicle_types?.image_url ? (
-                                        <img src={v.vehicle_types.image_url} alt={v.vehicle_types.name || "Vehicle"} className="w-4 h-4 object-contain" />
-                                      ) : (
-                                        <Car className="w-4 h-4 text-primary" />
-                                      )}
-                                      <div>
-                                        <p className="text-sm font-medium text-foreground">{v.plate_number} — {v.make} {v.model} {v.color}</p>
-                                        <p className="text-xs text-muted-foreground">{v.vehicle_types?.name || "No type"} {v.year ? `• ${v.year}` : ""}</p>
+                                  <div key={v.id} className="bg-card border border-border rounded-lg px-3 py-2 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        {v.vehicle_types?.image_url ? (
+                                          <img src={v.vehicle_types.image_url} alt={v.vehicle_types.name || "Vehicle"} className="w-4 h-4 object-contain" />
+                                        ) : (
+                                          <Car className="w-4 h-4 text-primary" />
+                                        )}
+                                        <div>
+                                          <p className="text-sm font-medium text-foreground">{v.plate_number} — {v.make} {v.model} {v.color}</p>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-xs text-muted-foreground">{v.vehicle_types?.name || "No type"} {v.year ? `• ${v.year}` : ""}</p>
+                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                              v.vehicle_status === "approved" ? "bg-green-100 text-green-700" :
+                                              v.vehicle_status === "rejected" ? "bg-red-100 text-red-700" :
+                                              "bg-yellow-100 text-yellow-700"
+                                            }`}>{v.vehicle_status || "pending"}</span>
+                                            {v.rejection_reason && <span className="text-[10px] text-destructive">({v.rejection_reason})</span>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                          {v.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                        <button onClick={() => toggleVehicleActive(v.id, v.is_active)} className="text-[10px] text-primary hover:underline">
+                                          {v.is_active ? "Deactivate" : "Activate"}
+                                        </button>
+                                        <button onClick={() => openVehicleForm(d.id, v)} className="text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => deleteVehicle(v.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                        {v.is_active ? "Active" : "Inactive"}
-                                      </span>
-                                      <button onClick={() => toggleVehicleActive(v.id, v.is_active)} className="text-[10px] text-primary hover:underline">
-                                        {v.is_active ? "Deactivate" : "Activate"}
-                                      </button>
-                                      <button onClick={() => openVehicleForm(d.id, v)} className="text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
-                                      <button onClick={() => deleteVehicle(v.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
-                                    </div>
+                                    {/* Vehicle document thumbnails */}
+                                    {(v.image_url || v.registration_url || v.insurance_url) && (
+                                      <div className="flex items-center gap-3 pl-7">
+                                        {[
+                                          { url: v.image_url, label: "Photo" },
+                                          { url: v.registration_url, label: "Registration" },
+                                          { url: v.insurance_url, label: "Insurance" },
+                                        ].filter((item) => item.url).map((item) => (
+                                          <button key={item.label} onClick={() => setPreviewImg(item.url!)} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
+                                            <Eye className="w-3 h-3" /> {item.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
