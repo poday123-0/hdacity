@@ -116,16 +116,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
 
-  // Init map
+  // Init map — use GPS if available, otherwise use pickup coords
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current || !currentPos) return;
+    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    const center = currentPos || (pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null);
+    if (!center) return;
     const g = (window as any).google;
     if (!g?.maps) return;
 
     const isDark = document.documentElement.classList.contains("dark");
 
     const map = new g.maps.Map(mapRef.current, {
-      center: currentPos,
+      center,
       zoom: 16,
       disableDefaultUI: true,
       zoomControl: false,
@@ -134,7 +136,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     const markerOpts: any = {
-      map, position: currentPos, zIndex: 1000,
+      map, position: currentPos || center, zIndex: 1000,
     };
     if (mapIconUrl) {
       markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
@@ -163,7 +165,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded, currentPos]);
+  }, [isLoaded, currentPos, pickupCoords]);
 
   // Theme observer
   useEffect(() => {
