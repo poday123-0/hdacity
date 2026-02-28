@@ -158,7 +158,7 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
       {/* SOS Button */}
       <button
         onClick={() => setShowConfirm(true)}
-        className="w-10 h-10 rounded-xl bg-destructive text-destructive-foreground flex items-center justify-center active:scale-90 transition-transform"
+        className="w-10 h-10 rounded-xl bg-sos text-sos-foreground flex items-center justify-center active:scale-90 transition-transform"
         title="Emergency SOS"
       >
         <Shield className="w-[18px] h-[18px]" />
@@ -190,9 +190,9 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.08, type: "spring", stiffness: 280, damping: 18 }}
-                  className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-3"
+                  className="w-12 h-12 rounded-2xl bg-sos/10 flex items-center justify-center mx-auto mb-3"
                 >
-                  <AlertTriangle className="w-6 h-6 text-destructive" />
+                  <AlertTriangle className="w-6 h-6 text-sos" />
                 </motion.div>
                 <h3 className="text-base font-bold text-foreground">Emergency SOS</h3>
                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
@@ -222,14 +222,14 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                     {policeNumber && (
                       <a
                         href={`tel:${policeNumber}`}
-                        className="flex items-center gap-2.5 p-3 rounded-2xl bg-destructive/8 hover:bg-destructive/15 transition-colors"
+                        className="flex items-center gap-2.5 p-3 rounded-2xl bg-sos/8 hover:bg-sos/15 transition-colors"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-destructive/15 flex items-center justify-center shrink-0">
-                          <Shield className="w-4 h-4 text-destructive" />
+                        <div className="w-8 h-8 rounded-xl bg-sos/15 flex items-center justify-center shrink-0">
+                          <Shield className="w-4 h-4 text-sos" />
                         </div>
                         <div>
-                          <span className="text-[11px] font-bold text-destructive block leading-tight">Police</span>
-                          <span className="text-[9px] text-destructive/60">Tap to call</span>
+                          <span className="text-[11px] font-bold text-sos block leading-tight">Police</span>
+                          <span className="text-[9px] text-sos/60">Tap to call</span>
                         </div>
                       </a>
                     )}
@@ -259,7 +259,7 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                               <p className="text-muted-foreground text-[10px]">{c.phone_number}</p>
                             </div>
                             {showContacts && (
-                              <button onClick={() => removeContact(c.id)} className="text-destructive/50 hover:text-destructive transition-colors p-0.5">
+                              <button onClick={() => removeContact(c.id)} className="text-sos/50 hover:text-sos transition-colors p-0.5">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
@@ -305,11 +305,11 @@ const SOSButton = ({ userId, userType, userName, userPhone, tripId, visible = tr
                     onClick={triggerSOS}
                     disabled={sending}
                     whileTap={{ scale: 0.97 }}
-                    className="w-full py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50 shadow-lg shadow-destructive/25"
+                    className="w-full py-3 rounded-2xl bg-sos text-sos-foreground font-bold text-sm disabled:opacity-50 shadow-lg shadow-sos/25"
                   >
                     {sending ? (
                       <span className="flex items-center justify-center gap-2">
-                        <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="inline-block w-4 h-4 border-2 border-destructive-foreground/30 border-t-destructive-foreground rounded-full" />
+                        <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="inline-block w-4 h-4 border-2 border-sos-foreground/30 border-t-sos-foreground rounded-full" />
                         Sending...
                       </span>
                     ) : "🚨 Send Emergency Alert"}
