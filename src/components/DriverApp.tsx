@@ -460,6 +460,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleNewTrip = async (trip: TripRequest) => {
     // Block new trips if driver already has an active trip
     if (currentTrip) return;
+
+    // Verify the trip is still valid before showing it (prevents stale/old trip requests)
+    const { data: freshTrip } = await supabase
+      .from("trips")
+      .select("id, status, driver_id, requested_at")
+      .eq("id", trip.id)
+      .single();
+
+    if (!freshTrip) return;
+    // Skip if trip is no longer in requested status or already taken
+    if (freshTrip.status !== "requested" || freshTrip.driver_id) return;
+    // Skip if trip is older than 5 minutes
+    const tripAge = Date.now() - new Date(freshTrip.requested_at).getTime();
+    if (tripAge > 5 * 60 * 1000) return;
+
     // Play sound
     if (tripRequestSoundUrl) {
       try {
