@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import type { BookingType } from "@/components/LocationInput";
 import { AnimatePresence } from "framer-motion";
 import MaldivesMap from "@/components/MaldivesMap";
@@ -215,6 +217,14 @@ const Index = () => {
 
   // Fetch actual online driver locations
   const [vehicleMarkers, setVehicleMarkers] = useState<Array<{ id: string; lat: number; lng: number; name: string; imageUrl?: string; icon?: string }>>([]);
+
+  const passengerPTR = usePullToRefresh({
+    onRefresh: async () => {
+      await fetchOnlineDrivers();
+      toast({ title: "Refreshed" });
+    },
+    disabled: passengerScreen !== "home",
+  });
 
   const fetchOnlineDrivers = useCallback(async () => {
     const { data } = await supabase
@@ -707,7 +717,8 @@ const Index = () => {
 
   // PASSENGER MODE
   return (
-    <div className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background">
+    <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background">
+      <PullToRefreshIndicator pullDistance={passengerPTR.pullDistance} refreshing={passengerPTR.refreshing} progress={passengerPTR.progress} />
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
