@@ -575,13 +575,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 5s for new requested/scheduled trips
+    // Fallback: Poll every 5s for new requested/scheduled trips (only recent ones)
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
+      // Only look at trips from the last 5 minutes to avoid stale requests
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data } = await supabase.
       from("trips").
       select("*").
-      in("status", ["requested", "scheduled"]).
+      in("status", ["requested"]).
+      is("driver_id", null).
+      gte("requested_at", fiveMinAgo).
       order("requested_at", { ascending: false }).
       limit(1);
 
