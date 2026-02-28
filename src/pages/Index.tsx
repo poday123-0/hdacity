@@ -749,6 +749,7 @@ const Index = () => {
         userProfile={userProfile} 
         onNotificationPress={() => setShowPassengerNotifs(true)}
         onDriverMode={hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
+        onRegisterDriver={!hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
       />
 
       {/* Passenger SOS - visible during active trip */}
