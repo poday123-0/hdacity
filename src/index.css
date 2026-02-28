@@ -49,6 +49,8 @@
     --surface-foreground: 210 30% 10%;
     --success: 142 71% 45%;
     --warning: 38 92% 50%;
+    --sos: 25 100% 55%;
+    --sos-foreground: 0 0% 100%;
     --map-bg: 200 20% 95%;
 
     --primary-dark: 200 68% 42%;
@@ -98,6 +100,8 @@
 
     --primary-dark: 200 68% 42%;
     --primary-light: 200 30% 20%;
+    --sos: 25 100% 55%;
+    --sos-foreground: 0 0% 100%;
   }
 }
 
