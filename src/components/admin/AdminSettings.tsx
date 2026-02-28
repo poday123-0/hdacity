@@ -361,11 +361,11 @@ const AdminSettings = () => {
         </button>
       </div>
 
-      {/* Driver Registration Notification Recipients */}
+      {/* Admin Notification Recipients */}
       <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-        <Bell className="w-5 h-5 text-primary" /> New Driver Registration Alerts
+        <Bell className="w-5 h-5 text-primary" /> Admin Notification Recipients
       </h2>
-      <p className="text-sm text-muted-foreground">Add email addresses and phone numbers to receive SMS when a new driver registers.</p>
+      <p className="text-sm text-muted-foreground">These phones & emails receive SMS/email for driver registrations, billing payment submissions, vehicle updates, and other admin alerts.</p>
       <div className="bg-card border border-border rounded-xl p-5 space-y-4">
         {/* Emails */}
         <div className="space-y-2">
