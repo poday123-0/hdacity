@@ -54,6 +54,7 @@ import {
   Settings,
   Route,
   Gauge,
+  Upload,
   Bell as BellIcon } from
 "lucide-react";
 import TripChat from "./TripChat";
@@ -167,6 +168,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [editVehicle, setEditVehicle] = useState({ plate_number: "", make: "", model: "", color: "", vehicle_type_id: "" });
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => {
     try {return localStorage.getItem("hda_last_vehicle_id");} catch {return null;}
   });
@@ -940,6 +943,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (uploadTarget === "taxi_permit_front") (updateField as any).taxi_permit_front_url = publicUrl;else
     if (uploadTarget === "taxi_permit_back") (updateField as any).taxi_permit_back_url = publicUrl;
 
+    // Vehicle document uploads (target format: vehicle_registration_VEHICLEID)
+    const vehicleDocPrefixes = ["vehicle_registration_", "vehicle_insurance_", "vehicle_image_"];
+    const matchedPrefix = vehicleDocPrefixes.find(p => uploadTarget.startsWith(p));
+    if (matchedPrefix) {
+      const vehicleId = uploadTarget.slice(matchedPrefix.length);
+      const vehicleField = matchedPrefix === "vehicle_registration_" ? "registration_url" : matchedPrefix === "vehicle_insurance_" ? "insurance_url" : "image_url";
+      await supabase.from("vehicles").update({ [vehicleField]: publicUrl, vehicle_status: "pending" } as any).eq("id", vehicleId);
+      setDriverVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
+      setUploading(null);
+      e.target.value = "";
+      toast({ title: "Uploaded!", description: "Vehicle document submitted for admin review" });
+      return;
+    }
+
     // Document uploads (not avatar) flag profile for review
     if (uploadTarget !== "avatar") {
       (updateField as any).status = "Pending Review";
@@ -1047,8 +1064,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       make: newVehicle.make,
       model: newVehicle.model,
       color: newVehicle.color,
-      vehicle_type_id: newVehicle.vehicle_type_id
-    }).select().single();
+      vehicle_type_id: newVehicle.vehicle_type_id,
+      vehicle_status: "pending",
+    } as any).select().single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       return;
@@ -1064,6 +1082,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     await supabase.from("profiles").update({ status: "Pending Review" }).eq("id", userProfile.id);
     setProfileStatus("Pending Review");
     toast({ title: "Vehicle added", description: "Pending admin approval" });
+  };
+
+  const startEditVehicle = (v: any) => {
+    setEditingVehicleId(v.id);
+    setEditVehicle({ plate_number: v.plate_number || "", make: v.make || "", model: v.model || "", color: v.color || "", vehicle_type_id: v.vehicle_type_id || "" });
+  };
+
+  const saveEditVehicle = async () => {
+    if (!editingVehicleId || !editVehicle.plate_number || !editVehicle.vehicle_type_id) return;
+    const { error } = await supabase.from("vehicles").update({
+      plate_number: editVehicle.plate_number,
+      make: editVehicle.make,
+      model: editVehicle.model,
+      color: editVehicle.color,
+      vehicle_type_id: editVehicle.vehicle_type_id,
+      vehicle_status: "pending",
+    } as any).eq("id", editingVehicleId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    setDriverVehicles(prev => prev.map(v => v.id === editingVehicleId ? { ...v, ...editVehicle, vehicle_status: "pending" } : v));
+    if (selectedVehicleId === editingVehicleId) {
+      setVehicleInfo({ make: editVehicle.make, model: editVehicle.model, plate_number: editVehicle.plate_number, color: editVehicle.color, vehicle_type_id: editVehicle.vehicle_type_id });
+    }
+    setEditingVehicleId(null);
+    toast({ title: "Vehicle updated", description: "Pending admin approval before use" });
   };
 
   const deleteVehicle = async (id: string) => {
@@ -2663,6 +2708,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {driverVehicles.map((v) => {
                   const vType = vehicleTypes.find((vt) => vt.id === v.vehicle_type_id);
                   const isSelected = selectedVehicleId === v.id;
+                  const isEditing = editingVehicleId === v.id;
+                  const vStatus = v.vehicle_status || "approved";
+                  const isPending = vStatus === "pending";
+                  const isRejected = vStatus === "rejected";
                   return (
                     <div
                       key={v.id}
@@ -2671,48 +2720,57 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       "bg-primary/5 ring-2 ring-primary shadow-md" :
                       "bg-surface hover:bg-card"}`
                       }>
-
-                          {/* Selected indicator strip */}
-                          {isSelected &&
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />
-                      }
+                          {/* Status strip */}
+                          {isSelected && !isPending && !isRejected &&
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />}
+                          {isPending &&
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-yellow-500 rounded-t-2xl" />}
+                          {isRejected &&
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-destructive rounded-t-2xl" />}
 
                           <div className="p-4">
                             {/* Top row: image + info + actions */}
                             <div className="flex items-start gap-3">
-                              {/* Vehicle image */}
                               <div className={`w-16 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                          isSelected ? "bg-primary/10" : "bg-card"}`
-                          }>
-                                {vType?.image_url ?
+                          isSelected ? "bg-primary/10" : "bg-card"}`}>
+                                {v.image_url ?
+                            <img src={v.image_url} alt="Vehicle" className="w-14 h-10 object-cover rounded-lg" /> :
+                            vType?.image_url ?
                             <img src={vType.image_url} alt={vType.name} className="w-14 h-10 object-contain" /> :
-
-                            <Car className="w-6 h-6 text-muted-foreground" />
-                            }
+                            <Car className="w-6 h-6 text-muted-foreground" />}
                               </div>
 
-                              {/* Vehicle details */}
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <h4 className="text-sm font-bold text-foreground truncate">
                                     {v.make} {v.model}
                                   </h4>
-                                  {isSelected &&
+                                  {isPending &&
+                              <span className="shrink-0 text-[10px] font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">
+                                      Pending
+                                    </span>}
+                                  {isRejected &&
+                              <span className="shrink-0 text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                                      Rejected
+                                    </span>}
+                                  {isSelected && !isPending && !isRejected &&
                               <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                       Active
-                                    </span>
-                              }
+                                    </span>}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
                               </div>
 
-                              {/* Delete button */}
-                              <button
-                            onClick={() => deleteVehicle(v.id)}
-                            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button onClick={() => isEditing ? setEditingVehicleId(null) : startEditVehicle(v)}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => deleteVehicle(v.id)}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
                             {/* Tags row */}
@@ -2724,23 +2782,74 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               {v.color &&
                           <span className="bg-card px-2.5 py-1 rounded-lg text-xs text-muted-foreground">
                                   {v.color}
-                                </span>
-                          }
+                                </span>}
                             </div>
 
-                            {/* Select button (only for non-selected) */}
-                            {!isSelected &&
-                        <button
-                          onClick={() => selectVehicle(v)}
-                          className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform">
+                            {/* Document upload buttons */}
+                            <div className="grid grid-cols-3 gap-2 mt-3">
+                              {[
+                                { key: "vehicle_registration_" + v.id, field: "registration_url", label: "Registration" },
+                                { key: "vehicle_insurance_" + v.id, field: "insurance_url", label: "Insurance" },
+                                { key: "vehicle_image_" + v.id, field: "image_url", label: "Photo" },
+                              ].map(({ key, field, label }) => (
+                                <button key={key} onClick={() => triggerUpload(key)}
+                                  disabled={uploading === key}
+                                  className="flex flex-col items-center gap-1 p-2 rounded-xl bg-card border border-border/50 active:scale-95 transition-all">
+                                  {v[field] ? (
+                                    <img src={v[field]} alt={label} className="w-10 h-7 object-cover rounded" />
+                                  ) : (
+                                    <div className="w-10 h-7 rounded bg-muted flex items-center justify-center">
+                                      <Upload className="w-3 h-3 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <span className="text-[9px] text-muted-foreground font-medium">
+                                    {uploading === key ? "..." : label}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
 
+                            {/* Edit form */}
+                            {isEditing && (
+                              <div className="mt-3 space-y-2 bg-card rounded-xl p-3 border border-border">
+                                <select value={editVehicle.vehicle_type_id} onChange={(e) => setEditVehicle({ ...editVehicle, vehicle_type_id: e.target.value })}
+                                  className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                                  <option value="">Select type</option>
+                                  {vehicleTypes.map((vt) => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+                                </select>
+                                <input placeholder="Plate number *" value={editVehicle.plate_number} onChange={(e) => setEditVehicle({ ...editVehicle, plate_number: e.target.value })}
+                                  className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input placeholder="Make" value={editVehicle.make} onChange={(e) => setEditVehicle({ ...editVehicle, make: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                                  <input placeholder="Model" value={editVehicle.model} onChange={(e) => setEditVehicle({ ...editVehicle, model: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                                </div>
+                                <input placeholder="Color" value={editVehicle.color} onChange={(e) => setEditVehicle({ ...editVehicle, color: e.target.value })}
+                                  className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                                <div className="flex gap-2">
+                                  <button onClick={() => setEditingVehicleId(null)} className="flex-1 py-2 rounded-xl bg-surface text-sm font-semibold text-foreground active:scale-95">Cancel</button>
+                                  <button onClick={saveEditVehicle} disabled={!editVehicle.plate_number || !editVehicle.vehicle_type_id}
+                                    className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95">Save</button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Select button (only for non-selected approved vehicles) */}
+                            {!isSelected && !isPending && !isRejected &&
+                        <button onClick={() => selectVehicle(v)}
+                          className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform">
                                 Use this vehicle
-                              </button>
-                        }
+                              </button>}
+                            {isPending && !isEditing &&
+                        <p className="text-[11px] text-yellow-600 mt-3 text-center font-medium">⏳ Awaiting admin approval</p>}
+                            {isRejected && !isEditing &&
+                        <p className="text-[11px] text-destructive mt-3 text-center font-medium">Edit vehicle details and resubmit</p>}
                           </div>
                         </div>);
 
                 })}
+
 
                     {showAddVehicle ?
                 <div className="bg-surface rounded-xl p-3 space-y-2">
