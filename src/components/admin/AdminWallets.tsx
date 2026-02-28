@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, Plus, Minus, Search, ArrowUpDown, History } from "lucide-react";
+import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X } from "lucide-react";
 
 interface WalletRow {
   id: string;
@@ -23,9 +23,22 @@ interface TransactionRow {
   trip_id: string | null;
 }
 
+interface WithdrawalRow {
+  id: string;
+  wallet_id: string;
+  user_id: string;
+  amount: number;
+  status: string;
+  notes: string;
+  admin_notes: string;
+  created_at: string;
+  profile?: { first_name: string; last_name: string; phone_number: string };
+}
+
 const AdminWallets = () => {
   const [wallets, setWallets] = useState<WalletRow[]>([]);
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedWallet, setSelectedWallet] = useState<WalletRow | null>(null);
@@ -34,6 +47,7 @@ const AdminWallets = () => {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustNotes, setAdjustNotes] = useState("");
+  const [activeView, setActiveView] = useState<"wallets" | "withdrawals">("wallets");
 
   const fetchWallets = async () => {
     setLoading(true);
@@ -53,12 +67,21 @@ const AdminWallets = () => {
     setLoading(false);
   };
 
+  const fetchWithdrawals = async () => {
+    const { data } = await supabase.from("wallet_withdrawals").select("*").order("created_at", { ascending: false }).limit(100);
+    if (!data) return;
+    const userIds = [...new Set(data.map(w => w.user_id))];
+    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", userIds);
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    setWithdrawals(data.map(w => ({ ...w, amount: Number(w.amount), profile: profileMap.get(w.user_id) })));
+  };
+
   const fetchTransactions = async (walletId: string) => {
     const { data } = await supabase.from("wallet_transactions").select("*").eq("wallet_id", walletId).order("created_at", { ascending: false }).limit(50);
     setTransactions((data || []).map(t => ({ ...t, amount: Number(t.amount) })));
   };
 
-  useEffect(() => { fetchWallets(); }, []);
+  useEffect(() => { fetchWallets(); fetchWithdrawals(); }, []);
 
   const handleAdjust = async () => {
     if (!selectedWallet || !adjustAmount || Number(adjustAmount) <= 0) return;
@@ -89,6 +112,35 @@ const AdminWallets = () => {
     if (selectedWallet) fetchTransactions(selectedWallet.id);
   };
 
+  const handleWithdrawal = async (withdrawal: WithdrawalRow, action: "approved" | "rejected") => {
+    const now = new Date().toISOString();
+    await supabase.from("wallet_withdrawals").update({
+      status: action,
+      processed_at: now,
+    } as any).eq("id", withdrawal.id);
+
+    if (action === "approved") {
+      // Deduct from wallet
+      const { data: wallet } = await supabase.from("wallets").select("id, balance").eq("id", withdrawal.wallet_id).single();
+      if (wallet) {
+        const newBalance = Math.max(0, Number(wallet.balance) - withdrawal.amount);
+        await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", wallet.id);
+        await supabase.from("wallet_transactions").insert({
+          wallet_id: wallet.id,
+          user_id: withdrawal.user_id,
+          amount: withdrawal.amount,
+          type: "debit",
+          reason: "Withdrawal approved",
+          notes: withdrawal.notes,
+        } as any);
+      }
+    }
+
+    toast({ title: `Withdrawal ${action}` });
+    fetchWithdrawals();
+    fetchWallets();
+  };
+
   const filtered = wallets.filter(w => {
     if (!search) return true;
     const s = search.toLowerCase();
@@ -96,78 +148,135 @@ const AdminWallets = () => {
   });
 
   const totalBalance = wallets.reduce((s, w) => s + w.balance, 0);
+  const pendingWithdrawals = withdrawals.filter(w => w.status === "pending");
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Wallets</h2>
-          <p className="text-sm text-muted-foreground">{wallets.length} wallets • Total balance: {totalBalance.toFixed(2)} MVR</p>
+          <p className="text-sm text-muted-foreground">{wallets.length} wallets • Total: {totalBalance.toFixed(2)} MVR{pendingWithdrawals.length > 0 ? ` • ${pendingWithdrawals.length} pending withdrawals` : ""}</p>
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or phone..." className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+      {/* View Toggle */}
+      <div className="flex bg-surface rounded-xl p-1 gap-1">
+        <button onClick={() => setActiveView("wallets")} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === "wallets" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
+          <Wallet className="w-3.5 h-3.5 inline mr-1" />Wallets
+        </button>
+        <button onClick={() => setActiveView("withdrawals")} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === "withdrawals" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
+          <ArrowDownCircle className="w-3.5 h-3.5 inline mr-1" />Withdrawals{pendingWithdrawals.length > 0 ? ` (${pendingWithdrawals.length})` : ""}
+        </button>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading wallets...</div>
-      ) : (
-        <div className="grid gap-3">
-          {filtered.map(w => (
-            <div key={w.id} className={`bg-card rounded-xl border p-4 flex items-center gap-4 cursor-pointer transition-all ${selectedWallet?.id === w.id ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/30"}`} onClick={() => { setSelectedWallet(w); fetchTransactions(w.id); }}>
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-primary" />
+      {activeView === "wallets" && (
+        <>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or phone..." className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading wallets...</div>
+          ) : (
+            <div className="grid gap-3">
+              {filtered.map(w => (
+                <div key={w.id} className={`bg-card rounded-xl border p-4 flex items-center gap-4 cursor-pointer transition-all ${selectedWallet?.id === w.id ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/30"}`} onClick={() => { setSelectedWallet(w); fetchTransactions(w.id); }}>
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {w.profile ? `${w.profile.first_name} ${w.profile.last_name}` : "Unknown User"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{w.profile?.phone_number} • {w.profile?.user_type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-lg font-bold ${w.balance > 0 ? "text-green-600" : "text-foreground"}`}>{w.balance.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted-foreground">MVR</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={e => { e.stopPropagation(); setSelectedWallet(w); setAdjustType("credit"); setShowAdjust(true); }} className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-600 hover:bg-green-500/20">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); setSelectedWallet(w); setAdjustType("debit"); setShowAdjust(true); }} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500/20">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">No wallets found</p>}
+            </div>
+          )}
+
+          {/* Transaction History */}
+          {selectedWallet && transactions.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Recent Transactions — {selectedWallet.profile?.first_name}</h3>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">
-                  {w.profile ? `${w.profile.first_name} ${w.profile.last_name}` : "Unknown User"}
-                </p>
-                <p className="text-xs text-muted-foreground">{w.profile?.phone_number} • {w.profile?.user_type}</p>
-              </div>
-              <div className="text-right">
-                <p className={`text-lg font-bold ${w.balance > 0 ? "text-green-600" : "text-foreground"}`}>{w.balance.toFixed(2)}</p>
-                <p className="text-[10px] text-muted-foreground">MVR</p>
-              </div>
-              <div className="flex gap-1">
-                <button onClick={e => { e.stopPropagation(); setSelectedWallet(w); setAdjustType("credit"); setShowAdjust(true); }} className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-600 hover:bg-green-500/20">
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button onClick={e => { e.stopPropagation(); setSelectedWallet(w); setAdjustType("debit"); setShowAdjust(true); }} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500/20">
-                  <Minus className="w-4 h-4" />
-                </button>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {transactions.map(t => (
+                  <div key={t.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${t.type === "credit" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
+                      {t.type === "credit" ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{t.reason || t.type}</p>
+                      {t.notes && <p className="text-[10px] text-muted-foreground truncate">{t.notes}</p>}
+                      <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString()}</p>
+                    </div>
+                    <p className={`text-sm font-bold ${t.type === "credit" ? "text-green-600" : "text-red-500"}`}>
+                      {t.type === "credit" ? "+" : "-"}{t.amount.toFixed(2)}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-          {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">No wallets found</p>}
-        </div>
+          )}
+        </>
       )}
 
-      {/* Transaction History */}
-      {selectedWallet && transactions.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <History className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Recent Transactions — {selectedWallet.profile?.first_name}</h3>
-          </div>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {transactions.map(t => (
-              <div key={t.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center ${t.type === "credit" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
-                  {t.type === "credit" ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+      {/* Withdrawals View */}
+      {activeView === "withdrawals" && (
+        <div className="grid gap-3">
+          {withdrawals.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No withdrawal requests</p>
+          ) : (
+            withdrawals.map(w => (
+              <div key={w.id} className={`bg-card rounded-xl border p-4 space-y-2 ${w.status === "pending" ? "border-amber-500/30" : "border-border"}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {w.profile ? `${w.profile.first_name} ${w.profile.last_name}` : "Unknown"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{w.profile?.phone_number}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-foreground">{w.amount.toFixed(2)} MVR</p>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      w.status === "pending" ? "bg-amber-500/10 text-amber-600" :
+                      w.status === "approved" ? "bg-green-500/10 text-green-600" :
+                      "bg-destructive/10 text-destructive"
+                    }`}>{w.status}</span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">{t.reason || t.type}</p>
-                  {t.notes && <p className="text-[10px] text-muted-foreground truncate">{t.notes}</p>}
-                  <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString()}</p>
-                </div>
-                <p className={`text-sm font-bold ${t.type === "credit" ? "text-green-600" : "text-red-500"}`}>
-                  {t.type === "credit" ? "+" : "-"}{t.amount.toFixed(2)}
-                </p>
+                {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
+                <p className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleString()}</p>
+                {w.status === "pending" && (
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => handleWithdrawal(w, "approved")} className="flex-1 py-2 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform">
+                      <Check className="w-3.5 h-3.5" /> Approve
+                    </button>
+                    <button onClick={() => handleWithdrawal(w, "rejected")} className="flex-1 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform">
+                      <X className="w-3.5 h-3.5" /> Reject
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       )}
 
