@@ -132,7 +132,7 @@ const Dispatch = () => {
           profiles:driver_id (first_name, last_name, phone_number),
           vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
         `).eq("is_online", true).eq("is_on_trip", false),
-        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type")
+        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
           .eq("dispatch_type", "operator").order("created_at", { ascending: false }).limit(20),
       ]);
       setVehicleTypes(vtRes.data || []);
@@ -153,7 +153,7 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
-    const { data } = await supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type")
+    const { data } = await supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
       .eq("dispatch_type", "operator").order("created_at", { ascending: false }).limit(20);
     setRecentTrips(data || []);
   };
@@ -375,10 +375,22 @@ const Dispatch = () => {
                 <h3 className="text-lg font-bold text-foreground">Recent Dispatch Trips</h3>
                 <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-y-auto max-h-96">
                   {recentTrips.map(t => (
-                    <div key={t.id} className="px-4 py-3 flex items-center justify-between">
+                    <div key={t.id} className="px-4 py-3 flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">{t.customer_name} • +960 {t.customer_phone}</p>
                         <p className="text-xs text-muted-foreground truncate">{t.pickup_address} → {t.dropoff_address}</p>
+                        {t.driver && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-foreground font-medium">{t.driver.first_name} {t.driver.last_name}</span>
+                            <span className="text-[10px] text-muted-foreground">{t.driver.phone_number}</span>
+                            {t.vehicle && (
+                              <span className="text-[10px] font-bold text-primary">{t.vehicle.plate_number}{t.vehicle.make ? ` • ${t.vehicle.make} ${t.vehicle.model || ""}` : ""}{t.vehicle.color ? ` • ${t.vehicle.color}` : ""}</span>
+                            )}
+                          </div>
+                        )}
+                        {t.estimated_fare && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{t.actual_fare ? `${t.actual_fare} MVR` : `~${t.estimated_fare} MVR`}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button onClick={() => viewMessages(t.id)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors" title="View chat & reports">
