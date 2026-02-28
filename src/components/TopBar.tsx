@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
@@ -7,6 +7,7 @@ import RideHistory from "@/components/RideHistory";
 import LostItemReport from "@/components/LostItemReport";
 import MapPicker from "@/components/MapPicker";
 import ThemeToggle from "@/components/ThemeToggle";
+import PassengerWallet from "@/components/PassengerWallet";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -56,6 +57,7 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
   const [placeSearchResults, setPlaceSearchResults] = useState<Array<{ place_id: number; display_name: string; lat: string; lon: string; name?: string }>>([]);
   const [placeSearching, setPlaceSearching] = useState(false);
   const placeSearchDebounce = useRef<ReturnType<typeof setTimeout>>();
+  const [showWallet, setShowWallet] = useState(false);
 
   // Fetch saved locations
   useEffect(() => {
@@ -383,49 +385,56 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
                 <ThemeToggle variant="row" />
 
                 {/* Action buttons - compact grid */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => { setShowProfile(false); setShowWallet(true); }}
+                    className="flex flex-col items-center gap-1.5 bg-primary/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
+                  >
+                    <Wallet className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground">Wallet</span>
+                  </button>
                   <button
                     onClick={() => { setShowProfile(false); setShowHistory(true); }}
-                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
-                    <Clock className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">Ride History</span>
+                    <Clock className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground">History</span>
                   </button>
                   <button
                     onClick={() => { setShowProfile(false); setShowContacts(true); }}
-                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
-                    <Users className="w-4 h-4 text-destructive shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">Contacts</span>
+                    <Users className="w-5 h-5 text-destructive" />
+                    <span className="text-[10px] font-semibold text-foreground">Contacts</span>
                   </button>
                   <button
                     onClick={() => { setShowProfile(false); setShowMyPlaces(true); }}
-                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
-                    <MapPin className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">My Places</span>
+                    <MapPin className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground">My Places</span>
                   </button>
                   <button
                     onClick={openLostItems}
-                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
-                    <PackageSearch className="w-4 h-4 text-orange-500 shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">Lost Item</span>
+                    <PackageSearch className="w-5 h-5 text-orange-500" />
+                    <span className="text-[10px] font-semibold text-foreground">Lost Item</span>
                   </button>
                   <button
                     onClick={() => { setShowProfile(false); window.location.href = "/install"; }}
-                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
-                    <Share2 className="w-4 h-4 text-accent-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">Share App</span>
+                    <Share2 className="w-5 h-5 text-accent-foreground" />
+                    <span className="text-[10px] font-semibold text-foreground">Share</span>
                   </button>
                   {onLogout && (
                     <button
                       onClick={() => { setShowProfile(false); onLogout(); }}
-                      className="flex items-center gap-2.5 bg-destructive/10 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                      className="flex flex-col items-center gap-1.5 bg-destructive/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                     >
-                      <LogOut className="w-4 h-4 text-destructive shrink-0" />
-                      <span className="text-xs font-semibold text-destructive">Logout</span>
+                      <LogOut className="w-5 h-5 text-destructive" />
+                      <span className="text-[10px] font-semibold text-destructive">Logout</span>
                     </button>
                   )}
                 </div>
@@ -865,6 +874,11 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Passenger Wallet */}
+      {userProfile?.id && (
+        <PassengerWallet userId={userProfile.id} isOpen={showWallet} onClose={() => setShowWallet(false)} />
+      )}
     </>
   );
 };

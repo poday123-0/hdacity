@@ -7,6 +7,7 @@ import { UserProfile } from "@/components/AuthScreen";
 import DriverMap from "@/components/DriverMap";
 import hdaLogo from "@/assets/hda-logo.png";
 import DriverEarnings from "@/components/DriverEarnings";
+import DriverWallet from "@/components/DriverWallet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -2963,53 +2964,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {profileTab === "billing" &&
               <div className="space-y-3">
 
-                    {/* Wallet Section */}
-                    <div className="bg-primary/10 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="w-5 h-5 text-primary" />
-                          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">My Wallet</p>
-                        </div>
-                      </div>
-                      <p className="text-3xl font-bold text-primary">{driverWalletBalance.toFixed(2)} <span className="text-sm font-semibold">MVR</span></p>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setShowWithdrawModal(true)}
-                          disabled={driverWalletBalance < minWithdrawalAmount}
-                          className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40"
-                        >
-                          Request Withdraw
-                        </button>
-                        {Number(userProfile?.monthly_fee || 0) > 0 && !companyInfo?.fee_free && (
-                          <button
-                            onClick={() => setShowPayFeeModal(true)}
-                            disabled={driverWalletBalance < Number(userProfile?.monthly_fee || 0)}
-                            className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40"
-                          >
-                            Pay Fee from Wallet
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Pending withdrawals */}
-                      {pendingWithdrawals.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase">Pending Withdrawals</p>
-                          {pendingWithdrawals.map(w => (
-                            <div key={w.id} className="flex items-center justify-between bg-card rounded-lg px-3 py-2">
-                              <div>
-                                <p className="text-xs font-semibold text-foreground">{Number(w.amount).toFixed(2)} MVR</p>
-                                <p className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
-                              </div>
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${w.status === 'pending' ? 'bg-amber-500/10 text-amber-600' : w.status === 'approved' ? 'bg-green-500/10 text-green-600' : 'bg-destructive/10 text-destructive'}`}>
-                                {w.status}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    {/* Full Wallet Component */}
+                    <DriverWallet
+                      driverId={userProfile.id}
+                      walletId={driverWalletId}
+                      balance={driverWalletBalance}
+                      onRequestWithdraw={() => setShowWithdrawModal(true)}
+                      minWithdrawalAmount={minWithdrawalAmount}
+                    />
 
                     {/* Company info & discounts */}
                     {companyInfo ?
