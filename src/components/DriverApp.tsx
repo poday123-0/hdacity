@@ -132,7 +132,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
-  const [passengerLiveLocation, setPassengerLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
   const [showEarnings, setShowEarnings] = useState(true);
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
@@ -160,7 +160,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showAddBank, setShowAddBank] = useState(false);
   const [newBank, setNewBank] = useState({ bank_name: "", account_number: "", account_name: "" });
-  const [favaraAccounts, setFavaraAccounts] = useState<Array<{id: string; favara_id: string; favara_name: string; is_primary: boolean}>>([]);
+  const [favaraAccounts, setFavaraAccounts] = useState<Array<{id: string;favara_id: string;favara_name: string;is_primary: boolean;}>>([]);
   const [showAddFavara, setShowAddFavara] = useState(false);
   const [newFavara, setNewFavara] = useState({ favara_id: "", favara_name: "" });
   const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
@@ -200,7 +200,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
   const [driverSpeed, setDriverSpeed] = useState(0);
-  const [navStepData, setNavStepData] = useState<{ instruction: string; distance: string; maneuver?: string; eta: string; totalDistance: string; nextInstruction?: string; nextManeuver?: string; nextDistance?: string } | null>(null);
+  const [navStepData, setNavStepData] = useState<{instruction: string;distance: string;maneuver?: string;eta: string;totalDistance: string;nextInstruction?: string;nextManeuver?: string;nextDistance?: string;} | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
@@ -222,12 +222,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Fetch unread notification count
   useEffect(() => {
     const lastSeen = localStorage.getItem("hda_driver_notif_seen") || "2000-01-01T00:00:00Z";
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .in("target_type", ["all", "drivers"])
-      .gt("created_at", lastSeen)
-      .then(({ count }) => setUnreadNotifCount(count || 0));
+    supabase.
+    from("notifications").
+    select("id", { count: "exact", head: true }).
+    in("target_type", ["all", "drivers"]).
+    gt("created_at", lastSeen).
+    then(({ count }) => setUnreadNotifCount(count || 0));
   }, [showNotifications]);
 
   useEffect(() => {
@@ -238,20 +238,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   }, [showNotifications]);
 
   useEffect(() => {
-    try { localStorage.setItem(driverScreenKey, screen); } catch {}
+    try {localStorage.setItem(driverScreenKey, screen);} catch {}
   }, [screen, driverScreenKey]);
 
   // Restore ongoing trip on app reload
   useEffect(() => {
     if (!userProfile?.id) return;
     const restoreTrip = async () => {
-      const { data } = await supabase
-        .from("trips")
-        .select("*")
-        .eq("driver_id", userProfile.id)
-        .in("status", ["accepted", "arrived", "in_progress"])
-        .order("accepted_at", { ascending: false })
-        .limit(1);
+      const { data } = await supabase.
+      from("trips").
+      select("*").
+      eq("driver_id", userProfile.id).
+      in("status", ["accepted", "arrived", "in_progress"]).
+      order("accepted_at", { ascending: false }).
+      limit(1);
 
       if (data && data.length > 0) {
         const trip = data[0] as any;
@@ -268,16 +268,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
         // Fetch passenger profile
         if (trip.passenger_id) {
-          const { data: profile } = await supabase.from("profiles")
-            .select("first_name, last_name, phone_number, avatar_url, country_code")
-            .eq("id", trip.passenger_id).single();
+          const { data: profile } = await supabase.from("profiles").
+          select("first_name, last_name, phone_number, avatar_url, country_code").
+          eq("id", trip.passenger_id).single();
           if (profile) setPassengerProfile(profile);
         }
 
         // Fetch trip stops
-        const { data: stops } = await supabase.from("trip_stops")
-          .select("id, stop_order, address, lat, lng, completed_at")
-          .eq("trip_id", trip.id).order("stop_order");
+        const { data: stops } = await supabase.from("trip_stops").
+        select("id, stop_order, address, lat, lng, completed_at").
+        eq("trip_id", trip.id).order("stop_order");
         if (stops) setTripStops(stops as any[]);
 
         setScreen("navigating");
@@ -286,7 +286,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     restoreTrip();
   }, [userProfile?.id]);
 
-   // No fallback location — only use actual GPS
+  // No fallback location — only use actual GPS
 
   // Push driver location to driver_locations when online
   useEffect(() => {
@@ -364,16 +364,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // Heartbeat every 10s
       locationIntervalRef.current = setInterval(async () => {
         // Check if another device took over this driver's session FIRST
-        const { data: locRow } = await supabase
-          .from("driver_locations")
-          .select("session_id")
-          .eq("driver_id", userProfile.id)
-          .single();
+        const { data: locRow } = await supabase.
+        from("driver_locations").
+        select("session_id").
+        eq("driver_id", userProfile.id).
+        single();
         if (locRow && (locRow as any).session_id && (locRow as any).session_id !== deviceSessionId.current) {
           // Another device is now active — show alert and force offline
           if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
           if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
-          try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
+          try {navigator.vibrate?.([300, 100, 300, 100, 300]);} catch {}
           try {
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             const osc = ctx.createOscillator();
@@ -385,7 +385,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             gain.gain.setValueAtTime(0.3, ctx.currentTime);
             gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
             osc.connect(gain).connect(ctx.destination);
-            osc.start(); osc.stop(ctx.currentTime + 0.5);
+            osc.start();osc.stop(ctx.currentTime + 0.5);
           } catch {}
           setSessionKicked(true);
           setScreen("offline");
@@ -463,11 +463,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (currentTrip) return;
 
     // Verify the trip is still valid before showing it (prevents stale/old trip requests)
-    const { data: freshTrip } = await supabase
-      .from("trips")
-      .select("id, status, driver_id, requested_at")
-      .eq("id", trip.id)
-      .single();
+    const { data: freshTrip } = await supabase.
+    from("trips").
+    select("id, status, driver_id, requested_at").
+    eq("id", trip.id).
+    single();
 
     if (!freshTrip) return;
     // Skip if trip is no longer in requested status or already taken
@@ -561,7 +561,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     on("postgres_changes", {
       event: "INSERT",
       schema: "public",
-      table: "trips",
+      table: "trips"
     }, async (payload) => {
       const trip = payload.new as any;
       if (trip.status !== "requested" && trip.status !== "scheduled") return;
@@ -666,46 +666,46 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   }, [currentTrip?.id, screen, userProfile?.id]);
 
   // Sync showDriverChat ref
-  useEffect(() => { showDriverChatRef.current = showDriverChat; if (showDriverChat) setUnreadDriverMessages(0); }, [showDriverChat]);
+  useEffect(() => {showDriverChatRef.current = showDriverChat;if (showDriverChat) setUnreadDriverMessages(0);}, [showDriverChat]);
 
   // Background message listener — play sound + count unread when chat is closed
   useEffect(() => {
     if (!currentTrip?.id) return;
     let messageSoundUrl: string | null = null;
-    fetchSoundUrl("driver_sound_message").then(url => { messageSoundUrl = url; });
+    fetchSoundUrl("driver_sound_message").then((url) => {messageSoundUrl = url;});
 
-    const channel = supabase
-      .channel(`driver-bg-chat-${currentTrip.id}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "trip_messages",
-        filter: `trip_id=eq.${currentTrip.id}`,
-      }, (payload) => {
-        const msg = payload.new as any;
-        if (msg.sender_type === "driver") return; // own message
-        // Increment unread if chat is closed
-        if (!showDriverChatRef.current) {
-          setUnreadDriverMessages(prev => prev + 1);
-          // Play sound
-          if (messageSoundUrl) {
-            playSound(messageSoundUrl);
-          } else {
-            playFallbackBeep();
-          }
-          // Vibrate
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    const channel = supabase.
+    channel(`driver-bg-chat-${currentTrip.id}`).
+    on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "trip_messages",
+      filter: `trip_id=eq.${currentTrip.id}`
+    }, (payload) => {
+      const msg = payload.new as any;
+      if (msg.sender_type === "driver") return; // own message
+      // Increment unread if chat is closed
+      if (!showDriverChatRef.current) {
+        setUnreadDriverMessages((prev) => prev + 1);
+        // Play sound
+        if (messageSoundUrl) {
+          playSound(messageSoundUrl);
+        } else {
+          playFallbackBeep();
         }
-      })
-      .subscribe();
+        // Vibrate
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+    }).
+    subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {supabase.removeChannel(channel);};
   }, [currentTrip?.id]);
 
   // Track passenger live location before trip starts
   useEffect(() => {
-    if (!currentTrip?.id) { setPassengerLiveLocation(null); return; }
-    if (driverTripPhase === "in_progress") { setPassengerLiveLocation(null); return; }
+    if (!currentTrip?.id) {setPassengerLiveLocation(null);return;}
+    if (driverTripPhase === "in_progress") {setPassengerLiveLocation(null);return;}
 
     // Initial fetch
     supabase.from("trips").select("passenger_lat, passenger_lng").eq("id", currentTrip.id).single().then(({ data }) => {
@@ -715,22 +715,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
 
     // Subscribe to updates
-    const channel = supabase
-      .channel(`passenger-loc-${currentTrip.id}`)
-      .on("postgres_changes", {
-        event: "UPDATE",
-        schema: "public",
-        table: "trips",
-        filter: `id=eq.${currentTrip.id}`,
-      }, (payload) => {
-        const t = payload.new as any;
-        if (t.passenger_lat && t.passenger_lng) {
-          setPassengerLiveLocation({ lat: Number(t.passenger_lat), lng: Number(t.passenger_lng) });
-        }
-      })
-      .subscribe();
+    const channel = supabase.
+    channel(`passenger-loc-${currentTrip.id}`).
+    on("postgres_changes", {
+      event: "UPDATE",
+      schema: "public",
+      table: "trips",
+      filter: `id=eq.${currentTrip.id}`
+    }, (payload) => {
+      const t = payload.new as any;
+      if (t.passenger_lat && t.passenger_lng) {
+        setPassengerLiveLocation({ lat: Number(t.passenger_lat), lng: Number(t.passenger_lng) });
+      }
+    }).
+    subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {supabase.removeChannel(channel);};
   }, [currentTrip?.id, driverTripPhase]);
 
   // Fetch available banks from admin-configured banks table
@@ -825,7 +825,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         } else {
           // Create wallet if none exists
           const { data: newWallet } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
-          if (newWallet) { setDriverWalletId(newWallet.id); }
+          if (newWallet) {setDriverWalletId(newWallet.id);}
         }
 
         // Fetch min withdrawal amount
@@ -919,12 +919,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Vehicle document uploads (target format: vehicle_registration_VEHICLEID)
     const vehicleDocPrefixes = ["vehicle_registration_", "vehicle_insurance_", "vehicle_image_"];
-    const matchedPrefix = vehicleDocPrefixes.find(p => uploadTarget.startsWith(p));
+    const matchedPrefix = vehicleDocPrefixes.find((p) => uploadTarget.startsWith(p));
     if (matchedPrefix) {
       const vehicleId = uploadTarget.slice(matchedPrefix.length);
       const vehicleField = matchedPrefix === "vehicle_registration_" ? "registration_url" : matchedPrefix === "vehicle_insurance_" ? "insurance_url" : "image_url";
       await supabase.from("vehicles").update({ [vehicleField]: publicUrl, vehicle_status: "pending" } as any).eq("id", vehicleId);
-      setDriverVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
+      setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
       setUploading(null);
       e.target.value = "";
       toast({ title: "Uploaded!", description: "Vehicle document submitted for admin review" });
@@ -1005,7 +1005,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       driver_id: userProfile.id,
       favara_id: newFavara.favara_id,
       favara_name: newFavara.favara_name,
-      is_primary: isPrimary,
+      is_primary: isPrimary
     } as any).select().single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1039,7 +1039,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       model: newVehicle.model,
       color: newVehicle.color,
       vehicle_type_id: newVehicle.vehicle_type_id,
-      vehicle_status: "pending",
+      vehicle_status: "pending"
     } as any).select().single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1071,13 +1071,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       model: editVehicle.model,
       color: editVehicle.color,
       vehicle_type_id: editVehicle.vehicle_type_id,
-      vehicle_status: "pending",
+      vehicle_status: "pending"
     } as any).eq("id", editingVehicleId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       return;
     }
-    setDriverVehicles(prev => prev.map(v => v.id === editingVehicleId ? { ...v, ...editVehicle, vehicle_status: "pending" } : v));
+    setDriverVehicles((prev) => prev.map((v) => v.id === editingVehicleId ? { ...v, ...editVehicle, vehicle_status: "pending" } : v));
     if (selectedVehicleId === editingVehicleId) {
       setVehicleInfo({ make: editVehicle.make, model: editVehicle.model, plate_number: editVehicle.plate_number, color: editVehicle.color, vehicle_type_id: editVehicle.vehicle_type_id });
     }
@@ -1121,7 +1121,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     onRefresh: async () => {
       window.location.reload();
     },
-    disabled: screen !== "offline",
+    disabled: screen !== "offline"
   });
 
   // Helper: apply trip cashback rewards to both passenger and driver wallets
@@ -1131,7 +1131,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const keys = ["passenger_trip_reward", "passenger_trip_reward_type", "driver_trip_reward", "driver_trip_reward_type"];
       const { data: settingsData } = await supabase.from("system_settings").select("key, value").in("key", keys);
       const sMap: Record<string, any> = {};
-      settingsData?.forEach(s => { sMap[s.key] = s.value; });
+      settingsData?.forEach((s) => {sMap[s.key] = s.value;});
 
       const now = new Date().toISOString();
 
@@ -1188,19 +1188,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Session conflict full-screen alert */}
       <AnimatePresence>
-        {sessionKicked && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-md flex items-center justify-center p-6"
-          >
+        {sessionKicked &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-md flex items-center justify-center p-6">
+
             <motion.div
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", damping: 22, stiffness: 260 }}
-              className="bg-card rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-5 border border-border"
-            >
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 22, stiffness: 260 }}
+            className="bg-card rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-5 border border-border">
+
               <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mx-auto">
                 <Power className="w-8 h-8 text-destructive" />
               </div>
@@ -1214,34 +1214,34 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </p>
               </div>
               <button
-                onClick={() => {
-                  deviceSessionId.current = crypto.randomUUID();
-                  setSessionKicked(false);
-                }}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-95 transition-transform"
-              >
+              onClick={() => {
+                deviceSessionId.current = crypto.randomUUID();
+                setSessionKicked(false);
+              }}
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-95 transition-transform">
+
                 I Understand
               </button>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
 
       {/* Force takeover confirmation */}
       <AnimatePresence>
-        {showTakeoverConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-md flex items-center justify-center p-6"
-          >
+        {showTakeoverConfirm &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-md flex items-center justify-center p-6">
+
             <motion.div
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", damping: 22, stiffness: 260 }}
-              className="bg-card rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-5 border border-border"
-            >
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 22, stiffness: 260 }}
+            className="bg-card rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-5 border border-border">
+
               <div className="w-16 h-16 rounded-full bg-warning/15 flex items-center justify-center mx-auto">
                 <Power className="w-8 h-8 text-[hsl(var(--warning))]" />
               </div>
@@ -1256,27 +1256,27 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setShowTakeoverConfirm(false)}
-                  className="flex-1 py-3 rounded-xl bg-secondary text-secondary-foreground font-semibold text-sm active:scale-95 transition-transform"
-                >
+                onClick={() => setShowTakeoverConfirm(false)}
+                className="flex-1 py-3 rounded-xl bg-secondary text-secondary-foreground font-semibold text-sm active:scale-95 transition-transform">
+
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    setShowTakeoverConfirm(false);
-                    deviceSessionId.current = crypto.randomUUID();
-                    // Force effect re-trigger by going offline then online
-                    setScreen("offline");
-                    setTimeout(() => setScreen("online"), 100);
-                  }}
-                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm active:scale-95 transition-transform"
-                >
+                onClick={() => {
+                  setShowTakeoverConfirm(false);
+                  deviceSessionId.current = crypto.randomUUID();
+                  // Force effect re-trigger by going offline then online
+                  setScreen("offline");
+                  setTimeout(() => setScreen("online"), 100);
+                }}
+                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm active:scale-95 transition-transform">
+
                   Take Over
                 </button>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
 
       {/* Top bar */}
@@ -1291,35 +1291,35 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <User className="w-5 h-5 text-foreground" />
               }
             </button>
-            {!currentTrip && (
-              <button
-                onClick={() => { setShowProfile(false); onSwitchToPassenger(); }}
-                className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform border border-border/30"
-              >
+            {!currentTrip &&
+            <button
+              onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+              className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform border border-border/30">
+
                 <span className="text-xs font-bold text-muted-foreground">Switch to Passenger</span>
                 <Users className="w-3.5 h-3.5 text-primary" />
               </button>
-            )}
+            }
           </div>
 
           {/* Center: Vehicle */}
           <div className="relative">
-            <button
-              onClick={() => !currentTrip && driverVehicles.length > 1 ? setShowVehicleSwitcher(!showVehicleSwitcher) : null}
-              className={`flex items-center gap-1.5 bg-card/90 backdrop-blur-sm rounded-2xl px-3 py-1.5 shadow-md border border-border/30 ${!currentTrip && driverVehicles.length > 1 ? "active:scale-95 transition-transform cursor-pointer" : "opacity-70"}`}>
+            
 
-              {(() => {
-                const vTypeImg = vehicleInfo?.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
-                return vTypeImg ?
-                <img src={vTypeImg} alt="Vehicle" className="h-7 w-auto object-contain" /> :
 
-                <img src={hdaLogo} alt="HDA" className="h-6 w-auto object-contain" />;
 
-              })()}
-              {driverVehicles.length > 1 &&
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-              }
-            </button>
+
+
+
+
+
+
+
+
+
+
+
+
 
             {/* Vehicle quick-switcher dropdown */}
             <AnimatePresence>
@@ -1384,19 +1384,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
           {/* Right: Bell + On/Off toggle */}
           <div className="flex items-center gap-2">
-            {!currentTrip && (
+            {!currentTrip &&
             <button
               onClick={() => setShowNotifications(true)}
-              className="relative w-9 h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30"
-            >
+              className="relative w-9 h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30">
+
               <BellIcon className={`w-4.5 h-4.5 text-foreground ${unreadNotifCount > 0 ? "animate-[wiggle_0.5s_ease-in-out]" : ""}`} />
-              {unreadNotifCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-[0_0_8px_hsl(var(--destructive)/0.6)]">
+              {unreadNotifCount > 0 &&
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-[0_0_8px_hsl(var(--destructive)/0.6)]">
                   {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
                 </span>
-              )}
+              }
             </button>
-            )}
+            }
             {screen !== "offline" && !currentTrip &&
             <button
               onClick={() => {
@@ -1441,7 +1441,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           if (currentTrip?.id) {
             supabase.from("trips").update({
               duration_minutes: etaMins,
-              distance_km: distKm,
+              distance_km: distKm
             } as any).eq("id", currentTrip.id).then(() => {});
           }
         }}
@@ -1467,20 +1467,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <div className="w-5 h-px bg-border mx-auto" />
           </>
         }
-        {screen === "navigating" && (
-          <>
+        {screen === "navigating" &&
+        <>
             <button
-              onClick={() => followToggleRef.current?.()}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
-                isFollowingDriver ? "text-muted-foreground hover:bg-surface" : "bg-primary text-primary-foreground"
-              }`}
-              title={isFollowingDriver ? "Show full route" : "Follow my location"}
-            >
+            onClick={() => followToggleRef.current?.()}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 ${
+            isFollowingDriver ? "text-muted-foreground hover:bg-surface" : "bg-primary text-primary-foreground"}`
+            }
+            title={isFollowingDriver ? "Show full route" : "Follow my location"}>
+
               {isFollowingDriver ? <Route className="w-[18px] h-[18px]" /> : <Crosshair className="w-[18px] h-[18px]" />}
             </button>
             <div className="w-5 h-px bg-border mx-auto" />
           </>
-        )}
+        }
         <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
         {userProfile?.id &&
         <>
@@ -1568,11 +1568,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             transition={{ delay: 0.2 }}
             onClick={async () => {
               // Check if another device is already online
-              const { data: existingLoc } = await supabase
-                .from("driver_locations")
-                .select("session_id, is_online")
-                .eq("driver_id", userProfile!.id)
-                .single();
+              const { data: existingLoc } = await supabase.
+              from("driver_locations").
+              select("session_id, is_online").
+              eq("driver_id", userProfile!.id).
+              single();
               if (existingLoc?.is_online && existingLoc.session_id && existingLoc.session_id !== deviceSessionId.current) {
                 setShowTakeoverConfirm(true);
                 return;
@@ -1784,9 +1784,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </p>
               <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}</p>
               {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
-              {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at && (
-                <p className="text-primary-foreground/70 text-xs mt-0.5">Pickup: {new Date(currentTrip.scheduled_at).toLocaleString()}</p>
-              )}
+              {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at &&
+            <p className="text-primary-foreground/70 text-xs mt-0.5">Pickup: {new Date(currentTrip.scheduled_at).toLocaleString()}</p>
+            }
               {/* Countdown timer */}
               <div className="absolute top-3 right-3 w-10 h-10 rounded-full border-2 border-primary-foreground/40 flex items-center justify-center">
                 <span className={`text-sm font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-primary-foreground"}`}>
@@ -1881,12 +1881,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
 
               {/* Booking notes */}
-              {currentTrip.booking_notes && (
-                <div className="bg-surface rounded-xl px-3 py-2">
+              {currentTrip.booking_notes &&
+            <div className="bg-surface rounded-xl px-3 py-2">
                   <p className="text-[10px] text-muted-foreground font-semibold">Notes</p>
                   <p className="text-xs text-foreground mt-0.5">{currentTrip.booking_notes}</p>
                 </div>
-              )}
+            }
 
               {/* Accept / Decline buttons */}
               <div className="flex gap-2">
@@ -1907,7 +1907,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
                 <button onClick={async () => {
                 // Stop sound immediately on accept
-                if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+                if (tripSoundRef.current) {tripSoundRef.current.pause();tripSoundRef.current.currentTime = 0;}
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 if (!currentTrip || !userProfile?.id) return;
 
@@ -1918,7 +1918,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 eq("id", currentTrip.id).
                 single();
 
-                if (!freshTrip || (freshTrip.status !== "requested" && freshTrip.status !== "scheduled")) {
+                if (!freshTrip || freshTrip.status !== "requested" && freshTrip.status !== "scheduled") {
                   toast({ title: "Trip Unavailable", description: "This trip has already been accepted by another driver.", variant: "destructive" });
                   setScreen("online");
                   setCurrentTrip(null);
@@ -1933,7 +1933,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   status: "accepted",
                   driver_id: userProfile.id,
                   accepted_at: new Date().toISOString(),
-                  vehicle_id: selectedVehicleId || null,
+                  vehicle_id: selectedVehicleId || null
                 }).eq("id", currentTrip.id).in("status", ["requested", "scheduled"]);
 
                 if (error) {
@@ -1981,8 +1981,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {screen === "navigating" && currentTrip && navPanelMinimized &&
       <button
         onClick={() => setNavPanelMinimized(false)}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[449] bg-primary text-primary-foreground px-5 py-2.5 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
-      >
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[449] bg-primary text-primary-foreground px-5 py-2.5 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-transform">
+
         <ChevronUp className="w-4 h-4" />
         <span className="text-xs font-bold">{driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup" : "Trip in progress"}</span>
         <span className="text-xs font-bold opacity-70">{currentTrip.estimated_fare ?? "—"} MVR</span>
@@ -2003,9 +2003,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               {/* Passenger avatar */}
               <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center text-sm font-bold text-primary-foreground overflow-hidden shrink-0">
                 {passengerProfile?.avatar_url ?
-                  <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" /> :
-                  currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
-                }
+              <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" /> :
+              currentTrip.customer_name ? currentTrip.customer_name[0] : passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"
+              }
               </div>
               {/* Name + status */}
               <div className="flex-1 min-w-0">
@@ -2045,14 +2045,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <Phone className="w-4 h-4 text-primary" />
                       <span className="text-[10px] font-semibold text-primary leading-none">Call</span>
                     </a>
-                    <button onClick={() => { setShowDriverChat(true); setUnreadDriverMessages(0); }} className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform relative min-h-[52px]">
+                    <button onClick={() => {setShowDriverChat(true);setUnreadDriverMessages(0);}} className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform relative min-h-[52px]">
                       <MessageSquare className="w-4 h-4 text-foreground" />
                       <span className="text-[10px] font-semibold text-foreground leading-none">Chat</span>
-                      {unreadDriverMessages > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
+                      {unreadDriverMessages > 0 &&
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
                           {unreadDriverMessages}
                         </span>
-                      )}
+                  }
                     </button>
                     <div className="bg-surface rounded-xl py-2 flex flex-col items-center justify-center gap-1 min-h-[52px]">
                       <Users className="w-4 h-4 text-primary" />
@@ -2073,21 +2073,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
 
                   {/* Navigation info — embedded in trip panel */}
-                  {navStepData && (
-                    <div className="rounded-xl overflow-hidden border border-border/30">
+                  {navStepData &&
+              <div className="rounded-xl overflow-hidden border border-border/30">
                       <div className="bg-primary px-3 py-2 flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center shrink-0">
                           <span className="text-sm font-black text-primary-foreground">
                             {(() => {
-                              const m = navStepData.maneuver;
-                              if (!m) return "↑";
-                              if (m.includes("turn-left") || m === "left") return "↰";
-                              if (m.includes("turn-right") || m === "right") return "↱";
-                              if (m.includes("uturn")) return "↩";
-                              if (m.includes("roundabout")) return "↻";
-                              if (m.includes("merge") || m.includes("ramp")) return "↗";
-                              return "↑";
-                            })()}
+                        const m = navStepData.maneuver;
+                        if (!m) return "↑";
+                        if (m.includes("turn-left") || m === "left") return "↰";
+                        if (m.includes("turn-right") || m === "right") return "↱";
+                        if (m.includes("uturn")) return "↩";
+                        if (m.includes("roundabout")) return "↻";
+                        if (m.includes("merge") || m.includes("ramp")) return "↗";
+                        return "↑";
+                      })()}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -2099,24 +2099,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <span className="text-[10px] text-primary-foreground/60">{navStepData.totalDistance}</span>
                         </div>
                       </div>
-                      {navStepData.nextInstruction && (
-                        <div className="bg-surface px-3 py-1.5 flex items-center gap-2">
+                      {navStepData.nextInstruction &&
+                <div className="bg-surface px-3 py-1.5 flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground font-medium">Then</span>
                           <span className="text-xs font-bold text-foreground">
                             {(() => {
-                              const m = navStepData.nextManeuver;
-                              if (!m) return "↑";
-                              if (m.includes("left")) return "↰";
-                              if (m.includes("right")) return "↱";
-                              return "↑";
-                            })()}
+                      const m = navStepData.nextManeuver;
+                      if (!m) return "↑";
+                      if (m.includes("left")) return "↰";
+                      if (m.includes("right")) return "↱";
+                      return "↑";
+                    })()}
                           </span>
                           <p className="text-[10px] text-foreground font-medium line-clamp-1 flex-1">{navStepData.nextInstruction}</p>
                           <span className="text-[10px] text-muted-foreground">{navStepData.nextDistance}</span>
                         </div>
-                      )}
+                }
                     </div>
-                  )}
+              }
 
                   {/* Route card */}
                   <div className="bg-surface rounded-xl p-3 space-y-0">
@@ -2124,13 +2124,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <div className="flex flex-col items-center mt-1">
                         <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                         <div className="w-0.5 flex-1 min-h-[16px] bg-border" />
-                        {tripStops.map((stop) => (
-                          <div key={stop.id} className="flex flex-col items-center">
+                        {tripStops.map((stop) =>
+                    <div key={stop.id} className="flex flex-col items-center">
                             <div className="w-2.5 h-2.5 rounded-sm bg-accent" />
                             {stop.completed_at && <span className="text-[8px] text-primary font-bold">✓</span>}
                             <div className="w-0.5 min-h-[16px] bg-border" />
                           </div>
-                        ))}
+                    )}
                         <MapPin className="w-3 h-3 text-destructive shrink-0" />
                       </div>
                       <div className="flex-1 min-w-0 space-y-2">
@@ -2138,12 +2138,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <p className="text-[10px] text-muted-foreground font-medium">Pickup</p>
                           <p className="text-xs font-semibold text-foreground truncate">{currentTrip.pickup_address}</p>
                         </div>
-                        {tripStops.map((stop) => (
-                          <div key={stop.id}>
+                        {tripStops.map((stop) =>
+                    <div key={stop.id}>
                             <p className="text-[10px] text-muted-foreground font-medium">Stop {stop.stop_order}</p>
                             <p className="text-xs text-foreground truncate">{stop.address}</p>
                           </div>
-                        ))}
+                    )}
                         <div>
                           <p className="text-[10px] text-muted-foreground font-medium">Drop-off</p>
                           <p className="text-xs font-semibold text-foreground truncate">{currentTrip.dropoff_address}</p>
@@ -2182,12 +2182,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
           }
 
-            {driverTripPhase === "in_progress" && currentTrip?.booking_type === "hourly" && (
-              <div className="bg-primary/10 border border-primary/20 rounded-xl px-3 py-2 flex items-center gap-2 mb-2">
+            {driverTripPhase === "in_progress" && currentTrip?.booking_type === "hourly" &&
+          <div className="bg-primary/10 border border-primary/20 rounded-xl px-3 py-2 flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 text-primary" />
                 <p className="text-xs font-semibold text-foreground">Hourly trip — {currentTrip.estimated_fare ?? "—"} MVR/hr</p>
               </div>
-            )}
+          }
 
             {driverTripPhase === "in_progress" &&
           <SlideToConfirm
@@ -2212,7 +2212,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   completed_at: now,
                   actual_fare: actualFare,
                   payment_confirmed_method: "wallet",
-                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
+                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
                 await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
                 // Deduct from passenger wallet, credit driver wallet
@@ -2243,8 +2243,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 // Show payment method selection
                 setScreen("payment_confirm");
               }
-            }}
-          />
+            }} />
+
           }
           </div>
         </motion.div>
@@ -2277,40 +2277,40 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={async () => {
-                  const now = new Date().toISOString();
-                  await supabase.from("trips").update({
-                    status: "completed", completed_at: now, actual_fare: completionFare,
-                    payment_confirmed_method: "cash",
-                    hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
-                  } as any).eq("id", currentTrip.id);
-                  await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
-                  await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
-                  setConfirmedPaymentMethod("cash");
-                  setDriverTripPhase("heading_to_pickup");
-                  setScreen("complete");
-                }}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all"
-              >
+              onClick={async () => {
+                const now = new Date().toISOString();
+                await supabase.from("trips").update({
+                  status: "completed", completed_at: now, actual_fare: completionFare,
+                  payment_confirmed_method: "cash",
+                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
+                } as any).eq("id", currentTrip.id);
+                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
+                setConfirmedPaymentMethod("cash");
+                setDriverTripPhase("heading_to_pickup");
+                setScreen("complete");
+              }}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all">
+
                 <Banknote className="w-8 h-8 text-green-600" />
                 <span className="text-sm font-semibold text-foreground">Cash</span>
               </button>
               <button
-                onClick={async () => {
-                  const now = new Date().toISOString();
-                  await supabase.from("trips").update({
-                    status: "completed", completed_at: now, actual_fare: completionFare,
-                    payment_confirmed_method: "transfer",
-                    hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
-                  } as any).eq("id", currentTrip.id);
-                  await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
-                  await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
-                  setConfirmedPaymentMethod("transfer");
-                  setDriverTripPhase("heading_to_pickup");
-                  setScreen("complete");
-                }}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all"
-              >
+              onClick={async () => {
+                const now = new Date().toISOString();
+                await supabase.from("trips").update({
+                  status: "completed", completed_at: now, actual_fare: completionFare,
+                  payment_confirmed_method: "transfer",
+                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
+                } as any).eq("id", currentTrip.id);
+                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
+                setConfirmedPaymentMethod("transfer");
+                setDriverTripPhase("heading_to_pickup");
+                setScreen("complete");
+              }}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all">
+
                 <CreditCard className="w-8 h-8 text-blue-500" />
                 <span className="text-sm font-semibold text-foreground">Transfer</span>
               </button>
@@ -2331,8 +2331,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           setScreen("online");
           setCurrentTrip(null);
           setPassengerProfile(null);
-        }}
-      />
+        }} />
+
       }
 
       {/* Profile Panel */}
@@ -2642,8 +2642,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             {favaraLogoUrl ?
-                        <img src={favaraLogoUrl} alt="Favara" className="w-6 h-6 rounded object-contain" /> :
-                        <Wallet className="w-4 h-4 text-primary" />}
+                      <img src={favaraLogoUrl} alt="Favara" className="w-6 h-6 rounded object-contain" /> :
+                      <Wallet className="w-4 h-4 text-primary" />}
                             <span className="text-sm font-semibold text-foreground">Favara</span>
                           </div>
                           <div className="flex items-center gap-1">
@@ -2747,22 +2747,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       Active
                                     </span>}
                                 </div>
-                                {isRejected && v.rejection_reason && (
-                                  <p className="text-[11px] text-destructive mt-1 flex items-start gap-1">
+                                {isRejected && v.rejection_reason &&
+                            <p className="text-[11px] text-destructive mt-1 flex items-start gap-1">
                                     <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
                                     <span>{v.rejection_reason} — Please re-upload your documents below.</span>
                                   </p>
-                                )}
+                            }
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
                               </div>
 
                               <div className="flex items-center gap-1 shrink-0">
                                 <button onClick={() => isEditing ? setEditingVehicleId(null) : startEditVehicle(v)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
                                 <button onClick={() => deleteVehicle(v.id)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -2783,57 +2783,57 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                             {/* Document upload buttons */}
                             <div className="grid grid-cols-3 gap-2 mt-3">
                               {[
-                                { key: "vehicle_registration_" + v.id, field: "registration_url", label: "Registration" },
-                                { key: "vehicle_insurance_" + v.id, field: "insurance_url", label: "Insurance" },
-                                { key: "vehicle_image_" + v.id, field: "image_url", label: "Photo" },
-                              ].map(({ key, field, label }) => (
-                                <button key={key} onClick={() => triggerUpload(key)}
-                                  disabled={uploading === key}
-                                  className="flex flex-col items-center gap-1 p-2 rounded-xl bg-card border border-border/50 active:scale-95 transition-all">
-                                  {v[field] ? (
-                                    <img src={v[field]} alt={label} className="w-10 h-7 object-cover rounded" />
-                                  ) : (
-                                    <div className="w-10 h-7 rounded bg-muted flex items-center justify-center">
+                          { key: "vehicle_registration_" + v.id, field: "registration_url", label: "Registration" },
+                          { key: "vehicle_insurance_" + v.id, field: "insurance_url", label: "Insurance" },
+                          { key: "vehicle_image_" + v.id, field: "image_url", label: "Photo" }].
+                          map(({ key, field, label }) =>
+                          <button key={key} onClick={() => triggerUpload(key)}
+                          disabled={uploading === key}
+                          className="flex flex-col items-center gap-1 p-2 rounded-xl bg-card border border-border/50 active:scale-95 transition-all">
+                                  {v[field] ?
+                            <img src={v[field]} alt={label} className="w-10 h-7 object-cover rounded" /> :
+
+                            <div className="w-10 h-7 rounded bg-muted flex items-center justify-center">
                                       <Upload className="w-3 h-3 text-muted-foreground" />
                                     </div>
-                                  )}
+                            }
                                   <span className="text-[9px] text-muted-foreground font-medium">
                                     {uploading === key ? "..." : label}
                                   </span>
                                 </button>
-                              ))}
+                          )}
                             </div>
 
                             {/* Edit form */}
-                            {isEditing && (
-                              <div className="mt-3 space-y-2 bg-card rounded-xl p-3 border border-border">
+                            {isEditing &&
+                        <div className="mt-3 space-y-2 bg-card rounded-xl p-3 border border-border">
                                 <select value={editVehicle.vehicle_type_id} onChange={(e) => setEditVehicle({ ...editVehicle, vehicle_type_id: e.target.value })}
-                                  className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                          className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
                                   <option value="">Select type</option>
                                   {vehicleTypes.map((vt) => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
                                 </select>
                                 <input placeholder="Plate number *" value={editVehicle.plate_number} onChange={(e) => setEditVehicle({ ...editVehicle, plate_number: e.target.value })}
-                                  className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                                 <div className="grid grid-cols-2 gap-2">
                                   <input placeholder="Make" value={editVehicle.make} onChange={(e) => setEditVehicle({ ...editVehicle, make: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                            className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                                   <input placeholder="Model" value={editVehicle.model} onChange={(e) => setEditVehicle({ ...editVehicle, model: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                            className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                                 </div>
                                 <input placeholder="Color" value={editVehicle.color} onChange={(e) => setEditVehicle({ ...editVehicle, color: e.target.value })}
-                                  className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          className="w-full px-3 py-2 rounded-xl bg-surface text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                                 <div className="flex gap-2">
                                   <button onClick={() => setEditingVehicleId(null)} className="flex-1 py-2 rounded-xl bg-surface text-sm font-semibold text-foreground active:scale-95">Cancel</button>
                                   <button onClick={saveEditVehicle} disabled={!editVehicle.plate_number || !editVehicle.vehicle_type_id}
-                                    className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95">Save</button>
+                            className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95">Save</button>
                                 </div>
                               </div>
-                            )}
+                        }
 
                             {/* Select button (only for non-selected approved vehicles) */}
                             {!isSelected && !isPending && !isRejected &&
                         <button onClick={() => selectVehicle(v)}
-                          className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform">
+                        className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform">
                                 Use this vehicle
                               </button>}
                             {isPending && !isEditing &&
@@ -2949,12 +2949,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                     {/* Full Wallet Component */}
                     <DriverWallet
-                      driverId={userProfile.id}
-                      walletId={driverWalletId}
-                      balance={driverWalletBalance}
-                      onRequestWithdraw={() => setShowWithdrawModal(true)}
-                      minWithdrawalAmount={minWithdrawalAmount}
-                    />
+                  driverId={userProfile.id}
+                  walletId={driverWalletId}
+                  balance={driverWalletBalance}
+                  onRequestWithdraw={() => setShowWithdrawModal(true)}
+                  minWithdrawalAmount={minWithdrawalAmount} />
+
 
                     {/* Company info & discounts */}
                     {companyInfo ?
@@ -3110,9 +3110,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                   {/* Switch to Passenger Mode */}
                   <button
-                    onClick={() => { setShowProfile(false); onSwitchToPassenger(); }}
-                    className="w-full flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
-                  >
+                onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+                className="w-full flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3 active:scale-[0.98] transition-transform">
+
                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                       <Users className="w-5 h-5 text-primary" />
                     </div>
@@ -3145,50 +3145,50 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
 
       {/* Withdraw Modal */}
-      {showWithdrawModal && (
-        <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowWithdrawModal(false)}>
-          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+      {showWithdrawModal &&
+      <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowWithdrawModal(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-foreground">Request Withdrawal</h3>
             <p className="text-sm text-muted-foreground">Available: {driverWalletBalance.toFixed(2)} MVR • Minimum: {minWithdrawalAmount} MVR</p>
-            <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} placeholder={`Amount (min ${minWithdrawalAmount} MVR)`} className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary" />
-            <input value={withdrawNotes} onChange={e => setWithdrawNotes(e.target.value)} placeholder="Notes (optional)" className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-            {withdrawAmount && Number(withdrawAmount) < minWithdrawalAmount && (
-              <p className="text-[11px] text-destructive">Minimum withdrawal amount is {minWithdrawalAmount} MVR</p>
-            )}
+            <input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder={`Amount (min ${minWithdrawalAmount} MVR)`} className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary" />
+            <input value={withdrawNotes} onChange={(e) => setWithdrawNotes(e.target.value)} placeholder="Notes (optional)" className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            {withdrawAmount && Number(withdrawAmount) < minWithdrawalAmount &&
+          <p className="text-[11px] text-destructive">Minimum withdrawal amount is {minWithdrawalAmount} MVR</p>
+          }
             <div className="flex gap-2">
               <button onClick={() => setShowWithdrawModal(false)} className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm">Cancel</button>
               <button
-                disabled={!withdrawAmount || Number(withdrawAmount) < minWithdrawalAmount || Number(withdrawAmount) > driverWalletBalance}
-                onClick={async () => {
-                  if (!driverWalletId || !userProfile?.id) return;
-                  await supabase.from("wallet_withdrawals").insert({
-                    wallet_id: driverWalletId,
-                    user_id: userProfile.id,
-                    amount: Number(withdrawAmount),
-                    notes: withdrawNotes,
-                    status: "pending",
-                  } as any);
-                  toast({ title: "Withdrawal requested", description: `${withdrawAmount} MVR withdrawal submitted for approval` });
-                  setShowWithdrawModal(false);
-                  setWithdrawAmount("");
-                  setWithdrawNotes("");
-                  // Refresh withdrawals
-                  const { data: w } = await supabase.from("wallet_withdrawals").select("*").eq("user_id", userProfile.id).order("created_at", { ascending: false }).limit(10);
-                  setPendingWithdrawals(w || []);
-                }}
-                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40"
-              >
+              disabled={!withdrawAmount || Number(withdrawAmount) < minWithdrawalAmount || Number(withdrawAmount) > driverWalletBalance}
+              onClick={async () => {
+                if (!driverWalletId || !userProfile?.id) return;
+                await supabase.from("wallet_withdrawals").insert({
+                  wallet_id: driverWalletId,
+                  user_id: userProfile.id,
+                  amount: Number(withdrawAmount),
+                  notes: withdrawNotes,
+                  status: "pending"
+                } as any);
+                toast({ title: "Withdrawal requested", description: `${withdrawAmount} MVR withdrawal submitted for approval` });
+                setShowWithdrawModal(false);
+                setWithdrawAmount("");
+                setWithdrawNotes("");
+                // Refresh withdrawals
+                const { data: w } = await supabase.from("wallet_withdrawals").select("*").eq("user_id", userProfile.id).order("created_at", { ascending: false }).limit(10);
+                setPendingWithdrawals(w || []);
+              }}
+              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40">
+
                 Submit
               </button>
             </div>
           </div>
         </div>
-      )}
+      }
 
       {/* Pay Fee from Wallet Modal */}
-      {showPayFeeModal && (
-        <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowPayFeeModal(false)}>
-          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+      {showPayFeeModal &&
+      <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowPayFeeModal(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-foreground">Pay Monthly Fee</h3>
             <p className="text-sm text-muted-foreground">Wallet: {driverWalletBalance.toFixed(2)} MVR</p>
             <div className="bg-surface rounded-xl p-4 text-center">
@@ -3198,47 +3198,47 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <div className="flex gap-2">
               <button onClick={() => setShowPayFeeModal(false)} className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm">Cancel</button>
               <button
-                disabled={driverWalletBalance < Number(userProfile?.monthly_fee || 0)}
-                onClick={async () => {
-                  if (!driverWalletId || !userProfile?.id) return;
-                  const fee = Number(userProfile?.monthly_fee || 0);
-                  const now = new Date().toISOString();
-                  const currentMonth = new Date().toISOString().slice(0, 7);
-                  
-                  // Deduct from wallet
-                  const newBalance = driverWalletBalance - fee;
-                  await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", driverWalletId);
-                  await supabase.from("wallet_transactions").insert({
-                    wallet_id: driverWalletId,
-                    user_id: userProfile.id,
-                    amount: fee,
-                    type: "debit",
-                    reason: `Monthly fee - ${currentMonth}`,
-                  } as any);
-                  
-                  // Create driver_payment record as approved
-                  await supabase.from("driver_payments").insert({
-                    driver_id: userProfile.id,
-                    amount: fee,
-                    payment_month: currentMonth,
-                    status: "approved",
-                    notes: "Paid from wallet",
-                    submitted_at: now,
-                    approved_at: now,
-                  } as any);
-                  
-                  setDriverWalletBalance(newBalance);
-                  toast({ title: "Fee paid!", description: `${fee} MVR deducted from your wallet` });
-                  setShowPayFeeModal(false);
-                }}
-                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40"
-              >
+              disabled={driverWalletBalance < Number(userProfile?.monthly_fee || 0)}
+              onClick={async () => {
+                if (!driverWalletId || !userProfile?.id) return;
+                const fee = Number(userProfile?.monthly_fee || 0);
+                const now = new Date().toISOString();
+                const currentMonth = new Date().toISOString().slice(0, 7);
+
+                // Deduct from wallet
+                const newBalance = driverWalletBalance - fee;
+                await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", driverWalletId);
+                await supabase.from("wallet_transactions").insert({
+                  wallet_id: driverWalletId,
+                  user_id: userProfile.id,
+                  amount: fee,
+                  type: "debit",
+                  reason: `Monthly fee - ${currentMonth}`
+                } as any);
+
+                // Create driver_payment record as approved
+                await supabase.from("driver_payments").insert({
+                  driver_id: userProfile.id,
+                  amount: fee,
+                  payment_month: currentMonth,
+                  status: "approved",
+                  notes: "Paid from wallet",
+                  submitted_at: now,
+                  approved_at: now
+                } as any);
+
+                setDriverWalletBalance(newBalance);
+                toast({ title: "Fee paid!", description: `${fee} MVR deducted from your wallet` });
+                setShowPayFeeModal(false);
+              }}
+              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40">
+
                 Pay {userProfile?.monthly_fee || 0} MVR
               </button>
             </div>
           </div>
         </div>
-      )}
+      }
     </div>);
 
 };
