@@ -292,7 +292,7 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
               className="flex items-center gap-1.5 bg-card shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
             >
               <img src={hdaLogo} alt="HDA Taxi" className="w-6 h-6 object-contain" />
-              <span className="text-xs font-bold text-muted-foreground">PASSENGER</span>
+              <span className="text-xs font-bold text-muted-foreground">Switch to Driver</span>
               <Car className="w-3.5 h-3.5 text-primary" />
             </button>
           ) : (
