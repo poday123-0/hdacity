@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface SoundFile {
   id: string;
@@ -29,6 +30,11 @@ const adminBankFields = [
   { key: "bank_name", label: "Bank Name", placeholder: "e.g. Bank of Maldives" },
   { key: "account_number", label: "Account Number", placeholder: "7730000000000" },
   { key: "account_name", label: "Account Holder Name", placeholder: "Company name or person" },
+];
+
+const featureToggles = [
+  { key: "feature_scheduled_rides", label: "Scheduled Rides", description: "Allow passengers to pre-book rides for a future date/time" },
+  { key: "feature_hourly_booking", label: "Hourly Booking", description: "Allow passengers to book rides by the hour" },
 ];
 
 const settingsConfig = [
@@ -287,6 +293,29 @@ const AdminSettings = () => {
                 </button>
               </div>
             )}
+          </div>
+        ))}
+      </div>
+
+      {/* Feature Toggles */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <ToggleLeft className="w-5 h-5 text-primary" /> Feature Toggles
+      </h2>
+      <p className="text-sm text-muted-foreground">Enable or disable features across the passenger and driver apps.</p>
+      <div className="bg-card border border-border rounded-xl divide-y divide-border">
+        {featureToggles.map((ft) => (
+          <div key={ft.key} className="px-5 py-4 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{ft.label}</p>
+              <p className="text-xs text-muted-foreground">{ft.description}</p>
+            </div>
+            <Switch
+              checked={settings[ft.key] === true || settings[ft.key] === "true"}
+              onCheckedChange={(checked) => {
+                setSettings({ ...settings, [ft.key]: checked });
+                updateSetting(ft.key, checked);
+              }}
+            />
           </div>
         ))}
       </div>

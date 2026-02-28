@@ -82,6 +82,8 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [scheduledTime, setScheduledTime] = useState("");
   const [bookingNotes, setBookingNotes] = useState("");
   const [serviceAreas, setServiceAreas] = useState<ServiceAreaPolygon[]>([]);
+  const [featureScheduled, setFeatureScheduled] = useState(true);
+  const [featureHourly, setFeatureHourly] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
@@ -94,18 +96,30 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     : activeField?.startsWith("stop-") ? stopQueries[parseInt(activeField.split("-")[1])] || ""
     : "";
 
-  // Fetch service locations + polygons
+  // Fetch service locations + polygons + feature toggles
   useEffect(() => {
     const fetchLocations = async () => {
-      const { data } = await supabase
-        .from("service_locations")
-        .select("id, name, address, lat, lng, polygon")
-        .eq("is_active", true)
-        .order("name");
+      const [locRes, settingsRes] = await Promise.all([
+        supabase
+          .from("service_locations")
+          .select("id, name, address, lat, lng, polygon")
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("system_settings")
+          .select("key, value")
+          .in("key", ["feature_scheduled_rides", "feature_hourly_booking"]),
+      ]);
+      const data = locRes.data;
       if (data) {
         setLocations(data.map((d: any) => ({ id: d.id, name: d.name, address: d.address, lat: d.lat, lng: d.lng })));
         setServiceAreas(data.map((d: any) => ({ id: d.id, name: d.name, lat: d.lat, lng: d.lng, polygon: d.polygon })));
       }
+      // Parse feature toggles
+      settingsRes.data?.forEach((s: any) => {
+        if (s.key === "feature_scheduled_rides") setFeatureScheduled(s.value === true || s.value === "true");
+        if (s.key === "feature_hourly_booking") setFeatureHourly(s.value === true || s.value === "true");
+      });
       setLoading(false);
     };
     fetchLocations();
@@ -589,12 +603,13 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             </div>
 
             {/* Booking Type Toggle */}
+            {(featureScheduled || featureHourly) && (
             <div className="flex gap-1 bg-surface rounded-xl p-1">
               {([
-                { key: "now" as BookingType, label: "Now", icon: Navigation },
-                { key: "scheduled" as BookingType, label: "Schedule", icon: Calendar },
-                { key: "hourly" as BookingType, label: "Hourly", icon: Clock },
-              ]).map(({ key, label, icon: Icon }) => (
+                { key: "now" as BookingType, label: "Now", icon: Navigation, show: true },
+                { key: "scheduled" as BookingType, label: "Schedule", icon: Calendar, show: featureScheduled },
+                { key: "hourly" as BookingType, label: "Hourly", icon: Clock, show: featureHourly },
+              ]).filter(o => o.show).map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
                   onClick={() => setBookingType(key)}
@@ -609,6 +624,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                 </button>
               ))}
             </div>
+            )}
 
             {/* Schedule fields */}
             {bookingType === "scheduled" && (

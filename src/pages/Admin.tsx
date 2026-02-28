@@ -72,7 +72,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [adminProfile, setAdminProfile] = useState<any>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const { theme, toggleTheme } = useTheme();
   usePushNotifications(adminProfile?.id, "admin");
 
@@ -141,7 +141,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex overflow-hidden">
       {/* Sidebar overlay on mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -211,8 +211,8 @@ const Admin = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-4 lg:p-8">
+      <main className="flex-1 overflow-auto min-w-0">
+        <div className="p-4 lg:p-6 xl:p-8 max-w-7xl mx-auto">
           {/* Top bar with menu toggle */}
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} className="mb-4 w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface transition-colors">

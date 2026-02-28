@@ -413,21 +413,21 @@ const Dispatch = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b border-border px-4 lg:px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src={hdaLogo} alt="HDA" className="w-8 h-8 object-contain" />
-          <h1 className="text-lg font-extrabold text-foreground">HDA <span className="text-primary">DISPATCH</span></h1>
+      <header className="bg-card border-b border-border px-3 sm:px-4 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <img src={hdaLogo} alt="HDA" className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0" />
+          <h1 className="text-base sm:text-lg font-extrabold text-foreground truncate">HDA <span className="text-primary">DISPATCH</span></h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button onClick={toggleTheme} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-          <span className="text-sm text-muted-foreground">{dispatcherProfile?.first_name} {dispatcherProfile?.last_name}</span>
+          <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{dispatcherProfile?.first_name} {dispatcherProfile?.last_name}</span>
           <button onClick={handleLogout} className="text-xs text-muted-foreground hover:text-destructive font-medium">Logout</button>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-6">
+      <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6">
         {/* SOS Alerts */}
         <SOSAlertPanel />
 
