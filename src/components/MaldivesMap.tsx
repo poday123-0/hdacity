@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 
-const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
+
 
 interface RideMapData {
   pickup?: { lat: number; lng: number; name: string };
