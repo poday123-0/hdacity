@@ -139,6 +139,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showPayFeeModal, setShowPayFeeModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawNotes, setWithdrawNotes] = useState("");
+  const [minWithdrawalAmount, setMinWithdrawalAmount] = useState(100);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
@@ -850,6 +851,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           if (newWallet) { setDriverWalletId(newWallet.id); }
         }
 
+        // Fetch min withdrawal amount
+        const { data: minWdSetting } = await supabase.from("system_settings").select("value").eq("key", "min_withdrawal_amount").maybeSingle();
+        if (minWdSetting?.value) setMinWithdrawalAmount(Number(minWdSetting.value) || 100);
+
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const [tripsRes, declinesRes] = await Promise.all([
@@ -1099,6 +1104,63 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     },
     disabled: screen !== "offline",
   });
+
+  // Helper: apply trip cashback rewards to both passenger and driver wallets
+  const applyTripCashback = async (tripId: string, fare: number, passengerId?: string | null) => {
+    try {
+      // Fetch reward settings
+      const keys = ["passenger_trip_reward", "passenger_trip_reward_type", "driver_trip_reward", "driver_trip_reward_type"];
+      const { data: settingsData } = await supabase.from("system_settings").select("key, value").in("key", keys);
+      const sMap: Record<string, any> = {};
+      settingsData?.forEach(s => { sMap[s.key] = s.value; });
+
+      const now = new Date().toISOString();
+
+      // Passenger cashback
+      if (passengerId && sMap.passenger_trip_reward) {
+        const rewardVal = Number(sMap.passenger_trip_reward) || 0;
+        if (rewardVal > 0) {
+          const isPercent = sMap.passenger_trip_reward_type === "percentage";
+          const cashback = isPercent ? Math.round(fare * rewardVal / 100) : rewardVal;
+          if (cashback > 0) {
+            let pWallet = (await supabase.from("wallets").select("id, balance").eq("user_id", passengerId).maybeSingle()).data;
+            if (!pWallet) {
+              const { data: nw } = await supabase.from("wallets").insert({ user_id: passengerId, balance: 0 } as any).select().single();
+              pWallet = nw;
+            }
+            if (pWallet) {
+              await supabase.from("wallets").update({ balance: Number(pWallet.balance) + cashback, updated_at: now } as any).eq("id", pWallet.id);
+              await supabase.from("wallet_transactions").insert({ wallet_id: pWallet.id, user_id: passengerId, amount: cashback, type: "credit", reason: "Trip reward", trip_id: tripId } as any);
+            }
+          }
+        }
+      }
+
+      // Driver cashback
+      if (userProfile?.id && sMap.driver_trip_reward) {
+        const rewardVal = Number(sMap.driver_trip_reward) || 0;
+        if (rewardVal > 0) {
+          const isPercent = sMap.driver_trip_reward_type === "percentage";
+          const cashback = isPercent ? Math.round(fare * rewardVal / 100) : rewardVal;
+          if (cashback > 0) {
+            let dWallet = (await supabase.from("wallets").select("id, balance").eq("user_id", userProfile.id).maybeSingle()).data;
+            if (!dWallet) {
+              const { data: nw } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
+              dWallet = nw;
+            }
+            if (dWallet) {
+              const newBal = Number(dWallet.balance) + cashback;
+              await supabase.from("wallets").update({ balance: newBal, updated_at: now } as any).eq("id", dWallet.id);
+              await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: cashback, type: "credit", reason: "Trip reward", trip_id: tripId } as any);
+              setDriverWalletBalance(newBal);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Cashback error:", e);
+    }
+  };
 
   return (
     <div ref={driverPTR.containerRef} className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
@@ -2128,6 +2190,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: actualFare, type: "credit", reason: "Trip earning", trip_id: currentTrip.id } as any);
                   }
                 }
+                await applyTripCashback(currentTrip.id, actualFare || 0, currentTrip.passenger_id);
                 setConfirmedPaymentMethod("wallet");
                 setDriverTripPhase("heading_to_pickup");
                 setScreen("complete");
@@ -2177,6 +2240,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
                   } as any).eq("id", currentTrip.id);
                   await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                  await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
                   setConfirmedPaymentMethod("cash");
                   setDriverTripPhase("heading_to_pickup");
                   setScreen("complete");
@@ -2195,6 +2259,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
                   } as any).eq("id", currentTrip.id);
                   await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                  await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
                   setConfirmedPaymentMethod("transfer");
                   setDriverTripPhase("heading_to_pickup");
                   setScreen("complete");
@@ -2791,7 +2856,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <div className="flex gap-2">
                         <button
                           onClick={() => setShowWithdrawModal(true)}
-                          disabled={driverWalletBalance <= 0}
+                          disabled={driverWalletBalance < minWithdrawalAmount}
                           className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40"
                         >
                           Request Withdraw
@@ -3069,13 +3134,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowWithdrawModal(false)}>
           <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-foreground">Request Withdrawal</h3>
-            <p className="text-sm text-muted-foreground">Available: {driverWalletBalance.toFixed(2)} MVR</p>
-            <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} placeholder="Amount (MVR)" className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary" />
+            <p className="text-sm text-muted-foreground">Available: {driverWalletBalance.toFixed(2)} MVR • Minimum: {minWithdrawalAmount} MVR</p>
+            <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} placeholder={`Amount (min ${minWithdrawalAmount} MVR)`} className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary" />
             <input value={withdrawNotes} onChange={e => setWithdrawNotes(e.target.value)} placeholder="Notes (optional)" className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            {withdrawAmount && Number(withdrawAmount) < minWithdrawalAmount && (
+              <p className="text-[11px] text-destructive">Minimum withdrawal amount is {minWithdrawalAmount} MVR</p>
+            )}
             <div className="flex gap-2">
               <button onClick={() => setShowWithdrawModal(false)} className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm">Cancel</button>
               <button
-                disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > driverWalletBalance}
+                disabled={!withdrawAmount || Number(withdrawAmount) < minWithdrawalAmount || Number(withdrawAmount) > driverWalletBalance}
                 onClick={async () => {
                   if (!driverWalletId || !userProfile?.id) return;
                   await supabase.from("wallet_withdrawals").insert({
