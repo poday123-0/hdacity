@@ -73,10 +73,22 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
 
-  // Init map — use user GPS if available, otherwise use ride pickup or default
+  // Use a ref for initial center so GPS updates don't re-trigger map init
+  const initialCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+  if (!initialCenterRef.current) {
+    initialCenterRef.current = userPos || (rideData?.pickup ? { lat: rideData.pickup.lat, lng: rideData.pickup.lng } : null);
+  }
+  if (!initialCenterRef.current && userPos) {
+    initialCenterRef.current = userPos;
+  }
+  if (!initialCenterRef.current && rideData?.pickup) {
+    initialCenterRef.current = { lat: rideData.pickup.lat, lng: rideData.pickup.lng };
+  }
+
+  // Init map — only once
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const center = userPos || (rideData?.pickup ? { lat: rideData.pickup.lat, lng: rideData.pickup.lng } : null);
+    const center = initialCenterRef.current;
     if (!center) return;
     const g = (window as any).google;
     if (!g?.maps) return;
@@ -94,7 +106,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 
     const userMarker = new g.maps.Marker({
       map,
-      position: userPos || center,
+      position: center,
       zIndex: 900,
       icon: {
         path: g.maps.SymbolPath.CIRCLE,
@@ -120,7 +132,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     map.addListener("dragstart", () => { userInteractingRef.current = true; });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded, userPos, rideData?.pickup?.lat, rideData?.pickup?.lng]);
+  }, [isLoaded, !!initialCenterRef.current]);
 
   // Theme observer
   useEffect(() => {

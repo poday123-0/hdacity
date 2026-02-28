@@ -116,10 +116,23 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
 
-  // Init map — use GPS if available, otherwise use pickup coords
+  // Use a ref for initial center so GPS updates don't re-trigger map init
+  const initialCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+  if (!initialCenterRef.current) {
+    initialCenterRef.current = currentPos || (pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null);
+  }
+  // Update ref when we get a position (for first init)
+  if (!initialCenterRef.current && currentPos) {
+    initialCenterRef.current = currentPos;
+  }
+  if (!initialCenterRef.current && pickupCoords) {
+    initialCenterRef.current = { lat: pickupCoords[0], lng: pickupCoords[1] };
+  }
+
+  // Init map — only once
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const center = currentPos || (pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null);
+    const center = initialCenterRef.current;
     if (!center) return;
     const g = (window as any).google;
     if (!g?.maps) return;
@@ -136,7 +149,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     const markerOpts: any = {
-      map, position: currentPos || center, zIndex: 1000,
+      map, position: center, zIndex: 1000,
     };
     if (mapIconUrl) {
       markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
@@ -165,7 +178,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded, currentPos, pickupCoords]);
+  }, [isLoaded, !!initialCenterRef.current]);
 
   // Theme observer
   useEffect(() => {
