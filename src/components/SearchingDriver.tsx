@@ -13,9 +13,11 @@ interface SearchingDriverProps {
   tripId?: string | null;
   pickupLat?: number;
   pickupLng?: number;
+  isScheduled?: boolean;
+  scheduledAt?: string;
 }
 
-const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng }: SearchingDriverProps) => {
+const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng, isScheduled = false, scheduledAt }: SearchingDriverProps) => {
   const [showNoDriver, setShowNoDriver] = useState(false);
   const [callCenterNumber, setCallCenterNumber] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -100,8 +102,9 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
     initDispatch();
   }, [dispatchMode, tripId, findNearestDrivers, cancelTripNoDriver]);
 
-  // Timer
+  // Timer — skip auto-cancel for scheduled rides
   useEffect(() => {
+    if (isScheduled) return; // Scheduled rides don't timeout
     if (dispatchMode !== "auto_nearest" || !tripId) {
       const interval = setInterval(() => {
         setElapsedSeconds(prev => {
@@ -131,7 +134,7 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
       }
     }, 1000);
     return () => { if (attemptTimerRef.current) clearInterval(attemptTimerRef.current); };
-  }, [dispatchMode, tripId, timeoutSeconds, cancelTripNoDriver]);
+  }, [dispatchMode, tripId, timeoutSeconds, cancelTripNoDriver, isScheduled]);
 
   const isAutoNearest = dispatchMode === "auto_nearest";
 
@@ -233,24 +236,28 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
           </div>
           <motion.h3 animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}
             className="text-lg font-bold text-foreground mt-6">
-            Finding your driver...
+            {isScheduled ? "Waiting for a driver..." : "Finding your driver..."}
           </motion.h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {isAutoNearest
+            {isScheduled
+              ? `Scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}`
+              : isAutoNearest
               ? `Requesting driver ${currentAttempt + 1}${totalDriversAvailable > 0 ? ` of ${totalDriversAvailable}` : ""}...`
               : "Waiting for a driver to accept"}
           </p>
 
-          <div className="mt-3 flex items-center gap-2">
-            <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
-              <motion.div className="h-full bg-primary rounded-full"
-                style={{ width: `${Math.max(0, 100 - ((elapsedSeconds % timeoutSeconds) / timeoutSeconds) * 100)}%` }}
-                transition={{ duration: 0.5 }} />
+          {!isScheduled && (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                <motion.div className="h-full bg-primary rounded-full"
+                  style={{ width: `${Math.max(0, 100 - ((elapsedSeconds % timeoutSeconds) / timeoutSeconds) * 100)}%` }}
+                  transition={{ duration: 0.5 }} />
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">
+                {Math.max(0, timeoutSeconds - (elapsedSeconds % timeoutSeconds))}s
+              </span>
             </div>
-            <span className="text-xs text-muted-foreground font-mono">
-              {Math.max(0, timeoutSeconds - (elapsedSeconds % timeoutSeconds))}s
-            </span>
-          </div>
+          )}
         </div>
 
         <div className="bg-muted/50 rounded-xl p-4 space-y-3">
