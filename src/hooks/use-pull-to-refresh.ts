@@ -28,9 +28,28 @@ export const usePullToRefresh = ({ onRefresh, threshold = 80, disabled = false }
     return false;
   };
 
+  const findScrollableParent = (el: HTMLElement | null): HTMLElement | null => {
+    let node = el;
+    while (node && node !== containerRef.current) {
+      const style = window.getComputedStyle(node);
+      const overflowY = style.overflowY;
+      if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  };
+
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (disabled || refreshing) return;
     if (isMapElement(e.target)) {
+      touchValid.current = false;
+      return;
+    }
+    // If touch starts inside a scrollable element that isn't at top, don't activate
+    const scrollable = findScrollableParent(e.target as HTMLElement);
+    if (scrollable && scrollable.scrollTop > 0) {
       touchValid.current = false;
       return;
     }
