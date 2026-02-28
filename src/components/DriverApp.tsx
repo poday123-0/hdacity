@@ -641,6 +641,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       // Trip accepted by ANOTHER driver while we're on ride-request screen
       if (updated.status === "accepted" && screen === "ride-request" && updated.driver_id !== userProfile?.id) {
+        // Stop trip request sound immediately
+        if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+        if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
         toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
         setScreen("online");
         setCurrentTrip(null);
@@ -650,6 +653,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       // Trip cancelled by passenger
       if (updated.status === "cancelled") {
+        // Stop trip request sound immediately if still playing
+        if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+        if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
         const soundUrl = await fetchSoundUrl("driver_sound_cancelled");
         playSound(soundUrl);
         toast({ title: "Trip Cancelled", description: "The passenger cancelled this trip.", variant: "destructive" });
@@ -1927,6 +1933,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
 
                 const isScheduled = freshTrip.booking_type === "scheduled" || currentTrip.booking_type === "scheduled";
+
+                // Stop trip request sound immediately on accept
+                if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+                if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
 
                 // Accept trip in database
                 const { error, count } = await supabase.from("trips").update({
