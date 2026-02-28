@@ -59,7 +59,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [stops, setStops] = useState<(ServiceLocation | null)[]>([]);
   const [stopQueries, setStopQueries] = useState<string[]>([]);
   const [activeField, setActiveField] = useState<"pickup" | "dropoff" | `stop-${number}` | null>(null);
-  const [mapPickerField, setMapPickerField] = useState<"pickup" | "dropoff" | null>(null);
+  const [mapPickerField, setMapPickerField] = useState<"pickup" | "dropoff" | `stop-${number}` | null>(null);
   const [pickupQuery, setPickupQuery] = useState("");
   const [dropoffQuery, setDropoffQuery] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -306,9 +306,11 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   };
 
 
-  const handleSetOnMap = (field: "pickup" | "dropoff") => {
+  const handleSetOnMap = (field: "pickup" | "dropoff" | `stop-${number}`) => {
     setMapPickerField(field);
     setSettingOnMap(true);
+    setActiveField(null);
+    setOsmResults([]);
   };
 
   const handleMapPickerConfirm = (lat: number, lng: number, name: string, address: string) => {
@@ -323,9 +325,17 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     if (mapPickerField === "pickup") {
       setPickup(loc);
       setPickupQuery(name);
-    } else {
+    } else if (mapPickerField === "dropoff") {
       setDropoff(loc);
       setDropoffQuery(name);
+    } else if (mapPickerField?.startsWith("stop-")) {
+      const idx = parseInt(mapPickerField.split("-")[1]);
+      const newStops = [...stops];
+      newStops[idx] = loc;
+      setStops(newStops);
+      const newQueries = [...stopQueries];
+      newQueries[idx] = name;
+      setStopQueries(newQueries);
     }
     setActiveField(null);
     setSettingOnMap(false);
@@ -635,17 +645,19 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         <p className="text-[10px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
                       )}
                     </div>
-                    {pickup && !activeField && (
-                      <button onClick={() => clearField("pickup")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
-                        <X className="w-3 h-3 text-muted-foreground" />
-                      </button>
-                    )}
-                    {!pickup && !activeField && (
-                      <button onClick={() => handleSetOnMap("pickup")} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-[10px] font-semibold shrink-0 ml-2 active:scale-95 transition-all whitespace-nowrap">
-                        <MapPinned className="w-3 h-3" />
-                        Map
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {pickup && !activeField && (
+                        <button onClick={() => clearField("pickup")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      )}
+                      {!activeField && (
+                        <button onClick={() => handleSetOnMap("pickup")} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-[10px] font-semibold active:scale-95 transition-all whitespace-nowrap">
+                          <MapPinned className="w-3 h-3" />
+                          Map
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {renderSearchResults("pickup")}
                 </div>
@@ -673,11 +685,19 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                           className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
                         />
                       </div>
-                      {!activeField && (
-                        <button onClick={() => removeStop(idx)} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
-                          <X className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {!activeField && (
+                          <button onClick={() => removeStop(idx)} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
+                            <X className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        )}
+                        {!activeField && (
+                          <button onClick={() => handleSetOnMap(`stop-${idx}`)} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-accent/10 text-accent-foreground text-[10px] font-semibold active:scale-95 transition-all whitespace-nowrap">
+                            <MapPinned className="w-3 h-3" />
+                            Map
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {renderSearchResults(`stop-${idx}`)}
                   </div>
@@ -739,17 +759,19 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         <p className="text-[10px] text-muted-foreground truncate mt-0.5">{dropoff.address}</p>
                       )}
                     </div>
-                    {dropoff && !activeField && (
-                      <button onClick={() => clearField("dropoff")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 ml-2 active:scale-90">
-                        <X className="w-3 h-3 text-muted-foreground" />
-                      </button>
-                    )}
-                    {!dropoff && !activeField && (
-                      <button onClick={() => handleSetOnMap("dropoff")} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-[10px] font-semibold shrink-0 ml-2 active:scale-95 transition-all whitespace-nowrap">
-                        <MapPinned className="w-3 h-3" />
-                        Map
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {dropoff && !activeField && (
+                        <button onClick={() => clearField("dropoff")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      )}
+                      {!activeField && (
+                        <button onClick={() => handleSetOnMap("dropoff")} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-[10px] font-semibold active:scale-95 transition-all whitespace-nowrap">
+                          <MapPinned className="w-3 h-3" />
+                          Map
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
