@@ -281,6 +281,42 @@ const Index = () => {
     return () => { cleanup.then(fn => fn?.()); };
   }, [currentTripId, passengerScreen]);
 
+  // Broadcast passenger GPS location to trip (so driver can see passenger on map)
+  useEffect(() => {
+    if (!currentTripId || !["searching", "driver-matching"].includes(passengerScreen)) return;
+    if (tripStatus === "in_progress" || tripStatus === "completed" || tripStatus === "cancelled") return;
+
+    let watchId: number | null = null;
+    let lastUpdate = 0;
+
+    const updateLocation = (lat: number, lng: number) => {
+      const now = Date.now();
+      if (now - lastUpdate < 5000) return;
+      lastUpdate = now;
+      supabase.from("trips").update({
+        passenger_lat: lat,
+        passenger_lng: lng,
+      } as any).eq("id", currentTripId).then(() => {});
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      );
+    }
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [currentTripId, passengerScreen, tripStatus]);
+
   const handleSplashComplete = useCallback(() => {
     if (savedSession) {
       if (appMode === "driver" && savedSession.driverProfile) setPhase("driver");

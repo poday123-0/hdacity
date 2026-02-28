@@ -26,6 +26,7 @@ interface DriverMapProps {
   dropoffLabel?: string;
   mapIconUrl?: string | null;
   passengerMapIconUrl?: string | null;
+  passengerLiveLocation?: { lat: number; lng: number } | null;
   onRecenterAvailableChange?: (available: boolean) => void;
   recenterRef?: React.MutableRefObject<(() => void) | null>;
   onNavUpdate?: (etaText: string, distanceText: string, etaMinutes: number, distanceKm: number) => void;
@@ -36,11 +37,12 @@ interface DriverMapProps {
   onNavStepChange?: (data: { instruction: string; distance: string; maneuver?: string; eta: string; totalDistance: string; nextInstruction?: string; nextManeuver?: string; nextDistance?: string }) => void;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange }: DriverMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
   const rideMarkersRef = useRef<any[]>([]);
+  const passengerLiveMarkerRef = useRef<any>(null);
   const directionsRendererRef = useRef<any>(null);
   const radiusCircleRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -445,6 +447,42 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       });
     }
   }, [radiusKm, isNavigating, currentPos, showRadius]);
+
+  // Passenger live location marker (shown before trip starts)
+  useEffect(() => {
+    const map = mapInstance.current;
+    const g = (window as any).google;
+    if (!map || !g?.maps) return;
+
+    // Only show during heading_to_pickup or arrived phases
+    if (!passengerLiveLocation || tripPhase === "in_progress" || !isNavigating) {
+      if (passengerLiveMarkerRef.current) {
+        passengerLiveMarkerRef.current.setMap(null);
+        passengerLiveMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const pos = { lat: passengerLiveLocation.lat, lng: passengerLiveLocation.lng };
+
+    if (passengerLiveMarkerRef.current) {
+      passengerLiveMarkerRef.current.setPosition(pos);
+    } else {
+      const markerOpts: any = {
+        map,
+        position: pos,
+        zIndex: 998,
+        title: "Passenger",
+      };
+      if (passengerMapIconUrl) {
+        markerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(32, 32), anchor: new g.maps.Point(16, 16) };
+      } else {
+        markerOpts.label = { text: "👤", fontSize: "18px" };
+        markerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#3b82f6", fillOpacity: 0.9, strokeColor: "white", strokeWeight: 3 };
+      }
+      passengerLiveMarkerRef.current = new g.maps.Marker(markerOpts);
+    }
+  }, [passengerLiveLocation, tripPhase, isNavigating, passengerMapIconUrl]);
 
   // Maneuver icons - more visual
   const getManeuverIcon = (maneuver?: string) => {

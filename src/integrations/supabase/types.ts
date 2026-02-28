@@ -932,6 +932,8 @@ export type Database = {
           luggage_count: number
           passenger_count: number
           passenger_id: string | null
+          passenger_lat: number | null
+          passenger_lng: number | null
           pickup_address: string
           pickup_lat: number | null
           pickup_lng: number | null
@@ -975,6 +977,8 @@ export type Database = {
           luggage_count?: number
           passenger_count?: number
           passenger_id?: string | null
+          passenger_lat?: number | null
+          passenger_lng?: number | null
           pickup_address?: string
           pickup_lat?: number | null
           pickup_lng?: number | null
@@ -1018,6 +1022,8 @@ export type Database = {
           luggage_count?: number
           passenger_count?: number
           passenger_id?: string | null
+          passenger_lat?: number | null
+          passenger_lng?: number | null
           pickup_address?: string
           pickup_lat?: number | null
           pickup_lng?: number | null
