@@ -491,12 +491,13 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Payment</p>
               </div>
 
-              <div className={`grid gap-1.5 ${(otherBanks.length + favaraAccounts.length + (primaryBank ? 1 : 0)) > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                {primaryBank && <BankCard bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />}
-                {otherBanks.map((bank) => (
-                  <BankCard key={bank.id} bank={bank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[bank.bank_name]} />
-                ))}
-                {favaraAccounts.map((favara) => (
+              {(() => {
+                const totalItems = (primaryBank ? 1 : 0) + otherBanks.length + favaraAccounts.length;
+                const useGrid = totalItems > 1;
+                const allItems: React.ReactNode[] = [];
+                if (primaryBank) allItems.push(<BankCard key={primaryBank.id} bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />);
+                otherBanks.forEach((bank) => allItems.push(<BankCard key={bank.id} bank={bank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[bank.bank_name]} />));
+                favaraAccounts.forEach((favara) => allItems.push(
                   <div key={favara.id} className="bg-surface rounded-lg px-3 py-2 flex items-center gap-2">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {favaraLogoUrl ? <img src={favaraLogoUrl} alt="Favara" className="w-5 h-5 rounded object-contain shrink-0" /> : <Landmark className="w-4 h-4 text-primary shrink-0" />}
@@ -516,8 +517,17 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                       {copiedId === favara.id ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
                   </div>
-                ))}
-              </div>
+                ));
+                return (
+                  <div className={`grid gap-1.5 ${useGrid ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {allItems.map((item, idx) => {
+                      const isLast = idx === allItems.length - 1;
+                      const isOddLastInGrid = useGrid && isLast && totalItems % 2 !== 0;
+                      return <div key={idx} className={isOddLastInGrid ? "col-span-2" : ""}>{item}</div>;
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
