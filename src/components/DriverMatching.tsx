@@ -14,6 +14,13 @@ interface BankAccountInfo {
   is_primary: boolean;
 }
 
+interface FavaraAccountInfo {
+  id: string;
+  favara_id: string;
+  favara_name: string;
+  is_primary: boolean;
+}
+
 interface DriverInfo {
   name?: string;
   initials?: string;
@@ -23,6 +30,7 @@ interface DriverInfo {
   phone?: string;
   avatar_url?: string | null;
   bank_accounts?: BankAccountInfo[];
+  favara_accounts?: FavaraAccountInfo[];
 }
 
 interface DriverMatchingProps {
@@ -45,8 +53,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const phone = driver?.phone || "";
   const avatarUrl = driver?.avatar_url;
   const bankAccounts = driver?.bank_accounts || [];
+  const favaraAccounts = driver?.favara_accounts || [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllBanks, setShowAllBanks] = useState(false);
+  const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const showChatRef = useRef(false);
@@ -108,7 +118,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     });
   }, [tripId, pickupName, dropoffName]);
 
-  // Fetch bank logos
+  // Fetch bank logos & favara logo
   useEffect(() => {
     supabase.from("banks").select("name, logo_url").eq("is_active", true).then(({ data }) => {
       if (data) {
@@ -116,6 +126,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
         data.forEach((b: any) => { if (b.logo_url) logos[b.name] = b.logo_url; });
         setBankLogos(logos);
       }
+    });
+    supabase.from("system_settings").select("value").eq("key", "favara_logo_url").maybeSingle().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") setFavaraLogoUrl(data.value);
     });
   }, []);
 
@@ -470,18 +483,39 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             </button>
           </div>
 
-          {/* Bank accounts - compact */}
-          {(showBankDetails || tripStatus === "in_progress") && primaryBank && (
+          {/* Payment accounts - compact */}
+          {(showBankDetails || tripStatus === "in_progress") && (primaryBank || favaraAccounts.length > 0) && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <Landmark className="w-3.5 h-3.5 text-primary" />
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Payment</p>
               </div>
 
-              <div className={`grid gap-1.5 ${otherBanks.length > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
-                <BankCard bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />
+              <div className={`grid gap-1.5 ${(otherBanks.length + favaraAccounts.length + (primaryBank ? 1 : 0)) > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                {primaryBank && <BankCard bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />}
                 {otherBanks.map((bank) => (
                   <BankCard key={bank.id} bank={bank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[bank.bank_name]} />
+                ))}
+                {favaraAccounts.map((favara) => (
+                  <div key={favara.id} className="bg-surface rounded-lg px-3 py-2 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {favaraLogoUrl ? <img src={favaraLogoUrl} alt="Favara" className="w-5 h-5 rounded object-contain shrink-0" /> : <Landmark className="w-4 h-4 text-primary shrink-0" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-foreground">Favara</span>
+                          {favara.is_primary && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-px rounded-full">Primary</span>}
+                        </div>
+                        <p className="text-xs font-mono font-semibold text-foreground truncate">{favara.favara_id}</p>
+                        {favara.favara_name && <p className="text-[10px] text-muted-foreground truncate">{favara.favara_name}</p>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(favara.favara_id, favara.id)}
+                      className="w-7 h-7 rounded-lg bg-card flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                    >
+                      {copiedId === favara.id ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

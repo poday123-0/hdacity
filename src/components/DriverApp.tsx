@@ -31,6 +31,7 @@ import {
   Landmark,
   CreditCard,
   IdCard,
+  Wallet,
   ChevronRight,
   ChevronLeft,
   ChevronUp,
@@ -63,7 +64,7 @@ import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
-type ProfileTab = "info" | "documents" | "banks" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
+type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
@@ -142,6 +143,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showAddBank, setShowAddBank] = useState(false);
   const [newBank, setNewBank] = useState({ bank_name: "", account_number: "", account_name: "" });
+  const [favaraAccounts, setFavaraAccounts] = useState<Array<{id: string; favara_id: string; favara_name: string; is_primary: boolean}>>([]);
+  const [showAddFavara, setShowAddFavara] = useState(false);
+  const [newFavara, setNewFavara] = useState({ favara_id: "", favara_name: "" });
+  const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
   const [availableBanks, setAvailableBanks] = useState<Array<{id: string;name: string;logo_url: string | null;}>>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [vehicleInfo, setVehicleInfo] = useState<{make: string;model: string;plate_number: string;color: string;vehicle_type_id?: string;} | null>(null);
@@ -781,6 +786,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const { data: banks } = await supabase.from("driver_bank_accounts").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("is_primary", { ascending: false });
         setBankAccounts(banks || []);
 
+        // Fetch Favara accounts
+        const { data: favaras } = await supabase.from("driver_favara_accounts").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("is_primary", { ascending: false });
+        setFavaraAccounts((favaras || []) as any);
+
+        // Fetch Favara logo
+        const { data: favaraLogoSetting } = await supabase.from("system_settings").select("value").eq("key", "favara_logo_url").maybeSingle();
+        if (favaraLogoSetting?.value && typeof favaraLogoSetting.value === "string") setFavaraLogoUrl(favaraLogoSetting.value);
+
         // Check if no bank accounts
         if (!banks || banks.length === 0) issues.push("At least one bank account required");
         setVerificationIssues(issues);
@@ -962,6 +975,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     await supabase.from("driver_bank_accounts").update({ is_primary: false }).eq("driver_id", userProfile.id);
     await supabase.from("driver_bank_accounts").update({ is_primary: true }).eq("id", id);
     setBankAccounts(bankAccounts.map((b) => ({ ...b, is_primary: b.id === id })));
+  };
+
+  // Favara account CRUD
+  const addFavaraAccount = async () => {
+    if (!userProfile?.id || !newFavara.favara_id) return;
+    const isPrimary = favaraAccounts.length === 0;
+    const { data, error } = await supabase.from("driver_favara_accounts").insert({
+      driver_id: userProfile.id,
+      favara_id: newFavara.favara_id,
+      favara_name: newFavara.favara_name,
+      is_primary: isPrimary,
+    } as any).select().single();
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    setFavaraAccounts([...favaraAccounts, data as any]);
+    setNewFavara({ favara_id: "", favara_name: "" });
+    setShowAddFavara(false);
+    toast({ title: "Favara account added" });
+  };
+
+  const deleteFavaraAccount = async (id: string) => {
+    await supabase.from("driver_favara_accounts").update({ is_active: false } as any).eq("id", id);
+    setFavaraAccounts(favaraAccounts.filter((f) => f.id !== id));
+    toast({ title: "Favara account removed" });
+  };
+
+  const setPrimaryFavara = async (id: string) => {
+    if (!userProfile?.id) return;
+    await supabase.from("driver_favara_accounts").update({ is_primary: false } as any).eq("driver_id", userProfile.id);
+    await supabase.from("driver_favara_accounts").update({ is_primary: true } as any).eq("id", id);
+    setFavaraAccounts(favaraAccounts.map((f) => ({ ...f, is_primary: f.id === id })));
   };
 
   const addVehicle = async () => {
@@ -2113,6 +2159,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "documents", label: "Docs", icon: IdCard },
                 { key: "vehicles", label: "Vehicles", icon: Car },
                 { key: "banks", label: "Banks", icon: Landmark },
+                { key: "favara", label: "Favara", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
                 { key: "billing", label: "Billing", icon: DollarSign },
                 { key: "messages", label: "Chats", icon: MessageSquare },
@@ -2360,6 +2407,63 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <Plus className="w-4 h-4" />Add bank account
                       </button>
                 }
+                  </div>
+              }
+
+                {profileTab === "favara" &&
+              <div className="space-y-3">
+                    {favaraAccounts.length === 0 && !showAddFavara &&
+                <div className="text-center py-6">
+                        <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No Favara accounts added yet</p>
+                      </div>
+                }
+                    {favaraAccounts.map((favara) =>
+                <div key={favara.id} className="bg-surface rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {favaraLogoUrl ?
+                        <img src={favaraLogoUrl} alt="Favara" className="w-6 h-6 rounded object-contain" /> :
+                        <Wallet className="w-4 h-4 text-primary" />}
+                            <span className="text-sm font-semibold text-foreground">Favara</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {favara.is_primary &&
+                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Primary</span>}
+                            <button onClick={() => deleteFavaraAccount(favara.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <p>ID: <span className="font-medium text-foreground font-mono">{favara.favara_id}</span></p>
+                          {favara.favara_name && <p>Name: <span className="font-medium text-foreground">{favara.favara_name}</span></p>}
+                        </div>
+                        {!favara.is_primary &&
+                  <button onClick={() => setPrimaryFavara(favara.id)} className="text-xs text-primary font-semibold">Set as primary</button>}
+                      </div>
+                )}
+                    {showAddFavara ?
+                <div className="bg-surface rounded-xl p-3 space-y-2">
+                        <p className="text-xs font-semibold text-foreground">Add Favara account</p>
+                        <input
+                    placeholder="Favara ID (phone / ID card / account)"
+                    value={newFavara.favara_id}
+                    onChange={(e) => setNewFavara({ ...newFavara, favara_id: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <input
+                    placeholder="Account name (optional)"
+                    value={newFavara.favara_name}
+                    onChange={(e) => setNewFavara({ ...newFavara, favara_name: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <div className="flex gap-2">
+                          <button onClick={() => setShowAddFavara(false)} className="flex-1 py-2.5 rounded-xl bg-card text-sm font-semibold text-foreground active:scale-95 transition-transform">Cancel</button>
+                          <button onClick={addFavaraAccount} disabled={!newFavara.favara_id} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95 transition-transform">Add</button>
+                        </div>
+                      </div> :
+                <button onClick={() => setShowAddFavara(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
+                        <Plus className="w-4 h-4" />Add Favara account
+                      </button>}
                   </div>
               }
 
@@ -2811,6 +2915,5 @@ const DocumentUpload = ({ label, url, uploading, onUpload }: {label: string;url:
       </div>
   }
   </button>;
-
 
 export default DriverApp;

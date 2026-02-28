@@ -169,9 +169,10 @@ const Index = () => {
       } else if (["accepted", "arrived", "in_progress"].includes(activeTrip.status)) {
         // Fetch driver info
         if (activeTrip.driver_id) {
-          const [profileRes, banksRes, vehicleRes] = await Promise.all([
+          const [profileRes, banksRes, favaraRes, vehicleRes] = await Promise.all([
             supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", activeTrip.driver_id).single(),
             supabase.from("driver_bank_accounts").select("*").eq("driver_id", activeTrip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+            supabase.from("driver_favara_accounts").select("*").eq("driver_id", activeTrip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
             activeTrip.vehicle_id
               ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", activeTrip.vehicle_id).single()
               : Promise.resolve({ data: null }),
@@ -186,6 +187,7 @@ const Index = () => {
             vehicle: v ? `${v.make} ${v.model}` : "",
             plate: v?.plate_number || "",
             bank_accounts: banksRes.data || [],
+            favara_accounts: favaraRes.data || [],
           });
         }
         setPassengerScreen("driver-matching");
@@ -587,9 +589,10 @@ const Index = () => {
 
         if (status === "accepted") {
           if (trip.driver_id) {
-            const [profileRes, banksRes, vehicleRes] = await Promise.all([
+            const [profileRes, banksRes, favaraRes, vehicleRes] = await Promise.all([
               supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.driver_id).single(),
               supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+              supabase.from("driver_favara_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
               trip.vehicle_id
                 ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", trip.vehicle_id).single()
                 : Promise.resolve({ data: null }),
@@ -604,6 +607,7 @@ const Index = () => {
               vehicle: v ? `${v.make} ${v.model}` : "",
               plate: v?.plate_number || "",
               bank_accounts: banksRes.data || [],
+              favara_accounts: favaraRes.data || [],
             });
           }
           setPassengerScreen("driver-matching");
