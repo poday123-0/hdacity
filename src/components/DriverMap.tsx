@@ -118,14 +118,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
   // Init map
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    if (!isLoaded || !mapRef.current || mapInstance.current || !currentPos) return;
     const g = (window as any).google;
     if (!g?.maps) return;
 
     const isDark = document.documentElement.classList.contains("dark");
 
     const map = new g.maps.Map(mapRef.current, {
-      center: currentPos || MALE_CENTER,
+      center: currentPos,
       zoom: 16,
       disableDefaultUI: true,
       zoomControl: false,
@@ -134,7 +134,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     const markerOpts: any = {
-      map, position: currentPos || MALE_CENTER, zIndex: 1000,
+      map, position: currentPos, zIndex: 1000,
     };
     if (mapIconUrl) {
       markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
@@ -163,7 +163,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded]);
+  }, [isLoaded, currentPos]);
 
   // Theme observer
   useEffect(() => {
@@ -392,7 +392,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     directionsRendererRef.current = dr;
 
     const fetchRoute = () => {
-      const driverPos = currentPosRef.current || MALE_CENTER;
+      const driverPos = currentPosRef.current;
+      if (!driverPos) return;
       let origin: { lat: number; lng: number };
       if (tripPhase === "arrived") {
         origin = pickup;
@@ -441,7 +442,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (radiusCircleRef.current) { radiusCircleRef.current.setMap(null); radiusCircleRef.current = null; }
 
     if (radiusKm && radiusKm > 0 && !isNavigating && showRadius) {
-      const center = currentPos || MALE_CENTER;
+      if (!currentPos) return;
+      const center = currentPos;
       radiusCircleRef.current = new g.maps.Circle({
         map, center, radius: radiusKm * 1000,
         strokeColor: "#4285F4", strokeWeight: 2, strokeOpacity: 0.6,
