@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X } from "lucide-react";
+import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X, Upload, Image, Clock } from "lucide-react";
 
 interface WalletRow {
   id: string;
@@ -19,6 +19,8 @@ interface TransactionRow {
   type: string;
   reason: string;
   notes: string;
+  status: string;
+  proof_url: string | null;
   created_at: string;
   trip_id: string | null;
 }
@@ -39,6 +41,7 @@ const AdminWallets = () => {
   const [wallets, setWallets] = useState<WalletRow[]>([]);
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
+  const [pendingTopUps, setPendingTopUps] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedWallet, setSelectedWallet] = useState<WalletRow | null>(null);
@@ -47,7 +50,9 @@ const AdminWallets = () => {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustNotes, setAdjustNotes] = useState("");
-  const [activeView, setActiveView] = useState<"wallets" | "withdrawals">("wallets");
+  const [activeView, setActiveView] = useState<"wallets" | "withdrawals" | "topups">("wallets");
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [topUpProfiles, setTopUpProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string }>>(new Map());
 
   const fetchWallets = async () => {
     setLoading(true);
@@ -76,12 +81,33 @@ const AdminWallets = () => {
     setWithdrawals(data.map(w => ({ ...w, amount: Number(w.amount), profile: profileMap.get(w.user_id) })));
   };
 
+  const fetchPendingTopUps = async () => {
+    const { data } = await supabase
+      .from("wallet_transactions")
+      .select("*")
+      .eq("status", "pending")
+      .eq("type", "credit")
+      .not("proof_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    
+    const txns = (data || []).map(t => ({ ...t, amount: Number(t.amount) }));
+    setPendingTopUps(txns);
+
+    // Fetch profiles for top-up users
+    if (txns.length > 0) {
+      const userIds = [...new Set(txns.map(t => t.user_id))];
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", userIds);
+      setTopUpProfiles(new Map((profiles || []).map(p => [p.id, p])));
+    }
+  };
+
   const fetchTransactions = async (walletId: string) => {
     const { data } = await supabase.from("wallet_transactions").select("*").eq("wallet_id", walletId).order("created_at", { ascending: false }).limit(50);
     setTransactions((data || []).map(t => ({ ...t, amount: Number(t.amount) })));
   };
 
-  useEffect(() => { fetchWallets(); fetchWithdrawals(); }, []);
+  useEffect(() => { fetchWallets(); fetchWithdrawals(); fetchPendingTopUps(); }, []);
 
   const handleAdjust = async () => {
     if (!selectedWallet || !adjustAmount || Number(adjustAmount) <= 0) return;
@@ -120,7 +146,6 @@ const AdminWallets = () => {
     } as any).eq("id", withdrawal.id);
 
     if (action === "approved") {
-      // Deduct from wallet
       const { data: wallet } = await supabase.from("wallets").select("id, balance").eq("id", withdrawal.wallet_id).single();
       if (wallet) {
         const newBalance = Math.max(0, Number(wallet.balance) - withdrawal.amount);
@@ -141,6 +166,31 @@ const AdminWallets = () => {
     fetchWallets();
   };
 
+  const handleTopUpAction = async (tx: TransactionRow, action: "approved" | "rejected") => {
+    const now = new Date().toISOString();
+
+    if (action === "approved") {
+      // Update transaction status to completed
+      await supabase.from("wallet_transactions").update({ status: "completed" } as any).eq("id", tx.id);
+
+      // Credit the wallet balance
+      const { data: wallet } = await supabase.from("wallets").select("id, balance").eq("id", tx.wallet_id).single();
+      if (wallet) {
+        const newBalance = Number(wallet.balance) + tx.amount;
+        await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", wallet.id);
+      }
+
+      toast({ title: `Top-up approved`, description: `${tx.amount} MVR credited to wallet` });
+    } else {
+      // Mark as rejected
+      await supabase.from("wallet_transactions").update({ status: "rejected" } as any).eq("id", tx.id);
+      toast({ title: `Top-up rejected` });
+    }
+
+    fetchPendingTopUps();
+    fetchWallets();
+  };
+
   const filtered = wallets.filter(w => {
     if (!search) return true;
     const s = search.toLowerCase();
@@ -155,7 +205,11 @@ const AdminWallets = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Wallets</h2>
-          <p className="text-sm text-muted-foreground">{wallets.length} wallets • Total: {totalBalance.toFixed(2)} MVR{pendingWithdrawals.length > 0 ? ` • ${pendingWithdrawals.length} pending withdrawals` : ""}</p>
+          <p className="text-sm text-muted-foreground">
+            {wallets.length} wallets • Total: {totalBalance.toFixed(2)} MVR
+            {pendingWithdrawals.length > 0 ? ` • ${pendingWithdrawals.length} pending withdrawals` : ""}
+            {pendingTopUps.length > 0 ? ` • ${pendingTopUps.length} pending top-ups` : ""}
+          </p>
         </div>
       </div>
 
@@ -163,6 +217,9 @@ const AdminWallets = () => {
       <div className="flex bg-surface rounded-xl p-1 gap-1">
         <button onClick={() => setActiveView("wallets")} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === "wallets" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
           <Wallet className="w-3.5 h-3.5 inline mr-1" />Wallets
+        </button>
+        <button onClick={() => setActiveView("topups")} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === "topups" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
+          <Upload className="w-3.5 h-3.5 inline mr-1" />Top-ups{pendingTopUps.length > 0 ? ` (${pendingTopUps.length})` : ""}
         </button>
         <button onClick={() => setActiveView("withdrawals")} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === "withdrawals" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
           <ArrowDownCircle className="w-3.5 h-3.5 inline mr-1" />Withdrawals{pendingWithdrawals.length > 0 ? ` (${pendingWithdrawals.length})` : ""}
@@ -219,23 +276,113 @@ const AdminWallets = () => {
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {transactions.map(t => (
                   <div key={t.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${t.type === "credit" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
-                      {t.type === "credit" ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
+                      t.status === "pending" ? "bg-amber-500/10 text-amber-600" :
+                      t.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                      t.type === "credit" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"
+                    }`}>
+                      {t.status === "pending" ? <Clock className="w-3.5 h-3.5" /> :
+                       t.type === "credit" ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground truncate">{t.reason || t.type}</p>
                       {t.notes && <p className="text-[10px] text-muted-foreground truncate">{t.notes}</p>}
-                      <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString()}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString()}</p>
+                        {t.status !== "completed" && (
+                          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            t.status === "pending" ? "bg-amber-500/10 text-amber-600" :
+                            "bg-destructive/10 text-destructive"
+                          }`}>{t.status}</span>
+                        )}
+                      </div>
                     </div>
-                    <p className={`text-sm font-bold ${t.type === "credit" ? "text-green-600" : "text-red-500"}`}>
-                      {t.type === "credit" ? "+" : "-"}{t.amount.toFixed(2)}
-                    </p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {t.proof_url && (
+                        <a href={t.proof_url} target="_blank" rel="noopener noreferrer" className="w-6 h-6 rounded-md bg-surface flex items-center justify-center hover:bg-primary/10">
+                          <Image className="w-3 h-3 text-muted-foreground" />
+                        </a>
+                      )}
+                      <p className={`text-sm font-bold ${
+                        t.status === "rejected" ? "text-muted-foreground line-through" :
+                        t.status === "pending" ? "text-amber-600" :
+                        t.type === "credit" ? "text-green-600" : "text-red-500"
+                      }`}>
+                        {t.type === "credit" ? "+" : "-"}{t.amount.toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
         </>
+      )}
+
+      {/* Top-ups View */}
+      {activeView === "topups" && (
+        <div className="grid gap-3">
+          {pendingTopUps.length === 0 ? (
+            <div className="text-center py-12">
+              <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">No pending top-up requests</p>
+            </div>
+          ) : (
+            pendingTopUps.map(tx => {
+              const profile = topUpProfiles.get(tx.user_id);
+              return (
+                <div key={tx.id} className="bg-card rounded-xl border border-amber-500/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-amber-600">{tx.amount.toFixed(2)} MVR</p>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                        pending
+                      </span>
+                    </div>
+                  </div>
+
+                  {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
+                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
+
+                  {/* Proof image */}
+                  {tx.proof_url && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
+                      <button onClick={() => setProofPreview(tx.proof_url)} className="block">
+                        <img
+                          src={tx.proof_url}
+                          alt="Transfer slip"
+                          className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
+                        />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleTopUpAction(tx, "approved")}
+                      className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Approve & Credit
+                    </button>
+                    <button
+                      onClick={() => handleTopUpAction(tx, "rejected")}
+                      className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <X className="w-3.5 h-3.5" /> Reject
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       )}
 
       {/* Withdrawals View */}
@@ -295,6 +442,21 @@ const AdminWallets = () => {
                 {adjustType === "credit" ? "Credit" : "Debit"} {adjustAmount ? `${adjustAmount} MVR` : ""}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proof Preview Modal */}
+      {proofPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-sm" onClick={() => setProofPreview(null)}>
+          <div className="relative max-w-lg w-full mx-4">
+            <button
+              onClick={() => setProofPreview(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center z-10"
+            >
+              <X className="w-4 h-4 text-foreground" />
+            </button>
+            <img src={proofPreview} alt="Transfer proof" className="w-full rounded-xl shadow-2xl" />
           </div>
         </div>
       )}
