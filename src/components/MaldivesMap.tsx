@@ -73,16 +73,18 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
 
-  // Init map
+  // Init map — use user GPS if available, otherwise use ride pickup or default
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current || !userPos) return;
+    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    const center = userPos || (rideData?.pickup ? { lat: rideData.pickup.lat, lng: rideData.pickup.lng } : null);
+    if (!center) return;
     const g = (window as any).google;
     if (!g?.maps) return;
 
     const isDark = document.documentElement.classList.contains("dark");
 
     const map = new g.maps.Map(mapRef.current, {
-      center: userPos,
+      center,
       zoom: 15,
       disableDefaultUI: true,
       zoomControl: false,
@@ -92,7 +94,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 
     const userMarker = new g.maps.Marker({
       map,
-      position: userPos,
+      position: userPos || center,
       zIndex: 900,
       icon: {
         path: g.maps.SymbolPath.CIRCLE,
@@ -118,7 +120,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     map.addListener("dragstart", () => { userInteractingRef.current = true; });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded, userPos]);
+  }, [isLoaded, userPos, rideData?.pickup?.lat, rideData?.pickup?.lng]);
 
   // Theme observer
   useEffect(() => {
