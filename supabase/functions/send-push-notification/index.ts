@@ -141,8 +141,13 @@ Deno.serve(async (req) => {
     // FCM v1 sends one message at a time (or use batch endpoint)
     const results = await Promise.allSettled(
       tokens.map(async (t: any) => {
-        // Send as data-only message so the service worker ALWAYS handles it,
-        // even when the app is closed/minimized. The SW will show the notification.
+        const type = data?.type || "default";
+        const isTripRequest = type === "trip_requested";
+        const isSOS = type === "sos_alert";
+        const isUrgent = isTripRequest || isSOS;
+
+        // Send as data-only for web (SW handles display)
+        // Add android notification for native sound/vibrate when app is closed
         const result = await sendOne({
           token: t.token,
           data: {
@@ -150,9 +155,40 @@ Deno.serve(async (req) => {
             body: body || "",
             ...(data || {}),
           },
-          android: { priority: "high" },
+          android: {
+            priority: "high",
+            // TTL 0 = deliver immediately, don't store
+            ttl: isUrgent ? "0s" : "86400s",
+            notification: {
+              title: title || "Notification",
+              body: body || "",
+              sound: "default",
+              channel_id: isTripRequest ? "trip_requests" : isSOS ? "sos_alerts" : "general",
+              notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
+              vibrate_timings: isTripRequest
+                ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
+                : ["0.2s", "0.1s", "0.2s"],
+              default_vibrate_timings: false,
+            },
+          },
+          apns: {
+            headers: {
+              "apns-priority": "10",
+              "apns-push-type": "alert",
+            },
+            payload: {
+              aps: {
+                alert: { title: title || "Notification", body: body || "" },
+                sound: "default",
+                badge: 1,
+                "content-available": 1,
+                "interruption-level": isUrgent ? "time-sensitive" : "active",
+              },
+            },
+          },
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
+            fcm_options: { link: "/" },
           },
         });
 
