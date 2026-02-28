@@ -2721,6 +2721,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
                   </button>
+
+                  {/* Switch to Passenger Mode */}
+                  <button
+                    onClick={() => { setShowProfile(false); onSwitchToPassenger(); }}
+                    className="w-full flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3 active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p style={{ fontSize: '14px' }} className="font-bold text-primary">Switch to Passenger Mode</p>
+                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Use the app as a rider</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-primary ml-auto" />
+                  </button>
                 </div>
             }
 
