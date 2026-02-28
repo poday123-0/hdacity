@@ -206,9 +206,20 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
             <Menu className="w-5 h-5 text-foreground" />
           </button>
 
-          <div className="flex items-center gap-1.5">
-            <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
-          </div>
+          {onDriverMode ? (
+            <button
+              onClick={onDriverMode}
+              className="flex items-center gap-1.5 bg-card shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+            >
+              <img src={hdaLogo} alt="HDA Taxi" className="w-6 h-6 object-contain" />
+              <span className="text-xs font-bold text-muted-foreground">PASSENGER</span>
+              <Car className="w-3.5 h-3.5 text-primary" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <button
@@ -295,15 +306,6 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
 
                 {/* Action buttons - compact grid */}
                 <div className="grid grid-cols-2 gap-2">
-                  {onDriverMode && (
-                    <button
-                      onClick={() => { setShowProfile(false); onDriverMode(); }}
-                      className="col-span-2 flex items-center gap-2.5 bg-primary/10 rounded-xl px-3 py-3 active:scale-[0.98] transition-transform"
-                    >
-                      <Car className="w-5 h-5 text-primary shrink-0" />
-                      <span className="text-sm font-bold text-primary">Switch to Driver Mode</span>
-                    </button>
-                  )}
                   <button
                     onClick={() => { setShowProfile(false); setShowHistory(true); }}
                     className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
