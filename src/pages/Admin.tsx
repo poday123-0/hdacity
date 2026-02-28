@@ -10,6 +10,7 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminDrivers from "@/components/admin/AdminDrivers";
 // Vehicles are now managed within AdminDrivers
 import AdminVehicleTypes from "@/components/admin/AdminVehicleTypes";
+import AdminVehicleMakes from "@/components/admin/AdminVehicleMakes";
 import AdminFares from "@/components/admin/AdminFares";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminTrips from "@/components/admin/AdminTrips";
@@ -46,13 +47,14 @@ import {
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "wallets" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "passengers", label: "Passengers", icon: UserCheck },
   { id: "drivers", label: "Drivers", icon: Users },
   { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
+  { id: "vehicle_makes", label: "Makes & Models", icon: Car },
   { id: "fares", label: "Fares", icon: DollarSign },
   { id: "billing", label: "Billing", icon: Receipt },
   { id: "wallets", label: "Wallets", icon: Wallet },
@@ -223,6 +225,7 @@ const Admin = () => {
           {activeTab === "passengers" && <AdminPassengers />}
           {activeTab === "drivers" && <AdminDrivers />}
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
+          {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
           {activeTab === "fares" && <AdminFares />}
           {activeTab === "billing" && <AdminBilling />}
           {activeTab === "wallets" && <AdminWallets />}
