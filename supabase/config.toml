@@ -35,3 +35,12 @@ verify_jwt = false
 
 [functions.notify-topup-request]
 verify_jwt = false
+
+[functions.notify-new-driver]
+verify_jwt = false
+
+[functions.notify-vehicle-update]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false

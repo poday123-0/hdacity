@@ -931,6 +931,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const vehicleField = matchedPrefix === "vehicle_registration_" ? "registration_url" : matchedPrefix === "vehicle_insurance_" ? "insurance_url" : "image_url";
       await supabase.from("vehicles").update({ [vehicleField]: publicUrl, vehicle_status: "pending" } as any).eq("id", vehicleId);
       setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
+      // Notify admin about vehicle document upload
+      const matchedVehicle = driverVehicles.find((v) => v.id === vehicleId);
+      try {
+        await supabase.functions.invoke("notify-vehicle-update", {
+          body: {
+            driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+            phone_number: userProfile.phone_number,
+            plate_number: matchedVehicle?.plate_number || "",
+            update_type: vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded",
+          },
+        });
+      } catch {} // Non-blocking
       setUploading(null);
       e.target.value = "";
       toast({ title: "Uploaded!", description: "Vehicle document submitted for admin review" });
@@ -1061,6 +1073,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Flag for admin review
     await supabase.from("profiles").update({ status: "Pending Review" }).eq("id", userProfile.id);
     setProfileStatus("Pending Review");
+    // Notify admin
+    try {
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: {
+          driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+          phone_number: userProfile.phone_number,
+          plate_number: newVehicle.plate_number,
+          update_type: "New vehicle added",
+        },
+      });
+    } catch {} // Non-blocking
     toast({ title: "Vehicle added", description: "Pending admin approval" });
   };
 
@@ -1088,6 +1111,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setVehicleInfo({ make: editVehicle.make, model: editVehicle.model, plate_number: editVehicle.plate_number, color: editVehicle.color, vehicle_type_id: editVehicle.vehicle_type_id });
     }
     setEditingVehicleId(null);
+    // Notify admin
+    try {
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: {
+          driver_name: `${userProfile?.first_name} ${userProfile?.last_name}`.trim(),
+          phone_number: userProfile?.phone_number,
+          plate_number: editVehicle.plate_number,
+          update_type: "Vehicle info updated",
+        },
+      });
+    } catch {} // Non-blocking
     toast({ title: "Vehicle updated", description: "Pending admin approval before use" });
   };
 
