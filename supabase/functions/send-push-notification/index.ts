@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64url } from "https://deno.land/std@0.224.0/encoding/base64url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,51 +7,120 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Get an OAuth2 access token from a Google Service Account JSON key */
+async function getAccessToken(serviceAccount: any): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const payload = {
+    iss: serviceAccount.client_email,
+    sub: serviceAccount.client_email,
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+  };
+
+  const headerB64 = base64url(new TextEncoder().encode(JSON.stringify(header)));
+  const payloadB64 = base64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const unsignedToken = `${headerB64}.${payloadB64}`;
+
+  // Import the RSA private key
+  const pemContents = serviceAccount.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\n/g, "");
+  const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryKey,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(unsignedToken)
+  );
+
+  const signatureB64 = base64url(new Uint8Array(signature));
+  const jwt = `${unsignedToken}.${signatureB64}`;
+
+  // Exchange JWT for access token
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
+  }
+  return tokenData.access_token;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const FCM_SERVER_KEY = Deno.env.get("FCM_SERVER_KEY");
-    if (!FCM_SERVER_KEY) {
-      throw new Error("FCM_SERVER_KEY is not configured");
+    const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT secret is not configured");
     }
+
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    const projectId = serviceAccount.project_id;
+    const accessToken = await getAccessToken(serviceAccount);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { user_ids, title, body, data, topic } = await req.json();
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
-    // If topic is provided, send to topic (e.g., "all_drivers", "all_admins")
-    if (topic) {
-      const response = await fetch("https://fcm.googleapis.com/fcm/send", {
+    const sendOne = async (message: any) => {
+      const res = await fetch(fcmUrl, {
         method: "POST",
         headers: {
-          Authorization: `key=${FCM_SERVER_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          to: `/topics/${topic}`,
-          notification: { title, body, sound: "default" },
-          data: data || {},
-          priority: "high",
-        }),
+        body: JSON.stringify({ message }),
+      });
+      const text = await res.text();
+      try {
+        return { ok: res.ok, status: res.status, data: JSON.parse(text) };
+      } catch {
+        return { ok: false, status: res.status, data: text };
+      }
+    };
+
+    // Topic-based notification
+    if (topic) {
+      const result = await sendOne({
+        topic,
+        notification: { title, body },
+        data: data || {},
+        android: { priority: "high" },
+        webpush: { headers: { Urgency: "high" } },
       });
 
-      const result = await response.json();
-      return new Response(JSON.stringify({ success: true, result }), {
+      return new Response(JSON.stringify({ success: result.ok, result: result.data }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Otherwise send to specific user_ids
+    // User-targeted notifications
     if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
       throw new Error("user_ids array is required");
     }
 
-    // Fetch device tokens for the users
     const { data: tokens, error: tokenError } = await supabase
       .from("device_tokens")
       .select("token, user_id")
@@ -65,47 +135,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    const fcmTokens = tokens.map((t: any) => t.token);
-
-    // Send to multiple tokens using FCM
-    const batchSize = 1000; // FCM limit per request
     let totalSent = 0;
     const failedTokens: string[] = [];
 
-    for (let i = 0; i < fcmTokens.length; i += batchSize) {
-      const batch = fcmTokens.slice(i, i + batchSize);
-
-      const response = await fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: {
-          Authorization: `key=${FCM_SERVER_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          registration_ids: batch,
-          notification: {
-            title,
-            body,
-            sound: "default",
-            click_action: "FLUTTER_NOTIFICATION_CLICK",
-          },
+    // FCM v1 sends one message at a time (or use batch endpoint)
+    const results = await Promise.allSettled(
+      tokens.map(async (t: any) => {
+        const result = await sendOne({
+          token: t.token,
+          notification: { title, body },
           data: data || {},
-          priority: "high",
-        }),
-      });
-
-      const result = await response.json();
-      totalSent += result.success || 0;
-
-      // Track failed tokens for cleanup
-      if (result.results) {
-        result.results.forEach((r: any, idx: number) => {
-          if (r.error === "NotRegistered" || r.error === "InvalidRegistration") {
-            failedTokens.push(batch[idx]);
-          }
+          android: { priority: "high", notification: { sound: "default" } },
+          webpush: {
+            headers: { Urgency: "high" },
+            notification: { icon: "/pwa-192x192.png", badge: "/pwa-192x192.png" },
+          },
         });
-      }
-    }
+
+        if (result.ok) {
+          totalSent++;
+        } else {
+          const errMsg = result.data?.error?.details?.[0]?.errorCode || result.data?.error?.status || "";
+          if (errMsg === "UNREGISTERED" || errMsg === "INVALID_ARGUMENT") {
+            failedTokens.push(t.token);
+          }
+        }
+        return result;
+      })
+    );
 
     // Deactivate invalid tokens
     if (failedTokens.length > 0) {
@@ -120,7 +177,7 @@ Deno.serve(async (req) => {
         success: true,
         sent: totalSent,
         failed: failedTokens.length,
-        total_tokens: fcmTokens.length,
+        total_tokens: tokens.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
