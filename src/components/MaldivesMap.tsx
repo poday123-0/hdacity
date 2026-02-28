@@ -59,10 +59,10 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 
   // Track user location
   useEffect(() => {
-    if (!navigator.geolocation) { setUserPos(MALE_CENTER); return; }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setUserPos(MALE_CENTER),
+      () => { /* No fallback — wait for real GPS */ },
       { enableHighAccuracy: true, timeout: 10000 }
     );
     watchIdRef.current = navigator.geolocation.watchPosition(

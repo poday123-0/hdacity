@@ -372,11 +372,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       };
 
-      // Immediately upsert with fallback location so driver is visible right away
-      await upsertLocation(FALLBACK_LAT, FALLBACK_LNG);
+      // Wait for actual GPS before making driver visible — no fallback location
       setGpsEnabled(false);
 
-      // Try to watch GPS position — upgrade to real coords when available
       if (navigator.geolocation) {
         locationWatchRef.current = navigator.geolocation.watchPosition(
           (pos) => {
@@ -384,11 +382,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             upsertLocation(pos.coords.latitude, pos.coords.longitude);
           },
           (err) => {
-            console.warn("GPS unavailable, using fallback location:", err.message);
+            console.warn("GPS unavailable:", err.message);
             setGpsEnabled(false);
+            toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
           },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
         );
+      } else {
+        toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
       }
 
       // Heartbeat every 10s
@@ -1296,8 +1297,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         tripPhase={driverTripPhase}
         radiusKm={screen === "online" ? tripRadius : undefined}
         gpsEnabled={gpsEnabled}
-        pickupCoords={currentTrip ? [currentTrip.pickup_lat ?? 4.1755, currentTrip.pickup_lng ?? 73.5093] : undefined}
-        dropoffCoords={currentTrip ? [currentTrip.dropoff_lat ?? 4.1755, currentTrip.dropoff_lng ?? 73.5093] : undefined}
+        pickupCoords={currentTrip?.pickup_lat && currentTrip?.pickup_lng ? [currentTrip.pickup_lat, currentTrip.pickup_lng] : undefined}
+        dropoffCoords={currentTrip?.dropoff_lat && currentTrip?.dropoff_lng ? [currentTrip.dropoff_lat, currentTrip.dropoff_lng] : undefined}
         pickupLabel={currentTrip?.pickup_address || "Pickup"}
         dropoffLabel={currentTrip?.dropoff_address || "Dropoff"}
         mapIconUrl={(() => {
