@@ -542,108 +542,104 @@ const AdminSettings = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Passenger App Icon */}
-        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Passenger App Icon</h3>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-24 rounded-[22px] bg-muted border-2 border-border flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
               {pwaAppIconUrl ? (
-                <img src={pwaAppIconUrl} alt="Passenger icon" className="w-full h-full object-contain rounded-xl" />
+                <img src={pwaAppIconUrl} alt="Passenger icon" className="w-full h-full object-cover" />
               ) : (
-                <Users className="w-8 h-8 text-muted-foreground" />
+                <Users className="w-10 h-10 text-muted-foreground" />
               )}
             </div>
-            <div className="flex-1 space-y-2">
-              <p className="text-xs text-muted-foreground">{pwaAppIconUrl ? "Icon set" : "No icon (uses default)"}</p>
-              <input
-                ref={pwaIconInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadingPwaIcon(true);
-                  const path = `pwa-icons/passenger_${Date.now()}.${file.name.split(".").pop()}`;
-                  const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
-                  if (error) {
-                    toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-                    setUploadingPwaIcon(false);
-                    return;
-                  }
-                  const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
-                  const url = `${urlData.publicUrl}?t=${Date.now()}`;
-                  await updateSetting("pwa_app_icon_url", url);
-                  setPwaAppIconUrl(url);
+            <p className="text-[11px] text-muted-foreground">{pwaAppIconUrl ? "Icon set ✓" : "No icon (uses default)"}</p>
+            <input
+              ref={pwaIconInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploadingPwaIcon(true);
+                const path = `pwa-icons/passenger_${Date.now()}.${file.name.split(".").pop()}`;
+                const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+                if (error) {
+                  toast({ title: "Upload failed", description: error.message, variant: "destructive" });
                   setUploadingPwaIcon(false);
-                  toast({ title: "Passenger app icon updated!" });
-                  e.target.value = "";
-                }}
-              />
-              <button
-                onClick={() => pwaIconInputRef.current?.click()}
-                disabled={uploadingPwaIcon}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {uploadingPwaIcon ? "Uploading..." : "Upload"}
-              </button>
-            </div>
+                  return;
+                }
+                const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+                const url = `${urlData.publicUrl}?t=${Date.now()}`;
+                await updateSetting("pwa_app_icon_url", url);
+                setPwaAppIconUrl(url);
+                setUploadingPwaIcon(false);
+                toast({ title: "Passenger app icon updated!" });
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => pwaIconInputRef.current?.click()}
+              disabled={uploadingPwaIcon}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploadingPwaIcon ? "Uploading..." : "Upload Icon"}
+            </button>
           </div>
         </div>
 
         {/* Driver App Icon */}
-        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Car className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Driver App Icon</h3>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-24 rounded-[22px] bg-muted border-2 border-border flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
               {driverAppIconUrl ? (
-                <img src={driverAppIconUrl} alt="Driver icon" className="w-full h-full object-contain rounded-xl" />
+                <img src={driverAppIconUrl} alt="Driver icon" className="w-full h-full object-cover" />
               ) : (
-                <Car className="w-8 h-8 text-muted-foreground" />
+                <Car className="w-10 h-10 text-muted-foreground" />
               )}
             </div>
-            <div className="flex-1 space-y-2">
-              <p className="text-xs text-muted-foreground">{driverAppIconUrl ? "Icon set" : "No icon (uses default)"}</p>
-              <input
-                ref={driverIconInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadingDriverIcon(true);
-                  const path = `pwa-icons/driver_${Date.now()}.${file.name.split(".").pop()}`;
-                  const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
-                  if (error) {
-                    toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-                    setUploadingDriverIcon(false);
-                    return;
-                  }
-                  const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
-                  const url = `${urlData.publicUrl}?t=${Date.now()}`;
-                  await updateSetting("driver_app_icon_url", url);
-                  setDriverAppIconUrl(url);
+            <p className="text-[11px] text-muted-foreground">{driverAppIconUrl ? "Icon set ✓" : "No icon (uses default)"}</p>
+            <input
+              ref={driverIconInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploadingDriverIcon(true);
+                const path = `pwa-icons/driver_${Date.now()}.${file.name.split(".").pop()}`;
+                const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+                if (error) {
+                  toast({ title: "Upload failed", description: error.message, variant: "destructive" });
                   setUploadingDriverIcon(false);
-                  toast({ title: "Driver app icon updated!" });
-                  e.target.value = "";
-                }}
-              />
-              <button
-                onClick={() => driverIconInputRef.current?.click()}
-                disabled={uploadingDriverIcon}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {uploadingDriverIcon ? "Uploading..." : "Upload"}
-              </button>
-            </div>
+                  return;
+                }
+                const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+                const url = `${urlData.publicUrl}?t=${Date.now()}`;
+                await updateSetting("driver_app_icon_url", url);
+                setDriverAppIconUrl(url);
+                setUploadingDriverIcon(false);
+                toast({ title: "Driver app icon updated!" });
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => driverIconInputRef.current?.click()}
+              disabled={uploadingDriverIcon}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploadingDriverIcon ? "Uploading..." : "Upload Icon"}
+            </button>
           </div>
         </div>
       </div>
