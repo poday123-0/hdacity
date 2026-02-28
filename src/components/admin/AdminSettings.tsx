@@ -388,6 +388,48 @@ const AdminSettings = () => {
           </div>
         </div>
       </div>
+      {/* Favara Logo */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Building2 className="w-5 h-5 text-primary" /> Favara Logo
+      </h2>
+      <p className="text-sm text-muted-foreground">Upload a logo for Favara that will be shown next to driver Favara accounts.</p>
+      <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0">
+          {settings["favara_logo_url"] ? (
+            <img src={settings["favara_logo_url"]} alt="Favara" className="w-12 h-12 object-contain" />
+          ) : (
+            <Building2 className="w-8 h-8 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1 space-y-2">
+          <p className="text-sm text-foreground font-medium">{settings["favara_logo_url"] ? "Logo uploaded" : "No logo set"}</p>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            id="favara-logo-input"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const path = `map-icons/favara_${Date.now()}.${file.name.split(".").pop()}`;
+              const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+              if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
+              const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+              await updateSetting("favara_logo_url", urlData.publicUrl);
+              setSettings({ ...settings, favara_logo_url: urlData.publicUrl });
+              toast({ title: "Favara logo updated!" });
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => (document.getElementById("favara-logo-input") as HTMLInputElement)?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90"
+          >
+            <Upload className="w-3.5 h-3.5" /> Upload Logo
+          </button>
+        </div>
+      </div>
+
       <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
         <User className="w-5 h-5 text-primary" /> Passenger Map Icon
       </h2>

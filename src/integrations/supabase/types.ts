@@ -145,6 +145,44 @@ export type Database = {
           },
         ]
       }
+      driver_favara_accounts: {
+        Row: {
+          created_at: string
+          driver_id: string
+          favara_id: string
+          favara_name: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          favara_id: string
+          favara_name?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          favara_id?: string
+          favara_name?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_favara_accounts_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_locations: {
         Row: {
           driver_id: string
