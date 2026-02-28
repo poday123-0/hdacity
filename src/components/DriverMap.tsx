@@ -43,6 +43,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const driverMarkerRef = useRef<any>(null);
   const rideMarkersRef = useRef<any[]>([]);
   const passengerLiveMarkerRef = useRef<any>(null);
+  const passengerPulseRef = useRef<any>(null);
+  const passengerPulseIntervalRef = useRef<any>(null);
   const directionsRendererRef = useRef<any>(null);
   const radiusCircleRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -460,11 +462,58 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         passengerLiveMarkerRef.current.setMap(null);
         passengerLiveMarkerRef.current = null;
       }
+      if (passengerPulseRef.current) {
+        passengerPulseRef.current.setMap(null);
+        passengerPulseRef.current = null;
+      }
+      if (passengerPulseIntervalRef.current) {
+        clearInterval(passengerPulseIntervalRef.current);
+        passengerPulseIntervalRef.current = null;
+      }
       return;
     }
 
     const pos = { lat: passengerLiveLocation.lat, lng: passengerLiveLocation.lng };
 
+    // Update or create the pulsing circle overlay
+    if (passengerPulseRef.current) {
+      passengerPulseRef.current.setCenter(pos);
+    } else {
+      const pulseCircle = new g.maps.Circle({
+        map,
+        center: pos,
+        radius: 30,
+        fillColor: "#3b82f6",
+        fillOpacity: 0.25,
+        strokeColor: "#3b82f6",
+        strokeOpacity: 0.4,
+        strokeWeight: 2,
+        zIndex: 997,
+        clickable: false,
+      });
+      passengerPulseRef.current = pulseCircle;
+
+      // Animate the pulse
+      let growing = true;
+      let currentRadius = 30;
+      passengerPulseIntervalRef.current = setInterval(() => {
+        if (!passengerPulseRef.current) return;
+        if (growing) {
+          currentRadius += 2;
+          if (currentRadius >= 60) growing = false;
+        } else {
+          currentRadius -= 2;
+          if (currentRadius <= 30) growing = true;
+        }
+        passengerPulseRef.current.setRadius(currentRadius);
+        passengerPulseRef.current.setOptions({
+          fillOpacity: 0.25 - (currentRadius - 30) * 0.006,
+          strokeOpacity: 0.4 - (currentRadius - 30) * 0.01,
+        });
+      }, 50);
+    }
+
+    // Update or create the main marker
     if (passengerLiveMarkerRef.current) {
       passengerLiveMarkerRef.current.setPosition(pos);
     } else {
