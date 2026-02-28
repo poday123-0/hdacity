@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, Upload, FileUp, Loader2, Car } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, Upload, FileUp, Loader2, Car, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface Make {
   id: string;
@@ -35,10 +36,10 @@ const AdminVehicleMakes = () => {
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
   const [modelName, setModelName] = useState("");
 
-  // CSV import
+  // Import
   const [showImport, setShowImport] = useState(false);
-  const [csvImporting, setCsvImporting] = useState(false);
-  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -113,53 +114,69 @@ const AdminVehicleMakes = () => {
     fetchAll();
   };
 
-  // CSV Import - format: Make,Model (one per line)
-  const handleCsvImport = async (file: File) => {
-    setCsvImporting(true);
-    try {
+  // Parse rows from CSV text or XLSX workbook
+  const parseFileToRows = async (file: File): Promise<string[][]> => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv") || name.endsWith(".txt")) {
       const text = await file.text();
-      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-      
-      // Skip header if present
-      const startIdx = lines[0]?.toLowerCase().includes("make") ? 1 : 0;
-      
+      return text.split("\n").map(l => l.trim()).filter(Boolean).map(l =>
+        l.split(",").map(p => p.trim().replace(/^"|"$/g, ""))
+      );
+    }
+    // XLS / XLSX
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    return rows.map(r => r.map(c => String(c).trim()));
+  };
+
+  const handleFileImport = async (file: File) => {
+    setImporting(true);
+    try {
+      const rows = await parseFileToRows(file);
+      if (rows.length < 2) {
+        toast({ title: "No data rows found", variant: "destructive" });
+        setImporting(false);
+        return;
+      }
+
+      // Detect header
+      const firstRow = rows[0].map(c => c.toLowerCase());
+      const startIdx = firstRow.includes("make") || firstRow.includes("model") ? 1 : 0;
+
       let addedMakes = 0;
       let addedModels = 0;
       const makeCache: Record<string, string> = {};
 
-      // First pass: collect all unique makes
+      // Collect unique makes
       const uniqueMakes = new Set<string>();
-      for (let i = startIdx; i < lines.length; i++) {
-        const parts = lines[i].split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
-        if (parts[0]) uniqueMakes.add(parts[0]);
+      for (let i = startIdx; i < rows.length; i++) {
+        if (rows[i][0]) uniqueMakes.add(rows[i][0]);
       }
 
-      // Batch insert makes
-      for (const makeName of uniqueMakes) {
-        const existing = makes.find((m) => m.name.toLowerCase() === makeName.toLowerCase());
+      // Insert makes
+      for (const name of uniqueMakes) {
+        const existing = makes.find(m => m.name.toLowerCase() === name.toLowerCase());
         if (existing) {
-          makeCache[makeName.toLowerCase()] = existing.id;
+          makeCache[name.toLowerCase()] = existing.id;
         } else {
-          const { data } = await supabase.from("vehicle_makes").insert({ name: makeName }).select("id").single();
+          const { data } = await supabase.from("vehicle_makes").insert({ name }).select("id").single();
           if (data) {
-            makeCache[makeName.toLowerCase()] = data.id;
+            makeCache[name.toLowerCase()] = data.id;
             addedMakes++;
           }
         }
       }
 
-      // Second pass: insert models
-      for (let i = startIdx; i < lines.length; i++) {
-        const parts = lines[i].split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
-        const mk = parts[0];
-        const mdl = parts[1];
+      // Insert models
+      for (let i = startIdx; i < rows.length; i++) {
+        const mk = rows[i][0];
+        const mdl = rows[i][1];
         if (!mk || !mdl) continue;
         const makeId = makeCache[mk.toLowerCase()];
         if (!makeId) continue;
-
-        const existingModel = models.find(
-          (m) => m.make_id === makeId && m.name.toLowerCase() === mdl.toLowerCase()
-        );
+        const existingModel = models.find(m => m.make_id === makeId && m.name.toLowerCase() === mdl.toLowerCase());
         if (!existingModel) {
           const { error } = await supabase.from("vehicle_models").insert({ make_id: makeId, name: mdl });
           if (!error) addedModels++;
@@ -171,7 +188,7 @@ const AdminVehicleMakes = () => {
     } catch (err: any) {
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     } finally {
-      setCsvImporting(false);
+      setImporting(false);
       setShowImport(false);
     }
   };
@@ -191,7 +208,7 @@ const AdminVehicleMakes = () => {
             className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-muted transition-colors"
           >
             <FileUp className="w-3.5 h-3.5" />
-            Import CSV
+            Import
           </button>
           <button
             onClick={() => { setMakeName(""); setEditingMakeId(null); setShowMakeForm(true); }}
@@ -214,7 +231,7 @@ const AdminVehicleMakes = () => {
         />
       </div>
 
-      {/* CSV Import Modal */}
+      {/* Import Modal */}
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={() => setShowImport(false)}>
           <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -224,35 +241,49 @@ const AdminVehicleMakes = () => {
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
+
             <p className="text-xs text-muted-foreground">
-              Upload a CSV file with two columns: <strong>Make</strong> and <strong>Model</strong>. 
-              Example: <code className="bg-surface px-1 rounded">Toyota,Corolla</code>
+              Upload a <strong>CSV</strong> or <strong>Excel (.xlsx / .xls)</strong> file with two columns: <strong>Make</strong> and <strong>Model</strong>.
+              Existing makes & models will be skipped.
             </p>
-            <div className="bg-surface rounded-xl p-3 text-xs text-muted-foreground font-mono space-y-1">
+
+            <div className="bg-surface rounded-xl p-3 text-xs text-muted-foreground font-mono space-y-0.5">
+              <p className="font-bold text-foreground text-[10px] uppercase tracking-wider mb-1">Expected format:</p>
               <p>Make,Model</p>
               <p>Toyota,Corolla</p>
               <p>Toyota,Camry</p>
               <p>Honda,Civic</p>
               <p>Honda,Accord</p>
             </div>
+
+            {/* Download sample */}
+            <a
+              href="/sample-vehicle-makes.csv"
+              download
+              className="w-full flex items-center justify-center gap-2 bg-surface border border-border text-foreground font-semibold py-2.5 rounded-xl text-xs hover:bg-muted transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Sample CSV
+            </a>
+
             <input
-              ref={csvInputRef}
+              ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleCsvImport(file);
+                if (file) handleFileImport(file);
                 e.target.value = "";
               }}
             />
             <button
-              onClick={() => csvInputRef.current?.click()}
-              disabled={csvImporting}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
               className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm disabled:opacity-50"
             >
-              {csvImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {csvImporting ? "Importing..." : "Select CSV File"}
+              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importing ? "Importing..." : "Select CSV or Excel File"}
             </button>
           </div>
         </div>
@@ -338,9 +369,22 @@ const AdminVehicleMakes = () => {
                 {/* Models list */}
                 {isExpanded && (
                   <div className="border-t border-border px-4 py-3 space-y-2 bg-surface/30">
+                    {/* Header showing parent make */}
+                    <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      <Car className="w-3 h-3" />
+                      Models for {make.name}
+                    </div>
+
+                    {makeModels.length === 0 && (
+                      <p className="text-xs text-muted-foreground/60 px-3 py-2">No models yet — add one below</p>
+                    )}
+
                     {makeModels.map((mdl) => (
-                      <div key={mdl.id} className="flex items-center justify-between py-1.5 px-3 bg-card rounded-xl">
-                        <span className="text-xs font-medium text-foreground">{mdl.name}</span>
+                      <div key={mdl.id} className="flex items-center justify-between py-2 px-3 bg-card rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-foreground">{mdl.name}</span>
+                          <span className="text-[9px] text-muted-foreground bg-surface px-1.5 py-0.5 rounded-md">{make.name}</span>
+                        </div>
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => {
@@ -364,21 +408,26 @@ const AdminVehicleMakes = () => {
 
                     {/* Add/Edit model form */}
                     {showModelForm === make.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={modelName}
-                          onChange={(e) => setModelName(e.target.value)}
-                          placeholder="e.g. Corolla"
-                          className="flex-1 px-3 py-2 bg-card border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                          autoFocus
-                          onKeyDown={(e) => e.key === "Enter" && saveModel(make.id)}
-                        />
-                        <button onClick={() => saveModel(make.id)} className="px-3 py-2 bg-primary text-primary-foreground rounded-xl text-[10px] font-bold">
-                          {editingModelId ? "Update" : "Add"}
-                        </button>
-                        <button onClick={() => { setShowModelForm(null); setEditingModelId(null); setModelName(""); }} className="px-2 py-2 bg-surface text-muted-foreground rounded-xl text-[10px] font-bold">
-                          <X className="w-3 h-3" />
-                        </button>
+                      <div className="space-y-2 bg-card border border-border rounded-xl p-3">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          {editingModelId ? "Edit" : "Add"} Model for <span className="text-primary">{make.name}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={modelName}
+                            onChange={(e) => setModelName(e.target.value)}
+                            placeholder="e.g. Corolla"
+                            className="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            autoFocus
+                            onKeyDown={(e) => e.key === "Enter" && saveModel(make.id)}
+                          />
+                          <button onClick={() => saveModel(make.id)} className="px-3 py-2 bg-primary text-primary-foreground rounded-xl text-[10px] font-bold">
+                            {editingModelId ? "Update" : "Add"}
+                          </button>
+                          <button onClick={() => { setShowModelForm(null); setEditingModelId(null); setModelName(""); }} className="px-2 py-2 bg-surface text-muted-foreground rounded-xl text-[10px] font-bold">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <button
@@ -386,7 +435,7 @@ const AdminVehicleMakes = () => {
                         className="flex items-center gap-1.5 text-[11px] text-primary font-semibold px-3 py-2 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors w-full justify-center"
                       >
                         <Plus className="w-3 h-3" />
-                        Add Model
+                        Add Model to {make.name}
                       </button>
                     )}
                   </div>
