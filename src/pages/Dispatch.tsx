@@ -45,19 +45,19 @@ type DispatchTab = "dispatch" | "dashboard" | "trips" | "drivers" | "passengers"
 // Map each tab to the permission key required to access it
 const tabPermissionMap: Record<DispatchTab, string | null> = {
   dispatch: "dispatch_trips",
-  dashboard: null,
+  dashboard: "view_dashboard",
   trips: "manage_trips",
   drivers: "manage_drivers",
   passengers: "manage_passengers",
   vehicle_types: "manage_vehicles",
   fares: "manage_fares",
   billing: "manage_billing",
-  wallets: "manage_billing",
+  wallets: "manage_wallets",
   locations: "manage_locations",
   lost_items: "manage_lost_items",
-  sos_history: null,
-  notifications: null,
-  banks: "manage_billing",
+  sos_history: "manage_sos",
+  notifications: "manage_notifications",
+  banks: "manage_banks",
   companies: "manage_companies",
 };
 
