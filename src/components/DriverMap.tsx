@@ -3,7 +3,7 @@ import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
+
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 
