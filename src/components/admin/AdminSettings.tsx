@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 interface SoundFile {
@@ -94,6 +94,9 @@ const AdminSettings = () => {
   const [quickReplies, setQuickReplies] = useState<{ text: string; target: string }[]>([]);
   const [newQuickReply, setNewQuickReply] = useState("");
   const [newQuickReplyTarget, setNewQuickReplyTarget] = useState("both");
+  // Firebase push notification config
+  const [firebaseConfig, setFirebaseConfig] = useState("");
+  const [firebaseVapidKey, setFirebaseVapidKey] = useState("");
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -128,6 +131,15 @@ const AdminSettings = () => {
     // Load quick replies
     if (map["chat_quick_replies"] && Array.isArray(map["chat_quick_replies"])) {
       setQuickReplies(map["chat_quick_replies"]);
+    }
+    // Load Firebase config
+    if (map["firebase_config"]) {
+      const fc = map["firebase_config"];
+      setFirebaseConfig(typeof fc === "string" ? fc : JSON.stringify(fc, null, 2));
+    }
+    if (map["firebase_vapid_key"]) {
+      const fv = map["firebase_vapid_key"];
+      setFirebaseVapidKey(typeof fv === "string" ? fv : String(fv));
     }
     setLoading(false);
   };
@@ -779,6 +791,53 @@ const AdminSettings = () => {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Firebase Push Notification Config */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Flame className="w-5 h-5 text-primary" /> Push Notifications (Firebase)
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Configure Firebase Cloud Messaging to send push notifications to drivers and passengers when the app is minimized or closed.
+        Get these from <span className="font-medium text-foreground">Firebase Console → Project Settings → General</span> (config) and <span className="font-medium text-foreground">Cloud Messaging → Web Push certificates</span> (VAPID key).
+      </p>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-foreground">Firebase Config (JSON)</label>
+          <textarea
+            value={firebaseConfig}
+            onChange={(e) => setFirebaseConfig(e.target.value)}
+            rows={8}
+            placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-foreground">VAPID Key (Web Push Certificate Key)</label>
+          <input
+            value={firebaseVapidKey}
+            onChange={(e) => setFirebaseVapidKey(e.target.value)}
+            placeholder="BxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ="
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const parsed = JSON.parse(firebaseConfig.trim());
+              await updateSetting("firebase_config", parsed);
+              if (firebaseVapidKey.trim()) {
+                await updateSetting("firebase_vapid_key", firebaseVapidKey.trim());
+              }
+              toast({ title: "Firebase config saved!", description: "Push notifications are now configured." });
+            } catch {
+              toast({ title: "Invalid JSON", description: "Please enter a valid Firebase config JSON object.", variant: "destructive" });
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+        >
+          <Save className="w-4 h-4" /> Save Firebase Config
+        </button>
       </div>
     </div>
   );

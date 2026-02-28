@@ -63,7 +63,7 @@ export const usePushNotifications = (
           const { data } = await supabase
             .from("system_settings")
             .select("key, value")
-            .in("key", ["firebase_config"]);
+            .in("key", ["firebase_config", "firebase_vapid_key"]);
 
           const configSetting = data?.find((s: any) => s.key === "firebase_config");
           if (!configSetting?.value) {
