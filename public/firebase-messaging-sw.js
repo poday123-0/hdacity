@@ -21,22 +21,47 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
+// Vibration patterns per notification type
+const VIBRATE_PATTERNS = {
+  trip_requested: [300, 100, 300, 100, 300, 100, 300, 100, 300], // urgent, long pattern
+  trip_accepted: [200, 100, 200],
+  trip_started: [200, 100, 200],
+  trip_completed: [100, 50, 100, 50, 200],
+  trip_cancelled: [500, 200, 500],
+  sos_alert: [500, 100, 500, 100, 500, 100, 500], // very urgent
+  driver_arrived: [200, 100, 200, 100, 200],
+  default: [200, 100, 200, 100, 200],
+};
+
 messaging.onBackgroundMessage((payload) => {
   console.log("[SW] Background message received:", payload);
 
-  // Support both notification payload and data-only payload
   const title = payload.notification?.title || payload.data?.title || "New Notification";
   const body = payload.notification?.body || payload.data?.body || "";
+  const type = payload.data?.type || "default";
+
+  const vibratePattern = VIBRATE_PATTERNS[type] || VIBRATE_PATTERNS.default;
+  const isTripRequest = type === "trip_requested";
+  const isSOS = type === "sos_alert";
 
   const notificationOptions = {
     body,
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
-    tag: payload.data?.type || "default",
+    tag: type,
     data: payload.data || {},
     silent: false,
-    vibrate: [200, 100, 200, 100, 200],
-    requireInteraction: true,
+    vibrate: vibratePattern,
+    // Keep trip requests and SOS on screen until user interacts
+    requireInteraction: isTripRequest || isSOS,
+    // Renotify even if same tag (so repeated trip requests are heard)
+    renotify: true,
+    // Add actions for trip requests
+    actions: isTripRequest
+      ? [
+          { action: "open", title: "Open App" },
+        ]
+      : [],
   };
 
   self.registration.showNotification(title, notificationOptions);
