@@ -1285,13 +1285,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <User className="w-5 h-5 text-foreground" />
               }
             </button>
-            <button
-              onClick={() => { setShowProfile(false); onSwitchToPassenger(); }}
-              className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform border border-border/30"
-            >
-              <span className="text-xs font-bold text-muted-foreground">Switch to Passenger</span>
-              <Users className="w-3.5 h-3.5 text-primary" />
-            </button>
+            {!currentTrip && (
+              <button
+                onClick={() => { setShowProfile(false); onSwitchToPassenger(); }}
+                className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform border border-border/30"
+              >
+                <span className="text-xs font-bold text-muted-foreground">Switch to Passenger</span>
+                <Users className="w-3.5 h-3.5 text-primary" />
+              </button>
+            )}
           </div>
 
           {/* Center: Vehicle */}
