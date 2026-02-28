@@ -262,28 +262,38 @@ const Index = () => {
   useEffect(() => {
     if (!currentTripId || passengerScreen !== "driver-matching") return;
 
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
     const trackDriver = async () => {
-      const { data: trip } = await supabase.from("trips").select("driver_id, vehicle_id").eq("id", currentTripId).single();
+      const { data: trip } = await supabase.from("trips").select("driver_id, vehicle_id, vehicle_type_id").eq("id", currentTripId).single();
       if (!trip?.driver_id) return;
 
-      // Fetch vehicle map icon URL
+      // Fetch vehicle map icon URL — try vehicle_id first, fall back to trip's vehicle_type_id
+      let iconFound = false;
       if (trip.vehicle_id) {
         const { data: vehicle } = await supabase.from("vehicles").select("vehicle_type_id").eq("id", trip.vehicle_id).single();
         if (vehicle?.vehicle_type_id) {
           const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", vehicle.vehicle_type_id).single();
-          if (vt?.map_icon_url) setDriverIconUrl(vt.map_icon_url);
+          if (vt?.map_icon_url) { setDriverIconUrl(vt.map_icon_url); iconFound = true; }
         }
+      }
+      if (!iconFound && trip.vehicle_type_id) {
+        const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", trip.vehicle_type_id).single();
+        if (vt?.map_icon_url) setDriverIconUrl(vt.map_icon_url);
       }
 
       const fetchPos = async () => {
         const { data: loc } = await supabase
           .from("driver_locations")
-          .select("lat, lng")
-          .eq("driver_id", trip.driver_id)
+          .select("lat, lng, heading")
+          .eq("driver_id", trip.driver_id!)
           .single();
         if (loc) setDriverLocation({ lat: loc.lat, lng: loc.lng });
       };
       fetchPos();
+
+      // Poll every 5s as backup for realtime
+      pollInterval = setInterval(fetchPos, 5000);
 
       const channel = supabase
         .channel(`driver-track-${trip.driver_id}`)
@@ -302,7 +312,10 @@ const Index = () => {
     };
 
     const cleanup = trackDriver();
-    return () => { cleanup.then(fn => fn?.()); };
+    return () => {
+      cleanup.then(fn => fn?.());
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [currentTripId, passengerScreen]);
 
   // Broadcast passenger GPS location to trip (so driver can see passenger on map)
