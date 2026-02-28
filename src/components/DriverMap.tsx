@@ -90,14 +90,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
   // Track GPS with heading
   useEffect(() => {
-    if (!navigator.geolocation) { setCurrentPos(MALE_CENTER); return; }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         if (pos.coords.speed != null && pos.coords.speed >= 0) setCurrentSpeed(Math.round(pos.coords.speed * 3.6));
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) setCurrentHeading(pos.coords.heading);
       },
-      () => setCurrentPos(MALE_CENTER),
+      () => { /* Wait for real GPS — no fallback */ },
       { enableHighAccuracy: true, timeout: 10000 }
     );
     watchIdRef.current = navigator.geolocation.watchPosition(
