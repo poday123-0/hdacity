@@ -263,14 +263,51 @@ const AdminDrivers = () => {
   };
 
   const approveVehicle = async (id: string) => {
+    const vehicle = allVehicles.find(v => v.id === id);
     await supabase.from("vehicles").update({ vehicle_status: "approved", rejection_reason: null } as any).eq("id", id);
     toast({ title: "Vehicle approved ✅" });
+    // Send SMS to driver
+    if (vehicle?.driver_id) {
+      const driver = drivers.find(d => d.id === vehicle.driver_id);
+      if (driver) {
+        try {
+          await supabase.functions.invoke("notify-vehicle-update", {
+            body: {
+              driver_name: `${driver.first_name} ${driver.last_name}`,
+              phone_number: driver.phone_number,
+              plate_number: vehicle.plate_number,
+              update_type: "approved",
+              notify_driver: true,
+            },
+          });
+        } catch (e) { console.error("Failed to notify driver:", e); }
+      }
+    }
     fetchAll();
   };
 
   const rejectVehicle = async (id: string, reason: string) => {
+    const vehicle = allVehicles.find(v => v.id === id);
     await supabase.from("vehicles").update({ vehicle_status: "rejected", rejection_reason: reason || "Documents not acceptable" } as any).eq("id", id);
     toast({ title: "Vehicle rejected", description: reason });
+    // Send SMS to driver
+    if (vehicle?.driver_id) {
+      const driver = drivers.find(d => d.id === vehicle.driver_id);
+      if (driver) {
+        try {
+          await supabase.functions.invoke("notify-vehicle-update", {
+            body: {
+              driver_name: `${driver.first_name} ${driver.last_name}`,
+              phone_number: driver.phone_number,
+              plate_number: vehicle.plate_number,
+              update_type: "rejected",
+              rejection_reason: reason || "Documents not acceptable",
+              notify_driver: true,
+            },
+          });
+        } catch (e) { console.error("Failed to notify driver:", e); }
+      }
+    }
     setRejectVehicleId(null);
     setRejectReason("");
     fetchAll();
@@ -445,17 +482,18 @@ const AdminDrivers = () => {
                   <p className="text-[11px] text-muted-foreground">{v.color} · {v.vehicle_types?.name || "No type"} · Driver: {getDriverName(v.driver_id)}</p>
                 </div>
                 {/* Doc badges */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {v.registration_url && (
-                    <button onClick={() => setPreviewImg(v.registration_url)} className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center hover:bg-blue-100 transition-colors" title="Registration">
-                      <Eye className="w-3.5 h-3.5 text-blue-600" />
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  {[
+                    { url: v.image_url, label: "Photo", bg: "bg-purple-50", border: "border-purple-100", text: "text-purple-600", hoverBg: "hover:bg-purple-100" },
+                    { url: v.registration_url, label: "Registration", bg: "bg-blue-50", border: "border-blue-100", text: "text-blue-600", hoverBg: "hover:bg-blue-100" },
+                    { url: v.insurance_url, label: "Insurance", bg: "bg-green-50", border: "border-green-100", text: "text-green-600", hoverBg: "hover:bg-green-100" },
+                  ].map((doc) => doc.url ? (
+                    <button key={doc.label} onClick={() => setPreviewImg(doc.url)} className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-colors ${doc.bg} ${doc.border} ${doc.text} ${doc.hoverBg} border`} title={doc.label}>
+                      <Eye className="w-3 h-3" /> {doc.label}
                     </button>
-                  )}
-                  {v.insurance_url && (
-                    <button onClick={() => setPreviewImg(v.insurance_url)} className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center hover:bg-green-100 transition-colors" title="Insurance">
-                      <Eye className="w-3.5 h-3.5 text-green-600" />
-                    </button>
-                  )}
+                  ) : (
+                    <span key={doc.label} className="text-[10px] text-muted-foreground/40 px-2 py-1">No {doc.label}</span>
+                  ))}
                 </div>
                 {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0">
