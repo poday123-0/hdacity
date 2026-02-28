@@ -11,16 +11,36 @@ export const usePullToRefresh = ({ onRefresh, threshold = 80, disabled = false }
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(0);
+  const touchValid = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const isMapElement = (el: EventTarget | null): boolean => {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    let node: HTMLElement | null = el;
+    while (node) {
+      if (node.tagName === "CANVAS") return true;
+      if (node.getAttribute?.("role") === "presentation") return true;
+      // Google Maps map div
+      if (node.classList?.contains("gm-style")) return true;
+      if (node.dataset?.mapContainer !== undefined) return true;
+      node = node.parentElement;
+    }
+    return false;
+  };
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (disabled || refreshing) return;
+    if (isMapElement(e.target)) {
+      touchValid.current = false;
+      return;
+    }
+    touchValid.current = true;
     startY.current = e.touches[0].clientY;
     setPulling(true);
   }, [disabled, refreshing]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!pulling || disabled || refreshing) return;
+    if (!pulling || !touchValid.current || disabled || refreshing) return;
     const diff = e.touches[0].clientY - startY.current;
     if (diff > 0) {
       setPullDistance(Math.min(diff * 0.5, threshold * 1.5));
@@ -28,8 +48,9 @@ export const usePullToRefresh = ({ onRefresh, threshold = 80, disabled = false }
   }, [pulling, disabled, refreshing, threshold]);
 
   const handleTouchEnd = useCallback(async () => {
-    if (!pulling || disabled) return;
+    if (!pulling || !touchValid.current || disabled) return;
     setPulling(false);
+    touchValid.current = false;
     if (pullDistance >= threshold && !refreshing) {
       setRefreshing(true);
       setPullDistance(threshold * 0.6);
