@@ -475,7 +475,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Skip trips outside driver's radius (fail-open if no GPS)
     if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
       const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
+      console.log(`[RADIUS CHECK] Driver pos: ${lastPosRef.current.lat.toFixed(4)}, ${lastPosRef.current.lng.toFixed(4)} | Pickup: ${trip.pickup_lat}, ${trip.pickup_lng} | Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
       if (dist > tripRadiusRef.current) return;
+    } else {
+      console.log(`[RADIUS CHECK] No GPS or no pickup coords — fail-open, allowing trip through`);
     }
 
     // Verify the trip is still valid before showing it (prevents stale/old trip requests)
