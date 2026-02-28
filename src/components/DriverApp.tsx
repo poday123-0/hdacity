@@ -32,6 +32,7 @@ import {
   Trash2,
   Landmark,
   CreditCard,
+  Banknote,
   IdCard,
   Wallet,
   ChevronRight,
@@ -64,7 +65,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 
-type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
+type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete" | "payment_confirm";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
@@ -129,6 +130,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showEarnings, setShowEarnings] = useState(true);
+  const [completionFare, setCompletionFare] = useState(0);
+  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
@@ -2073,15 +2076,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   actualFare = Math.round(hours * (currentTrip.estimated_fare || 0));
                 }
               }
-              await supabase.from("trips").update({
-                status: "completed",
-                completed_at: now,
-                actual_fare: actualFare,
-                hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
-              } as any).eq("id", currentTrip.id);
-              await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-              setDriverTripPhase("heading_to_pickup");
-              setScreen("complete");
+              setCompletionFare(actualFare || 0);
+              const tripPaymentMethod = (currentTrip as any).payment_method || "cash";
+              if (tripPaymentMethod === "wallet") {
+                // Wallet payment: auto-process
+                await supabase.from("trips").update({
+                  status: "completed",
+                  completed_at: now,
+                  actual_fare: actualFare,
+                  payment_confirmed_method: "wallet",
+                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
+                } as any).eq("id", currentTrip.id);
+                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                // Deduct from passenger wallet, credit driver wallet
+                const passengerId = currentTrip.passenger_id;
+                if (passengerId && actualFare) {
+                  // Deduct passenger
+                  const { data: pWallet } = await supabase.from("wallets").select("id, balance").eq("user_id", passengerId).maybeSingle();
+                  if (pWallet) {
+                    await supabase.from("wallets").update({ balance: Math.max(0, Number(pWallet.balance) - actualFare), updated_at: now } as any).eq("id", pWallet.id);
+                    await supabase.from("wallet_transactions").insert({ wallet_id: pWallet.id, user_id: passengerId, amount: actualFare, type: "debit", reason: "Trip fare", trip_id: currentTrip.id } as any);
+                  }
+                  // Credit driver
+                  let dWallet = (await supabase.from("wallets").select("id, balance").eq("user_id", userProfile.id).maybeSingle()).data;
+                  if (!dWallet) {
+                    const { data: newW } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
+                    dWallet = newW;
+                  }
+                  if (dWallet) {
+                    await supabase.from("wallets").update({ balance: Number(dWallet.balance) + actualFare, updated_at: now } as any).eq("id", dWallet.id);
+                    await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: actualFare, type: "credit", reason: "Trip earning", trip_id: currentTrip.id } as any);
+                  }
+                }
+                setConfirmedPaymentMethod("wallet");
+                setDriverTripPhase("heading_to_pickup");
+                setScreen("complete");
+              } else {
+                // Show payment method selection
+                setScreen("payment_confirm");
+              }
             }}
           />
           }
@@ -2100,6 +2133,62 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       }
 
+      {/* Payment Confirmation */}
+      {screen === "payment_confirm" && currentTrip &&
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="absolute inset-0 z-[500] flex items-center justify-center bg-foreground/50 backdrop-blur-sm complete-overlay">
+          <motion.div initial={{ y: 30 }} animate={{ y: 0 }} className="bg-card rounded-2xl shadow-2xl mx-6 w-full max-w-sm p-6 text-center space-y-5">
+            <div>
+              <h3 className="text-xl font-bold text-foreground">Confirm Payment</h3>
+              <p className="text-muted-foreground text-sm mt-1">How did the passenger pay?</p>
+            </div>
+            <div className="bg-surface rounded-xl p-4">
+              <p className="text-3xl font-bold text-primary">{completionFare} MVR</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Passenger selected: <span className="font-semibold capitalize">{(currentTrip as any).payment_method || "cash"}</span>
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={async () => {
+                  const now = new Date().toISOString();
+                  await supabase.from("trips").update({
+                    status: "completed", completed_at: now, actual_fare: completionFare,
+                    payment_confirmed_method: "cash",
+                    hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
+                  } as any).eq("id", currentTrip.id);
+                  await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                  setConfirmedPaymentMethod("cash");
+                  setDriverTripPhase("heading_to_pickup");
+                  setScreen("complete");
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all"
+              >
+                <Banknote className="w-8 h-8 text-green-600" />
+                <span className="text-sm font-semibold text-foreground">Cash</span>
+              </button>
+              <button
+                onClick={async () => {
+                  const now = new Date().toISOString();
+                  await supabase.from("trips").update({
+                    status: "completed", completed_at: now, actual_fare: completionFare,
+                    payment_confirmed_method: "transfer",
+                    hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null,
+                  } as any).eq("id", currentTrip.id);
+                  await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                  setConfirmedPaymentMethod("transfer");
+                  setDriverTripPhase("heading_to_pickup");
+                  setScreen("complete");
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all"
+              >
+                <CreditCard className="w-8 h-8 text-blue-500" />
+                <span className="text-sm font-semibold text-foreground">Transfer</span>
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      }
+
       {/* Complete */}
       {screen === "complete" &&
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="absolute inset-0 z-[500] flex items-center justify-center bg-foreground/50 backdrop-blur-sm complete-overlay">
@@ -2112,8 +2201,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <p className="text-muted-foreground text-sm mt-1">Well done, {userProfile?.first_name || "Driver"}</p>
             </div>
             <div className="bg-surface rounded-xl p-4">
-              <p className="text-3xl font-bold text-primary">{currentTrip?.estimated_fare ?? "—"} MVR</p>
-              <p className="text-xs text-muted-foreground mt-1">Earnings from this ride</p>
+              <p className="text-3xl font-bold text-primary">{completionFare || currentTrip?.estimated_fare || "—"} MVR</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Paid via <span className="font-semibold capitalize">{confirmedPaymentMethod}</span>
+              </p>
             </div>
             <button onClick={() => {
             setScreen("online");

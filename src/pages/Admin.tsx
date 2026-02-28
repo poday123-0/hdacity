@@ -21,6 +21,7 @@ import AdminUsers from "@/components/admin/AdminUsers";
 import AdminLostItems from "@/components/admin/AdminLostItems";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import AdminNotifications from "@/components/admin/AdminNotifications";
+import AdminWallets from "@/components/admin/AdminWallets";
 import {
   LayoutDashboard,
   Users,
@@ -41,10 +42,11 @@ import {
   PackageX,
   Siren,
   BellRing,
+  Wallet,
 } from "lucide-react";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "fares" | "billing" | "wallets" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
 
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -53,6 +55,7 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
   { id: "fares", label: "Fares", icon: DollarSign },
   { id: "billing", label: "Billing", icon: Receipt },
+  { id: "wallets", label: "Wallets", icon: Wallet },
   { id: "banks", label: "Banks", icon: Building2 },
   { id: "companies", label: "Companies", icon: Building },
   { id: "locations", label: "Service Areas", icon: Navigation },
@@ -222,6 +225,7 @@ const Admin = () => {
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
           {activeTab === "fares" && <AdminFares />}
           {activeTab === "billing" && <AdminBilling />}
+          {activeTab === "wallets" && <AdminWallets />}
           {activeTab === "banks" && <AdminBanks />}
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}

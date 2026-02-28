@@ -82,6 +82,7 @@ const Index = () => {
   const [bookingType, setBookingType] = useState<BookingType>("now");
   const [scheduledAt, setScheduledAt] = useState<string | undefined>();
   const [bookingNotes, setBookingNotes] = useState<string | undefined>();
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [driverIconUrl, setDriverIconUrl] = useState<string | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
@@ -428,7 +429,9 @@ const Index = () => {
     setPassengerScreen("confirmation");
   }, []);
 
-  const handleConfirmRide = useCallback(async () => {
+  const handleConfirmRide = useCallback(async (selectedPaymentMethod?: "cash" | "transfer" | "wallet") => {
+    const pm = selectedPaymentMethod || "cash";
+    setPaymentMethod(pm);
     if (!pickup || !dropoff || !selectedVehicleType) return;
 
     // For scheduled rides, skip driver availability check
@@ -483,6 +486,7 @@ const Index = () => {
         booking_type: bookingType,
         scheduled_at: scheduledAt || null,
         booking_notes: bookingNotes || null,
+        payment_method: pm,
       } as any).select().single();
 
       if (error) throw error;
