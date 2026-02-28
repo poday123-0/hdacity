@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdaLogo from "@/assets/hda-logo.png";
 import { UserProfile } from "@/components/AuthScreen";
 import RideHistory from "@/components/RideHistory";
 import LostItemReport from "@/components/LostItemReport";
+import MapPicker from "@/components/MapPicker";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,83 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
   const [showLostItem, setShowLostItem] = useState(false);
   const [lostItemTrips, setLostItemTrips] = useState<Array<{ id: string; pickup_address: string; dropoff_address: string; completed_at: string }>>([]);
   const [selectedLostTripId, setSelectedLostTripId] = useState<string | null>(null);
+  const [showMyPlaces, setShowMyPlaces] = useState(false);
+  const [savedLocations, setSavedLocations] = useState<Array<{ id: string; label: string; name: string; address: string; lat: number; lng: number; icon: string }>>([]);
+  const [showPlaceForm, setShowPlaceForm] = useState(false);
+  const [placeLabel, setPlaceLabel] = useState("");
+  const [placeIcon, setPlaceIcon] = useState("star");
+  const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null);
+  const [placeMapPicker, setPlaceMapPicker] = useState(false);
+  const [pendingPlaceLocation, setPendingPlaceLocation] = useState<{ name: string; address: string; lat: number; lng: number } | null>(null);
+  const [placeSearchQuery, setPlaceSearchQuery] = useState("");
+  const [placeSearchResults, setPlaceSearchResults] = useState<Array<{ place_id: number; display_name: string; lat: string; lon: string; name?: string }>>([]);
+  const [placeSearching, setPlaceSearching] = useState(false);
+  const placeSearchDebounce = useRef<ReturnType<typeof setTimeout>>();
+
+  // Fetch saved locations
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    const fetchSaved = async () => {
+      const { data } = await supabase
+        .from("saved_locations")
+        .select("id, label, name, address, lat, lng, icon")
+        .eq("user_id", userProfile.id)
+        .order("created_at");
+      if (data) setSavedLocations(data);
+    };
+    fetchSaved();
+  }, [userProfile?.id]);
+
+  // Place search debounce
+  useEffect(() => {
+    if (!placeSearchQuery.trim() || placeSearchQuery.length < 3) { setPlaceSearchResults([]); return; }
+    if (placeSearchDebounce.current) clearTimeout(placeSearchDebounce.current);
+    placeSearchDebounce.current = setTimeout(async () => {
+      setPlaceSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeSearchQuery)}&countrycodes=mv&limit=4&addressdetails=1`,
+          { headers: { "Accept-Language": "en" } }
+        );
+        setPlaceSearchResults(await res.json());
+      } catch { setPlaceSearchResults([]); }
+      setPlaceSearching(false);
+    }, 400);
+    return () => { if (placeSearchDebounce.current) clearTimeout(placeSearchDebounce.current); };
+  }, [placeSearchQuery]);
+
+  const handleSavePlace = async () => {
+    if (!userProfile?.id || !pendingPlaceLocation || !placeLabel.trim()) return;
+    if (editingPlaceId) {
+      const { error } = await supabase.from("saved_locations").update({
+        label: placeLabel.trim(), name: pendingPlaceLocation.name, address: pendingPlaceLocation.address,
+        lat: pendingPlaceLocation.lat, lng: pendingPlaceLocation.lng, icon: placeIcon,
+      }).eq("id", editingPlaceId);
+      if (!error) setSavedLocations(prev => prev.map(s => s.id === editingPlaceId ? { ...s, label: placeLabel.trim(), name: pendingPlaceLocation.name, address: pendingPlaceLocation.address, lat: pendingPlaceLocation.lat, lng: pendingPlaceLocation.lng, icon: placeIcon } : s));
+    } else {
+      const { data, error } = await supabase.from("saved_locations").insert({
+        user_id: userProfile.id, label: placeLabel.trim(), name: pendingPlaceLocation.name,
+        address: pendingPlaceLocation.address, lat: pendingPlaceLocation.lat, lng: pendingPlaceLocation.lng, icon: placeIcon,
+      }).select().single();
+      if (!error && data) setSavedLocations(prev => [...prev, data]);
+    }
+    setShowPlaceForm(false); setPendingPlaceLocation(null); setPlaceLabel(""); setPlaceIcon("star"); setEditingPlaceId(null);
+  };
+
+  const handleDeletePlace = async (id: string) => {
+    await supabase.from("saved_locations").delete().eq("id", id);
+    setSavedLocations(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleEditPlace = (saved: typeof savedLocations[0]) => {
+    setEditingPlaceId(saved.id);
+    setPlaceLabel(saved.label);
+    setPlaceIcon(saved.icon);
+    setPendingPlaceLocation({ name: saved.name, address: saved.address, lat: saved.lat, lng: saved.lng });
+    setShowPlaceForm(true);
+  };
+
+  const PLACE_ICON_MAP: Record<string, typeof Home> = { home: Home, briefcase: Briefcase, star: Star, heart: Heart };
 
   const openLostItems = async () => {
     if (!userProfile?.id) return;
@@ -319,6 +397,13 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
                   >
                     <Users className="w-4 h-4 text-destructive shrink-0" />
                     <span className="text-xs font-semibold text-foreground">Contacts</span>
+                  </button>
+                  <button
+                    onClick={() => { setShowProfile(false); setShowMyPlaces(true); }}
+                    className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 active:scale-[0.98] transition-transform"
+                  >
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">My Places</span>
                   </button>
                   <button
                     onClick={openLostItems}
@@ -621,6 +706,160 @@ const TopBar = ({ onDriverMode, onLogout, userName, userProfile, onNotificationP
                 >
                   Close
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* My Places panel */}
+      {placeMapPicker && (
+        <div className="fixed inset-0 z-[700]">
+          <MapPicker
+            onConfirm={(lat, lng, name, address) => {
+              setPendingPlaceLocation({ name, address, lat, lng });
+              setPlaceMapPicker(false);
+            }}
+            onCancel={() => setPlaceMapPicker(false)}
+          />
+        </div>
+      )}
+      <AnimatePresence>
+        {showMyPlaces && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
+            onClick={() => { setShowMyPlaces(false); setShowPlaceForm(false); }}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-card rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[80dvh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 space-y-3 overflow-y-auto flex-1">
+                <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-foreground">My Places</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setShowPlaceForm(true); setEditingPlaceId(null); setPlaceLabel(""); setPlaceIcon("star"); setPendingPlaceLocation(null); }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95"
+                    >
+                      <Plus className="w-3 h-3" /> Add
+                    </button>
+                    <button onClick={() => { setShowMyPlaces(false); setShowPlaceForm(false); }} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Place form */}
+                <AnimatePresence>
+                  {showPlaceForm && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="bg-surface border border-border rounded-2xl p-3 space-y-2.5 overflow-hidden">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Label</label>
+                        <input type="text" placeholder="e.g. Home, Office, Gym..." value={placeLabel} onChange={(e) => setPlaceLabel(e.target.value)}
+                          className="w-full bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Icon</label>
+                        <div className="flex gap-2 mt-1">
+                          {([{ key: "home", Icon: Home }, { key: "briefcase", Icon: Briefcase }, { key: "heart", Icon: Heart }, { key: "star", Icon: Star }]).map(({ key, Icon }) => (
+                            <button key={key} onClick={() => setPlaceIcon(key)}
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${placeIcon === key ? "bg-primary text-primary-foreground shadow-md" : "bg-card border border-border text-muted-foreground"}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Location</label>
+                        {pendingPlaceLocation ? (
+                          <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 mt-1">
+                            <MapPin className="w-4 h-4 text-primary shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground truncate">{pendingPlaceLocation.name}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">{pendingPlaceLocation.address}</p>
+                            </div>
+                            <button onClick={() => setPendingPlaceLocation(null)} className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shrink-0 active:scale-90">
+                              <X className="w-3 h-3 text-muted-foreground" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 mt-1">
+                            <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2">
+                              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0 mr-2" />
+                              <input type="text" placeholder="Search location..." value={placeSearchQuery} onChange={(e) => setPlaceSearchQuery(e.target.value)}
+                                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" />
+                              {placeSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-2" />}
+                            </div>
+                            {placeSearchResults.length > 0 && (
+                              <div className="bg-card border border-border rounded-xl shadow-lg max-h-36 overflow-y-auto">
+                                {placeSearchResults.map((r) => (
+                                  <button key={r.place_id} onClick={() => {
+                                    setPendingPlaceLocation({ name: r.name || r.display_name.split(",")[0], address: r.display_name.split(",").slice(0, 3).join(", "), lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
+                                    setPlaceSearchQuery(""); setPlaceSearchResults([]);
+                                  }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0">
+                                    <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    <div className="text-left min-w-0">
+                                      <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                                      <p className="text-[10px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 2).join(",")}</p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <button onClick={() => setPlaceMapPicker(true)}
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold w-full justify-center active:scale-95 transition-all">
+                              <MapPinned className="w-3.5 h-3.5" /> Pick on map
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={handleSavePlace} disabled={!placeLabel.trim() || !pendingPlaceLocation}
+                        className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-40">
+                        {editingPlaceId ? "Update" : "Save"}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Saved locations list */}
+                {savedLocations.length === 0 && !showPlaceForm && (
+                  <div className="text-center py-8">
+                    <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No saved places yet</p>
+                    <p className="text-xs text-muted-foreground">Add your home, office, or favorite spots</p>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {savedLocations.map((saved) => {
+                    const IconComp = PLACE_ICON_MAP[saved.icon] || Star;
+                    return (
+                      <div key={saved.id} className="flex items-center gap-3 bg-surface rounded-xl px-3 py-2.5 border border-border/50">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <IconComp className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{saved.label}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{saved.name} · {saved.address}</p>
+                        </div>
+                        <button onClick={() => handleEditPlace(saved)} className="w-7 h-7 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 active:scale-90">
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                        <button onClick={() => handleDeletePlace(saved.id)} className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 active:scale-90">
+                          <Trash2 className="w-3 h-3 text-destructive" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </motion.div>
           </motion.div>
