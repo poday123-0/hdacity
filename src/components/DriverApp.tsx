@@ -315,9 +315,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     fetchChats();
   }, [profileTab, userProfile?.id]);
 
-  // Default fallback location (Male, Maldives) when GPS not available
-  const FALLBACK_LAT = 4.1755;
-  const FALLBACK_LNG = 73.5093;
+   // No fallback location — only use actual GPS
 
   // Push driver location to driver_locations when online
   useEffect(() => {

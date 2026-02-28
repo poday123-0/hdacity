@@ -75,14 +75,14 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 
   // Init map
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    if (!isLoaded || !mapRef.current || mapInstance.current || !userPos) return;
     const g = (window as any).google;
     if (!g?.maps) return;
 
     const isDark = document.documentElement.classList.contains("dark");
 
     const map = new g.maps.Map(mapRef.current, {
-      center: userPos || MALE_CENTER,
+      center: userPos,
       zoom: 15,
       disableDefaultUI: true,
       zoomControl: false,
@@ -92,7 +92,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 
     const userMarker = new g.maps.Marker({
       map,
-      position: userPos || MALE_CENTER,
+      position: userPos,
       zIndex: 900,
       icon: {
         path: g.maps.SymbolPath.CIRCLE,
@@ -118,7 +118,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     map.addListener("dragstart", () => { userInteractingRef.current = true; });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded]);
+  }, [isLoaded, userPos]);
 
   // Theme observer
   useEffect(() => {
