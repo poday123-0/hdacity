@@ -585,16 +585,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (screen !== "online" || !userProfile?.id) return;
     let isActive = true;
 
-    // Primary: Realtime subscription for new trips
+    // Primary: Realtime subscription for new trips (requested AND scheduled)
     const channel = supabase.
     channel("driver-trip-requests").
     on("postgres_changes", {
       event: "INSERT",
       schema: "public",
       table: "trips",
-      filter: "status=eq.requested"
     }, async (payload) => {
       const trip = payload.new as any;
+      if (trip.status !== "requested" && trip.status !== "scheduled") return;
       if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
         // In auto_nearest mode, only show if targeted at this driver
         if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
@@ -622,13 +622,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 5s for new requested trips
+    // Fallback: Poll every 5s for new requested/scheduled trips
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
       const { data } = await supabase.
       from("trips").
       select("*").
-      eq("status", "requested").
+      in("status", ["requested", "scheduled"]).
       order("requested_at", { ascending: false }).
       limit(1);
 
@@ -1925,11 +1925,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 // First check if trip is still available
                 const { data: freshTrip } = await supabase.
                 from("trips").
-                select("status, driver_id").
+                select("status, driver_id, booking_type").
                 eq("id", currentTrip.id).
                 single();
 
-                if (!freshTrip || freshTrip.status !== "requested") {
+                if (!freshTrip || (freshTrip.status !== "requested" && freshTrip.status !== "scheduled")) {
                   toast({ title: "Trip Unavailable", description: "This trip has already been accepted by another driver.", variant: "destructive" });
                   setScreen("online");
                   setCurrentTrip(null);
@@ -1937,12 +1937,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   return;
                 }
 
-                // Accept trip in database (conditional on still being requested)
+                const isScheduled = freshTrip.booking_type === "scheduled" || currentTrip.booking_type === "scheduled";
+
+                // Accept trip in database
                 const { error, count } = await supabase.from("trips").update({
                   status: "accepted",
                   driver_id: userProfile.id,
-                  accepted_at: new Date().toISOString()
-                }).eq("id", currentTrip.id).eq("status", "requested");
+                  accepted_at: new Date().toISOString(),
+                  vehicle_id: selectedVehicleId || null,
+                }).eq("id", currentTrip.id).in("status", ["requested", "scheduled"]);
 
                 if (error) {
                   toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1964,10 +1967,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   return;
                 }
 
-                // Mark driver as on trip
-                await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-
-                setScreen("navigating");
+                // For scheduled rides, driver stays available (is_on_trip = false)
+                // For immediate rides, mark driver as on trip
+                if (!isScheduled) {
+                  await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                  setScreen("navigating");
+                } else {
+                  // Scheduled trip accepted — driver goes back to online, stays available
+                  toast({ title: "📅 Scheduled Ride Accepted!", description: `You'll be notified 10 minutes before pickup at ${currentTrip.scheduled_at ? new Date(currentTrip.scheduled_at).toLocaleString() : "the scheduled time"}.` });
+                  setScreen("online");
+                  setCurrentTrip(null);
+                  setPassengerProfile(null);
+                }
               }} className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 text-white rounded-xl py-3 text-sm font-bold active:scale-95 transition-transform">
                   <CheckCircle className="w-4 h-4" />Accept
                 </button>

@@ -145,7 +145,7 @@ const Index = () => {
         .from("trips")
         .select("*")
         .eq("passenger_id", userProfile.id)
-        .in("status", ["requested", "accepted", "arrived", "in_progress"])
+        .in("status", ["requested", "scheduled", "accepted", "arrived", "in_progress"])
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -167,7 +167,7 @@ const Index = () => {
         setDropoff({ id: "restored-dropoff", name: activeTrip.dropoff_address || "Dropoff", address: activeTrip.dropoff_address || "", lat: Number(activeTrip.dropoff_lat), lng: Number(activeTrip.dropoff_lng) });
       }
 
-      if (activeTrip.status === "requested") {
+      if (activeTrip.status === "requested" || activeTrip.status === "scheduled") {
         setPassengerScreen("searching");
       } else if (["accepted", "arrived", "in_progress"].includes(activeTrip.status)) {
         // Fetch driver info
@@ -193,6 +193,7 @@ const Index = () => {
             favara_accounts: favaraRes.data || [],
           });
         }
+        // For scheduled+accepted trips, show driver-matching with scheduled info
         setPassengerScreen("driver-matching");
       }
 
@@ -434,8 +435,8 @@ const Index = () => {
     setPaymentMethod(pm);
     if (!pickup || !dropoff || !selectedVehicleType) return;
 
-    // For scheduled rides, skip driver availability check
-    if (bookingType !== "scheduled") {
+    // For scheduled rides, skip driver availability check (drivers will be notified immediately)
+    if (bookingType !== "scheduled" && bookingType !== "hourly") {
       const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       const { count } = await supabase
         .from("driver_locations")
@@ -505,14 +506,28 @@ const Index = () => {
 
       setCurrentTripId(data.id);
 
-      // For scheduled rides, show confirmation and go back to home
+      // For scheduled rides, send push notification immediately to online drivers, then show confirmation
       if (bookingType === "scheduled") {
+        // Notify online drivers immediately
+        try {
+          const { data: onlineDrivers } = await supabase
+            .from("driver_locations")
+            .select("driver_id")
+            .eq("is_online", true);
+          if (onlineDrivers && onlineDrivers.length > 0) {
+            const driverIds = onlineDrivers.map((d: any) => d.driver_id);
+            await notifyTripRequested(driverIds, data.id, pickup.name);
+          }
+        } catch (pushErr) {
+          console.warn("Push notification failed:", pushErr);
+        }
+
         toast({
           title: "📅 Ride Scheduled!",
-          description: `Your ride has been scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}. Drivers will be notified when the time arrives.`,
+          description: `Your ride has been scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}. Drivers are being notified now.`,
         });
-        setPassengerScreen("home");
-        setCurrentTripId(null);
+        // Go to searching screen so passenger can see when a driver accepts
+        setPassengerScreen("searching");
         return;
       }
 
@@ -759,7 +774,10 @@ const Index = () => {
             <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} bookingNotes={bookingNotes} />
           )}
           {passengerScreen === "searching" && (
-            <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng} onCancel={() => {
+            <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng}
+              isScheduled={bookingType === "scheduled"}
+              scheduledAt={scheduledAt}
+              onCancel={() => {
               if (currentTripId) supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
               setCurrentTripId(null);
               setPassengerScreen("home");
