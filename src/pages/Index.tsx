@@ -88,6 +88,27 @@ const Index = () => {
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
   const [tripStatus, setTripStatus] = useState<string>("accepted");
 
+  // Passenger font size
+  const [passengerTextSize, setPassengerTextSize] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem("hda_passenger_text_size");
+      return v ? parseFloat(v) : 1;
+    } catch { return 1; }
+  });
+
+  // Load admin default passenger font size if no local preference
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("hda_passenger_text_size")) return;
+    } catch { return; }
+    supabase.from("system_settings").select("value").eq("key", "default_passenger_font_size").single().then(({ data }) => {
+      if (data?.value) {
+        const pct = typeof data.value === "number" ? data.value : parseFloat(String(data.value));
+        if (pct && pct > 0) setPassengerTextSize(pct / 100);
+      }
+    });
+  }, []);
+
   // Save mode preference
   useEffect(() => {
     try { localStorage.setItem(MODE_KEY, appMode); } catch {}
@@ -736,7 +757,7 @@ const Index = () => {
 
   // PASSENGER MODE
   return (
-    <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background">
+    <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background" style={{ fontSize: `${passengerTextSize * 16}px` }}>
       <PullToRefreshIndicator pullDistance={passengerPTR.pullDistance} refreshing={passengerPTR.refreshing} progress={passengerPTR.progress} />
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} />

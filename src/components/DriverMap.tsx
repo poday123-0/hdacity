@@ -180,15 +180,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current]);
 
-  // Theme observer
+  // Theme observer — debounced with overlay fade to mask map style re-render
+  const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
     if (!mapInstance.current) return;
+    let timeout: ReturnType<typeof setTimeout>;
     const observer = new MutationObserver(() => {
-      const isDark = document.documentElement.classList.contains("dark");
-      mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+      setThemeTransition(true);
+      timeout = setTimeout(() => {
+        const isDark = document.documentElement.classList.contains("dark");
+        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+        setTimeout(() => setThemeTransition(false), 350);
+      }, 50);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); clearTimeout(timeout); };
   }, [isLoaded, isNavigating]);
 
   // Navigation mode: tilt map + higher zoom + heading rotation
@@ -644,6 +650,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   return (
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
+      {/* Theme transition overlay */}
+      <div
+        className={`absolute inset-0 z-[1] pointer-events-none bg-background transition-opacity duration-300 ${themeTransition ? 'opacity-100' : 'opacity-0'}`}
+      />
 
       {/* Route/follow toggle removed — now in DriverApp sidebar */}
 

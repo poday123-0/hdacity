@@ -220,6 +220,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     } catch {return 1;}
   });
 
+  // Load admin default font size if user hasn't set a personal preference
+  useEffect(() => {
+    const hasLocal = (() => {
+      try {
+        if (userProfile?.id && localStorage.getItem(`hda_driver_text_size_${userProfile.id}`)) return true;
+        if (localStorage.getItem("hda_driver_text_size")) return true;
+        return false;
+      } catch { return false; }
+    })();
+    if (hasLocal) return;
+    supabase.from("system_settings").select("value").eq("key", "default_driver_font_size").single().then(({ data }) => {
+      if (data?.value) {
+        const pct = typeof data.value === "number" ? data.value : parseFloat(String(data.value));
+        if (pct && pct > 0) setTextSize(pct / 100);
+      }
+    });
+  }, [userProfile?.id]);
+
   // Fetch unread notification count
   useEffect(() => {
     const lastSeen = localStorage.getItem("hda_driver_notif_seen") || "2000-01-01T00:00:00Z";
@@ -3126,16 +3144,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <p style={{ fontSize: '12px' }} className="text-muted-foreground">Adjust app text size</p>
                       </div>
                     </div>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground" style={{ fontSize: '11px' }}>A</span>
                         <span className="font-semibold text-foreground" style={{ fontSize: '12px' }}>{Math.round(textSize * 100)}%</span>
-                        <span className="text-muted-foreground font-bold" style={{ fontSize: '18px' }}>A</span>
+                        <span className="text-muted-foreground font-bold" style={{ fontSize: '22px' }}>A</span>
                       </div>
                       <input
                     type="range"
                     min="0.75"
-                    max="1.35"
+                    max="2.0"
                     step="0.05"
                     value={textSize}
                     onChange={(e) => {
@@ -3144,7 +3162,40 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       try {localStorage.setItem(textSizeKey, String(val));} catch {}
                     }}
                     className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border" />
-
+                      {/* Preset buttons */}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {[
+                          { label: "Small", value: 0.85 },
+                          { label: "Normal", value: 1.0 },
+                          { label: "Large", value: 1.25 },
+                          { label: "X-Large", value: 1.5 },
+                          { label: "XX-Large", value: 1.75 },
+                          { label: "Max", value: 2.0 },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            onClick={() => {
+                              setTextSize(preset.value);
+                              try {localStorage.setItem(textSizeKey, String(preset.value));} catch {}
+                            }}
+                            style={{ fontSize: '11px' }}
+                            className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                              Math.abs(textSize - preset.value) < 0.03
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Live preview */}
+                      <div className="bg-muted/30 rounded-xl p-3 border border-border/30 space-y-1.5">
+                        <p style={{ fontSize: '11px' }} className="text-muted-foreground font-medium uppercase tracking-wider">Preview</p>
+                        <p style={{ fontSize: `${textSize * 14}px` }} className="text-foreground font-semibold">Trip request from Malé City</p>
+                        <p style={{ fontSize: `${textSize * 12}px` }} className="text-muted-foreground">Pickup: Boduthakurufaanu Magu → Airport</p>
+                        <p style={{ fontSize: `${textSize * 16}px` }} className="text-primary font-bold">MVR 75.00</p>
+                      </div>
                     </div>
                   </div>
 

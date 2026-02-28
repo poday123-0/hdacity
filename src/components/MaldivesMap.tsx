@@ -134,15 +134,21 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current]);
 
-  // Theme observer
+  // Theme observer — debounced with overlay
+  const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
     if (!mapInstance.current) return;
+    let timeout: ReturnType<typeof setTimeout>;
     const observer = new MutationObserver(() => {
-      const isDark = document.documentElement.classList.contains("dark");
-      mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+      setThemeTransition(true);
+      timeout = setTimeout(() => {
+        const isDark = document.documentElement.classList.contains("dark");
+        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+        setTimeout(() => setThemeTransition(false), 350);
+      }, 50);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); clearTimeout(timeout); };
   }, [isLoaded]);
 
   // Update user marker
@@ -332,7 +338,12 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     return <div className="w-full h-full bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <div className="relative" style={{ width: "100%", height: "100%" }}>
+      <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+      <div className={`absolute inset-0 z-[1] pointer-events-none bg-background transition-opacity duration-300 ${themeTransition ? 'opacity-100' : 'opacity-0'}`} />
+    </div>
+  );
 };
 
 const darkMapStyle = [
