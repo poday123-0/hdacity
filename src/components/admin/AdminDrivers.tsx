@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image } from "lucide-react";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 
-const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "" };
+const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
 
 type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review";
 
@@ -41,10 +41,12 @@ const AdminDrivers = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rejectVehicleId, setRejectVehicleId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
+  const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [driversRes, banksRes, companiesRes, vtRes, vehiclesRes] = await Promise.all([
+    const [driversRes, banksRes, companiesRes, vtRes, vehiclesRes, settingsRes] = await Promise.all([
       (() => {
         let q = supabase.from("profiles").select("*").ilike("user_type", "%Driver%").order("created_at", { ascending: false });
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
@@ -54,12 +56,21 @@ const AdminDrivers = () => {
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
       supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("*, vehicle_types(name, image_url)").order("created_at", { ascending: false }),
+      supabase.from("system_settings").select("key, value").in("key", ["default_company_id", "blocked_center_codes"]),
     ]);
     setDrivers(driversRes.data || []);
     setBanks(banksRes.data || []);
     setCompanies(companiesRes.data || []);
     setVehicleTypes(vtRes.data || []);
     setAllVehicles(vehiclesRes.data || []);
+    // Load settings
+    (settingsRes.data || []).forEach((s: any) => {
+      if (s.key === "default_company_id") setDefaultCompanyId(typeof s.value === "string" ? s.value : null);
+      if (s.key === "blocked_center_codes") {
+        const val = Array.isArray(s.value) ? s.value : [];
+        setBlockedCodes(val.map(String));
+      }
+    });
 
     const vMap: Record<string, any[]> = {};
     (vehiclesRes.data || []).forEach((v: any) => {
@@ -233,6 +244,7 @@ const AdminDrivers = () => {
         color: v.color || "", year: v.year?.toString() || "", vehicle_type_id: v.vehicle_type_id || "",
         image_url: v.image_url || "", registration_url: v.registration_url || "", insurance_url: v.insurance_url || "",
         vehicle_status: v.vehicle_status || "pending", rejection_reason: v.rejection_reason || "",
+        center_code: v.center_code || "",
       });
     } else {
       setEditingVehicleId(null);
@@ -242,12 +254,26 @@ const AdminDrivers = () => {
 
   const saveVehicle = async () => {
     if (!expandedDriver || !vehicleForm.plate_number) return;
-    const payload = {
+    // Validate center code against blocked list
+    if (vehicleForm.center_code) {
+      const driver = drivers.find(d => d.id === expandedDriver);
+      const isDefaultCompany = driver?.company_id === defaultCompanyId;
+      if (!isDefaultCompany) {
+        toast({ title: "Center codes only for default company", description: "Only drivers in the default company (HDA TAXI) can have center codes.", variant: "destructive" });
+        return;
+      }
+      if (blockedCodes.includes(vehicleForm.center_code)) {
+        toast({ title: "Blocked code", description: `Center code "${vehicleForm.center_code}" is reserved and cannot be used.`, variant: "destructive" });
+        return;
+      }
+    }
+    const payload: any = {
       plate_number: vehicleForm.plate_number, make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
       year: vehicleForm.year ? parseInt(vehicleForm.year) : null, vehicle_type_id: vehicleForm.vehicle_type_id || null,
       driver_id: expandedDriver, image_url: vehicleForm.image_url || null,
       registration_url: vehicleForm.registration_url || null, insurance_url: vehicleForm.insurance_url || null,
       vehicle_status: vehicleForm.vehicle_status || "pending", rejection_reason: vehicleForm.rejection_reason || null,
+      center_code: vehicleForm.center_code || null,
     };
     const { error } = editingVehicleId
       ? await supabase.from("vehicles").update(payload).eq("id", editingVehicleId)
@@ -821,6 +847,20 @@ const AdminDrivers = () => {
                                     <label className="text-xs text-muted-foreground">Year</label>
                                     <input value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="2023" className={inputCls} />
                                   </div>
+                                  {/* Center Code - only for default company drivers */}
+                                  {(() => {
+                                    const driver = drivers.find(d => d.id === expandedDriver);
+                                    const isDefaultCompany = driver?.company_id === defaultCompanyId;
+                                    return isDefaultCompany ? (
+                                      <div>
+                                        <label className="text-xs text-muted-foreground">Center Code</label>
+                                        <input value={vehicleForm.center_code} onChange={(e) => setVehicleForm({ ...vehicleForm, center_code: e.target.value.replace(/\D/g, "") })} placeholder="e.g. 1, 2, 3..." className={inputCls} />
+                                        {vehicleForm.center_code && blockedCodes.includes(vehicleForm.center_code) && (
+                                          <p className="text-[10px] text-destructive mt-0.5">⚠ This code is reserved</p>
+                                        )}
+                                      </div>
+                                    ) : null;
+                                  })()}
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
@@ -891,6 +931,9 @@ const AdminDrivers = () => {
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <p className="text-sm font-bold text-foreground">{v.plate_number}</p>
+                                          {v.center_code && (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">#{v.center_code}</span>
+                                          )}
                                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                             v.vehicle_status === "approved" ? "bg-green-100 text-green-700" :
                                             v.vehicle_status === "rejected" ? "bg-red-100 text-red-700" :
