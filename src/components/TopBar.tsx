@@ -438,6 +438,15 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     <Share2 className="w-5 h-5 text-accent-foreground" />
                     <span className="text-[10px] font-semibold text-foreground">Share</span>
                   </button>
+                  {onRegisterDriver && (
+                    <button
+                      onClick={() => { setShowProfile(false); onRegisterDriver(); }}
+                      className="flex flex-col items-center gap-1.5 bg-primary/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
+                    >
+                      <Car className="w-5 h-5 text-primary" />
+                      <span className="text-[10px] font-semibold text-foreground">Become Driver</span>
+                    </button>
+                  )}
                   {onLogout && (
                     <button
                       onClick={() => { setShowProfile(false); onLogout(); }}
