@@ -217,18 +217,31 @@ const Index = () => {
   const fetchOnlineDrivers = useCallback(async () => {
     const { data } = await supabase
       .from("driver_locations")
-      .select(`id, lat, lng, driver_id, vehicle_type_id, vehicle_types:vehicle_type_id (name, image_url, icon, map_icon_url)`)
+      .select("id, lat, lng, driver_id, vehicle_type_id")
       .eq("is_online", true)
       .eq("is_on_trip", false);
 
-    if (data) {
+    if (data && data.length > 0) {
+      // Get unique vehicle type IDs
+      const vtIds = [...new Set(data.map(d => d.vehicle_type_id).filter(Boolean))] as string[];
+      let vtMap: Record<string, { name: string; map_icon_url: string | null }> = {};
+
+      if (vtIds.length > 0) {
+        const { data: vtData } = await supabase
+          .from("vehicle_types")
+          .select("id, name, map_icon_url, image_url")
+          .in("id", vtIds);
+        vtData?.forEach((vt: any) => {
+          vtMap[vt.id] = { name: vt.name, map_icon_url: vt.map_icon_url || vt.image_url };
+        });
+      }
+
       const markers = data.map((dl: any) => ({
         id: dl.id,
         lat: dl.lat,
         lng: dl.lng,
-        name: dl.vehicle_types?.name || "Driver",
-        imageUrl: dl.vehicle_types?.map_icon_url || dl.vehicle_types?.image_url || undefined,
-        icon: dl.vehicle_types?.icon || undefined,
+        name: vtMap[dl.vehicle_type_id]?.name || "Driver",
+        imageUrl: vtMap[dl.vehicle_type_id]?.map_icon_url || undefined,
       }));
       setVehicleMarkers(markers);
     }
