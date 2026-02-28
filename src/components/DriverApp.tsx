@@ -132,6 +132,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showEarnings, setShowEarnings] = useState(true);
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
+  const [driverWalletBalance, setDriverWalletBalance] = useState(0);
+  const [driverWalletId, setDriverWalletId] = useState<string | null>(null);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<any[]>([]);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showPayFeeModal, setShowPayFeeModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawNotes, setWithdrawNotes] = useState("");
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
@@ -829,7 +836,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           setAdminBankInfo(typeof adminBank.value === "string" ? JSON.parse(adminBank.value) : adminBank.value);
         }
 
-        // Fetch today's stats
+        // Fetch driver wallet
+        const { data: walletData } = await supabase.from("wallets").select("id, balance").eq("user_id", userProfile.id).maybeSingle();
+        if (walletData) {
+          setDriverWalletBalance(Number(walletData.balance));
+          setDriverWalletId(walletData.id);
+          // Fetch pending withdrawals
+          const { data: withdrawals } = await supabase.from("wallet_withdrawals").select("*").eq("user_id", userProfile.id).order("created_at", { ascending: false }).limit(10);
+          setPendingWithdrawals(withdrawals || []);
+        } else {
+          // Create wallet if none exists
+          const { data: newWallet } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
+          if (newWallet) { setDriverWalletId(newWallet.id); }
+        }
+
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const [tripsRes, declinesRes] = await Promise.all([
@@ -2757,6 +2777,55 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 {profileTab === "billing" &&
               <div className="space-y-3">
+
+                    {/* Wallet Section */}
+                    <div className="bg-primary/10 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="w-5 h-5 text-primary" />
+                          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">My Wallet</p>
+                        </div>
+                      </div>
+                      <p className="text-3xl font-bold text-primary">{driverWalletBalance.toFixed(2)} <span className="text-sm font-semibold">MVR</span></p>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowWithdrawModal(true)}
+                          disabled={driverWalletBalance <= 0}
+                          className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40"
+                        >
+                          Request Withdraw
+                        </button>
+                        {Number(userProfile?.monthly_fee || 0) > 0 && !companyInfo?.fee_free && (
+                          <button
+                            onClick={() => setShowPayFeeModal(true)}
+                            disabled={driverWalletBalance < Number(userProfile?.monthly_fee || 0)}
+                            className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40"
+                          >
+                            Pay Fee from Wallet
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Pending withdrawals */}
+                      {pendingWithdrawals.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase">Pending Withdrawals</p>
+                          {pendingWithdrawals.map(w => (
+                            <div key={w.id} className="flex items-center justify-between bg-card rounded-lg px-3 py-2">
+                              <div>
+                                <p className="text-xs font-semibold text-foreground">{Number(w.amount).toFixed(2)} MVR</p>
+                                <p className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
+                              </div>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${w.status === 'pending' ? 'bg-amber-500/10 text-amber-600' : w.status === 'approved' ? 'bg-green-500/10 text-green-600' : 'bg-destructive/10 text-destructive'}`}>
+                                {w.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Company info & discounts */}
                     {companyInfo ?
                 <div className="bg-surface rounded-xl p-3 space-y-2">
@@ -2994,6 +3063,99 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       <PWAInstallPrompt />
       <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowWithdrawModal(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-foreground">Request Withdrawal</h3>
+            <p className="text-sm text-muted-foreground">Available: {driverWalletBalance.toFixed(2)} MVR</p>
+            <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} placeholder="Amount (MVR)" className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary" />
+            <input value={withdrawNotes} onChange={e => setWithdrawNotes(e.target.value)} placeholder="Notes (optional)" className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            <div className="flex gap-2">
+              <button onClick={() => setShowWithdrawModal(false)} className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm">Cancel</button>
+              <button
+                disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > driverWalletBalance}
+                onClick={async () => {
+                  if (!driverWalletId || !userProfile?.id) return;
+                  await supabase.from("wallet_withdrawals").insert({
+                    wallet_id: driverWalletId,
+                    user_id: userProfile.id,
+                    amount: Number(withdrawAmount),
+                    notes: withdrawNotes,
+                    status: "pending",
+                  } as any);
+                  toast({ title: "Withdrawal requested", description: `${withdrawAmount} MVR withdrawal submitted for approval` });
+                  setShowWithdrawModal(false);
+                  setWithdrawAmount("");
+                  setWithdrawNotes("");
+                  // Refresh withdrawals
+                  const { data: w } = await supabase.from("wallet_withdrawals").select("*").eq("user_id", userProfile.id).order("created_at", { ascending: false }).limit(10);
+                  setPendingWithdrawals(w || []);
+                }}
+                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Fee from Wallet Modal */}
+      {showPayFeeModal && (
+        <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowPayFeeModal(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-foreground">Pay Monthly Fee</h3>
+            <p className="text-sm text-muted-foreground">Wallet: {driverWalletBalance.toFixed(2)} MVR</p>
+            <div className="bg-surface rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{userProfile?.monthly_fee || 0} MVR</p>
+              <p className="text-xs text-muted-foreground mt-1">Monthly center fee</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowPayFeeModal(false)} className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm">Cancel</button>
+              <button
+                disabled={driverWalletBalance < Number(userProfile?.monthly_fee || 0)}
+                onClick={async () => {
+                  if (!driverWalletId || !userProfile?.id) return;
+                  const fee = Number(userProfile?.monthly_fee || 0);
+                  const now = new Date().toISOString();
+                  const currentMonth = new Date().toISOString().slice(0, 7);
+                  
+                  // Deduct from wallet
+                  const newBalance = driverWalletBalance - fee;
+                  await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", driverWalletId);
+                  await supabase.from("wallet_transactions").insert({
+                    wallet_id: driverWalletId,
+                    user_id: userProfile.id,
+                    amount: fee,
+                    type: "debit",
+                    reason: `Monthly fee - ${currentMonth}`,
+                  } as any);
+                  
+                  // Create driver_payment record as approved
+                  await supabase.from("driver_payments").insert({
+                    driver_id: userProfile.id,
+                    amount: fee,
+                    payment_month: currentMonth,
+                    status: "approved",
+                    notes: "Paid from wallet",
+                    submitted_at: now,
+                    approved_at: now,
+                  } as any);
+                  
+                  setDriverWalletBalance(newBalance);
+                  toast({ title: "Fee paid!", description: `${fee} MVR deducted from your wallet` });
+                  setShowPayFeeModal(false);
+                }}
+                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40"
+              >
+                Pay {userProfile?.monthly_fee || 0} MVR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>);
 
 };
