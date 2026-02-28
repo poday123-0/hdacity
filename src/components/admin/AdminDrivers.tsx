@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image } from "lucide-react";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "" };
+
+type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review";
 
 const AdminDrivers = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -12,6 +14,7 @@ const AdminDrivers = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [driverVehicles, setDriverVehicles] = useState<Record<string, any[]>>({});
+  const [allVehicles, setAllVehicles] = useState<any[]>([]);
   const [driverRatings, setDriverRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [driverDeclines, setDriverDeclines] = useState<Record<string, { today: number; total: number }>>({});
   const [search, setSearch] = useState("");
@@ -33,6 +36,11 @@ const AdminDrivers = () => {
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [rejectVehicleId, setRejectVehicleId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const fetchAll = async () => {
     setLoading(true);
@@ -45,14 +53,14 @@ const AdminDrivers = () => {
       supabase.from("banks").select("*").eq("is_active", true).order("name"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
       supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("vehicles").select("*, vehicle_types(name)").order("created_at", { ascending: false }),
+      supabase.from("vehicles").select("*, vehicle_types(name, image_url)").order("created_at", { ascending: false }),
     ]);
     setDrivers(driversRes.data || []);
     setBanks(banksRes.data || []);
     setCompanies(companiesRes.data || []);
     setVehicleTypes(vtRes.data || []);
+    setAllVehicles(vehiclesRes.data || []);
 
-    // Group vehicles by driver_id
     const vMap: Record<string, any[]> = {};
     (vehiclesRes.data || []).forEach((v: any) => {
       if (v.driver_id) {
@@ -62,24 +70,15 @@ const AdminDrivers = () => {
     });
     setDriverVehicles(vMap);
 
-    // Fetch driver ratings and declines
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const [ratedTripsRes, declinesRes] = await Promise.all([
-      supabase
-        .from("trips")
-        .select("driver_id, rating")
-        .eq("status", "completed")
-        .not("rating", "is", null)
-        .not("driver_id", "is", null),
-      supabase
-        .from("trip_declines")
-        .select("driver_id, declined_at")
+      supabase.from("trips").select("driver_id, rating").eq("status", "completed").not("rating", "is", null).not("driver_id", "is", null),
+      supabase.from("trip_declines").select("driver_id, declined_at"),
     ]);
-    
-    const ratedTrips = ratedTripsRes.data;
+
     const rMap: Record<string, { sum: number; count: number }> = {};
-    (ratedTrips || []).forEach((t: any) => {
+    (ratedTripsRes.data || []).forEach((t: any) => {
       if (!rMap[t.driver_id]) rMap[t.driver_id] = { sum: 0, count: 0 };
       rMap[t.driver_id].sum += Number(t.rating);
       rMap[t.driver_id].count += 1;
@@ -90,7 +89,6 @@ const AdminDrivers = () => {
     });
     setDriverRatings(ratingsMap);
 
-    // Process declines
     const dMap: Record<string, { today: number; total: number }> = {};
     (declinesRes.data || []).forEach((d: any) => {
       if (!dMap[d.driver_id]) dMap[d.driver_id] = { today: 0, total: 0 };
@@ -98,62 +96,53 @@ const AdminDrivers = () => {
       if (new Date(d.declined_at) >= todayStart) dMap[d.driver_id].today += 1;
     });
     setDriverDeclines(dMap);
-
     setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, [search]);
 
+  // Computed stats
+  const pendingDrivers = drivers.filter(d => d.status === "Pending" || d.status === "Pending Review");
+  const pendingVehicles = allVehicles.filter(v => v.vehicle_status === "pending");
+  const rejectedVehicles = allVehicles.filter(v => v.vehicle_status === "rejected");
+  const incompleteDocDrivers = drivers.filter(d => {
+    const count = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
+    return count < 4 && count > 0;
+  });
+
+  // Filtered drivers
+  const filteredDrivers = drivers.filter(d => {
+    if (statusFilter !== "all" && d.status !== statusFilter) return false;
+    if (companyFilter && d.company_id !== companyFilter) return false;
+    return true;
+  });
+
   // Bulk actions
   const toggleSelect = (id: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
-
   const toggleSelectAll = () => {
-    if (selected.size === drivers.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(drivers.map(d => d.id)));
-    }
+    if (selected.size === filteredDrivers.length) setSelected(new Set());
+    else setSelected(new Set(filteredDrivers.map(d => d.id)));
   };
-
   const bulkSetStatus = async (status: string) => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
     if (status === "Active") {
-      // Check docs for each
       const incomplete = drivers.filter(d => ids.includes(d.id) && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4);
-      if (incomplete.length > 0) {
-        toast({ title: "Cannot approve", description: `${incomplete.length} driver(s) have incomplete documents`, variant: "destructive" });
-        return;
-      }
+      if (incomplete.length > 0) { toast({ title: "Cannot approve", description: `${incomplete.length} driver(s) have incomplete documents`, variant: "destructive" }); return; }
     }
     const { error } = await supabase.from("profiles").update({ status }).in("id", ids);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `${ids.length} driver(s) set to ${status}` });
-      setSelected(new Set());
-      fetchAll();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: `${ids.length} driver(s) set to ${status}` }); setSelected(new Set()); fetchAll(); }
   };
-
   const bulkDelete = async () => {
     if (selected.size === 0) return;
     if (!confirm(`Delete ${selected.size} driver(s)? This cannot be undone.`)) return;
     const ids = Array.from(selected);
     const { error } = await supabase.from("profiles").delete().in("id", ids);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `${ids.length} driver(s) deleted` });
-      setSelected(new Set());
-      fetchAll();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: `${ids.length} driver(s) deleted` }); setSelected(new Set()); fetchAll(); }
   };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
@@ -161,10 +150,7 @@ const AdminDrivers = () => {
     if (newStatus === "Active") {
       const driver = drivers.find(d => d.id === id);
       const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
-      if (docCount < 4) {
-        toast({ title: "Cannot approve", description: `Driver has only ${docCount}/4 documents uploaded. All documents are required.`, variant: "destructive" });
-        return;
-      }
+      if (docCount < 4) { toast({ title: "Cannot approve", description: `Driver has only ${docCount}/4 documents uploaded.`, variant: "destructive" }); return; }
     }
     await supabase.from("profiles").update({ status: newStatus }).eq("id", id);
     toast({ title: `Driver ${newStatus === "Active" ? "approved ✅" : "deactivated"}` });
@@ -188,11 +174,7 @@ const AdminDrivers = () => {
     const ext = file.name.split(".").pop();
     const path = `driver-docs/${editingId}/${field}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("driver-documents").upload(path, file);
-    if (error) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-      setUploading(null);
-      return;
-    }
+    if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); setUploading(null); return; }
     const { data: urlData } = supabase.storage.from("driver-documents").getPublicUrl(path);
     setEditForm((prev: any) => ({ ...prev, [field]: urlData.publicUrl }));
     setUploading(null);
@@ -211,24 +193,15 @@ const AdminDrivers = () => {
       id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
       taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
     } as any).eq("id", editingId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Driver updated!" });
-      setEditingId(null);
-      fetchAll();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Driver updated!" }); setEditingId(null); fetchAll(); }
   };
 
   const deleteDriver = async (id: string) => {
     if (!confirm("Remove this driver profile? This cannot be undone.")) return;
     const { error } = await supabase.from("profiles").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Driver removed" });
-      fetchAll();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Driver removed" }); fetchAll(); }
   };
 
   // Vehicle CRUD
@@ -252,29 +225,17 @@ const AdminDrivers = () => {
   const saveVehicle = async () => {
     if (!expandedDriver || !vehicleForm.plate_number) return;
     const payload = {
-      plate_number: vehicleForm.plate_number,
-      make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
-      year: vehicleForm.year ? parseInt(vehicleForm.year) : null,
-      vehicle_type_id: vehicleForm.vehicle_type_id || null,
-      driver_id: expandedDriver,
-      image_url: vehicleForm.image_url || null,
-      registration_url: vehicleForm.registration_url || null,
-      insurance_url: vehicleForm.insurance_url || null,
-      vehicle_status: vehicleForm.vehicle_status || "pending",
-      rejection_reason: vehicleForm.rejection_reason || null,
+      plate_number: vehicleForm.plate_number, make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
+      year: vehicleForm.year ? parseInt(vehicleForm.year) : null, vehicle_type_id: vehicleForm.vehicle_type_id || null,
+      driver_id: expandedDriver, image_url: vehicleForm.image_url || null,
+      registration_url: vehicleForm.registration_url || null, insurance_url: vehicleForm.insurance_url || null,
+      vehicle_status: vehicleForm.vehicle_status || "pending", rejection_reason: vehicleForm.rejection_reason || null,
     };
     const { error } = editingVehicleId
       ? await supabase.from("vehicles").update(payload).eq("id", editingVehicleId)
       : await supabase.from("vehicles").insert(payload);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: editingVehicleId ? "Vehicle updated" : "Vehicle added" });
-      setShowVehicleForm(false);
-      setEditingVehicleId(null);
-      setVehicleForm(emptyVehicleForm);
-      fetchAll();
-    }
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: editingVehicleId ? "Vehicle updated" : "Vehicle added" }); setShowVehicleForm(false); setEditingVehicleId(null); setVehicleForm(emptyVehicleForm); fetchAll(); }
   };
 
   const uploadVehicleDoc = async (field: string, file: File) => {
@@ -282,11 +243,7 @@ const AdminDrivers = () => {
     const ext = file.name.split(".").pop();
     const path = `vehicle-docs/${expandedDriver}/${field}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("vehicle-images").upload(path, file);
-    if (error) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-      setUploading(null);
-      return;
-    }
+    if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); setUploading(null); return; }
     const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
     setVehicleForm((prev: any) => ({ ...prev, [field]: urlData.publicUrl }));
     setUploading(null);
@@ -305,54 +262,49 @@ const AdminDrivers = () => {
     fetchAll();
   };
 
+  const approveVehicle = async (id: string) => {
+    await supabase.from("vehicles").update({ vehicle_status: "approved", rejection_reason: null } as any).eq("id", id);
+    toast({ title: "Vehicle approved ✅" });
+    fetchAll();
+  };
+
+  const rejectVehicle = async (id: string, reason: string) => {
+    await supabase.from("vehicles").update({ vehicle_status: "rejected", rejection_reason: reason || "Documents not acceptable" } as any).eq("id", id);
+    toast({ title: "Vehicle rejected", description: reason });
+    setRejectVehicleId(null);
+    setRejectReason("");
+    fetchAll();
+  };
+
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvImporting(true);
-    setCsvResult(null);
+    setCsvImporting(true); setCsvResult(null);
     try {
       const text = await file.text();
       const allLines = text.split(/\r?\n/).filter((l) => l.trim());
-      if (allLines.length < 2) {
-        toast({ title: "Import failed", description: "No data rows found", variant: "destructive" });
-        setCsvImporting(false);
-        return;
-      }
+      if (allLines.length < 2) { toast({ title: "Import failed", description: "No data rows found", variant: "destructive" }); setCsvImporting(false); return; }
       const header = allLines[0];
       const dataLines = allLines.slice(1);
       const BATCH_SIZE = 100;
       let totalResult = { drivers_created: 0, drivers_skipped: 0, vehicles_created: 0, vehicles_skipped: 0, errors: [] as string[], total_rows: 0 };
-
       for (let i = 0; i < dataLines.length; i += BATCH_SIZE) {
         const batchLines = dataLines.slice(i, i + BATCH_SIZE);
         const batchCsv = [header, ...batchLines].join("\n");
         const { data, error } = await supabase.functions.invoke("import-drivers-csv", { body: { csv: batchCsv } });
-        if (error) {
-          totalResult.errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
-        } else if (data) {
-          totalResult.drivers_created += data.drivers_created || 0;
-          totalResult.drivers_skipped += data.drivers_skipped || 0;
-          totalResult.vehicles_created += data.vehicles_created || 0;
-          totalResult.vehicles_skipped += data.vehicles_skipped || 0;
-          totalResult.total_rows += data.total_rows || 0;
-          if (data.errors) totalResult.errors.push(...data.errors);
-        }
+        if (error) { totalResult.errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`); }
+        else if (data) { totalResult.drivers_created += data.drivers_created || 0; totalResult.drivers_skipped += data.drivers_skipped || 0; totalResult.vehicles_created += data.vehicles_created || 0; totalResult.vehicles_skipped += data.vehicles_skipped || 0; totalResult.total_rows += data.total_rows || 0; if (data.errors) totalResult.errors.push(...data.errors); }
         toast({ title: "Importing...", description: `Processed ${Math.min(i + BATCH_SIZE, dataLines.length)} / ${dataLines.length} rows` });
       }
-
       setCsvResult(totalResult);
       toast({ title: "Import complete", description: `${totalResult.drivers_created} drivers, ${totalResult.vehicles_created} vehicles created` });
       fetchAll();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-      setCsvResult({ error: err.message });
-    }
-    setCsvImporting(false);
-    e.target.value = "";
+    } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); setCsvResult({ error: err.message }); }
+    setCsvImporting(false); e.target.value = "";
   };
 
-  const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
-  const selectCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
+  const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
+  const selectCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
   const DocUpload = ({ field, label }: { field: string; label: string }) => (
     <div>
@@ -372,42 +324,202 @@ const AdminDrivers = () => {
     </div>
   );
 
+  // Find driver name for a vehicle
+  const getDriverName = (driverId: string | null) => {
+    if (!driverId) return "Unassigned";
+    const d = drivers.find(dr => dr.id === driverId);
+    return d ? `${d.first_name} ${d.last_name}` : "Unknown";
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Image preview modal */}
       {previewImg && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setPreviewImg(null)}>
           <div className="relative max-w-2xl max-h-[80vh]">
-            <button onClick={() => setPreviewImg(null)} className="absolute -top-3 -right-3 bg-card rounded-full p-1"><X className="w-5 h-5" /></button>
+            <button onClick={() => setPreviewImg(null)} className="absolute -top-3 -right-3 bg-card rounded-full p-1.5 shadow-lg"><X className="w-5 h-5" /></button>
             <img src={previewImg} alt="Document" className="max-w-full max-h-[80vh] rounded-xl" />
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Drivers & Vehicles</h2>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-            <FileUp className="w-4 h-4" />Import CSV
-          </button>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+      {/* Reject vehicle modal */}
+      {rejectVehicleId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => { setRejectVehicleId(null); setRejectReason(""); }}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-foreground">Reject Vehicle</h3>
+            <p className="text-xs text-muted-foreground">Provide a reason so the driver knows what to fix.</p>
+            <div className="space-y-2">
+              {["Blurry or unreadable document", "Wrong document uploaded", "Expired document", "Missing required document"].map((r) => (
+                <button key={r} onClick={() => setRejectReason(r)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors ${rejectReason === r ? "bg-primary/10 text-primary font-semibold border border-primary/30" : "bg-surface text-foreground hover:bg-surface/80 border border-border"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Or type a custom reason..." className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" rows={2} />
+            <div className="flex gap-3">
+              <button onClick={() => { setRejectVehicleId(null); setRejectReason(""); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
+              <button onClick={() => rejectVehicle(rejectVehicleId, rejectReason)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground">Reject</button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-foreground">Drivers & Vehicles</h1>
+          <p className="text-sm text-muted-foreground">{drivers.length} drivers · {allVehicles.length} vehicles</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-muted transition-colors">
+            <FileUp className="w-3.5 h-3.5" />Import CSV
+          </button>
+          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${showFilters ? "bg-primary text-primary-foreground" : "bg-surface border border-border text-foreground hover:bg-muted"}`}>
+            <Filter className="w-3.5 h-3.5" />Filters
+          </button>
+        </div>
+      </div>
+
+      {/* ── Pending Tasks Summary ── */}
+      {!loading && (pendingDrivers.length > 0 || pendingVehicles.length > 0 || incompleteDocDrivers.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {pendingDrivers.length > 0 && (
+            <button onClick={() => setStatusFilter(statusFilter === "Pending" ? "all" : "Pending")} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${statusFilter === "Pending" ? "bg-primary/10 border-primary/30" : "bg-card border-border hover:border-primary/20"}`}>
+              <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-lg font-bold text-foreground">{pendingDrivers.length}</p>
+                <p className="text-[11px] text-muted-foreground">Pending Drivers</p>
+              </div>
+            </button>
+          )}
+          {pendingVehicles.length > 0 && (
+            <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                <Car className="w-5 h-5 text-orange-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-lg font-bold text-foreground">{pendingVehicles.length}</p>
+                <p className="text-[11px] text-muted-foreground">Vehicles Awaiting Approval</p>
+              </div>
+            </div>
+          )}
+          {incompleteDocDrivers.length > 0 && (
+            <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-lg font-bold text-foreground">{incompleteDocDrivers.length}</p>
+                <p className="text-[11px] text-muted-foreground">Incomplete Documents</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Pending Vehicles Quick Actions ── */}
+      {!loading && pendingVehicles.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-surface/50 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-yellow-600" />
+            <p className="text-sm font-bold text-foreground">Vehicles Pending Approval</p>
+            <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{pendingVehicles.length}</span>
+          </div>
+          <div className="divide-y divide-border">
+            {pendingVehicles.map((v) => (
+              <div key={v.id} className="px-4 py-3 flex items-center gap-4">
+                {/* Vehicle photo thumbnail */}
+                <div className="w-14 h-10 rounded-lg bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                  {v.image_url ? (
+                    <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
+                  ) : (
+                    <Car className="w-5 h-5 text-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">{v.plate_number} — {v.make} {v.model}</p>
+                  <p className="text-[11px] text-muted-foreground">{v.color} · {v.vehicle_types?.name || "No type"} · Driver: {getDriverName(v.driver_id)}</p>
+                </div>
+                {/* Doc badges */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {v.registration_url && (
+                    <button onClick={() => setPreviewImg(v.registration_url)} className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center hover:bg-blue-100 transition-colors" title="Registration">
+                      <Eye className="w-3.5 h-3.5 text-blue-600" />
+                    </button>
+                  )}
+                  {v.insurance_url && (
+                    <button onClick={() => setPreviewImg(v.insurance_url)} className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center hover:bg-green-100 transition-colors" title="Insurance">
+                      <Eye className="w-3.5 h-3.5 text-green-600" />
+                    </button>
+                  )}
+                </div>
+                {/* Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-colors">
+                    <Check className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button onClick={() => { setRejectVehicleId(v.id); setRejectReason(""); }} className="flex items-center gap-1 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-bold hover:bg-destructive/20 transition-colors">
+                    <XCircle className="w-3.5 h-3.5" /> Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Search + Filters ── */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers by name or phone..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        {showFilters && (
+          <div className="flex items-center gap-3 flex-wrap bg-card border border-border rounded-xl px-4 py-3">
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status</label>
+              <div className="flex gap-1.5 mt-1">
+                {(["all", "Active", "Inactive", "Pending", "Pending Review"] as StatusFilter[]).map((s) => (
+                  <button key={s} onClick={() => setStatusFilter(s)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+                    {s === "all" ? "All" : s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Company</label>
+              <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="mt-1 block px-2.5 py-1 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">All Companies</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            {(statusFilter !== "all" || companyFilter) && (
+              <button onClick={() => { setStatusFilter("all"); setCompanyFilter(""); }} className="text-[11px] text-primary font-semibold hover:underline ml-auto">
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* CSV Import Panel */}
       {showImport && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Import Drivers & Vehicles from CSV</h3>
             <button onClick={() => { setShowImport(false); setCsvResult(null); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
-          <p className="text-sm text-muted-foreground">Upload a CSV file with driver and vehicle data. Existing drivers (by phone number) will be skipped. Vehicles are linked automatically.</p>
+          <p className="text-sm text-muted-foreground">Upload a CSV file with driver and vehicle data. Existing drivers (by phone number) will be skipped.</p>
           <div className="flex items-center gap-3">
             <a href="/sample-drivers-import.csv" download className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors">
-              <Download className="w-4 h-4" />Download Sample CSV
+              <Download className="w-4 h-4" />Sample CSV
             </a>
             <label className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all ${csvImporting ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:opacity-90"}`}>
               {csvImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -415,12 +527,12 @@ const AdminDrivers = () => {
               <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
             </label>
           </div>
-          <div className="bg-surface rounded-lg p-3">
-            <p className="text-xs font-semibold text-muted-foreground mb-1">Expected CSV columns:</p>
+          <div className="bg-surface rounded-xl p-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Expected columns:</p>
             <p className="text-xs text-muted-foreground font-mono">first_name, last_name, phone_number, email, gender, country_code, status, company, monthly_fee, plate_number, vehicle_type, make, model, color, year</p>
           </div>
           {csvResult && !csvResult.error && (
-            <div className="bg-surface rounded-lg p-4 space-y-1">
+            <div className="bg-surface rounded-xl p-4 space-y-1">
               <p className="text-sm font-semibold text-foreground">✅ Import Complete</p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
                 <span className="text-muted-foreground">Total rows:</span><span className="font-medium text-foreground">{csvResult.total_rows}</span>
@@ -432,27 +544,21 @@ const AdminDrivers = () => {
               {csvResult.errors?.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs font-semibold text-destructive">Errors:</p>
-                  {csvResult.errors.map((err: string, i: number) => (
-                    <p key={i} className="text-xs text-destructive">{err}</p>
-                  ))}
+                  {csvResult.errors.map((err: string, i: number) => <p key={i} className="text-xs text-destructive">{err}</p>)}
                 </div>
               )}
             </div>
           )}
-          {csvResult?.error && (
-            <div className="bg-destructive/10 rounded-lg p-3">
-              <p className="text-sm text-destructive">❌ {csvResult.error}</p>
-            </div>
-          )}
+          {csvResult?.error && (<div className="bg-destructive/10 rounded-xl p-3"><p className="text-sm text-destructive">❌ {csvResult.error}</p></div>)}
         </div>
       )}
 
       {/* Edit Driver Form */}
       {editingId && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">Edit Driver</h3>
-            <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            <h3 className="font-bold text-foreground">Edit Driver</h3>
+            <button onClick={() => setEditingId(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="text-xs font-medium text-muted-foreground">First Name</label><input value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} className={inputCls} /></div>
@@ -462,7 +568,7 @@ const AdminDrivers = () => {
           </div>
           <h4 className="text-sm font-semibold text-foreground pt-2">Company & Monthly Fee</h4>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="text-xs font-medium text-muted-foreground">Company / Taxi Center</label>
+            <div><label className="text-xs font-medium text-muted-foreground">Company</label>
               <select value={editForm.company_id} onChange={(e) => setEditForm({ ...editForm, company_id: e.target.value })} className={selectCls}>
                 <option value="">— Select Company —</option>
                 {companies.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
@@ -478,8 +584,8 @@ const AdminDrivers = () => {
                 {banks.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
               </select>
             </div>
-            <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><input value={editForm.bank_account_number} onChange={(e) => setEditForm({ ...editForm, bank_account_number: e.target.value })} placeholder="7730000000000" className={inputCls} /></div>
-            <div><label className="text-xs font-medium text-muted-foreground">Account Name</label><input value={editForm.bank_account_name} onChange={(e) => setEditForm({ ...editForm, bank_account_name: e.target.value })} placeholder="Full name on account" className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><input value={editForm.bank_account_number} onChange={(e) => setEditForm({ ...editForm, bank_account_number: e.target.value })} className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Account Name</label><input value={editForm.bank_account_name} onChange={(e) => setEditForm({ ...editForm, bank_account_name: e.target.value })} className={inputCls} /></div>
           </div>
           <h4 className="text-sm font-semibold text-foreground pt-2">Driver Documents</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -493,157 +599,146 @@ const AdminDrivers = () => {
             <DocUpload field="taxi_permit_front_url" label="Permit Front" />
             <DocUpload field="taxi_permit_back_url" label="Permit Back" />
           </div>
-          <button onClick={saveEdit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">Save Changes</button>
-        </div>
-      )}
-      {/* Bulk Actions Bar */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-          <span className="text-sm font-semibold text-foreground">{selected.size} selected</span>
-          <div className="flex-1" />
-          <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-semibold hover:bg-primary/20 transition-colors">
-            <UserCheck className="w-3.5 h-3.5" /> Approve
-          </button>
-          <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-lg text-xs font-semibold hover:bg-muted/80 transition-colors">
-            <UserX className="w-3.5 h-3.5" /> Deactivate
-          </button>
-          <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 transition-colors">
-            <Trash2 className="w-3.5 h-3.5" /> Delete
-          </button>
-          <button onClick={() => setSelected(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">
-            Clear
-          </button>
+          <button onClick={saveEdit} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl text-sm font-semibold">Save Changes</button>
         </div>
       )}
 
-      {/* Drivers Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      {/* Bulk Actions Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">{selected.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition-colors">
+            <UserCheck className="w-3.5 h-3.5" /> Approve
+          </button>
+          <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-xl text-xs font-semibold hover:bg-muted/80 transition-colors">
+            <UserX className="w-3.5 h-3.5" /> Deactivate
+          </button>
+          <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-semibold hover:bg-destructive/20 transition-colors">
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button onClick={() => setSelected(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">Clear</button>
+        </div>
+      )}
+
+      {/* ── Drivers List ── */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border bg-surface">
+            <tr className="border-b border-border bg-surface/50">
               <th className="px-4 py-3 w-10">
-                    <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
-                      {selected.size === drivers.length && drivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
-                    </button>
-                  </th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Rating</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Declines</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicles</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Docs</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
+                <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                  {selected.size === filteredDrivers.length && filteredDrivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                </button>
+              </th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Driver</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Contact</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Company</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Rating</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicles</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
-            ) : drivers.length === 0 ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+              <tr><td colSpan={9} className="px-4 py-12 text-center"><Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /></td></tr>
+            ) : filteredDrivers.length === 0 ? (
+              <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
             ) : (
-              drivers.map((d) => {
+              filteredDrivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
                 const permitCount = [d.taxi_permit_front_url, d.taxi_permit_back_url].filter(Boolean).length;
                 const companyName = companies.find((c) => c.id === d.company_id)?.name || d.company_name || "—";
                 const vehicles = driverVehicles[d.id] || [];
                 const isExpanded = expandedDriver === d.id;
+                const pendingVCount = vehicles.filter(v => v.vehicle_status === "pending").length;
+
                 return (
-                  <>
-                    <tr key={d.id} className={`border-b border-border last:border-0 ${selected.has(d.id) ? "bg-primary/5" : ""}`}>
+                  <React.Fragment key={d.id}>
+                    <tr className={`border-b border-border hover:bg-surface/30 transition-colors ${selected.has(d.id) ? "bg-primary/5" : ""}`}>
                       <td className="px-4 py-3">
                         <button onClick={() => toggleSelect(d.id)} className="text-muted-foreground hover:text-foreground">
                           {selected.has(d.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{d.first_name} {d.last_name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-xs font-bold text-primary">{d.first_name?.[0]}{d.last_name?.[0]}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">{d.first_name} {d.last_name}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
                       <td className="px-4 py-3">
                         {driverRatings[d.id] ? (
                           <div className="flex items-center gap-1">
                             <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                            <span className="text-sm font-medium text-foreground">{driverRatings[d.id].avg}</span>
+                            <span className="text-sm font-semibold text-foreground">{driverRatings[d.id].avg}</span>
                             <span className="text-[10px] text-muted-foreground">({driverRatings[d.id].count})</span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No ratings</span>
-                        )}
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        {driverDeclines[d.id] ? (
-                          <div className="flex items-center gap-1.5">
-                            <ThumbsDown className="w-3.5 h-3.5 text-destructive" />
-                            <div>
-                              <span className="text-sm font-medium text-foreground">{driverDeclines[d.id].today}</span>
-                              <span className="text-[10px] text-muted-foreground ml-1">today</span>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground">/ {driverDeclines[d.id].total} total</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">0</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => setExpandedDriver(isExpanded ? null : d.id)}
-                          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                        >
+                        <button onClick={() => setExpandedDriver(isExpanded ? null : d.id)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
                           <Car className="w-3.5 h-3.5" />
-                          {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""}
+                          {vehicles.length}
+                          {pendingVCount > 0 && <span className="w-4 h-4 rounded-full bg-yellow-500 text-white text-[9px] font-bold flex items-center justify-center">{pendingVCount}</span>}
                           {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                             {docCount}/4
                           </span>
                           {permitCount > 0 && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">+Permit</span>}
-                          {docCount > 0 && <button onClick={() => openEdit(d)} className="text-xs text-primary hover:underline ml-1">View</button>}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-                          d.status === "Active" ? "bg-green-100 text-green-700" : 
+                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          d.status === "Active" ? "bg-green-100 text-green-700" :
                           d.status === "Pending Review" ? "bg-orange-100 text-orange-700" :
                           d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
                         }`}>
-                          {d.status === "Active" ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
+                          {d.status === "Active" ? <ShieldCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                           {d.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {d.status !== "Active" && docCount === 4 ? (
-                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-lg hover:opacity-90">Approve</button>
+                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-bold text-primary-foreground bg-green-600 px-3 py-1.5 rounded-xl hover:bg-green-700 transition-colors">Approve</button>
                           ) : d.status === "Active" ? (
-                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-medium text-destructive hover:underline">Deactivate</button>
+                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-medium text-destructive hover:underline">Deactivate</button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Docs incomplete</span>
+                            <span className="text-[10px] text-muted-foreground">Docs {docCount}/4</span>
                           )}
-                          <button onClick={() => openEdit(d)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => deleteDriver(d.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => openEdit(d)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => deleteDriver(d.id)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
-                    {/* Expanded vehicles row */}
+
+                    {/* Expanded vehicles */}
                     {isExpanded && (
-                      <tr key={`${d.id}-vehicles`} className="border-b border-border bg-surface/50">
-                        <td colSpan={10} className="px-4 py-3">
+                      <tr key={`${d.id}-vehicles`} className="border-b border-border">
+                        <td colSpan={9} className="px-4 py-4 bg-surface/30">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
-                              <button onClick={() => openVehicleForm(d.id)} className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                                <Plus className="w-3 h-3" /> Add Vehicle
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
+                              <button onClick={() => openVehicleForm(d.id)} className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
+                                <Plus className="w-3.5 h-3.5" /> Add Vehicle
                               </button>
                             </div>
 
                             {/* Vehicle form */}
                             {showVehicleForm && expandedDriver === d.id && (
-                              <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-                                <p className="text-xs font-semibold text-foreground">{editingVehicleId ? "Edit Vehicle" : "New Vehicle"}</p>
+                              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                                <p className="text-xs font-bold text-foreground">{editingVehicleId ? "Edit Vehicle" : "New Vehicle"}</p>
                                 <div className="grid grid-cols-3 gap-3">
                                   <div>
                                     <label className="text-xs text-muted-foreground">Plate *</label>
@@ -657,8 +752,7 @@ const AdminDrivers = () => {
                                     </select>
                                   </div>
                                   <VehicleMakeModelSelect
-                                    make={vehicleForm.make}
-                                    model={vehicleForm.model}
+                                    make={vehicleForm.make} model={vehicleForm.model}
                                     onMakeChange={(v) => setVehicleForm({ ...vehicleForm, make: v })}
                                     onModelChange={(v) => setVehicleForm({ ...vehicleForm, model: v })}
                                     inputClassName={inputCls}
@@ -672,7 +766,6 @@ const AdminDrivers = () => {
                                     <input value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="2023" className={inputCls} />
                                   </div>
                                 </div>
-                                {/* Vehicle Status */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="text-xs text-muted-foreground">Status</label>
@@ -685,12 +778,11 @@ const AdminDrivers = () => {
                                   {vehicleForm.vehicle_status === "rejected" && (
                                     <div>
                                       <label className="text-xs text-muted-foreground">Rejection Reason</label>
-                                      <input value={vehicleForm.rejection_reason} onChange={(e) => setVehicleForm({ ...vehicleForm, rejection_reason: e.target.value })} placeholder="e.g. Blurry image, expired document" className={inputCls} />
+                                      <input value={vehicleForm.rejection_reason} onChange={(e) => setVehicleForm({ ...vehicleForm, rejection_reason: e.target.value })} placeholder="e.g. Blurry image" className={inputCls} />
                                     </div>
                                   )}
                                 </div>
-                                {/* Vehicle Documents */}
-                                <p className="text-xs font-semibold text-muted-foreground pt-1">Vehicle Documents</p>
+                                <p className="text-xs font-bold text-muted-foreground pt-1">Vehicle Documents</p>
                                 <div className="grid grid-cols-3 gap-3">
                                   {[
                                     { field: "image_url", label: "Vehicle Photo" },
@@ -701,9 +793,7 @@ const AdminDrivers = () => {
                                       <label className="text-xs text-muted-foreground">{item.label}</label>
                                       <div className="flex items-center gap-2 mt-1">
                                         {(vehicleForm as any)[item.field] ? (
-                                          <button onClick={() => setPreviewImg((vehicleForm as any)[item.field])} className="text-xs text-primary hover:underline flex items-center gap-1">
-                                            <Eye className="w-3 h-3" /> View
-                                          </button>
+                                          <button onClick={() => setPreviewImg((vehicleForm as any)[item.field])} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="w-3 h-3" /> View</button>
                                         ) : <span className="text-xs text-muted-foreground">None</span>}
                                         <label className="flex items-center gap-1 px-2 py-1 bg-surface border border-border rounded-lg text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                                           <Upload className="w-3 h-3" />
@@ -715,64 +805,94 @@ const AdminDrivers = () => {
                                   ))}
                                 </div>
                                 <div className="flex gap-2">
-                                  <button onClick={() => { setShowVehicleForm(false); setEditingVehicleId(null); }} className="px-4 py-2 bg-surface text-foreground rounded-lg text-xs font-semibold">Cancel</button>
-                                  <button onClick={saveVehicle} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold">{editingVehicleId ? "Update" : "Add"}</button>
+                                  <button onClick={() => { setShowVehicleForm(false); setEditingVehicleId(null); }} className="px-4 py-2 bg-surface text-foreground rounded-xl text-xs font-semibold border border-border">Cancel</button>
+                                  <button onClick={saveVehicle} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold">{editingVehicleId ? "Update" : "Add"}</button>
                                 </div>
                               </div>
                             )}
 
-                            {/* Vehicle list */}
+                            {/* Vehicle cards */}
                             {vehicles.length === 0 ? (
-                              <p className="text-xs text-muted-foreground py-2">No vehicles assigned to this driver</p>
+                              <p className="text-xs text-muted-foreground py-2">No vehicles assigned</p>
                             ) : (
                               <div className="grid gap-2">
                                 {vehicles.map((v) => (
-                                  <div key={v.id} className="bg-card border border-border rounded-lg px-3 py-2 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        {v.vehicle_types?.image_url ? (
-                                          <img src={v.vehicle_types.image_url} alt={v.vehicle_types.name || "Vehicle"} className="w-4 h-4 object-contain" />
+                                  <div key={v.id} className={`rounded-2xl border p-3 transition-all ${
+                                    v.vehicle_status === "pending" ? "bg-yellow-50/50 border-yellow-200 dark:bg-yellow-500/5 dark:border-yellow-500/20" :
+                                    v.vehicle_status === "rejected" ? "bg-red-50/50 border-red-200 dark:bg-red-500/5 dark:border-red-500/20" :
+                                    "bg-card border-border"
+                                  }`}>
+                                    <div className="flex items-start gap-3">
+                                      {/* Vehicle photo */}
+                                      <div className="w-16 h-12 rounded-xl bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                                        {v.image_url ? (
+                                          <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
                                         ) : (
-                                          <Car className="w-4 h-4 text-primary" />
+                                          <Car className="w-5 h-5 text-muted-foreground/30" />
                                         )}
-                                        <div>
-                                          <p className="text-sm font-medium text-foreground">{v.plate_number} — {v.make} {v.model} {v.color}</p>
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="text-xs text-muted-foreground">{v.vehicle_types?.name || "No type"} {v.year ? `• ${v.year}` : ""}</p>
-                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                                              v.vehicle_status === "approved" ? "bg-green-100 text-green-700" :
-                                              v.vehicle_status === "rejected" ? "bg-red-100 text-red-700" :
-                                              "bg-yellow-100 text-yellow-700"
-                                            }`}>{v.vehicle_status || "pending"}</span>
-                                            {v.rejection_reason && <span className="text-[10px] text-destructive">({v.rejection_reason})</span>}
-                                          </div>
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <p className="text-sm font-bold text-foreground">{v.plate_number}</p>
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                            v.vehicle_status === "approved" ? "bg-green-100 text-green-700" :
+                                            v.vehicle_status === "rejected" ? "bg-red-100 text-red-700" :
+                                            "bg-yellow-100 text-yellow-700"
+                                          }`}>{v.vehicle_status}</span>
+                                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                            {v.is_active ? "Active" : "Inactive"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{v.make} {v.model} {v.color} {v.year ? `· ${v.year}` : ""} · {v.vehicle_types?.name || "No type"}</p>
+                                        {v.rejection_reason && (
+                                          <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
+                                            <AlertTriangle className="w-3 h-3" /> {v.rejection_reason}
+                                          </p>
+                                        )}
+
+                                        {/* Doc thumbnails */}
+                                        <div className="flex items-center gap-2 mt-2">
+                                          {[
+                                            { url: v.registration_url, label: "Reg", color: "blue" },
+                                            { url: v.insurance_url, label: "Ins", color: "green" },
+                                            { url: v.image_url, label: "Photo", color: "purple" },
+                                          ].map((doc) => doc.url ? (
+                                            <button key={doc.label} onClick={() => setPreviewImg(doc.url)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors bg-${doc.color}-50 text-${doc.color}-600 hover:bg-${doc.color}-100 border border-${doc.color}-100`}>
+                                              <Eye className="w-3 h-3" /> {doc.label}
+                                            </button>
+                                          ) : (
+                                            <span key={doc.label} className="text-[10px] text-muted-foreground/50 px-2 py-1">No {doc.label}</span>
+                                          ))}
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                          {v.is_active ? "Active" : "Inactive"}
-                                        </span>
-                                        <button onClick={() => toggleVehicleActive(v.id, v.is_active)} className="text-[10px] text-primary hover:underline">
+
+                                      {/* Vehicle actions */}
+                                      <div className="flex flex-col gap-1.5 shrink-0">
+                                        {v.vehicle_status === "pending" && (
+                                          <>
+                                            <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-xl text-[10px] font-bold hover:bg-green-700 transition-colors">
+                                              <Check className="w-3 h-3" /> Approve
+                                            </button>
+                                            <button onClick={() => { setRejectVehicleId(v.id); setRejectReason(""); }} className="flex items-center gap-1 px-2.5 py-1.5 bg-destructive/10 text-destructive rounded-xl text-[10px] font-bold hover:bg-destructive/20 transition-colors">
+                                              <XCircle className="w-3 h-3" /> Reject
+                                            </button>
+                                          </>
+                                        )}
+                                        {v.vehicle_status === "rejected" && (
+                                          <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-xl text-[10px] font-bold hover:bg-green-700 transition-colors">
+                                            <Check className="w-3 h-3" /> Approve
+                                          </button>
+                                        )}
+                                        <button onClick={() => toggleVehicleActive(v.id, v.is_active)} className="text-[10px] font-medium text-primary hover:underline text-center">
                                           {v.is_active ? "Deactivate" : "Activate"}
                                         </button>
-                                        <button onClick={() => openVehicleForm(d.id, v)} className="text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteVehicle(v.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+                                        <div className="flex items-center gap-1 justify-center">
+                                          <button onClick={() => openVehicleForm(d.id, v)} className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary"><Pencil className="w-3 h-3" /></button>
+                                          <button onClick={() => deleteVehicle(v.id)} className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
+                                        </div>
                                       </div>
                                     </div>
-                                    {/* Vehicle document thumbnails */}
-                                    {(v.image_url || v.registration_url || v.insurance_url) && (
-                                      <div className="flex items-center gap-3 pl-7">
-                                        {[
-                                          { url: v.image_url, label: "Photo" },
-                                          { url: v.registration_url, label: "Registration" },
-                                          { url: v.insurance_url, label: "Insurance" },
-                                        ].filter((item) => item.url).map((item) => (
-                                          <button key={item.label} onClick={() => setPreviewImg(item.url!)} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
-                                            <Eye className="w-3 h-3" /> {item.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -781,7 +901,7 @@ const AdminDrivers = () => {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })
             )}
@@ -791,5 +911,8 @@ const AdminDrivers = () => {
     </div>
   );
 };
+
+// Need React import for React.Fragment
+import React from "react";
 
 export default AdminDrivers;
