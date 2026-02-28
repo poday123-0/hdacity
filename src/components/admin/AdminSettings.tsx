@@ -63,6 +63,8 @@ const settingsConfig = [
     { value: '"percentage"', label: "Percentage of Fare" },
   ]},
   { key: "min_withdrawal_amount", label: "Minimum Withdrawal Amount (MVR)", type: "number" },
+  { key: "default_driver_font_size", label: "Default Driver Font Size (%)", type: "number" },
+  { key: "default_passenger_font_size", label: "Default Passenger Font Size (%)", type: "number" },
 ];
 
 const AdminSettings = () => {
