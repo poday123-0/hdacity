@@ -159,6 +159,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           color: color.trim() || null,
           vehicle_type_id: vehicleTypeId || null,
           is_active: true,
+          vehicle_status: "pending",
           registration_url: vehicleRegUrl,
           insurance_url: vehicleInsuranceUrl,
           image_url: vehicleImageUrl,

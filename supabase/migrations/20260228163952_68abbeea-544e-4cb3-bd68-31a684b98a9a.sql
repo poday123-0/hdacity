@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ALTER COLUMN vehicle_status SET DEFAULT 'pending';
