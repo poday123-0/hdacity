@@ -84,7 +84,7 @@ export const usePushNotifications = (
               });
               console.log("Firebase SW registered:", swRegistration.scope);
 
-              // Wait for the SW to be active before posting the config
+              // Wait for the SW to be active
               const sw = swRegistration.installing || swRegistration.waiting || swRegistration.active;
               if (sw) {
                 const waitForActive = () =>
@@ -96,11 +96,6 @@ export const usePushNotifications = (
                   });
                 await waitForActive();
               }
-
-              swRegistration.active?.postMessage({
-                type: "FIREBASE_CONFIG",
-                config: firebaseConfig,
-              });
             } catch (swErr) {
               console.warn("Firebase SW registration failed:", swErr);
             }
@@ -132,17 +127,16 @@ export const usePushNotifications = (
             await registerDeviceToken(userId, token, userType, "web");
           }
 
-          // Handle foreground messages
+          // Handle foreground messages (data-only)
           onMessage(messaging, (payload) => {
             console.log("Foreground message:", payload);
-            if (payload.notification) {
-              // Show browser notification with sound
-              new Notification(payload.notification.title || "Notification", {
-                body: payload.notification.body || "",
-                icon: "/pwa-192x192.png",
-                silent: false,
-              });
-            }
+            const msgTitle = payload.notification?.title || payload.data?.title || "Notification";
+            const msgBody = payload.notification?.body || payload.data?.body || "";
+            new Notification(msgTitle, {
+              body: msgBody,
+              icon: "/pwa-192x192.png",
+              silent: false,
+            });
           });
         } catch (err) {
           console.error("Web push setup failed:", err);
