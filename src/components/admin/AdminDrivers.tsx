@@ -125,6 +125,17 @@ const AdminDrivers = () => {
     if (selected.size === filteredDrivers.length) setSelected(new Set());
     else setSelected(new Set(filteredDrivers.map(d => d.id)));
   };
+  const sendDriverStatusSms = async (phone: string, countryCode: string, newStatus: string, name: string) => {
+    try {
+      const msg = newStatus === "Active"
+        ? `Hi ${name}, your driver profile has been approved! You can now go online and accept trips. - HDA Taxi`
+        : `Hi ${name}, your driver profile has been deactivated. Please contact support for more information. - HDA Taxi`;
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: { phone_number: phone, country_code: countryCode, update_type: "driver_status", message: msg, notify_driver: true },
+      });
+    } catch (e) { console.error("SMS notify failed", e); }
+  };
+
   const bulkSetStatus = async (status: string) => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
@@ -134,7 +145,13 @@ const AdminDrivers = () => {
     }
     const { error } = await supabase.from("profiles").update({ status }).in("id", ids);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
-    else { toast({ title: `${ids.length} driver(s) set to ${status}` }); setSelected(new Set()); fetchAll(); }
+    else {
+      toast({ title: `${ids.length} driver(s) set to ${status}` });
+      // Send SMS to each driver
+      const affectedDrivers = drivers.filter(d => ids.includes(d.id));
+      affectedDrivers.forEach(d => sendDriverStatusSms(d.phone_number, d.country_code, status, d.first_name));
+      setSelected(new Set()); fetchAll();
+    }
   };
   const bulkDelete = async () => {
     if (selected.size === 0) return;
@@ -147,13 +164,14 @@ const AdminDrivers = () => {
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+    const driver = drivers.find(d => d.id === id);
     if (newStatus === "Active") {
-      const driver = drivers.find(d => d.id === id);
       const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
       if (docCount < 4) { toast({ title: "Cannot approve", description: `Driver has only ${docCount}/4 documents uploaded.`, variant: "destructive" }); return; }
     }
     await supabase.from("profiles").update({ status: newStatus }).eq("id", id);
     toast({ title: `Driver ${newStatus === "Active" ? "approved ✅" : "deactivated"}` });
+    if (driver) sendDriverStatusSms(driver.phone_number, driver.country_code, newStatus, driver.first_name);
     fetchAll();
   };
 

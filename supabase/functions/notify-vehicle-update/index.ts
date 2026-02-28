@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { driver_name, phone_number, plate_number, update_type, rejection_reason, notify_driver } = await req.json();
+    const { driver_name, phone_number, country_code, plate_number, update_type, rejection_reason, notify_driver, message } = await req.json();
 
     // Get notification recipients from system settings
     const { data: setting } = await supabaseAdmin
@@ -52,17 +52,20 @@ serve(async (req) => {
       }
     }
 
-    // Send SMS to the driver when vehicle is approved/rejected
+    // Send SMS to the driver when vehicle is approved/rejected or profile status changed
     if (notify_driver && phone_number && MSGOWL_API_KEY) {
-      let driverMessage = "";
-      if (update_type === "approved") {
-        driverMessage = `Hi ${driver_name}, your vehicle (${plate_number || "N/A"}) has been approved! You can now start accepting trips. - HDA Taxi`;
-      } else if (update_type === "rejected") {
-        driverMessage = `Hi ${driver_name}, your vehicle (${plate_number || "N/A"}) was not approved. Reason: ${rejection_reason || "Documents not acceptable"}. Please update your documents in the app. - HDA Taxi`;
+      let driverMessage = message || "";
+      if (!driverMessage) {
+        if (update_type === "approved") {
+          driverMessage = `Hi ${driver_name}, your vehicle (${plate_number || "N/A"}) has been approved! You can now start accepting trips. - HDA Taxi`;
+        } else if (update_type === "rejected") {
+          driverMessage = `Hi ${driver_name}, your vehicle (${plate_number || "N/A"}) was not approved. Reason: ${rejection_reason || "Documents not acceptable"}. Please update your documents in the app. - HDA Taxi`;
+        }
       }
       if (driverMessage) {
         try {
-          const driverPhone = phone_number.startsWith("+") ? phone_number : `+960${phone_number}`;
+          const cc = country_code || "960";
+          const driverPhone = phone_number.startsWith("+") ? phone_number : `+${cc}${phone_number}`;
           await fetch("https://api.msgowl.com/api/sms", {
             method: "POST",
             headers: {
