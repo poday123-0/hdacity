@@ -138,6 +138,18 @@ const PassengerWallet = ({ userId, isOpen, onClose }: PassengerWalletProps) => {
         notes: `Top-up request: ${amount} MVR`,
       } as any);
 
+      // Notify admins via edge function
+      try {
+        const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", userId).single();
+        const passengerName = profile ? `${profile.first_name} ${profile.last_name}` : "Unknown";
+        const phoneNumber = profile?.phone_number || "";
+        await supabase.functions.invoke("notify-topup-request", {
+          body: { passenger_name: passengerName, phone_number: phoneNumber, amount: String(amount) },
+        });
+      } catch (notifyErr) {
+        console.error("Failed to notify admins:", notifyErr);
+      }
+
       setSubmitted(true);
       setTopUpAmount("");
       setTopUpSlip(null);
