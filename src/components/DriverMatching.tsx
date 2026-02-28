@@ -168,12 +168,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     return () => clearInterval(interval);
   }, [tripId, speed]);
 
-  // Trip elapsed timer
+  // Trip elapsed timer - based on started_at from DB so it persists across refreshes
   useEffect(() => {
-    if (tripStatus !== "in_progress") return;
-    const timer = setInterval(() => setTripElapsed(prev => prev + 1), 1000);
+    if (tripStatus !== "in_progress" || !tripId) return;
+
+    let timer: ReturnType<typeof setInterval>;
+
+    const initTimer = async () => {
+      const { data } = await supabase.from("trips").select("started_at").eq("id", tripId).single();
+      if (data?.started_at) {
+        const startedAt = new Date(data.started_at).getTime();
+        const calcElapsed = () => Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+        setTripElapsed(calcElapsed());
+        timer = setInterval(() => setTripElapsed(calcElapsed()), 1000);
+      } else {
+        timer = setInterval(() => setTripElapsed(prev => prev + 1), 1000);
+      }
+    };
+
+    initTimer();
     return () => clearInterval(timer);
-  }, [tripStatus]);
+  }, [tripStatus, tripId]);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
