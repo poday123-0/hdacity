@@ -13,13 +13,20 @@ interface ServiceLocation {
   lng: number;
 }
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-  type: string;
-  name?: string;
+interface ServiceAreaPolygon {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  polygon: { lat: number; lng: number }[] | null;
+}
+
+interface PlaceResult {
+  place_id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
 }
 
 interface SavedLocation {
@@ -65,8 +72,8 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
-  const [osmResults, setOsmResults] = useState<NominatimResult[]>([]);
-  const [osmSearching, setOsmSearching] = useState(false);
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
   const [settingOnMap, setSettingOnMap] = useState(false);
@@ -74,25 +81,31 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [bookingNotes, setBookingNotes] = useState("");
+  const [serviceAreas, setServiceAreas] = useState<ServiceAreaPolygon[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
   const stopRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const autocompleteServiceRef = useRef<any>(null);
+  const placesServiceRef = useRef<any>(null);
 
   const activeQuery = activeField === "pickup" ? pickupQuery
     : activeField === "dropoff" ? dropoffQuery
     : activeField?.startsWith("stop-") ? stopQueries[parseInt(activeField.split("-")[1])] || ""
     : "";
 
-  // Fetch service locations
+  // Fetch service locations + polygons
   useEffect(() => {
     const fetchLocations = async () => {
       const { data } = await supabase
         .from("service_locations")
-        .select("id, name, address, lat, lng")
+        .select("id, name, address, lat, lng, polygon")
         .eq("is_active", true)
         .order("name");
-      setLocations(data || []);
+      if (data) {
+        setLocations(data.map((d: any) => ({ id: d.id, name: d.name, address: d.address, lat: d.lat, lng: d.lng })));
+        setServiceAreas(data.map((d: any) => ({ id: d.id, name: d.name, lat: d.lat, lng: d.lng, polygon: d.polygon })));
+      }
       setLoading(false);
     };
     fetchLocations();
@@ -116,29 +129,143 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     if (!pickup) detectCurrentLocation();
   }, [locations.length]);
 
-  // Nominatim search with debounce
+  // Point-in-polygon check
+  const isPointInPolygon = useCallback((lat: number, lng: number, polygon: { lat: number; lng: number }[]): boolean => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat, yi = polygon[i].lng;
+      const xj = polygon[j].lat, yj = polygon[j].lng;
+      const intersect = ((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }, []);
+
+  // Check if point is within any service area
+  const isInServiceArea = useCallback((lat: number, lng: number): ServiceAreaPolygon | null => {
+    for (const area of serviceAreas) {
+      if (area.polygon && isPointInPolygon(lat, lng, area.polygon)) {
+        return area;
+      }
+    }
+    return null;
+  }, [serviceAreas, isPointInPolygon]);
+
+  // Google Places search with debounce — only show results within service areas
   useEffect(() => {
-    if (!activeQuery.trim() || activeQuery.length < 3) {
-      setOsmResults([]);
+    if (!activeQuery.trim() || activeQuery.length < 2) {
+      setPlaceResults([]);
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      setOsmSearching(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=5&addressdetails=1&extratags=1&namedetails=1`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        const data: NominatimResult[] = await res.json();
-        setOsmResults(data);
-      } catch {
-        setOsmResults([]);
+      setSearching(true);
+      const g = (window as any).google;
+
+      // Try Google Places Autocomplete
+      if (g?.maps?.places?.AutocompleteService) {
+        if (!autocompleteServiceRef.current) {
+          autocompleteServiceRef.current = new g.maps.places.AutocompleteService();
+        }
+        if (!placesServiceRef.current) {
+          const mapDiv = document.createElement("div");
+          placesServiceRef.current = new g.maps.places.PlacesService(mapDiv);
+        }
+
+        // Calculate bounds from all service areas
+        const bounds = new g.maps.LatLngBounds();
+        serviceAreas.forEach(area => {
+          if (area.polygon) {
+            area.polygon.forEach(p => bounds.extend(new g.maps.LatLng(p.lat, p.lng)));
+          } else {
+            bounds.extend(new g.maps.LatLng(area.lat, area.lng));
+          }
+        });
+
+        try {
+          const predictions = await new Promise<any[]>((resolve) => {
+            autocompleteServiceRef.current.getPlacePredictions(
+              {
+                input: activeQuery,
+                locationBias: bounds,
+                componentRestrictions: { country: "mv" },
+              },
+              (results: any[] | null, status: string) => {
+                resolve(status === "OK" && results ? results : []);
+              }
+            );
+          });
+
+          // Get details for each prediction to get lat/lng
+          const detailedResults: PlaceResult[] = [];
+          const detailPromises = predictions.slice(0, 8).map(
+            (pred) =>
+              new Promise<PlaceResult | null>((resolve) => {
+                placesServiceRef.current.getDetails(
+                  { placeId: pred.place_id, fields: ["geometry", "name", "formatted_address"] },
+                  (place: any, status: string) => {
+                    if (status === "OK" && place?.geometry?.location) {
+                      const lat = place.geometry.location.lat();
+                      const lng = place.geometry.location.lng();
+                      // Only include if within a service area
+                      const area = isInServiceArea(lat, lng);
+                      if (area) {
+                        resolve({
+                          place_id: pred.place_id,
+                          name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
+                          address: place.formatted_address || pred.description,
+                          lat,
+                          lng,
+                        });
+                      } else {
+                        resolve(null);
+                      }
+                    } else {
+                      resolve(null);
+                    }
+                  }
+                );
+              })
+          );
+
+          const results = await Promise.all(detailPromises);
+          results.forEach((r) => { if (r) detailedResults.push(r); });
+          setPlaceResults(detailedResults);
+        } catch {
+          setPlaceResults([]);
+        }
+      } else {
+        // Fallback to Nominatim if Google not loaded
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=8&addressdetails=1`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await res.json();
+          const filtered: PlaceResult[] = [];
+          for (const r of data) {
+            const lat = parseFloat(r.lat);
+            const lng = parseFloat(r.lon);
+            const area = isInServiceArea(lat, lng);
+            if (area) {
+              filtered.push({
+                place_id: String(r.place_id),
+                name: r.name || r.display_name.split(",")[0],
+                address: r.display_name.split(",").slice(0, 3).join(", "),
+                lat,
+                lng,
+              });
+            }
+          }
+          setPlaceResults(filtered);
+        } catch {
+          setPlaceResults([]);
+        }
       }
-      setOsmSearching(false);
-    }, 400);
+      setSearching(false);
+    }, 350);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [activeQuery]);
+  }, [activeQuery, serviceAreas, isInServiceArea]);
 
   const findNearestServiceArea = useCallback((lat: number, lng: number): ServiceLocation | null => {
     let nearest: ServiceLocation | null = null;
@@ -210,7 +337,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     if (activeField === "pickup") {
       setPickup(loc);
       setPickupQuery(loc.name);
-      setOsmResults([]);
+      setPlaceResults([]);
       if (!dropoff) {
         setActiveField("dropoff");
         setTimeout(() => dropoffRef.current?.focus(), 100);
@@ -219,7 +346,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     } else if (activeField === "dropoff") {
       setDropoff(loc);
       setDropoffQuery(loc.name);
-      setOsmResults([]);
+      setPlaceResults([]);
     } else if (activeField?.startsWith("stop-")) {
       const idx = parseInt(activeField.split("-")[1]);
       const newStops = [...stops];
@@ -228,23 +355,19 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       const newQueries = [...stopQueries];
       newQueries[idx] = loc.name;
       setStopQueries(newQueries);
-      setOsmResults([]);
+      setPlaceResults([]);
     }
     setActiveField(null);
   };
 
-  const handleOsmSelect = (result: NominatimResult) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    const nearest = findNearestServiceArea(lat, lng);
-    if (!nearest) return;
-
+  const handlePlaceSelect = (result: PlaceResult) => {
+    const nearest = findNearestServiceArea(result.lat, result.lng);
     const specificLocation: ServiceLocation = {
-      ...nearest,
-      name: result.name || result.display_name.split(",")[0],
-      address: result.display_name.split(",").slice(0, 3).join(", "),
-      lat,
-      lng,
+      id: nearest?.id || "place-selected",
+      name: result.name,
+      address: result.address,
+      lat: result.lat,
+      lng: result.lng,
     };
     selectLocation(specificLocation);
   };
@@ -271,7 +394,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       setActiveField(field);
       setTimeout(() => stopRefs.current[idx]?.focus(), 50);
     }
-    setOsmResults([]);
+    setPlaceResults([]);
   };
 
   const addStop = () => {
@@ -310,7 +433,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     setMapPickerField(field);
     setSettingOnMap(true);
     setActiveField(null);
-    setOsmResults([]);
+    setPlaceResults([]);
   };
 
   const handleMapPickerConfirm = (lat: number, lng: number, name: string, address: string) => {
@@ -349,27 +472,27 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
   const renderSearchResults = (fieldKey: string) => {
     if (activeField !== fieldKey) return null;
-    if (osmResults.length === 0 && !osmSearching) return null;
+    if (placeResults.length === 0 && !searching) return null;
     return (
       <div className="mt-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
-        {osmSearching && (
+        {searching && (
           <div className="flex items-center gap-2 px-4 py-3">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Searching...</span>
           </div>
         )}
-        {osmResults.map((r) => (
+        {placeResults.map((r) => (
           <button
             key={r.place_id}
-            onClick={() => handleOsmSelect(r)}
+            onClick={() => handlePlaceSelect(r)}
             className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Navigation className="w-4 h-4 text-primary" />
             </div>
             <div className="text-left min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+              <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{r.address}</p>
             </div>
           </button>
         ))}
@@ -423,7 +546,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                 <span className="hidden min-[360px]:inline">{detectingLocation ? "Detecting..." : "My location"}</span>
               </button>
             )}
-            <button onClick={() => { setMinimized(!minimized); if (activeField) { setActiveField(null); setOsmResults([]); } }} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+            <button onClick={() => { setMinimized(!minimized); if (activeField) { setActiveField(null); setPlaceResults([]); } }} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
               {minimized ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
           </div>
@@ -716,26 +839,26 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
                 {/* Dropoff input */}
                 <div className="relative">
-                  {activeField === "dropoff" && (osmResults.length > 0 || osmSearching) && (
+                  {activeField === "dropoff" && (placeResults.length > 0 || searching) && (
                     <div className="mb-2 bg-card border border-border rounded-xl shadow-lg max-h-[30vh] overflow-y-auto">
-                      {osmSearching && (
+                      {searching && (
                         <div className="flex items-center gap-2 px-4 py-3">
                           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">Searching...</span>
                         </div>
                       )}
-                      {osmResults.map((r) => (
+                      {placeResults.map((r) => (
                         <button
                           key={r.place_id}
-                          onClick={() => handleOsmSelect(r)}
+                          onClick={() => handlePlaceSelect(r)}
                           className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface active:bg-muted transition-colors border-b border-border last:border-0"
                         >
                           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                             <Navigation className="w-4 h-4 text-primary" />
                           </div>
                           <div className="text-left min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{r.address}</p>
                           </div>
                         </button>
                       ))}
