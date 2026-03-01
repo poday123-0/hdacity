@@ -334,6 +334,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (colorScheme) {
         mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
       }
+      // Also apply raster styles as fallback for dark mode
+      if (!colorScheme && isDark) {
+        mapOptions.styles = darkMapStyle;
+      }
     } else {
       mapOptions.styles = isDark ? darkMapStyle : lightNavStyle;
     }
@@ -394,11 +398,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       setThemeTransition(true);
       t1 = setTimeout(() => {
         const isDark = document.documentElement.classList.contains("dark");
+        const g = (window as any).google;
         if (mapId) {
-          const colorScheme = (window as any).google?.maps?.ColorScheme;
+          const colorScheme = g?.maps?.ColorScheme;
           if (colorScheme) {
             mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
           }
+          // Always also apply raster styles for dark mode reliability
+          mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         } else {
           mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         }
@@ -430,9 +437,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (mapId) {
         const colorScheme = (window as any).google?.maps?.ColorScheme;
         if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-      } else {
-        map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
       }
+      map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
     } else {
       map.setTilt(0);
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
@@ -445,9 +451,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (mapId) {
         const colorScheme = (window as any).google?.maps?.ColorScheme;
         if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-      } else {
-        map.setOptions({ styles: isDark ? darkMapStyle : [] });
       }
+      map.setOptions({ styles: isDark ? darkMapStyle : [] });
     }
   }, [isNavigating, mapId]);
 
