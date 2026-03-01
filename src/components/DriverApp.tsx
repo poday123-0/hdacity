@@ -2795,7 +2795,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
               </div>
 
-              <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div id="profile-scroll-area" className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                 {/* Avatar + Name */}
                 <div className="flex items-center gap-4">
@@ -2833,7 +2833,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 const).map(({ key, label, icon: Icon }) =>
                 <button
                   key={key}
-                  onClick={() => setProfileTab(key)}
+                  onClick={() => { setProfileTab(key); const sc = document.getElementById('profile-scroll-area'); if (sc) sc.scrollTop = 0; }}
                   className={`flex flex-col items-center gap-1 min-w-[52px] py-2 px-2.5 rounded-xl text-[10px] font-semibold transition-all shrink-0 ${
                   profileTab === key ?
                   "bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-[1.02]" :
