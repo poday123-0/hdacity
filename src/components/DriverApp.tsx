@@ -214,7 +214,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
-
+  const [sessionReady, setSessionReady] = useState(false);
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
     if (sessionKickedRef.current) return;
@@ -360,7 +360,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   // Push driver location to driver_locations when online
   useEffect(() => {
-    if (screen !== "online" || !userProfile?.id) {
+    if (!userProfile?.id || !sessionReady) return;
+
+    if (screen !== "online") {
       // Go offline: clear location watch and mark offline
       if (locationWatchRef.current !== null) {
         navigator.geolocation.clearWatch(locationWatchRef.current);
@@ -473,36 +475,51 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationIntervalRef.current = null;
       }
     };
-  }, [screen, userProfile?.id, selectedVehicleId, forceSessionTakeoverLogout]);
+  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, forceSessionTakeoverLogout]);
 
-  // Claim active driver session on app load so only the latest device stays active
+  // Claim active driver session before takeover checks start
   useEffect(() => {
-    if (!userProfile?.id) return;
+    if (!userProfile?.id) {
+      setSessionReady(false);
+      return;
+    }
+
+    let cancelled = false;
 
     const claimSession = async () => {
-      const { data: existingLoc } = await supabase
-        .from("driver_locations")
-        .select("id")
-        .eq("driver_id", userProfile.id)
-        .maybeSingle();
+      setSessionReady(false);
 
-      if (!existingLoc?.id) return;
+      try {
+        const { data: existingLoc } = await supabase
+          .from("driver_locations")
+          .select("id")
+          .eq("driver_id", userProfile.id)
+          .maybeSingle();
 
-      await supabase
-        .from("driver_locations")
-        .update({
-          session_id: deviceSessionId.current,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("driver_id", userProfile.id);
+        if (existingLoc?.id) {
+          await supabase
+            .from("driver_locations")
+            .update({
+              session_id: deviceSessionId.current,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("driver_id", userProfile.id);
+        }
+      } finally {
+        if (!cancelled) setSessionReady(true);
+      }
     };
 
     claimSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userProfile?.id]);
 
   // Realtime session takeover — enforce only while this device is actively driving
   useEffect(() => {
-    if (!userProfile?.id || screen === "offline") return;
+    if (!userProfile?.id || !sessionReady || screen === "offline") return;
 
     const channel = supabase
       .channel(`driver-session-${userProfile.id}`)
@@ -527,11 +544,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, sessionReady, screen, forceSessionTakeoverLogout]);
 
   // Fallback takeover check — enforce only while this device is actively driving
   useEffect(() => {
-    if (!userProfile?.id || screen === "offline") return;
+    if (!userProfile?.id || !sessionReady || screen === "offline") return;
 
     const checkTakeover = async () => {
       const { data: locRow } = await supabase
@@ -560,7 +577,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, sessionReady, screen, forceSessionTakeoverLogout]);
 
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
