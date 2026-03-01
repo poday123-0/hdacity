@@ -97,6 +97,34 @@ const getPointAhead = (
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 
+export interface NavSettings {
+  followSensitivity: "low" | "medium" | "high"; // camera update throttle
+  lookAheadDistance: "short" | "medium" | "far"; // how far ahead the camera looks
+  rerouteAggressiveness: "relaxed" | "normal" | "aggressive"; // how often to reroute
+  autoRefocusOnTurn: boolean; // snap back to follow on turn changes
+}
+
+export const DEFAULT_NAV_SETTINGS: NavSettings = {
+  followSensitivity: "medium",
+  lookAheadDistance: "medium",
+  rerouteAggressiveness: "normal",
+  autoRefocusOnTurn: true,
+};
+
+const NAV_SETTINGS_KEY = "driver_nav_settings";
+
+export const loadNavSettings = (): NavSettings => {
+  try {
+    const raw = localStorage.getItem(NAV_SETTINGS_KEY);
+    if (raw) return { ...DEFAULT_NAV_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_NAV_SETTINGS };
+};
+
+export const saveNavSettings = (s: NavSettings) => {
+  try { localStorage.setItem(NAV_SETTINGS_KEY, JSON.stringify(s)); } catch {}
+};
+
 interface NavStep {
   instruction: string;
   distance: string;
@@ -125,9 +153,11 @@ interface DriverMapProps {
   onSpeedChange?: (speed: number) => void;
   tripPanelOpen?: boolean;
   onNavStepChange?: (data: { instruction: string; distance: string; maneuver?: string; eta: string; totalDistance: string; nextInstruction?: string; nextManeuver?: string; nextDistance?: string }) => void;
+  navSettings?: NavSettings;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp }: DriverMapProps) => {
+  const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
@@ -454,19 +484,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
 
     // Auto-follow with forward-looking camera + heading lock
+    const cameraThrottleMs = navSettings.followSensitivity === "high" ? 200 : navSettings.followSensitivity === "low" ? 600 : 350;
     if (followDriver) {
       userInteractingRef.current = false;
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
 
       const now = Date.now();
-      if (now - lastCameraUpdateAtRef.current > 350) {
+      if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
         lastCameraUpdateAtRef.current = now;
 
         if (isNavigating) {
           if (typeof map.setHeading === "function") {
             map.setHeading(heading);
           }
-          const lookAheadMeters = currentSpeed > 40 ? 95 : currentSpeed > 20 ? 70 : 50;
+          const lookAheadBase = navSettings.lookAheadDistance === "far" ? { slow: 80, mid: 110, fast: 140 } : navSettings.lookAheadDistance === "short" ? { slow: 25, mid: 40, fast: 60 } : { slow: 50, mid: 70, fast: 95 };
+          const lookAheadMeters = currentSpeed > 40 ? lookAheadBase.fast : currentSpeed > 20 ? lookAheadBase.mid : lookAheadBase.slow;
           const cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
           map.panTo(cameraTarget);
 
@@ -482,7 +514,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         }
       }
     }
-  }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver]);
+  }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
+
+  // Auto-refocus on turn: when step changes, snap back to follow mode
+  const prevStepIndexRef = useRef(0);
+  useEffect(() => {
+    if (!isNavigating || !navSettings.autoRefocusOnTurn) return;
+    if (currentStepIndex !== prevStepIndexRef.current && currentStepIndex > prevStepIndexRef.current) {
+      prevStepIndexRef.current = currentStepIndex;
+      if (!followDriver) {
+        setFollowDriver(true);
+        userInteractingRef.current = false;
+        setUserPannedAway(false);
+      }
+    }
+    prevStepIndexRef.current = currentStepIndex;
+  }, [currentStepIndex, isNavigating, followDriver, navSettings.autoRefocusOnTurn]);
 
   const parseNavStepsRef = useRef<(result: any) => void>(() => {});
 
@@ -633,8 +680,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
     directionsRendererRef.current = dr;
 
-    const MIN_REROUTE_INTERVAL_MS = 5000;
-    const MIN_REROUTE_MOVEMENT_M = 20;
+    const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
+      ? { interval: 3000, movement: 10 }
+      : navSettings.rerouteAggressiveness === "relaxed"
+      ? { interval: 10000, movement: 40 }
+      : { interval: 5000, movement: 20 };
+    const MIN_REROUTE_INTERVAL_MS = rerouteConfig.interval;
+    const MIN_REROUTE_MOVEMENT_M = rerouteConfig.movement;
 
     const fetchRoute = (force = false) => {
       const driverPos = currentPosRef.current;
@@ -680,13 +732,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     };
 
     fetchRoute(true);
-    routeRefreshRef.current = setInterval(() => fetchRoute(false), 5000);
+    routeRefreshRef.current = setInterval(() => fetchRoute(false), rerouteConfig.interval);
 
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
       routeFetchInFlightRef.current = false;
     };
-  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, passengerLiveLocation]);
+  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, passengerLiveLocation, navSettings.rerouteAggressiveness]);
 
   // Radius circle
   useEffect(() => {

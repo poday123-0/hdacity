@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/components/AuthScreen";
 import DriverMap from "@/components/DriverMap";
+import { type NavSettings, DEFAULT_NAV_SETTINGS, loadNavSettings, saveNavSettings } from "@/components/DriverMap";
 import hdaLogo from "@/assets/hda-logo.png";
 import DriverEarnings from "@/components/DriverEarnings";
 import DriverWallet from "@/components/DriverWallet";
@@ -204,6 +205,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
   const [driverSpeed, setDriverSpeed] = useState(0);
   const [navStepData, setNavStepData] = useState<{instruction: string;distance: string;maneuver?: string;eta: string;totalDistance: string;nextInstruction?: string;nextManeuver?: string;nextDistance?: string;} | null>(null);
+  const [driverNavSettings, setDriverNavSettings] = useState<NavSettings>(loadNavSettings);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
@@ -1553,7 +1555,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         followToggleRef={followToggleRef}
         onSpeedChange={setDriverSpeed}
         tripPanelOpen={screen === "navigating" && !navPanelMinimized}
-        onNavStepChange={setNavStepData} />
+        onNavStepChange={setNavStepData}
+        navSettings={driverNavSettings} />
 
 
       {/* Map action buttons — right side, positioned for thumb reach */}
@@ -3350,7 +3353,72 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <ThemeToggle />
                   </div>
 
-                  {/* Share App */}
+                  {/* Navigation Settings */}
+                  <div className="bg-surface rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Navigation className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Navigation</p>
+                        <p style={{ fontSize: '12px' }} className="text-muted-foreground">Tune map behavior while driving</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {/* Follow Sensitivity */}
+                      <div>
+                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-1.5">Camera Follow Speed</p>
+                        <div className="flex gap-1.5">
+                          {(["low", "medium", "high"] as const).map(v => (
+                            <button key={v} onClick={() => { const s = { ...driverNavSettings, followSensitivity: v }; setDriverNavSettings(s); saveNavSettings(s); }}
+                              style={{ fontSize: '11px' }}
+                              className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${driverNavSettings.followSensitivity === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              {v === "low" ? "Smooth" : v === "medium" ? "Normal" : "Snappy"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Look-Ahead Distance */}
+                      <div>
+                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-1.5">Look-Ahead Distance</p>
+                        <div className="flex gap-1.5">
+                          {(["short", "medium", "far"] as const).map(v => (
+                            <button key={v} onClick={() => { const s = { ...driverNavSettings, lookAheadDistance: v }; setDriverNavSettings(s); saveNavSettings(s); }}
+                              style={{ fontSize: '11px' }}
+                              className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${driverNavSettings.lookAheadDistance === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              {v === "short" ? "Close" : v === "medium" ? "Normal" : "Far"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Reroute Aggressiveness */}
+                      <div>
+                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-1.5">Reroute Frequency</p>
+                        <div className="flex gap-1.5">
+                          {(["relaxed", "normal", "aggressive"] as const).map(v => (
+                            <button key={v} onClick={() => { const s = { ...driverNavSettings, rerouteAggressiveness: v }; setDriverNavSettings(s); saveNavSettings(s); }}
+                              style={{ fontSize: '11px' }}
+                              className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${driverNavSettings.rerouteAggressiveness === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              {v === "relaxed" ? "Relaxed" : v === "normal" ? "Normal" : "Aggressive"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Auto-Refocus on Turn */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p style={{ fontSize: '12px' }} className="font-medium text-foreground">Auto-Refocus on Turns</p>
+                          <p style={{ fontSize: '10px' }} className="text-muted-foreground">Snap camera back when you turn</p>
+                        </div>
+                        <button
+                          onClick={() => { const s = { ...driverNavSettings, autoRefocusOnTurn: !driverNavSettings.autoRefocusOnTurn }; setDriverNavSettings(s); saveNavSettings(s); }}
+                          className={`w-11 h-6 rounded-full transition-colors relative ${driverNavSettings.autoRefocusOnTurn ? "bg-primary" : "bg-muted"}`}>
+                          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${driverNavSettings.autoRefocusOnTurn ? "translate-x-5" : "translate-x-0.5"}`} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <button
                 onClick={() => {setShowProfile(false);navigate("/install");}}
                 className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform">
