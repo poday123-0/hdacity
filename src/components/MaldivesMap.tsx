@@ -150,24 +150,32 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
   useEffect(() => {
     if (!mapInstance.current) return;
     let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
+
+    const applyTheme = () => {
+      const isDark = document.documentElement.classList.contains("dark");
+      const g = (window as any).google;
+      if (mapId) {
+        const colorScheme = g?.maps?.ColorScheme;
+        if (colorScheme) {
+          mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+        }
+        // Also apply raster styles as fallback
+        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+      } else {
+        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+      }
+    };
+
     const observer = new MutationObserver(() => {
       setThemeTransition(true);
       t1 = setTimeout(() => {
-        const isDark = document.documentElement.classList.contains("dark");
-        if (mapId) {
-          const colorScheme = (window as any).google?.maps?.ColorScheme;
-          if (colorScheme) {
-            mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-          }
-        } else {
-          mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
-        }
+        applyTheme();
         t2 = setTimeout(() => setThemeTransition(false), 500);
-      }, 150);
+      }, 50);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
-  }, [isLoaded]);
+  }, [isLoaded, mapId]);
 
   // Update user marker
   useEffect(() => {
