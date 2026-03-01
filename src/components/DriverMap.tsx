@@ -154,9 +154,11 @@ interface DriverMapProps {
   tripPanelOpen?: boolean;
   onNavStepChange?: (data: { instruction: string; distance: string; maneuver?: string; eta: string; totalDistance: string; nextInstruction?: string; nextManeuver?: string; nextDistance?: string }) => void;
   navSettings?: NavSettings;
+  onMapHeadingChange?: (heading: number) => void;
+  resetNorthRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
@@ -322,6 +324,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     map.addListener("heading_changed", () => {
       const h = typeof map.getHeading === "function" ? (map.getHeading() || 0) : 0;
       setMapHeading(h);
+      onMapHeadingChange?.(h);
       if (programmaticHeading) return;
       // Manual rotation detected — break follow so auto-heading stops
       userInteractingRef.current = true;
@@ -994,34 +997,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         className={`absolute inset-0 z-[1] pointer-events-none bg-background transition-opacity duration-300 ${themeTransition ? 'opacity-100' : 'opacity-0'}`}
       />
 
-      {/* Compass overlay */}
-      <button
-        onClick={() => {
-          const map = mapInstance.current;
-          if (!map) return;
-          if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-          if (typeof map.setHeading === "function") map.setHeading(0);
-          map.setTilt(0);
-          setMapHeading(0);
-        }}
-        className="absolute top-4 right-3 z-[460] w-11 h-11 rounded-full bg-card/90 backdrop-blur-md shadow-lg border border-border/40 flex items-center justify-center transition-all active:scale-90"
-        title="Reset to North"
-      >
-        <div
-          style={{ transform: `rotate(${-mapHeading}deg)`, transition: "transform 0.3s ease-out" }}
-          className="relative w-7 h-7"
-        >
-          {/* North pointer (red) */}
-          <svg viewBox="0 0 28 28" className="w-full h-full">
-            {/* South half (dark) */}
-            <polygon points="14,4 18,16 14,14 10,16" fill="hsl(var(--muted-foreground))" opacity="0.4" />
-            {/* North half (red) */}
-            <polygon points="14,24 10,12 14,14 18,12" fill="hsl(var(--muted-foreground))" opacity="0.4" />
-            <polygon points="14,4 18,16 14,14 10,16" fill="#EF4444" />
-            <text x="14" y="3" textAnchor="middle" fontSize="5" fontWeight="bold" fill="#EF4444">N</text>
-          </svg>
-        </div>
-      </button>
+      {/* Compass reset exposed via ref to parent */}
+      {(() => {
+        if (resetNorthRef) {
+          resetNorthRef.current = () => {
+            const map = mapInstance.current;
+            if (!map) return;
+            if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
+            if (typeof map.setHeading === "function") map.setHeading(0);
+            map.setTilt(0);
+            setMapHeading(0);
+            onMapHeadingChange?.(0);
+          };
+        }
+        return null;
+      })()}
 
       {/* Route/follow toggle removed — now in DriverApp sidebar */}
 
