@@ -240,12 +240,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setSessionKicked(true);
     setScreen("offline");
     setCurrentTrip(null);
+    setShowTakeoverConfirm(false);
+    onLogout?.();
     toast({
       title: "Session Taken Over",
       description: "Another device is now active for your account.",
       variant: "destructive",
     });
-  }, []);
+  }, [onLogout]);
 
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
@@ -455,9 +457,34 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, selectedVehicleId, forceSessionTakeoverLogout]);
 
+  // Claim active driver session on app load so only the latest device stays active
+  useEffect(() => {
+    if (!userProfile?.id) return;
+
+    const claimSession = async () => {
+      const { data: existingLoc } = await supabase
+        .from("driver_locations")
+        .select("id")
+        .eq("driver_id", userProfile.id)
+        .maybeSingle();
+
+      if (!existingLoc?.id) return;
+
+      await supabase
+        .from("driver_locations")
+        .update({
+          session_id: deviceSessionId.current,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("driver_id", userProfile.id);
+    };
+
+    claimSession();
+  }, [userProfile?.id]);
+
   // Realtime session takeover — immediately kick old device when session_id changes
   useEffect(() => {
-    if (!userProfile?.id || screen === "offline") return;
+    if (!userProfile?.id) return;
 
     const channel = supabase
       .channel(`driver-session-${userProfile.id}`)
@@ -482,11 +509,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, forceSessionTakeoverLogout]);
 
   // Fallback takeover check — protects when realtime is delayed (e.g. backgrounded app)
   useEffect(() => {
-    if (!userProfile?.id || screen === "offline") return;
+    if (!userProfile?.id) return;
 
     const checkTakeover = async () => {
       const { data: locRow } = await supabase
@@ -515,7 +542,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, forceSessionTakeoverLogout]);
 
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);

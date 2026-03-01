@@ -275,12 +275,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       disableDefaultUI: true,
       zoomControl: false,
       rotateControl: true,
-      styles: isDark ? darkMapStyle : lightNavStyle,
       gestureHandling: "greedy",
     };
     // Vector map (enables two-finger rotation, tilt, heading)
     if (mapId) {
       mapOptions.mapId = mapId;
+      const colorScheme = g.maps?.ColorScheme;
+      if (colorScheme) {
+        mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
+      }
+    } else {
+      mapOptions.styles = isDark ? darkMapStyle : lightNavStyle;
     }
 
     const map = new g.maps.Map(mapRef.current, mapOptions);
@@ -338,13 +343,20 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       setThemeTransition(true);
       timeout = setTimeout(() => {
         const isDark = document.documentElement.classList.contains("dark");
-        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+        if (mapId) {
+          const colorScheme = (window as any).google?.maps?.ColorScheme;
+          if (colorScheme) {
+            mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+          }
+        } else {
+          mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+        }
         setTimeout(() => setThemeTransition(false), 350);
       }, 50);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => { observer.disconnect(); clearTimeout(timeout); };
-  }, [isLoaded, isNavigating]);
+  }, [isLoaded, isNavigating, mapId]);
 
   // Navigation mode: tilt map + higher zoom + heading rotation
   useEffect(() => {
@@ -360,21 +372,33 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(18);
       if (typeof map.setHeading === "function") {
+        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
         map.setHeading(prevHeadingRef.current || 0);
       }
       const isDark = document.documentElement.classList.contains("dark");
-      map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
+      if (mapId) {
+        const colorScheme = (window as any).google?.maps?.ColorScheme;
+        if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+      } else {
+        map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
+      }
     } else {
       map.setTilt(0);
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(16);
       if (typeof map.setHeading === "function") {
+        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
         map.setHeading(0);
       }
       const isDark = document.documentElement.classList.contains("dark");
-      map.setOptions({ styles: isDark ? darkMapStyle : [] });
+      if (mapId) {
+        const colorScheme = (window as any).google?.maps?.ColorScheme;
+        if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+      } else {
+        map.setOptions({ styles: isDark ? darkMapStyle : [] });
+      }
     }
-  }, [isNavigating]);
+  }, [isNavigating, mapId]);
 
   // Update driver marker position, rotation & auto-follow
   useEffect(() => {
@@ -526,6 +550,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           }
         } else {
           if (typeof map.setHeading === "function") {
+            if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
             map.setHeading(0);
           }
           map.panTo(displayPos);
