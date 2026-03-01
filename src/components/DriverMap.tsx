@@ -337,14 +337,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
 
-  // Theme observer — debounced with overlay fade to mask map style re-render
+  // Theme observer — smooth crossfade overlay
   const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
     if (!mapInstance.current) return;
-    let timeout: ReturnType<typeof setTimeout>;
+    let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
     const observer = new MutationObserver(() => {
       setThemeTransition(true);
-      timeout = setTimeout(() => {
+      t1 = setTimeout(() => {
         const isDark = document.documentElement.classList.contains("dark");
         if (mapId) {
           const colorScheme = (window as any).google?.maps?.ColorScheme;
@@ -354,11 +354,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         } else {
           mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         }
-        setTimeout(() => setThemeTransition(false), 350);
-      }, 50);
+        t2 = setTimeout(() => setThemeTransition(false), 500);
+      }, 150);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => { observer.disconnect(); clearTimeout(timeout); };
+    return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, [isLoaded, isNavigating, mapId]);
 
   // Navigation mode: tilt map + higher zoom + heading rotation
@@ -994,7 +994,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       <div ref={mapRef} className="absolute inset-0 z-0" />
       {/* Theme transition overlay */}
       <div
-        className={`absolute inset-0 z-[1] pointer-events-none bg-background transition-opacity duration-300 ${themeTransition ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 z-[1] pointer-events-none bg-background/90 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${themeTransition ? 'opacity-100' : 'opacity-0'}`}
       />
 
       {/* Compass reset exposed via ref to parent */}

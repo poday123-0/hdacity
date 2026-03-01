@@ -145,14 +145,14 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
 
-  // Theme observer — debounced with overlay
+  // Theme observer — smooth crossfade overlay
   const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
     if (!mapInstance.current) return;
-    let timeout: ReturnType<typeof setTimeout>;
+    let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
     const observer = new MutationObserver(() => {
       setThemeTransition(true);
-      timeout = setTimeout(() => {
+      t1 = setTimeout(() => {
         const isDark = document.documentElement.classList.contains("dark");
         if (mapId) {
           const colorScheme = (window as any).google?.maps?.ColorScheme;
@@ -162,11 +162,11 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
         } else {
           mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
         }
-        setTimeout(() => setThemeTransition(false), 350);
-      }, 50);
+        t2 = setTimeout(() => setThemeTransition(false), 500);
+      }, 150);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => { observer.disconnect(); clearTimeout(timeout); };
+    return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, [isLoaded]);
 
   // Update user marker
@@ -359,7 +359,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
   return (
     <div className="relative" style={{ width: "100%", height: "100%" }}>
       <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
-      <div className={`absolute inset-0 z-[1] pointer-events-none bg-background transition-opacity duration-300 ${themeTransition ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`absolute inset-0 z-[1] pointer-events-none bg-background/90 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${themeTransition ? 'opacity-100' : 'opacity-0'}`} />
     </div>
   );
 };
