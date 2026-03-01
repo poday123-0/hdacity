@@ -194,6 +194,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
   const [sessionKicked, setSessionKicked] = useState(false);
+  const sessionKickedRef = useRef(false);
   const [showTakeoverConfirm, setShowTakeoverConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -215,6 +216,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const deviceSessionId = useRef<string>(crypto.randomUUID());
 
   const forceSessionTakeoverLogout = useCallback(() => {
+    // Guard: only fire once
+    if (sessionKickedRef.current) return;
+    sessionKickedRef.current = true;
+
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current);
       locationIntervalRef.current = null;
@@ -239,7 +244,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       osc.stop(ctx.currentTime + 0.5);
     } catch {}
 
-    setSessionKicked(false);
+    setSessionKicked(true);
     setScreen("offline");
     setCurrentTrip(null);
     setShowTakeoverConfirm(false);
@@ -1442,6 +1447,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               onClick={() => {
                 deviceSessionId.current = crypto.randomUUID();
                 setSessionKicked(false);
+                sessionKickedRef.current = false;
               }}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-95 transition-transform">
 
@@ -1827,6 +1833,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 .eq("driver_id", userProfile!.id);
               setShowTakeoverConfirm(false);
               setSessionKicked(false);
+              sessionKickedRef.current = false;
               setScreen("online");
             }}
             className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-base transition-all active:scale-[0.97] shadow-lg shadow-primary/20"
