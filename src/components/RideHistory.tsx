@@ -123,6 +123,9 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Total Fare</p>
                 <p className="text-3xl font-bold text-primary">{selectedTrip.actual_fare || selectedTrip.estimated_fare || 0} MVR</p>
+                {(selectedTrip as any).passenger_bonus > 0 && (
+                  <p className="text-xs text-primary/80 font-medium mt-0.5">Includes +{(selectedTrip as any).passenger_bonus} MVR boost</p>
+                )}
               </div>
 
               <div className="h-px bg-border" />

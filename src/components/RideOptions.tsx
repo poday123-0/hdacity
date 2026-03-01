@@ -1,4 +1,4 @@
-import { Car, Users, Crown, ArrowLeft, Loader2, Bike, Truck, Bus, Luggage } from "lucide-react";
+import { Car, Users, Crown, ArrowLeft, Loader2, Bike, Truck, Bus, Luggage, Plus, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,7 @@ interface LocationData {
 
 interface RideOptionsProps {
   onBack: () => void;
-  onConfirm: (vehicleType: any, estimatedFare: number) => void;
+  onConfirm: (vehicleType: any, estimatedFare: number, passengerBonus: number) => void;
   pickup?: LocationData | null;
   dropoff?: LocationData | null;
   passengerCount: number;
@@ -51,6 +51,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   const [selected, setSelected] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [passengerBonus, setPassengerBonus] = useState(0);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -345,30 +346,69 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           </div>
         )}
 
-        {/* Selected vehicle detail strip */}
+        {/* Selected vehicle detail strip + fare adjuster */}
         {selectedType && (
-          <div className="bg-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden shrink-0">
-              {selectedType.image_url ? (
-                <img src={selectedType.image_url} alt={selectedType.name} className="w-full h-full object-contain p-0.5" />
-              ) : (
-                <Car className="w-4.5 h-4.5 text-primary-foreground" />
+          <div className="space-y-2">
+            <div className="bg-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center overflow-hidden shrink-0">
+                {selectedType.image_url ? (
+                  <img src={selectedType.image_url} alt={selectedType.name} className="w-full h-full object-contain p-0.5" />
+                ) : (
+                  <Car className="w-4.5 h-4.5 text-primary-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-xs text-foreground">{selectedType.name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats`}</p>
+              </div>
+              <p className="text-base font-bold text-primary shrink-0">{selectedFare + passengerBonus} <span className="text-[10px] font-semibold text-muted-foreground">{bookingType === "hourly" ? "MVR/hr" : "MVR"}</span></p>
+            </div>
+
+            {/* Fare Boost / Tip adjuster */}
+            <div className="bg-surface rounded-xl px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">Boost Fare</p>
+                  <p className="text-[10px] text-muted-foreground">Add extra to attract drivers faster</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPassengerBonus(Math.max(0, passengerBonus - 5))}
+                    disabled={passengerBonus <= 0}
+                    className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
+                  >
+                    <Minus className="w-3.5 h-3.5 text-foreground" />
+                  </button>
+                  <span className={`text-sm font-bold tabular-nums min-w-[3rem] text-center ${passengerBonus > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                    +{passengerBonus}
+                  </span>
+                  <button
+                    onClick={() => setPassengerBonus(passengerBonus + 5)}
+                    className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-primary" />
+                  </button>
+                </div>
+              </div>
+              {passengerBonus > 0 && (
+                <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <span>Base: {selectedFare} MVR</span>
+                  <span>+</span>
+                  <span className="text-primary font-semibold">Boost: {passengerBonus} MVR</span>
+                  <span>=</span>
+                  <span className="text-foreground font-bold">{selectedFare + passengerBonus} MVR</span>
+                </div>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-xs text-foreground">{selectedType.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats`}</p>
-            </div>
-            <p className="text-base font-bold text-primary shrink-0">{selectedFare} <span className="text-[10px] font-semibold text-muted-foreground">{bookingType === "hourly" ? "MVR/hr" : "MVR"}</span></p>
           </div>
         )}
 
         <button
-          onClick={() => selectedType && selectedIsOnline && onConfirm(selectedType, selectedFare)}
+          onClick={() => selectedType && selectedIsOnline && onConfirm(selectedType, selectedFare, passengerBonus)}
           disabled={!selectedType || !selectedIsOnline}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
         >
-          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : bookingType === "hourly" ? `Confirm ${selectedType.name} — ${selectedFare} MVR/hr` : `Confirm ${selectedType.name} — ${selectedFare} MVR`}
+          {!selectedType ? "Select a ride" : !selectedIsOnline ? "No drivers available" : bookingType === "hourly" ? `Confirm ${selectedType.name} — ${selectedFare + passengerBonus} MVR/hr` : `Confirm ${selectedType.name} — ${selectedFare + passengerBonus} MVR`}
         </button>
       </div>
     </motion.div>

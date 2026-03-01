@@ -2079,7 +2079,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <p className="text-primary-foreground/80 text-xs">
                 {currentTrip.booking_type === "scheduled" ? "📅 Scheduled ride" : currentTrip.booking_type === "hourly" ? "⏱ Hourly booking" : "New ride"}{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
               </p>
-              <p className="text-2xl font-bold text-primary-foreground">{currentTrip.estimated_fare ?? "—"} MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}</p>
+              <p className="text-2xl font-bold text-primary-foreground">
+                {(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}
+              </p>
+              {(currentTrip as any).passenger_bonus > 0 && (
+                <p className="text-primary-foreground/80 text-[10px] mt-0.5">
+                  Base: {currentTrip.estimated_fare} + Boost: {(currentTrip as any).passenger_bonus} MVR
+                </p>
+              )}
               {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
               {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at &&
             <p className="text-primary-foreground/70 text-xs mt-0.5">Pickup: {new Date(currentTrip.scheduled_at).toLocaleString()}</p>
@@ -2288,7 +2295,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
         <ChevronUp className="w-4 h-4" />
         <span className="text-xs font-bold">{driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup" : "Trip in progress"}</span>
-        <span className="text-xs font-bold opacity-70">{currentTrip.estimated_fare ?? "—"} MVR</span>
+        <span className="text-xs font-bold opacity-70">{(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} MVR</span>
       </button>
       }
 
@@ -2321,8 +2328,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
               {/* Fare */}
               <div className="text-right shrink-0">
-                <p className="text-lg font-bold text-primary-foreground leading-tight">{currentTrip.estimated_fare ?? "—"}</p>
-                <p className="text-[10px] text-primary-foreground/70">MVR</p>
+                <p className="text-lg font-bold text-primary-foreground leading-tight">{(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)}</p>
+                <p className="text-[10px] text-primary-foreground/70">MVR{(currentTrip as any).passenger_bonus > 0 ? ` (+${(currentTrip as any).passenger_bonus})` : ""}</p>
               </div>
               {/* Minimize */}
               <button onClick={() => setNavPanelMinimized(true)} className="w-7 h-7 rounded-lg bg-primary-foreground/20 flex items-center justify-center active:scale-90 transition-transform shrink-0">
@@ -2508,12 +2515,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             onConfirm={async () => {
               if (!currentTrip || !userProfile?.id) return;
               const now = new Date().toISOString();
-              let actualFare = currentTrip.estimated_fare;
+              let actualFare = (currentTrip.estimated_fare || 0) + ((currentTrip as any).passenger_bonus || 0);
               if (currentTrip.booking_type === "hourly") {
                 const startedAt = (currentTrip as any).started_at || (currentTrip as any).accepted_at;
                 if (startedAt) {
                   const hours = Math.max(1, (Date.now() - new Date(startedAt).getTime()) / 3600000);
-                  actualFare = Math.round(hours * (currentTrip.estimated_fare || 0));
+                  actualFare = Math.round(hours * (currentTrip.estimated_fare || 0)) + ((currentTrip as any).passenger_bonus || 0);
                 }
               }
               setCompletionFare(actualFare || 0);
