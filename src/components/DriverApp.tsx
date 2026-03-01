@@ -211,6 +211,42 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
+
+  const forceSessionTakeoverLogout = useCallback(() => {
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
+    }
+    if (locationWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch {}
+
+    setSessionKicked(true);
+    setScreen("offline");
+    setCurrentTrip(null);
+    toast({
+      title: "Session Taken Over",
+      description: "Another device is now active for your account.",
+      variant: "destructive",
+    });
+  }, []);
+
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
     try {
@@ -394,25 +430,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         eq("driver_id", userProfile.id).
         single();
         if (locRow && (locRow as any).session_id && (locRow as any).session_id !== deviceSessionId.current) {
-          // Another device is now active — show alert and force offline
-          if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-          if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
-          try {navigator.vibrate?.([300, 100, 300, 100, 300]);} catch {}
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
-            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
-            osc.connect(gain).connect(ctx.destination);
-            osc.start();osc.stop(ctx.currentTime + 0.5);
-          } catch {}
-          setSessionKicked(true);
-          setScreen("offline");
+          // Another device is now active — force this device offline
+          forceSessionTakeoverLogout();
           return; // Don't upsert — this device is no longer active
         }
         // Only upsert location if session is still ours
@@ -434,7 +453,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationIntervalRef.current = null;
       }
     };
-  }, [screen, userProfile?.id, selectedVehicleId]);
+  }, [screen, userProfile?.id, selectedVehicleId, forceSessionTakeoverLogout]);
 
   // Realtime session takeover — immediately kick old device when session_id changes
   useEffect(() => {
@@ -454,30 +473,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           const newSessionId = payload.new?.session_id;
           if (newSessionId && newSessionId !== deviceSessionId.current) {
             // Another device took over — immediately force this device offline
-            if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-            if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
-            try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
-            try {
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = "square";
-              osc.frequency.setValueAtTime(880, ctx.currentTime);
-              osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
-              osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
-              gain.gain.setValueAtTime(0.3, ctx.currentTime);
-              gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
-              osc.connect(gain).connect(ctx.destination);
-              osc.start(); osc.stop(ctx.currentTime + 0.5);
-            } catch {}
-            setSessionKicked(true);
-            setScreen("offline");
-            setCurrentTrip(null);
-            toast({
-              title: "Session Taken Over",
-              description: "Another device is now active for your account.",
-              variant: "destructive",
-            });
+            forceSessionTakeoverLogout();
           }
         }
       )
@@ -486,7 +482,40 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, screen]);
+  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
+
+  // Fallback takeover check — protects when realtime is delayed (e.g. backgrounded app)
+  useEffect(() => {
+    if (!userProfile?.id || screen === "offline") return;
+
+    const checkTakeover = async () => {
+      const { data: locRow } = await supabase
+        .from("driver_locations")
+        .select("session_id")
+        .eq("driver_id", userProfile.id)
+        .single();
+
+      const activeSessionId = (locRow as any)?.session_id;
+      if (activeSessionId && activeSessionId !== deviceSessionId.current) {
+        forceSessionTakeoverLogout();
+      }
+    };
+
+    const interval = setInterval(checkTakeover, 5000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        checkTakeover();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    checkTakeover();
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
 
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
