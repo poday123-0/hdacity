@@ -16,6 +16,10 @@ interface SoundFile {
 
 const soundCategories = [
   { key: "trip_request", label: "Driver: Trip Request" },
+  { key: "driver_trip_accepted", label: "Driver: Trip Accepted" },
+  { key: "driver_arrived", label: "Driver: Arrived at Pickup" },
+  { key: "driver_trip_started", label: "Driver: Trip Started" },
+  { key: "driver_trip_completed", label: "Driver: Trip Completed" },
   { key: "driver_trip_cancelled", label: "Driver: Trip Cancelled" },
   { key: "driver_message_received", label: "Driver: Message Received" },
   { key: "passenger_accepted", label: "Passenger: Driver Accepted" },
@@ -212,6 +216,10 @@ const AdminSettings = () => {
       passenger_cancelled: "passenger_sound_cancelled",
       passenger_message_received: "passenger_sound_message",
       trip_request: "trip_request_sound_url",
+      driver_trip_accepted: "driver_sound_accepted",
+      driver_arrived: "driver_sound_arrived",
+      driver_trip_started: "driver_sound_started",
+      driver_trip_completed: "driver_sound_completed",
       driver_trip_cancelled: "driver_sound_cancelled",
       driver_message_received: "driver_sound_message",
     };
