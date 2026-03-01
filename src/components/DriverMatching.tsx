@@ -42,9 +42,10 @@ interface DriverMatchingProps {
   showBankDetails?: boolean;
   pickupName?: string;
   dropoffName?: string;
+  onCancelTrip?: () => void;
 }
 
-const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBankDetails = false, pickupName, dropoffName }: DriverMatchingProps) => {
+const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBankDetails = false, pickupName, dropoffName, onCancelTrip }: DriverMatchingProps) => {
   const driverName = driver?.name || "Driver";
   const initials = driver?.initials || driverName.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const rating = driver?.rating || 4.9;
@@ -532,9 +533,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
           )}
 
           {/* Cancel */}
-          {tripStatus !== "in_progress" && (
+          {onCancelTrip && (
             <button
-              onClick={onCancel}
+              onClick={onCancelTrip}
               className="w-full flex items-center justify-center gap-2 text-destructive text-sm font-medium py-2 active:scale-95 transition-transform"
             >
               <X className="w-4 h-4" />

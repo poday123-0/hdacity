@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import type { BookingType } from "@/components/LocationInput";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Car } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
 import SplashScreen from "@/components/SplashScreen";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
@@ -87,6 +88,9 @@ const Index = () => {
   const [driverIconUrl, setDriverIconUrl] = useState<string | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
   const [tripStatus, setTripStatus] = useState<string>("accepted");
+  const [showPassengerCancelConfirm, setShowPassengerCancelConfirm] = useState(false);
+  const [showCancelledByDriverPopup, setShowCancelledByDriverPopup] = useState(false);
+  const [cancelledByDriverReason, setCancelledByDriverReason] = useState("");
 
   // Passenger font size
   const [passengerTextSize, setPassengerTextSize] = useState<number>(() => {
@@ -272,13 +276,20 @@ const Index = () => {
       }
 
       const markers = data.map((dl: any) => ({
-        id: dl.id,
+        id: dl.driver_id,
         lat: dl.lat,
         lng: dl.lng,
         name: vtMap[dl.vehicle_type_id]?.name || "Driver",
         imageUrl: vtMap[dl.vehicle_type_id]?.map_icon_url || undefined,
       }));
-      setVehicleMarkers(markers);
+      // Deduplicate by driver_id (in case of stale records)
+      const seen = new Set<string>();
+      const uniqueMarkers = markers.filter((m: any) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      setVehicleMarkers(uniqueMarkers);
     }
   }, []);
 
@@ -668,6 +679,12 @@ const Index = () => {
         } else if (status === "completed") {
           setPassengerScreen("feedback");
         } else if (status === "cancelled" && !isNoDriverCancel) {
+          // Show popup if cancelled by driver (not by passenger themselves)
+          const cancelledByDriver = trip.cancel_reason?.includes("driver");
+          if (cancelledByDriver) {
+            setCancelledByDriverReason(trip.cancel_reason || "Your driver cancelled the trip.");
+            setShowCancelledByDriverPopup(true);
+          }
           setPassengerScreen("home");
           setCurrentTripId(null);
           setMatchedDriver(null);
@@ -819,6 +836,7 @@ const Index = () => {
               showBankDetails={tripStatus === "in_progress"}
               pickupName={pickup?.name}
               dropoffName={dropoff?.name}
+              onCancelTrip={() => setShowPassengerCancelConfirm(true)}
             />
           )}
         </AnimatePresence>
@@ -830,6 +848,109 @@ const Index = () => {
 
       <PWAInstallPrompt />
       <NotificationPanel userId={userProfile?.id} userType="passenger" visible={showPassengerNotifs} onClose={() => setShowPassengerNotifs(false)} />
+
+      {/* Passenger Cancel Confirmation Popup */}
+      <AnimatePresence>
+        {showPassengerCancelConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 280 }}
+              className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+            >
+              <div className="px-6 pt-8 pb-5 text-center">
+                <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                  <Car className="w-8 h-8 text-destructive" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">Cancel your ride?</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  Your driver will be notified immediately.
+                </p>
+              </div>
+              <div className="px-6 pb-6 space-y-3">
+                <button
+                  onClick={async () => {
+                    setShowPassengerCancelConfirm(false);
+                    if (currentTripId) {
+                      await supabase.from("trips").update({
+                        status: "cancelled",
+                        cancel_reason: "Cancelled by passenger",
+                        cancelled_at: new Date().toISOString(),
+                      }).eq("id", currentTripId);
+                    }
+                    setCurrentTripId(null);
+                    setMatchedDriver(null);
+                    setPassengerScreen("home");
+                    toast({ title: "Trip Cancelled", description: "Your ride has been cancelled." });
+                  }}
+                  className="w-full py-4 bg-destructive text-destructive-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform"
+                >
+                  Yes, Cancel Ride
+                </button>
+                <button
+                  onClick={() => setShowPassengerCancelConfirm(false)}
+                  className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-2xl transition-colors"
+                >
+                  Go back
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancelled by Driver Popup */}
+      <AnimatePresence>
+        {showCancelledByDriverPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 280 }}
+              className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+            >
+              <div className="px-6 pt-8 pb-5 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 18 }}
+                  className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4"
+                >
+                  <Car className="w-8 h-8 text-destructive" />
+                </motion.div>
+                <h3 className="text-lg font-bold text-foreground">Driver Cancelled</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  {cancelledByDriverReason}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You can request a new ride anytime.
+                </p>
+              </div>
+              <div className="px-6 pb-6">
+                <button
+                  onClick={() => setShowCancelledByDriverPopup(false)}
+                  className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform"
+                >
+                  OK
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

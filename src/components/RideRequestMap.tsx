@@ -40,8 +40,8 @@ const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, sto
       center: bounds.getCenter(),
       zoom: 14,
       disableDefaultUI: true,
-      zoomControl: false,
-      gestureHandling: "none",
+      zoomControl: true,
+      gestureHandling: "greedy",
       styles: isDark ? darkStyle : [],
     });
 

@@ -196,6 +196,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showTakeoverConfirm, setShowTakeoverConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [showDriverCancelConfirm, setShowDriverCancelConfirm] = useState(false);
+  const [showCancelledByPassengerPopup, setShowCancelledByPassengerPopup] = useState(false);
+  const [cancelledTripReason, setCancelledTripReason] = useState("");
   const recenterRef = useRef<(() => void) | null>(null);
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
@@ -689,14 +692,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         return;
       }
 
-      // Trip cancelled by passenger
+      // Trip cancelled by passenger (or auto-expired)
       if (updated.status === "cancelled") {
         // Stop trip request sound immediately if still playing
         if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
         if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
         const soundUrl = await fetchSoundUrl("driver_sound_cancelled");
         playSound(soundUrl);
-        toast({ title: "Trip Cancelled", description: "The passenger cancelled this trip.", variant: "destructive" });
+        // Don't show popup if driver cancelled it themselves
+        const cancelledByDriver = updated.cancel_reason?.includes("driver");
+        if (!cancelledByDriver) {
+          setCancelledTripReason(updated.cancel_reason || "The passenger cancelled this trip.");
+          setShowCancelledByPassengerPopup(true);
+        }
         await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
         setScreen("online");
         setCurrentTrip(null);
@@ -2000,8 +2008,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 eq("id", currentTrip.id).
                 single();
 
-                if (!freshTrip || freshTrip.status !== "requested" && freshTrip.status !== "scheduled") {
-                  toast({ title: "Trip Unavailable", description: "This trip has already been accepted by another driver.", variant: "destructive" });
+                if (!freshTrip || (freshTrip.status !== "requested" && freshTrip.status !== "scheduled")) {
+                  const isCancelled = freshTrip?.status === "cancelled";
+                  toast({ title: isCancelled ? "Trip Cancelled" : "Trip Unavailable", description: isCancelled ? "The passenger cancelled this trip." : "This trip has already been accepted by another driver.", variant: "destructive" });
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);
@@ -2243,7 +2252,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </AnimatePresence>
 
           {/* Sticky action button - always visible */}
-          <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 border-t border-border/40 shrink-0">
+          <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 border-t border-border/40 shrink-0 space-y-2">
+            {/* Driver cancel trip button */}
+            <button
+              onClick={() => setShowDriverCancelConfirm(true)}
+              className="w-full flex items-center justify-center gap-1.5 text-destructive text-xs font-medium py-1.5 active:scale-95 transition-transform"
+            >
+              <X className="w-3.5 h-3.5" />
+              Cancel Trip
+            </button>
             {driverTripPhase === "heading_to_pickup" &&
           <button onClick={async () => {
             if (!currentTrip) return;
@@ -2335,6 +2352,107 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
         </motion.div>
       }
+
+      {/* Driver Cancel Confirmation Popup */}
+      <AnimatePresence>
+        {showDriverCancelConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 280 }}
+              className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+            >
+              <div className="px-6 pt-8 pb-5 text-center">
+                <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="w-8 h-8 text-destructive" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">Cancel this trip?</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  The passenger will be notified immediately. This action cannot be undone.
+                </p>
+              </div>
+              <div className="px-6 pb-6 space-y-3">
+                <button
+                  onClick={async () => {
+                    if (!currentTrip || !userProfile?.id) return;
+                    setShowDriverCancelConfirm(false);
+                    await supabase.from("trips").update({
+                      status: "cancelled",
+                      cancel_reason: "Cancelled by driver",
+                      cancelled_at: new Date().toISOString(),
+                    }).eq("id", currentTrip.id);
+                    await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                    toast({ title: "Trip Cancelled", description: "The trip has been cancelled." });
+                    setScreen("online");
+                    setCurrentTrip(null);
+                    setPassengerProfile(null);
+                    setDriverTripPhase("heading_to_pickup");
+                  }}
+                  className="w-full py-4 bg-destructive text-destructive-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform"
+                >
+                  Yes, Cancel Trip
+                </button>
+                <button
+                  onClick={() => setShowDriverCancelConfirm(false)}
+                  className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-2xl transition-colors"
+                >
+                  Go back
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancelled by Passenger Popup */}
+      <AnimatePresence>
+        {showCancelledByPassengerPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 280 }}
+              className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+            >
+              <div className="px-6 pt-8 pb-5 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 18 }}
+                  className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4"
+                >
+                  <X className="w-8 h-8 text-destructive" />
+                </motion.div>
+                <h3 className="text-lg font-bold text-foreground">Trip Cancelled</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  {cancelledTripReason}
+                </p>
+              </div>
+              <div className="px-6 pb-6">
+                <button
+                  onClick={() => setShowCancelledByPassengerPopup(false)}
+                  className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform"
+                >
+                  OK
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Driver Chat */}
       {currentTrip &&
