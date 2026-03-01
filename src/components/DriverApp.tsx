@@ -2783,11 +2783,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col landscape-panel"
+            className="bg-card rounded-t-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col landscape-panel"
             onClick={(e) => e.stopPropagation()}>
 
+              {/* Sticky header with handle + close */}
+              <div className="sticky top-0 z-10 bg-card px-4 pt-3 pb-2 flex items-center justify-between border-b border-border/30 shrink-0">
+                <div className="w-8" />
+                <div className="w-10 h-1 rounded-full bg-border" />
+                <button onClick={() => setShowProfile(false)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center active:scale-90 transition-transform">
+                  <X className="w-4 h-4 text-foreground" />
+                </button>
+              </div>
+
               <div className="p-4 space-y-4 overflow-y-auto flex-1">
-                <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>
 
                 {/* Avatar + Name */}
                 <div className="flex items-center gap-4">
@@ -3666,7 +3674,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     Logout
                   </button>
               }
-                <button onClick={() => setShowProfile(false)} className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl text-sm active:scale-95 transition-transform">Close</button>
+                
               </div>
             </motion.div>
           </motion.div>
