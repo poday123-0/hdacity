@@ -677,6 +677,71 @@ export type Database = {
           },
         ]
       }
+      promo_watermelons: {
+        Row: {
+          amount: number
+          claim_radius_m: number
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          fee_free_months: number
+          free_trips: number
+          id: string
+          lat: number
+          lng: number
+          promo_type: string
+          service_location_id: string | null
+          status: string
+          target_user_type: string
+        }
+        Insert: {
+          amount?: number
+          claim_radius_m?: number
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          fee_free_months?: number
+          free_trips?: number
+          id?: string
+          lat: number
+          lng: number
+          promo_type?: string
+          service_location_id?: string | null
+          status?: string
+          target_user_type?: string
+        }
+        Update: {
+          amount?: number
+          claim_radius_m?: number
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          fee_free_months?: number
+          free_trips?: number
+          id?: string
+          lat?: number
+          lng?: number
+          promo_type?: string
+          service_location_id?: string | null
+          status?: string
+          target_user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_watermelons_service_location_id_fkey"
+            columns: ["service_location_id"]
+            isOneToOne: false
+            referencedRelation: "service_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_locations: {
         Row: {
           address: string
@@ -831,6 +896,74 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      topup_card_batches: {
+        Row: {
+          amount: number
+          card_count: number
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          amount?: number
+          card_count?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Update: {
+          amount?: number
+          card_count?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      topup_cards: {
+        Row: {
+          amount: number
+          batch_id: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          code: string
+          created_at: string
+          id: string
+          status: string
+        }
+        Insert: {
+          amount?: number
+          batch_id?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          batch_id?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topup_cards_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "topup_card_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trip_declines: {
         Row: {

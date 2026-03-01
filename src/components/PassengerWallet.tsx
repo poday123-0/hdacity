@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Wallet, ArrowUpRight, ArrowDownLeft, Clock, RefreshCw, Loader2, Plus, Upload, CreditCard, ArrowLeft, CheckCircle, Image } from "lucide-react";
+import { X, Wallet, ArrowUpRight, ArrowDownLeft, Clock, RefreshCw, Loader2, Plus, Upload, CreditCard, ArrowLeft, CheckCircle, Image, QrCode } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import QRScanner from "@/components/QRScanner";
 
 interface WalletTransaction {
   id: string;
@@ -37,6 +38,7 @@ const PassengerWallet = ({ userId, isOpen, onClose }: PassengerWalletProps) => {
 
   // Top-up state
   const [showTopUp, setShowTopUp] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [topUpSlip, setTopUpSlip] = useState<File | null>(null);
   const [topUpSlipPreview, setTopUpSlipPreview] = useState<string | null>(null);
@@ -371,6 +373,7 @@ const PassengerWallet = ({ userId, isOpen, onClose }: PassengerWalletProps) => {
   }
 
   return (
+    <>
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -425,13 +428,22 @@ const PassengerWallet = ({ userId, isOpen, onClose }: PassengerWalletProps) => {
                       {pendingTopUps.length} top-up{pendingTopUps.length > 1 ? "s" : ""} pending approval
                     </p>
                   )}
-                  <button
-                    onClick={() => setShowTopUp(true)}
-                    className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Top Up Wallet
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowQRScanner(true)}
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold active:scale-95 transition-transform flex items-center justify-center gap-1.5"
+                    >
+                      <QrCode className="w-4 h-4" />
+                      Scan Card
+                    </button>
+                    <button
+                      onClick={() => setShowTopUp(true)}
+                      className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Top Up
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -532,6 +544,14 @@ const PassengerWallet = ({ userId, isOpen, onClose }: PassengerWalletProps) => {
         </motion.div>
       </motion.div>
     </AnimatePresence>
+
+    <QRScanner
+      userId={userId}
+      isOpen={showQRScanner}
+      onClose={() => setShowQRScanner(false)}
+      onClaimed={() => fetchWallet()}
+    />
+    </>
   );
 };
 
