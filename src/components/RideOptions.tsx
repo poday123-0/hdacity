@@ -52,15 +52,18 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   const [loading, setLoading] = useState(true);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [passengerBonus, setPassengerBonus] = useState(0);
+  const [maxBoost, setMaxBoost] = useState(0); // 0 = unlimited
+  const [boostStep, setBoostStep] = useState(5);
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [vtRes, fzRes, scRes, dlRes, slRes] = await Promise.all([
+      const [vtRes, fzRes, scRes, dlRes, slRes, boostRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("driver_locations").select("vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
+        supabase.from("system_settings").select("key, value").in("key", ["max_passenger_boost", "boost_step_amount"]),
       ]);
       setVehicleTypes(vtRes.data || []);
       setFareZones(fzRes.data || []);
@@ -68,6 +71,13 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       setServiceLocations(slRes.data || []);
       const onlineIds = new Set<string>((dlRes.data || []).map((d: any) => d.vehicle_type_id).filter(Boolean));
       setOnlineVehicleTypeIds(onlineIds);
+      // Parse boost settings
+      const boostSettings: Record<string, any> = {};
+      (boostRes.data || []).forEach((s: any) => { boostSettings[s.key] = s.value; });
+      const mb = Number(boostSettings["max_passenger_boost"]) || 0;
+      setMaxBoost(mb);
+      const bs = Number(boostSettings["boost_step_amount"]) || 5;
+      setBoostStep(bs > 0 ? bs : 5);
       setLoading(false);
     };
     fetchAll();
@@ -369,11 +379,11 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-foreground">Boost Fare</p>
-                  <p className="text-[10px] text-muted-foreground">Add extra to attract drivers faster</p>
+                  <p className="text-[10px] text-muted-foreground">Add extra to attract drivers faster{maxBoost > 0 ? ` (max ${maxBoost} MVR)` : ""}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setPassengerBonus(Math.max(0, passengerBonus - 5))}
+                    onClick={() => setPassengerBonus(Math.max(0, passengerBonus - boostStep))}
                     disabled={passengerBonus <= 0}
                     className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
                   >
@@ -383,8 +393,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                     +{passengerBonus}
                   </span>
                   <button
-                    onClick={() => setPassengerBonus(passengerBonus + 5)}
-                    className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-all"
+                    onClick={() => setPassengerBonus(passengerBonus + boostStep)}
+                    disabled={maxBoost > 0 && passengerBonus >= maxBoost}
+                    className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
                   >
                     <Plus className="w-3.5 h-3.5 text-primary" />
                   </button>
