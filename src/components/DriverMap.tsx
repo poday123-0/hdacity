@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 
-// Utility: create a rotated version of an image URL via canvas
+// Utility: create a rotated version of an image URL via canvas with circular bg + shadow
 const createRotatedIcon = (
   imageUrl: string,
   heading: number,
@@ -12,12 +12,37 @@ const createRotatedIcon = (
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
+    const pad = 8; // padding for shadow/circle
+    const total = size + pad * 2;
     const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = total;
+    canvas.height = total;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.translate(size / 2, size / 2);
+
+    // Shadow
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+
+    // White circle background
+    ctx.beginPath();
+    ctx.arc(total / 2, total / 2, size / 2 + 2, 0, Math.PI * 2);
+    ctx.fillStyle = "white";
+    ctx.fill();
+
+    // Reset shadow for image
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(total / 2, total / 2, size / 2, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Rotate and draw
+    ctx.translate(total / 2, total / 2);
     ctx.rotate((heading * Math.PI) / 180);
     ctx.drawImage(img, -size / 2, -size / 2, size, size);
     callback(canvas.toDataURL("image/png"));
@@ -296,7 +321,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       map, position: center, zIndex: 1000,
     };
     if (mapIconUrl) {
-      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
+      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(44, 44), anchor: new g.maps.Point(22, 22) };
       markerOpts.optimized = false;
     } else {
       markerOpts.icon = {
@@ -502,8 +527,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (cached && cached.url === mapIconUrl && cached.heading === roundedHeading) {
         driverMarkerRef.current.setIcon({
           url: cached.dataUrl,
-          scaledSize: new g.maps.Size(40, 40),
-          anchor: new g.maps.Point(20, 20),
+          scaledSize: new g.maps.Size(48, 48),
+          anchor: new g.maps.Point(24, 24),
         });
       } else {
         createRotatedIcon(mapIconUrl, roundedHeading, 80, (dataUrl) => {
@@ -511,8 +536,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           if (driverMarkerRef.current) {
             driverMarkerRef.current.setIcon({
               url: dataUrl,
-              scaledSize: new g.maps.Size(40, 40),
-              anchor: new g.maps.Point(20, 20),
+              scaledSize: new g.maps.Size(48, 48),
+              anchor: new g.maps.Point(24, 24),
             });
           }
         });
