@@ -2795,7 +2795,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
               </div>
 
-              <div className="p-4 space-y-4 overflow-y-auto flex-1">
+              <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
 
                 {/* Avatar + Name */}
                 <div className="flex items-center gap-4">
