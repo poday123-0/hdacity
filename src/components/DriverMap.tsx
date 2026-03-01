@@ -217,17 +217,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     driverMarkerRef.current = new g.maps.Marker(markerOpts);
     mapInstance.current = map;
 
-    // Detect user interaction
-    const handleUserInteract = () => {
+    // Detect user interaction — only block auto-follow on drag, NOT on programmatic zoom
+    let programmaticZoom = false;
+    const setProgrammaticZoom = () => { programmaticZoom = true; setTimeout(() => { programmaticZoom = false; }, 300); };
+    (map as any)._setProgrammaticZoom = setProgrammaticZoom;
+
+    map.addListener("dragstart", () => {
       userInteractingRef.current = true;
       setUserPannedAway(true);
-      if (interactTimeoutRef.current) clearTimeout(interactTimeoutRef.current);
-    };
-    map.addListener("dragstart", handleUserInteract);
+      setFollowDriver(false);
+    });
     map.addListener("zoom_changed", () => {
-      if (!userInteractingRef.current) {
-        handleUserInteract();
-      }
+      // Ignore programmatic zoom changes
+      if (programmaticZoom) return;
+      // During navigation with follow mode, don't break follow on zoom
+      // Only break on manual pinch zoom
     });
 
     return () => { mapInstance.current = null; };
@@ -257,11 +261,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     if (isNavigating) {
       map.setTilt(45);
-      if (followDriver) map.setZoom(18);
+      // Reset follow mode when entering navigation
+      setFollowDriver(true);
+      userInteractingRef.current = false;
+      setUserPannedAway(false);
+      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+      map.setZoom(18);
       const isDark = document.documentElement.classList.contains("dark");
       map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
     } else {
       map.setTilt(0);
+      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(16);
       const isDark = document.documentElement.classList.contains("dark");
       map.setOptions({ styles: isDark ? darkMapStyle : [] });
@@ -272,10 +282,32 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   useEffect(() => {
     if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
     const g = (window as any).google;
+    const map = mapInstance.current;
 
-    // Calculate heading from GPS or from bearing to next step
-    let heading = currentHeading ?? prevHeadingRef.current;
-    if (isNavigating && navSteps[currentStepIndex]?.endLat != null) {
+    // Calculate heading: GPS heading → bearing from prev position → bearing to next step → last known
+    let heading = prevHeadingRef.current;
+
+    // 1) Try GPS heading (most accurate when moving)
+    if (currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
+      heading = currentHeading;
+    }
+    // 2) Calculate bearing from previous position (works even without GPS heading)
+    else if (prevMarkerPosRef.current) {
+      const prev = prevMarkerPosRef.current;
+      const dLat = currentPos.lat - prev.lat;
+      const dLng = currentPos.lng - prev.lng;
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+      if (dist > 0.000008) { // ~1m movement threshold
+        const dLngRad = dLng * Math.PI / 180;
+        const lat1 = prev.lat * Math.PI / 180;
+        const lat2 = currentPos.lat * Math.PI / 180;
+        const y = Math.sin(dLngRad) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLngRad);
+        heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      }
+    }
+    // 3) Bearing to next navigation step (when stationary)
+    if (isNavigating && currentSpeed <= 2 && navSteps[currentStepIndex]?.endLat != null) {
       const nextStep = navSteps[currentStepIndex];
       if (nextStep.endLat && nextStep.endLng) {
         const dLng = (nextStep.endLng - currentPos.lng) * Math.PI / 180;
@@ -283,24 +315,33 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         const lat2 = nextStep.endLat * Math.PI / 180;
         const y = Math.sin(dLng) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-        const bearingToStep = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-        if (currentSpeed > 3 && currentHeading != null) {
-          heading = currentHeading;
-        } else {
-          heading = bearingToStep;
-        }
+        heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
       }
+    }
+
+    // Smooth heading transition (avoid jumpy rotations)
+    const prevH = prevHeadingRef.current;
+    let diff = heading - prevH;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    // Only update heading if change is significant (> 3°)
+    if (Math.abs(diff) > 3) {
+      heading = prevH + diff * 0.4; // Lerp for smooth rotation
+      if (heading < 0) heading += 360;
+      if (heading >= 360) heading -= 360;
+    } else {
+      heading = prevH;
     }
     prevHeadingRef.current = heading;
 
     // Smooth animation: interpolate from previous position to new position
     const prevPos = prevMarkerPosRef.current;
-    if (prevPos && !animatingRef.current) {
+    if (prevPos && !animatingRef.current && isNavigating) {
       const dist = Math.sqrt(Math.pow(currentPos.lat - prevPos.lat, 2) + Math.pow(currentPos.lng - prevPos.lng, 2));
       // Only animate if distance is small enough (not a GPS jump)
-      if (dist < 0.005 && dist > 0.000005) {
+      if (dist < 0.003 && dist > 0.000005) {
         animatingRef.current = true;
-        animateMarker(driverMarkerRef.current, prevPos, currentPos, 800, () => {
+        animateMarker(driverMarkerRef.current, prevPos, currentPos, 1000, () => {
           animatingRef.current = false;
         });
       } else {
@@ -311,47 +352,52 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevMarkerPosRef.current = currentPos;
 
+    // Update marker icon with rotation
     if (mapIconUrl) {
-      // Rotate custom vehicle icon using canvas
-      const roundedHeading = Math.round(heading / 5) * 5; // snap to 5° increments to reduce redraws
+      const roundedHeading = Math.round(heading / 5) * 5;
       const cached = rotatedIconCacheRef.current;
       if (cached && cached.url === mapIconUrl && cached.heading === roundedHeading) {
-        // Use cached rotated icon
         driverMarkerRef.current.setIcon({
           url: cached.dataUrl,
-          scaledSize: new g.maps.Size(36, 36),
-          anchor: new g.maps.Point(18, 18),
+          scaledSize: new g.maps.Size(40, 40),
+          anchor: new g.maps.Point(20, 20),
         });
       } else {
-        // Generate new rotated icon
-        createRotatedIcon(mapIconUrl, roundedHeading, 72, (dataUrl) => {
+        createRotatedIcon(mapIconUrl, roundedHeading, 80, (dataUrl) => {
           rotatedIconCacheRef.current = { url: mapIconUrl, heading: roundedHeading, dataUrl };
           if (driverMarkerRef.current) {
             driverMarkerRef.current.setIcon({
               url: dataUrl,
-              scaledSize: new g.maps.Size(36, 36),
-              anchor: new g.maps.Point(18, 18),
+              scaledSize: new g.maps.Size(40, 40),
+              anchor: new g.maps.Point(20, 20),
             });
           }
         });
       }
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
-      // Navigation arrow marker
+      // Blue navigation arrow (like Google Maps blue dot with direction)
       driverMarkerRef.current.setIcon({
         path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 7, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2.5,
+        scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2.5,
         rotation: heading, anchor: new g.maps.Point(0, 2.5),
       });
     }
 
-    if (!userInteractingRef.current && followDriver) {
-      mapInstance.current.panTo(currentPos);
+    // Auto-follow: smoothly center map on driver position during navigation
+    if (followDriver) {
+      userInteractingRef.current = false;
+      // Flag programmatic zoom so it doesn't trigger user interaction handler
+      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+
       if (isNavigating) {
-        mapInstance.current.setZoom(18);
-        if (heading && mapInstance.current.setHeading) {
-          mapInstance.current.setHeading(heading);
+        map.panTo(currentPos);
+        const currentZoom = map.getZoom();
+        if (currentZoom < 17 || currentZoom > 20) {
+          map.setZoom(18);
         }
+      } else {
+        map.panTo(currentPos);
       }
     }
   }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver]);
@@ -527,7 +573,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     };
 
     fetchRoute();
-    routeRefreshRef.current = setInterval(fetchRoute, 15000);
+    routeRefreshRef.current = setInterval(fetchRoute, 8000);
 
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
