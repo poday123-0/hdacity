@@ -123,6 +123,17 @@ const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, sto
     };
   }, [initMap]);
 
+  // Theme change observer
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains("dark");
+      mapInstance.current?.setOptions({ styles: isDark ? darkStyle : [] });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [isLoaded]);
+
   if (!isLoaded) {
     return <div className="w-full h-full bg-surface animate-pulse rounded-xl" />;
   }
