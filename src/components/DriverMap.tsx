@@ -495,10 +495,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
 
     // Destination marker with pulse effect
+    // Only use passenger icon on destination if there's NO live passenger location (to avoid duplicate)
     const destMarkerOpts: any = {
       map, position: destination, zIndex: 1000,
     };
-    if (tripPhase === "heading_to_pickup" && passengerMapIconUrl) {
+    if (tripPhase === "heading_to_pickup" && passengerMapIconUrl && !passengerLiveLocation) {
       destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
     } else {
       destMarkerOpts.label = { text: destLabel, color: "white", fontWeight: "700", fontSize: "13px" };
@@ -578,7 +579,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
     };
-  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase]);
+  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, passengerLiveLocation]);
 
   // Radius circle
   useEffect(() => {
