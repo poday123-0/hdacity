@@ -273,6 +273,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       zoom: 16,
       disableDefaultUI: true,
       zoomControl: false,
+      rotateControl: true,
       styles: isDark ? darkMapStyle : lightNavStyle,
       gestureHandling: "greedy",
     });
@@ -295,19 +296,25 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Detect user interaction — only block auto-follow on drag, NOT on programmatic zoom
     let programmaticZoom = false;
+    let programmaticHeading = false;
     const setProgrammaticZoom = () => { programmaticZoom = true; setTimeout(() => { programmaticZoom = false; }, 300); };
+    const setProgrammaticHeading = () => { programmaticHeading = true; setTimeout(() => { programmaticHeading = false; }, 300); };
     (map as any)._setProgrammaticZoom = setProgrammaticZoom;
+    (map as any)._setProgrammaticHeading = setProgrammaticHeading;
 
     map.addListener("dragstart", () => {
       userInteractingRef.current = true;
       setUserPannedAway(true);
       setFollowDriver(false);
     });
+    map.addListener("heading_changed", () => {
+      if (programmaticHeading) return;
+      // Manual rotation detected — break follow so auto-heading stops
+      userInteractingRef.current = true;
+      setFollowDriver(false);
+    });
     map.addListener("zoom_changed", () => {
-      // Ignore programmatic zoom changes
       if (programmaticZoom) return;
-      // During navigation with follow mode, don't break follow on zoom
-      // Only break on manual pinch zoom
     });
 
     return () => { mapInstance.current = null; };
@@ -488,6 +495,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (followDriver) {
       userInteractingRef.current = false;
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+      if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
 
       const now = Date.now();
       if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
@@ -495,6 +503,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
         if (isNavigating) {
           if (typeof map.setHeading === "function") {
+            if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
             map.setHeading(heading);
           }
           const lookAheadBase = navSettings.lookAheadDistance === "far" ? { slow: 80, mid: 110, fast: 140 } : navSettings.lookAheadDistance === "short" ? { slow: 25, mid: 40, fast: 60 } : { slow: 50, mid: 70, fast: 95 };
