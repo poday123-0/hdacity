@@ -247,8 +247,7 @@ const Index = () => {
 
   const passengerPTR = usePullToRefresh({
     onRefresh: async () => {
-      await fetchOnlineDrivers();
-      toast({ title: "Refreshed" });
+      window.location.reload();
     },
     disabled: passengerScreen !== "home",
   });
