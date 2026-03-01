@@ -68,6 +68,31 @@ const getDistanceMeters = (
   return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 };
 
+const getPointAhead = (
+  origin: { lat: number; lng: number },
+  headingDeg: number,
+  meters: number
+) => {
+  const R = 6378137;
+  const bearing = (headingDeg * Math.PI) / 180;
+  const lat1 = (origin.lat * Math.PI) / 180;
+  const lng1 = (origin.lng * Math.PI) / 180;
+  const angularDistance = meters / R;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angularDistance) +
+      Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing)
+  );
+  const lng2 =
+    lng1 +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+      Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+  return { lat: (lat2 * 180) / Math.PI, lng: (lng2 * 180) / Math.PI };
+};
+
 
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -122,6 +147,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const { isLoaded, error } = useGoogleMaps();
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
   const routeFetchInFlightRef = useRef(false);
@@ -287,12 +313,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       setUserPannedAway(false);
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(18);
+      if (typeof map.setHeading === "function") {
+        map.setHeading(prevHeadingRef.current || 0);
+      }
       const isDark = document.documentElement.classList.contains("dark");
       map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
     } else {
       map.setTilt(0);
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(16);
+      if (typeof map.setHeading === "function") {
+        map.setHeading(0);
+      }
       const isDark = document.documentElement.classList.contains("dark");
       map.setOptions({ styles: isDark ? darkMapStyle : [] });
     }
@@ -304,23 +336,41 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     const g = (window as any).google;
     const map = mapInstance.current;
 
-    // Calculate heading: GPS heading → bearing from prev position → bearing to next step → last known
+    // Position filtering (Uber-like stability)
+    const prevFiltered = filteredPosRef.current;
+    let displayPos = currentPos;
+    if (prevFiltered) {
+      const jumpMeters = getDistanceMeters(prevFiltered, currentPos);
+      if (jumpMeters > 150 && currentSpeed < 20) {
+        // Ignore probable GPS spike when moving slowly
+        displayPos = prevFiltered;
+      } else {
+        const alpha = isNavigating ? (currentSpeed > 25 ? 0.45 : 0.3) : 0.35;
+        displayPos = {
+          lat: prevFiltered.lat + (currentPos.lat - prevFiltered.lat) * alpha,
+          lng: prevFiltered.lng + (currentPos.lng - prevFiltered.lng) * alpha,
+        };
+      }
+    }
+    filteredPosRef.current = displayPos;
+
+    // Calculate heading: GPS heading → bearing from previous position → bearing to next step → last known
     let heading = prevHeadingRef.current;
 
     // 1) Try GPS heading (most accurate when moving)
     if (currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
       heading = currentHeading;
     }
-    // 2) Calculate bearing from previous position (works even without GPS heading)
+    // 2) Calculate bearing from previous rendered marker position
     else if (prevMarkerPosRef.current) {
       const prev = prevMarkerPosRef.current;
-      const dLat = currentPos.lat - prev.lat;
-      const dLng = currentPos.lng - prev.lng;
+      const dLat = displayPos.lat - prev.lat;
+      const dLng = displayPos.lng - prev.lng;
       const dist = Math.sqrt(dLat * dLat + dLng * dLng);
       if (dist > 0.000008) { // ~1m movement threshold
-        const dLngRad = dLng * Math.PI / 180;
+        const dLngRad = (displayPos.lng - prev.lng) * Math.PI / 180;
         const lat1 = prev.lat * Math.PI / 180;
-        const lat2 = currentPos.lat * Math.PI / 180;
+        const lat2 = displayPos.lat * Math.PI / 180;
         const y = Math.sin(dLngRad) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLngRad);
         heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
@@ -330,8 +380,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (isNavigating && currentSpeed <= 2 && navSteps[currentStepIndex]?.endLat != null) {
       const nextStep = navSteps[currentStepIndex];
       if (nextStep.endLat && nextStep.endLng) {
-        const dLng = (nextStep.endLng - currentPos.lng) * Math.PI / 180;
-        const lat1 = currentPos.lat * Math.PI / 180;
+        const dLng = (nextStep.endLng - displayPos.lng) * Math.PI / 180;
+        const lat1 = displayPos.lat * Math.PI / 180;
         const lat2 = nextStep.endLat * Math.PI / 180;
         const y = Math.sin(dLng) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
@@ -346,7 +396,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (diff < -180) diff += 360;
     // Only update heading if change is significant (> 3°)
     if (Math.abs(diff) > 3) {
-      heading = prevH + diff * 0.4; // Lerp for smooth rotation
+      heading = prevH + diff * 0.4;
       if (heading < 0) heading += 360;
       if (heading >= 360) heading -= 360;
     } else {
@@ -357,20 +407,20 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Smooth animation: interpolate from previous position to new position
     const prevPos = prevMarkerPosRef.current;
     if (prevPos && !animatingRef.current && isNavigating) {
-      const dist = Math.sqrt(Math.pow(currentPos.lat - prevPos.lat, 2) + Math.pow(currentPos.lng - prevPos.lng, 2));
+      const dist = Math.sqrt(Math.pow(displayPos.lat - prevPos.lat, 2) + Math.pow(displayPos.lng - prevPos.lng, 2));
       // Only animate if distance is small enough (not a GPS jump)
       if (dist < 0.003 && dist > 0.000005) {
         animatingRef.current = true;
-        animateMarker(driverMarkerRef.current, prevPos, currentPos, 1000, () => {
+        animateMarker(driverMarkerRef.current, prevPos, displayPos, 1000, () => {
           animatingRef.current = false;
         });
       } else {
-        driverMarkerRef.current.setPosition(currentPos);
+        driverMarkerRef.current.setPosition(displayPos);
       }
     } else if (!animatingRef.current) {
-      driverMarkerRef.current.setPosition(currentPos);
+      driverMarkerRef.current.setPosition(displayPos);
     }
-    prevMarkerPosRef.current = currentPos;
+    prevMarkerPosRef.current = displayPos;
 
     // Update marker icon with rotation
     if (mapIconUrl) {
@@ -396,7 +446,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       }
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
-      // Blue navigation arrow (like Google Maps blue dot with direction)
       driverMarkerRef.current.setIcon({
         path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW,
         scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2.5,
@@ -404,22 +453,32 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       });
     }
 
-    // Auto-follow: smoothly center map on driver position during navigation
+    // Auto-follow with forward-looking camera + heading lock
     if (followDriver) {
       userInteractingRef.current = false;
-      // Flag programmatic zoom so it doesn't trigger user interaction handler
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
 
       const now = Date.now();
       if (now - lastCameraUpdateAtRef.current > 350) {
         lastCameraUpdateAtRef.current = now;
-        map.panTo(currentPos);
 
         if (isNavigating) {
+          if (typeof map.setHeading === "function") {
+            map.setHeading(heading);
+          }
+          const lookAheadMeters = currentSpeed > 40 ? 95 : currentSpeed > 20 ? 70 : 50;
+          const cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
+          map.panTo(cameraTarget);
+
           const currentZoom = map.getZoom();
           if (currentZoom < 17 || currentZoom > 19) {
             map.setZoom(18);
           }
+        } else {
+          if (typeof map.setHeading === "function") {
+            map.setHeading(0);
+          }
+          map.panTo(displayPos);
         }
       }
     }
