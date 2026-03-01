@@ -12,42 +12,65 @@ const createRotatedIcon = (
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
-    const pad = 8; // padding for shadow/circle
-    const total = size + pad * 2;
+    const pad = 14;
+    const arrowLen = 16;
+    const total = size + pad * 2 + arrowLen * 2; // extra room for arrow in any direction
+    const cx = total / 2;
+    const cy = total / 2;
+    const r = size / 2 + 3; // circle radius (slightly bigger than image)
+
     const canvas = document.createElement("canvas");
     canvas.width = total;
     canvas.height = total;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Shadow
-    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    // --- Draw directional arrow (rotated by heading) ---
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((heading * Math.PI) / 180);
+    // Arrow triangle pointing up (north), then rotation moves it
+    const arrowDist = r + 2; // distance from center to arrow base
+    const arrowW = 14;
+    ctx.beginPath();
+    ctx.moveTo(0, -(arrowDist + arrowLen)); // tip
+    ctx.lineTo(-arrowW / 2, -arrowDist);    // bottom-left
+    ctx.lineTo(arrowW / 2, -arrowDist);     // bottom-right
+    ctx.closePath();
+    ctx.fillStyle = "#3b82f6";
+    ctx.shadowColor = "rgba(59,130,246,0.4)";
+    ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.restore();
+
+    // --- White circle with shadow ---
+    ctx.shadowColor = "rgba(0,0,0,0.3)";
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 2;
-
-    // White circle background
     ctx.beginPath();
-    ctx.arc(total / 2, total / 2, size / 2 + 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fillStyle = "white";
     ctx.fill();
 
-    // Reset shadow for image
+    // Blue ring
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#3b82f6";
+    ctx.stroke();
 
-    // Clip to circle
+    // --- Clip to inner circle and draw vehicle image (always upright) ---
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(total / 2, total / 2, size / 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
     ctx.clip();
+    ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+    ctx.restore();
 
-    // Rotate and draw
-    ctx.translate(total / 2, total / 2);
-    ctx.rotate((heading * Math.PI) / 180);
-    ctx.drawImage(img, -size / 2, -size / 2, size, size);
     callback(canvas.toDataURL("image/png"));
   };
-  img.onerror = () => callback(imageUrl); // fallback to original
+  img.onerror = () => callback(imageUrl);
   img.src = imageUrl;
 };
 
@@ -527,8 +550,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (cached && cached.url === mapIconUrl && cached.heading === roundedHeading) {
         driverMarkerRef.current.setIcon({
           url: cached.dataUrl,
-          scaledSize: new g.maps.Size(48, 48),
-          anchor: new g.maps.Point(24, 24),
+          scaledSize: new g.maps.Size(56, 56),
+          anchor: new g.maps.Point(28, 28),
         });
       } else {
         createRotatedIcon(mapIconUrl, roundedHeading, 80, (dataUrl) => {
@@ -536,8 +559,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           if (driverMarkerRef.current) {
             driverMarkerRef.current.setIcon({
               url: dataUrl,
-              scaledSize: new g.maps.Size(48, 48),
-              anchor: new g.maps.Point(24, 24),
+              scaledSize: new g.maps.Size(56, 56),
+              anchor: new g.maps.Point(28, 28),
             });
           }
         });
