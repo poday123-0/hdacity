@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -27,9 +27,11 @@ import AdminLostItems from "@/components/admin/AdminLostItems";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminWallets from "@/components/admin/AdminWallets";
+import AdminTopupCards from "@/components/admin/AdminTopupCards";
+import AdminWatermelons from "@/components/admin/AdminWatermelons";
 import hdaLogo from "@/assets/hda-logo.png";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
 
 type NavGroup = {
   label: string;
@@ -64,8 +66,15 @@ const navGroups: NavGroup[] = [
       { id: "fares", label: "Fares", icon: DollarSign },
       { id: "billing", label: "Billing", icon: Receipt },
       { id: "wallets", label: "Wallets", icon: Wallet },
+      { id: "topup_cards", label: "Topup Cards", icon: CreditCard },
       { id: "banks", label: "Banks", icon: Building2 },
       { id: "companies", label: "Companies", icon: Building },
+    ],
+  },
+  {
+    label: "Promotions",
+    items: [
+      { id: "watermelons", label: "🍉 Ramadan Promos", icon: Cherry },
     ],
   },
   {
@@ -358,6 +367,8 @@ const Admin = () => {
           {activeTab === "fares" && <AdminFares />}
           {activeTab === "billing" && <AdminBilling />}
           {activeTab === "wallets" && <AdminWallets />}
+          {activeTab === "topup_cards" && <AdminTopupCards />}
+          {activeTab === "watermelons" && <AdminWatermelons />}
           {activeTab === "banks" && <AdminBanks />}
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}

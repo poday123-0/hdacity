@@ -5,6 +5,7 @@ import type { BookingType } from "@/components/LocationInput";
 import { AnimatePresence, motion } from "framer-motion";
 import { Car } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
+import WatermelonMapOverlay from "@/components/WatermelonMapOverlay";
 import SplashScreen from "@/components/SplashScreen";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
 import PassengerRegistration from "@/components/PassengerRegistration";
@@ -73,6 +74,7 @@ const Index = () => {
   const [pendingPhone, setPendingPhone] = useState("");
   const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
+  const [passengerMapInstance, setPassengerMapInstance] = useState<google.maps.Map | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
   const [passengerCount, setPassengerCount] = useState(1);
@@ -791,8 +793,17 @@ const Index = () => {
     <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background" style={{ fontSize: `${passengerTextSize * 16}px` }}>
       <PullToRefreshIndicator pullDistance={passengerPTR.pullDistance} refreshing={passengerPTR.refreshing} progress={passengerPTR.progress} />
       <div className="absolute inset-0">
-        <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} />
+        <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} onMapReady={setPassengerMapInstance} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
+        {userProfile?.id && passengerScreen === "home" && (
+          <WatermelonMapOverlay
+            userType="passenger"
+            userId={userProfile.id}
+            userLat={null}
+            userLng={null}
+            mapInstance={passengerMapInstance}
+          />
+        )}
       </div>
 
       <TopBar 
