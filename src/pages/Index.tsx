@@ -18,7 +18,7 @@ import DriverMatching from "@/components/DriverMatching";
 import RideFeedback from "@/components/RideFeedback";
 import DriverApp from "@/components/DriverApp";
 import { supabase } from "@/integrations/supabase/client";
-import { notifyTripRequested } from "@/lib/push-notifications";
+import { notifyTripRequested, notifyTripCancelled } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
 import { fetchSoundUrls, playSound } from "@/lib/sound-utils";
 import SOSButton from "@/components/SOSButton";
@@ -606,7 +606,80 @@ const Index = () => {
     fetchSounds();
   }, []);
 
-  // Subscribe to trip status changes
+  // Handle passenger trip status update (shared by realtime + polling)
+  const handlePassengerTripUpdate = useCallback(async (trip: any) => {
+    const status = trip.status;
+    setTripStatus(status);
+
+    const statusChanged = lastPlayedStatusRef.current !== status;
+    const isNoDriverCancel = status === "cancelled" && trip.cancel_reason === "No driver found";
+
+    if (statusChanged && !isNoDriverCancel) {
+      lastPlayedStatusRef.current = status;
+
+      const notifications: Record<string, { title: string; description: string }> = {
+        accepted: { title: "🎉 Driver Accepted!", description: "Your driver is on the way to pick you up." },
+        arrived: { title: "📍 Driver Arrived!", description: "Your driver has arrived at the pickup location." },
+        in_progress: { title: "🚗 Trip Started!", description: "Your trip is now in progress. Enjoy the ride!" },
+        completed: { title: "✅ Trip Completed!", description: `Fare: ${trip.actual_fare || trip.estimated_fare} MVR. Thank you for riding!` },
+        cancelled: { title: "❌ Trip Cancelled", description: trip.cancel_reason || "The trip has been cancelled." },
+      };
+
+      const soundKey = status === "in_progress" ? "started" : status;
+      const soundUrl = passengerSoundsRef.current[soundKey];
+      if (soundUrl) {
+        if (passengerAudioRef.current) { passengerAudioRef.current.pause(); passengerAudioRef.current.currentTime = 0; }
+        passengerAudioRef.current = playSound(soundUrl);
+      }
+
+      const notif = notifications[status];
+      if (notif) toast({ title: notif.title, description: notif.description });
+    }
+
+    if (status === "accepted") {
+      if (trip.driver_id) {
+        const [profileRes, banksRes, favaraRes, vehicleRes] = await Promise.all([
+          supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.driver_id).single(),
+          supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+          supabase.from("driver_favara_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+          trip.vehicle_id
+            ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", trip.vehicle_id).single()
+            : Promise.resolve({ data: null }),
+        ]);
+        const p = profileRes.data;
+        const v = vehicleRes.data;
+        setMatchedDriver({
+          name: p ? `${p.first_name} ${p.last_name}` : "Driver",
+          initials: p ? `${p.first_name?.[0] || ""}${p.last_name?.[0] || ""}` : "D",
+          phone: p ? `+${p.country_code || "960"} ${p.phone_number}` : "",
+          avatar_url: p?.avatar_url || null,
+          vehicle: v ? `${v.make} ${v.model}` : "",
+          plate: v?.plate_number || "",
+          bank_accounts: banksRes.data || [],
+          favara_accounts: favaraRes.data || [],
+        });
+      }
+      setPassengerScreen("driver-matching");
+    } else if (status === "arrived") {
+      // Stay on driver-matching but update status
+    } else if (status === "in_progress") {
+      // Stay on driver-matching, show bank details
+    } else if (status === "completed") {
+      setPassengerScreen("feedback");
+    } else if (status === "cancelled" && !isNoDriverCancel) {
+      const cancelledByDriver = trip.cancel_reason?.includes("driver");
+      if (cancelledByDriver) {
+        setCancelledByDriverReason(trip.cancel_reason || "Your driver cancelled the trip.");
+        setShowCancelledByDriverPopup(true);
+      }
+      setPassengerScreen("home");
+      setCurrentTripId(null);
+      setMatchedDriver(null);
+      lastPlayedStatusRef.current = null;
+    }
+  }, []);
+
+  // Subscribe to trip status changes (realtime + polling fallback)
   useEffect(() => {
     if (!currentTripId) return;
 
@@ -618,84 +691,23 @@ const Index = () => {
         table: "trips",
         filter: `id=eq.${currentTripId}`,
       }, async (payload) => {
-        const trip = payload.new as any;
-        const status = trip.status;
-        setTripStatus(status);
-
-        // Only play sound and show toast when status actually changes
-        const statusChanged = lastPlayedStatusRef.current !== status;
-
-        // Suppress sound/toast for "no driver found" cancellations — the SearchingDriver popup handles that
-        const isNoDriverCancel = status === "cancelled" && trip.cancel_reason === "No driver found";
-
-        if (statusChanged && !isNoDriverCancel) {
-          lastPlayedStatusRef.current = status;
-
-          const notifications: Record<string, { title: string; description: string }> = {
-            accepted: { title: "🎉 Driver Accepted!", description: "Your driver is on the way to pick you up." },
-            arrived: { title: "📍 Driver Arrived!", description: "Your driver has arrived at the pickup location." },
-            in_progress: { title: "🚗 Trip Started!", description: "Your trip is now in progress. Enjoy the ride!" },
-            completed: { title: "✅ Trip Completed!", description: `Fare: ${trip.actual_fare || trip.estimated_fare} MVR. Thank you for riding!` },
-            cancelled: { title: "❌ Trip Cancelled", description: trip.cancel_reason || "The trip has been cancelled." },
-          };
-
-          const soundKey = status === "in_progress" ? "started" : status;
-          const soundUrl = passengerSoundsRef.current[soundKey];
-          if (soundUrl) {
-            if (passengerAudioRef.current) { passengerAudioRef.current.pause(); passengerAudioRef.current.currentTime = 0; }
-            passengerAudioRef.current = playSound(soundUrl);
-          }
-
-          const notif = notifications[status];
-          if (notif) toast({ title: notif.title, description: notif.description });
-        }
-
-        if (status === "accepted") {
-          if (trip.driver_id) {
-            const [profileRes, banksRes, favaraRes, vehicleRes] = await Promise.all([
-              supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.driver_id).single(),
-              supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
-              supabase.from("driver_favara_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
-              trip.vehicle_id
-                ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", trip.vehicle_id).single()
-                : Promise.resolve({ data: null }),
-            ]);
-            const p = profileRes.data;
-            const v = vehicleRes.data;
-            setMatchedDriver({
-              name: p ? `${p.first_name} ${p.last_name}` : "Driver",
-              initials: p ? `${p.first_name?.[0] || ""}${p.last_name?.[0] || ""}` : "D",
-              phone: p ? `+${p.country_code || "960"} ${p.phone_number}` : "",
-              avatar_url: p?.avatar_url || null,
-              vehicle: v ? `${v.make} ${v.model}` : "",
-              plate: v?.plate_number || "",
-              bank_accounts: banksRes.data || [],
-              favara_accounts: favaraRes.data || [],
-            });
-          }
-          setPassengerScreen("driver-matching");
-        } else if (status === "arrived") {
-          // Stay on driver-matching but update status
-        } else if (status === "in_progress") {
-          // Stay on driver-matching, show bank details
-        } else if (status === "completed") {
-          setPassengerScreen("feedback");
-        } else if (status === "cancelled" && !isNoDriverCancel) {
-          // Show popup if cancelled by driver (not by passenger themselves)
-          const cancelledByDriver = trip.cancel_reason?.includes("driver");
-          if (cancelledByDriver) {
-            setCancelledByDriverReason(trip.cancel_reason || "Your driver cancelled the trip.");
-            setShowCancelledByDriverPopup(true);
-          }
-          setPassengerScreen("home");
-          setCurrentTripId(null);
-          setMatchedDriver(null);
-        }
+        await handlePassengerTripUpdate(payload.new as any);
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [currentTripId]);
+    // Polling fallback every 5s in case realtime misses the event
+    const pollInterval = setInterval(async () => {
+      const { data } = await supabase.from("trips").select("*").eq("id", currentTripId).single();
+      if (data) {
+        await handlePassengerTripUpdate(data as any);
+      }
+    }, 5000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [currentTripId, handlePassengerTripUpdate]);
 
   const handleFeedbackComplete = useCallback(() => {
     setCurrentTripId(null);
@@ -818,10 +830,13 @@ const Index = () => {
             <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng}
               isScheduled={bookingType === "scheduled"}
               scheduledAt={scheduledAt}
-              onCancel={() => {
-              if (currentTripId) supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", currentTripId);
+              onCancel={async () => {
+              if (currentTripId) {
+                await supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString(), target_driver_id: null }).eq("id", currentTripId);
+              }
               setCurrentTripId(null);
               setPassengerScreen("home");
+              lastPlayedStatusRef.current = null;
             }} onRetry={() => {
               setCurrentTripId(null);
               setPassengerScreen("confirmation");
