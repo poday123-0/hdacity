@@ -3490,7 +3490,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               }
 
               {profileTab === "settings" &&
-            <div className="space-y-2.5 px-1 pb-4" style={{ fontSize: '16px' }}>
+            <div className="space-y-3">
 
                   {/* Text Size — compact */}
                   <div className="bg-surface rounded-2xl p-3.5 space-y-2.5">
