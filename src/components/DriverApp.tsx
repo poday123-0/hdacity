@@ -3562,23 +3562,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
 
                   {/* Theme + Share row */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-surface rounded-2xl p-4 flex flex-col items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Settings className="w-5 h-5 text-primary" />
-                      </div>
-                      <p style={{ fontSize: '13px' }} className="font-semibold text-foreground leading-tight text-center">Theme</p>
-                      <ThemeToggle />
+                  <div className="bg-surface rounded-2xl p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Settings className="w-5 h-5 text-primary" />
                     </div>
-                    <button
-                      onClick={() => {setShowProfile(false);navigate("/install");}}
-                      className="bg-surface rounded-2xl p-4 flex flex-col items-center gap-2.5 active:scale-[0.97] transition-transform">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Share2 className="w-5 h-5 text-primary" />
-                      </div>
-                      <p style={{ fontSize: '13px' }} className="font-semibold text-foreground leading-tight text-center">Share App</p>
-                      <p style={{ fontSize: '10px' }} className="text-muted-foreground text-center">Install & share</p>
-                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground leading-tight">Theme</p>
+                      <p style={{ fontSize: '11px' }} className="text-muted-foreground">Light / Dark mode</p>
+                    </div>
+                    <ThemeToggle />
                   </div>
 
                   {/* Navigation Settings */}
