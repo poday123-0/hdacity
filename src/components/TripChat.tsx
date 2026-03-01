@@ -29,8 +29,10 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
   const [quickReplies, setQuickReplies] = useState<{ text: string; target: string }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Fetch messages & subscribe to realtime
   useEffect(() => {
     if (!tripId || !isOpen) return;
+    let isActive = true;
 
     const fetchMessages = async () => {
       const { data } = await supabase
@@ -38,7 +40,7 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
         .select("*")
         .eq("trip_id", tripId)
         .order("created_at", { ascending: true });
-      setMessages((data as TripMessage[]) || []);
+      if (isActive) setMessages((data as TripMessage[]) || []);
     };
     fetchMessages();
 
@@ -48,13 +50,13 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
         const filtered = (data.value as { text: string; target: string }[]).filter(
           qr => qr.target === "both" || qr.target === senderType
         );
-        setQuickReplies(filtered);
+        if (isActive) setQuickReplies(filtered);
       }
     });
 
-    if (readOnly) return;
+    if (readOnly) return () => { isActive = false; };
 
-    // Fetch chat message sound from notification_sounds table (admin-configured)
+    // Fetch chat message sound
     let messageSoundUrl: string | null = null;
     supabase
       .from("notification_sounds")
@@ -64,11 +66,10 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
       .order("is_default", { ascending: false })
       .limit(1)
       .then(({ data }) => {
-        if (data && data.length > 0) {
-          messageSoundUrl = data[0].file_url;
-        }
+        if (data && data.length > 0) messageSoundUrl = data[0].file_url;
       });
 
+    // Realtime subscription
     const channel = supabase
       .channel(`trip-chat-${tripId}`)
       .on("postgres_changes", {
@@ -82,24 +83,37 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
           if (prev.some(m => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
-        // Play sound + vibrate if message is from the other party
         if (msg.sender_type !== senderType) {
-          // Vibrate (short burst)
-          if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
-          }
-          // Play notification sound
-          if (messageSoundUrl) {
-            playSound(messageSoundUrl);
-          } else {
-            playFallbackBeep();
-          }
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          if (messageSoundUrl) playSound(messageSoundUrl);
+          else playFallbackBeep();
         }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [tripId, isOpen, readOnly]);
+    // Fallback polling every 5s to catch missed realtime events
+    const pollInterval = setInterval(async () => {
+      const { data } = await supabase
+        .from("trip_messages")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: true });
+      if (isActive && data) {
+        setMessages(prev => {
+          const prevIds = new Set(prev.map(m => m.id));
+          const newMsgs = (data as TripMessage[]).filter(m => !prevIds.has(m.id));
+          if (newMsgs.length === 0) return prev;
+          return [...prev, ...newMsgs];
+        });
+      }
+    }, 5000);
+
+    return () => {
+      isActive = false;
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [tripId, isOpen, readOnly, senderType]);
 
   useEffect(() => {
     if (scrollRef.current) {

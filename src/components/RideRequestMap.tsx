@@ -128,6 +128,11 @@ const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, sto
     if (!mapInstance.current) return;
     const observer = new MutationObserver(() => {
       const isDark = document.documentElement.classList.contains("dark");
+      const g = (window as any).google;
+      const colorScheme = g?.maps?.ColorScheme;
+      if (colorScheme) {
+        mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+      }
       mapInstance.current?.setOptions({ styles: isDark ? darkStyle : [] });
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });

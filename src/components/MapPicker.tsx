@@ -86,6 +86,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
     // Theme change observer
     const themeObserver = new MutationObserver(() => {
       const isDark = document.documentElement.classList.contains("dark");
+      const colorScheme = g?.maps?.ColorScheme;
+      if (colorScheme) {
+        mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+      }
       mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
