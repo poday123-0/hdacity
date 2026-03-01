@@ -55,7 +55,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
   const watchIdRef = useRef<number | null>(null);
   const userInteractingRef = useRef(false);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
-  const { isLoaded, error } = useGoogleMaps();
+  const { isLoaded, error, mapId } = useGoogleMaps();
 
   // Track user location
   useEffect(() => {
@@ -95,14 +95,25 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
 
     const isDark = document.documentElement.classList.contains("dark");
 
-    const map = new g.maps.Map(mapRef.current, {
+    const mapOptions: any = {
       center,
       zoom: 15,
       disableDefaultUI: true,
       zoomControl: false,
-      styles: isDark ? darkMapStyle : [],
       gestureHandling: "greedy",
-    });
+    };
+
+    if (mapId) {
+      mapOptions.mapId = mapId;
+      const colorScheme = g.maps?.ColorScheme;
+      if (colorScheme) {
+        mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
+      }
+    } else {
+      mapOptions.styles = isDark ? darkMapStyle : [];
+    }
+
+    const map = new g.maps.Map(mapRef.current, mapOptions);
 
     const userMarker = new g.maps.Marker({
       map,
@@ -132,7 +143,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
     map.addListener("dragstart", () => { userInteractingRef.current = true; });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded, !!initialCenterRef.current]);
+  }, [isLoaded, !!initialCenterRef.current, mapId]);
 
   // Theme observer — debounced with overlay
   const [themeTransition, setThemeTransition] = useState(false);
@@ -143,7 +154,14 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick }: Maldi
       setThemeTransition(true);
       timeout = setTimeout(() => {
         const isDark = document.documentElement.classList.contains("dark");
-        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+        if (mapId) {
+          const colorScheme = (window as any).google?.maps?.ColorScheme;
+          if (colorScheme) {
+            mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+          }
+        } else {
+          mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+        }
         setTimeout(() => setThemeTransition(false), 350);
       }, 50);
     });
