@@ -512,28 +512,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevMarkerPosRef.current = displayPos;
 
-    // Update marker icon with rotation
+    // Use exact admin map icon (no canvas transformation)
     if (mapIconUrl) {
-      const roundedHeading = Math.round(heading / 5) * 5;
-      const cached = rotatedIconCacheRef.current;
-      if (cached && cached.url === mapIconUrl && cached.heading === roundedHeading) {
-        driverMarkerRef.current.setIcon({
-          url: cached.dataUrl,
-          scaledSize: new g.maps.Size(56, 56),
-          anchor: new g.maps.Point(28, 28),
-        });
-      } else {
-        createRotatedIcon(mapIconUrl, roundedHeading, 80, (dataUrl) => {
-          rotatedIconCacheRef.current = { url: mapIconUrl, heading: roundedHeading, dataUrl };
-          if (driverMarkerRef.current) {
-            driverMarkerRef.current.setIcon({
-              url: dataUrl,
-              scaledSize: new g.maps.Size(56, 56),
-              anchor: new g.maps.Point(28, 28),
-            });
-          }
-        });
-      }
+      driverMarkerRef.current.setIcon({
+        url: mapIconUrl,
+        scaledSize: new g.maps.Size(56, 56),
+        anchor: new g.maps.Point(28, 28),
+      });
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
       driverMarkerRef.current.setIcon({
@@ -579,22 +564,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
 
-  // Update marker icon when mapIconUrl becomes available after initial render
+  // Apply exact admin map icon when it becomes available
   useEffect(() => {
     if (!mapIconUrl || !driverMarkerRef.current) return;
     const g = (window as any).google;
     if (!g?.maps) return;
-    createRotatedIcon(mapIconUrl, prevHeadingRef.current || 0, 80, (dataUrl) => {
-      rotatedIconCacheRef.current = { url: mapIconUrl, heading: Math.round((prevHeadingRef.current || 0) / 5) * 5, dataUrl };
-      if (driverMarkerRef.current) {
-        driverMarkerRef.current.setIcon({
-          url: dataUrl,
-          scaledSize: new g.maps.Size(56, 56),
-          anchor: new g.maps.Point(28, 28),
-        });
-        driverMarkerRef.current.setOptions({ optimized: false });
-      }
+
+    driverMarkerRef.current.setIcon({
+      url: mapIconUrl,
+      scaledSize: new g.maps.Size(56, 56),
+      anchor: new g.maps.Point(28, 28),
     });
+    driverMarkerRef.current.setOptions({ optimized: false });
   }, [mapIconUrl]);
 
   const prevStepIndexRef = useRef(0);
