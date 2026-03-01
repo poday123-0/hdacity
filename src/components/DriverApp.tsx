@@ -419,7 +419,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (lastPosRef.current) {
           upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
         }
-      }, 10000);
+      }, 3000);
     };
 
     startTracking();
