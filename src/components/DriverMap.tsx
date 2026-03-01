@@ -516,8 +516,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (mapIconUrl) {
       driverMarkerRef.current.setIcon({
         url: mapIconUrl,
-        scaledSize: new g.maps.Size(56, 56),
-        anchor: new g.maps.Point(28, 28),
+        scaledSize: new g.maps.Size(36, 36),
+        anchor: new g.maps.Point(18, 18),
       });
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
@@ -572,8 +572,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     driverMarkerRef.current.setIcon({
       url: mapIconUrl,
-      scaledSize: new g.maps.Size(56, 56),
-      anchor: new g.maps.Point(28, 28),
+      scaledSize: new g.maps.Size(36, 36),
+      anchor: new g.maps.Point(18, 18),
     });
     driverMarkerRef.current.setOptions({ optimized: false });
   }, [mapIconUrl]);
