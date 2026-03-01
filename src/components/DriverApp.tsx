@@ -66,6 +66,7 @@ import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { notifyTripCancelled } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
@@ -2622,6 +2623,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       cancelled_at: new Date().toISOString(),
                     }).eq("id", currentTrip.id);
                     await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                    // Notify the passenger about cancellation
+                    if (currentTrip.passenger_id) {
+                      notifyTripCancelled([currentTrip.passenger_id], "driver", currentTrip.id);
+                    }
                     toast({ title: "Trip Cancelled", description: "The trip has been cancelled." });
                     setScreen("online");
                     setCurrentTrip(null);
