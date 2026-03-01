@@ -500,9 +500,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     claimSession();
   }, [userProfile?.id]);
 
-  // Realtime session takeover — immediately kick old device when session_id changes
+  // Realtime session takeover — enforce only while this device is actively driving
   useEffect(() => {
-    if (!userProfile?.id) return;
+    if (!userProfile?.id || screen === "offline") return;
 
     const channel = supabase
       .channel(`driver-session-${userProfile.id}`)
@@ -527,11 +527,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
 
-  // Fallback takeover check — protects when realtime is delayed (e.g. backgrounded app)
+  // Fallback takeover check — enforce only while this device is actively driving
   useEffect(() => {
-    if (!userProfile?.id) return;
+    if (!userProfile?.id || screen === "offline") return;
 
     const checkTakeover = async () => {
       const { data: locRow } = await supabase
@@ -560,7 +560,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [userProfile?.id, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, screen, forceSessionTakeoverLogout]);
 
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
