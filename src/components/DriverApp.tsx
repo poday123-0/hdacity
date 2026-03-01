@@ -3464,105 +3464,105 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
 
               {profileTab === "settings" &&
-            <div className="space-y-3" style={{ fontSize: '16px' }}>
+            <div className="space-y-2.5 px-1" style={{ fontSize: '16px' }}>
                   {/* Text Size */}
-                  <div className="bg-surface rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Type className="w-5 h-5 text-primary" />
+                  <div className="bg-surface rounded-2xl p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Type className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Text Size</p>
-                        <p style={{ fontSize: '12px' }} className="text-muted-foreground">Adjust app text size</p>
+                        <p style={{ fontSize: '14px' }} className="font-semibold text-foreground leading-tight">Text Size</p>
+                        <p style={{ fontSize: '11px' }} className="text-muted-foreground">Adjust app text size</p>
                       </div>
+                      <span className="text-sm font-bold text-primary tabular-nums">{Math.round(textSize * 100)}%</span>
                     </div>
-                    <div className="mt-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground" style={{ fontSize: '11px' }}>A</span>
-                        <span className="font-semibold text-foreground" style={{ fontSize: '12px' }}>{Math.round(textSize * 100)}%</span>
-                        <span className="text-muted-foreground font-bold" style={{ fontSize: '22px' }}>A</span>
-                      </div>
+                    {/* Slider */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-muted-foreground shrink-0" style={{ fontSize: '11px' }}>A</span>
                       <input
-                    type="range"
-                    min="0.75"
-                    max="2.0"
-                    step="0.05"
-                    value={textSize}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setTextSize(val);
-                      try {localStorage.setItem(textSizeKey, String(val));} catch {}
-                    }}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border" />
-                      {/* Preset buttons */}
-                      <div className="flex gap-1.5 flex-wrap">
-                        {[
-                          { label: "Small", value: 0.85 },
-                          { label: "Normal", value: 1.0 },
-                          { label: "Large", value: 1.25 },
-                          { label: "X-Large", value: 1.5 },
-                          { label: "XX-Large", value: 1.75 },
-                          { label: "Max", value: 2.0 },
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            onClick={() => {
-                              setTextSize(preset.value);
-                              try {localStorage.setItem(textSizeKey, String(preset.value));} catch {}
-                            }}
-                            style={{ fontSize: '11px' }}
-                            className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                              Math.abs(textSize - preset.value) < 0.03
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80"
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Live preview */}
-                      <div className="bg-muted/30 rounded-xl p-3 border border-border/30 space-y-1.5">
-                        <p style={{ fontSize: '11px' }} className="text-muted-foreground font-medium uppercase tracking-wider">Preview</p>
-                        <p style={{ fontSize: `${textSize * 14}px` }} className="text-foreground font-semibold">Trip request from Malé City</p>
-                        <p style={{ fontSize: `${textSize * 12}px` }} className="text-muted-foreground">Pickup: Boduthakurufaanu Magu → Airport</p>
-                        <p style={{ fontSize: `${textSize * 16}px` }} className="text-primary font-bold">MVR 75.00</p>
-                      </div>
+                        type="range"
+                        min="0.75"
+                        max="2.0"
+                        step="0.05"
+                        value={textSize}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setTextSize(val);
+                          try {localStorage.setItem(textSizeKey, String(val));} catch {}
+                        }}
+                        className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[hsl(var(--primary))] bg-border"
+                      />
+                      <span className="text-muted-foreground font-bold shrink-0" style={{ fontSize: '18px' }}>A</span>
+                    </div>
+                    {/* Preset chips */}
+                    <div className="grid grid-cols-3 gap-1.5 mb-3">
+                      {[
+                        { label: "Small", value: 0.85 },
+                        { label: "Normal", value: 1.0 },
+                        { label: "Large", value: 1.25 },
+                        { label: "X-Large", value: 1.5 },
+                        { label: "XX-Large", value: 1.75 },
+                        { label: "Max", value: 2.0 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={() => {
+                            setTextSize(preset.value);
+                            try {localStorage.setItem(textSizeKey, String(preset.value));} catch {}
+                          }}
+                          style={{ fontSize: '11px' }}
+                          className={`py-1.5 rounded-lg font-medium transition-colors text-center ${
+                            Math.abs(textSize - preset.value) < 0.03
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-muted text-muted-foreground active:bg-muted/70"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Live preview */}
+                    <div className="bg-muted/30 rounded-xl p-3 border border-border/30 space-y-1">
+                      <p style={{ fontSize: '10px' }} className="text-muted-foreground font-medium uppercase tracking-wider">Preview</p>
+                      <p style={{ fontSize: `${textSize * 14}px` }} className="text-foreground font-semibold leading-snug">Trip request from Malé City</p>
+                      <p style={{ fontSize: `${textSize * 12}px` }} className="text-muted-foreground leading-snug">Pickup: Boduthakurufaanu Magu → Airport</p>
+                      <p style={{ fontSize: `${textSize * 16}px` }} className="text-primary font-bold">MVR 75.00</p>
                     </div>
                   </div>
 
                   {/* Theme */}
-                  <div className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <Settings className="w-5 h-5 text-primary" />
+                  <div className="bg-surface rounded-2xl p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Settings className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Theme</p>
-                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Switch light / dark mode</p>
+                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground leading-tight">Theme</p>
+                      <p style={{ fontSize: '11px' }} className="text-muted-foreground">Light / Dark mode</p>
                     </div>
                     <ThemeToggle />
                   </div>
 
                   {/* Navigation Settings */}
-                  <div className="bg-surface rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Navigation className="w-5 h-5 text-primary" />
+                  <div className="bg-surface rounded-2xl p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Navigation className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Navigation</p>
-                        <p style={{ fontSize: '12px' }} className="text-muted-foreground">Tune map behavior while driving</p>
+                        <p style={{ fontSize: '14px' }} className="font-semibold text-foreground leading-tight">Navigation</p>
+                        <p style={{ fontSize: '11px' }} className="text-muted-foreground">Map behavior while driving</p>
                       </div>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {/* Follow Sensitivity */}
                       <div>
-                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-1.5">Camera Follow Speed</p>
-                        <div className="flex gap-1.5">
+                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-2">Camera Follow Speed</p>
+                        <div className="grid grid-cols-3 gap-1.5">
                           {(["low", "medium", "high"] as const).map(v => (
                             <button key={v} onClick={() => { const s = { ...driverNavSettings, followSensitivity: v }; setDriverNavSettings(s); saveNavSettings(s); }}
                               style={{ fontSize: '11px' }}
-                              className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${driverNavSettings.followSensitivity === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              className={`py-2 rounded-lg font-medium transition-colors text-center ${driverNavSettings.followSensitivity === v ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground active:bg-muted/70"}`}>
                               {v === "low" ? "Smooth" : v === "medium" ? "Normal" : "Snappy"}
                             </button>
                           ))}
@@ -3570,12 +3570,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </div>
                       {/* Look-Ahead Distance */}
                       <div>
-                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-1.5">Look-Ahead Distance</p>
-                        <div className="flex gap-1.5">
+                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-2">Look-Ahead Distance</p>
+                        <div className="grid grid-cols-3 gap-1.5">
                           {(["short", "medium", "far"] as const).map(v => (
                             <button key={v} onClick={() => { const s = { ...driverNavSettings, lookAheadDistance: v }; setDriverNavSettings(s); saveNavSettings(s); }}
                               style={{ fontSize: '11px' }}
-                              className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${driverNavSettings.lookAheadDistance === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              className={`py-2 rounded-lg font-medium transition-colors text-center ${driverNavSettings.lookAheadDistance === v ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground active:bg-muted/70"}`}>
                               {v === "short" ? "Close" : v === "medium" ? "Normal" : "Far"}
                             </button>
                           ))}
@@ -3583,59 +3583,58 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </div>
                       {/* Reroute Aggressiveness */}
                       <div>
-                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-1.5">Reroute Frequency</p>
-                        <div className="flex gap-1.5">
+                        <p style={{ fontSize: '12px' }} className="font-medium text-foreground mb-2">Reroute Frequency</p>
+                        <div className="grid grid-cols-3 gap-1.5">
                           {(["relaxed", "normal", "aggressive"] as const).map(v => (
                             <button key={v} onClick={() => { const s = { ...driverNavSettings, rerouteAggressiveness: v }; setDriverNavSettings(s); saveNavSettings(s); }}
                               style={{ fontSize: '11px' }}
-                              className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${driverNavSettings.rerouteAggressiveness === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                              className={`py-2 rounded-lg font-medium transition-colors text-center ${driverNavSettings.rerouteAggressiveness === v ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground active:bg-muted/70"}`}>
                               {v === "relaxed" ? "Relaxed" : v === "normal" ? "Normal" : "Aggressive"}
                             </button>
                           ))}
                         </div>
                       </div>
                       {/* Auto-Refocus on Turn */}
-                      <div className="flex items-center justify-between">
-                        <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
                           <p style={{ fontSize: '12px' }} className="font-medium text-foreground">Auto-Refocus on Turns</p>
                           <p style={{ fontSize: '10px' }} className="text-muted-foreground">Snap camera back when you turn</p>
                         </div>
                         <button
                           onClick={() => { const s = { ...driverNavSettings, autoRefocusOnTurn: !driverNavSettings.autoRefocusOnTurn }; setDriverNavSettings(s); saveNavSettings(s); }}
-                          className={`w-11 h-6 rounded-full transition-colors relative ${driverNavSettings.autoRefocusOnTurn ? "bg-primary" : "bg-muted"}`}>
+                          className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${driverNavSettings.autoRefocusOnTurn ? "bg-primary" : "bg-muted"}`}>
                           <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${driverNavSettings.autoRefocusOnTurn ? "translate-x-5" : "translate-x-0.5"}`} />
                         </button>
                       </div>
                     </div>
                   </div>
 
+                  {/* Share App */}
                   <button
-                onClick={() => {setShowProfile(false);navigate("/install");}}
-                className="w-full flex items-center gap-3 bg-surface rounded-xl px-4 py-3 active:scale-[0.98] transition-transform">
-
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Share2 className="w-5 h-5 text-primary" />
+                    onClick={() => {setShowProfile(false);navigate("/install");}}
+                    className="w-full flex items-center gap-3 bg-surface rounded-2xl p-4 active:scale-[0.98] transition-transform">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Share2 className="w-4 h-4 text-primary" />
                     </div>
-                    <div className="text-left">
-                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground">Share App</p>
-                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Install & share with others</p>
+                    <div className="text-left flex-1 min-w-0">
+                      <p style={{ fontSize: '14px' }} className="font-semibold text-foreground leading-tight">Share App</p>
+                      <p style={{ fontSize: '11px' }} className="text-muted-foreground">Install & share with others</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   </button>
 
                   {/* Switch to Passenger Mode */}
                   <button
-                onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
-                className="w-full flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3 active:scale-[0.98] transition-transform">
-
-                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-primary" />
+                    onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+                    className="w-full flex items-center gap-3 bg-primary/10 rounded-2xl p-4 active:scale-[0.98] transition-transform">
+                    <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-primary" />
                     </div>
-                    <div className="text-left">
-                      <p style={{ fontSize: '14px' }} className="font-bold text-primary">Switch to Passenger Mode</p>
-                      <p style={{ fontSize: '12px' }} className="text-muted-foreground">Use the app as a rider</p>
+                    <div className="text-left flex-1 min-w-0">
+                      <p style={{ fontSize: '14px' }} className="font-bold text-primary leading-tight">Switch to Passenger Mode</p>
+                      <p style={{ fontSize: '11px' }} className="text-muted-foreground">Use the app as a rider</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-primary ml-auto" />
+                    <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   </button>
                 </div>
             }
