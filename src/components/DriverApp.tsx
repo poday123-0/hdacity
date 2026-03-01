@@ -248,12 +248,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setScreen("offline");
     setCurrentTrip(null);
     setShowTakeoverConfirm(false);
+    // Full logout — send old device back to login screen
+    onLogout?.();
     toast({
-      title: "Session Taken Over",
-      description: "Another device is now active. This device is now offline.",
+      title: "Logged Out",
+      description: "Your account was signed in on another device. Please log in again.",
       variant: "destructive",
     });
-  }, []);
+  }, [onLogout]);
 
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
