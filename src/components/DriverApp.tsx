@@ -3488,10 +3488,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </div>
                   </div>
               }
-              </div>
-
-
-
 
               {profileTab === "settings" &&
             <div className="space-y-2.5 px-1 pb-4" style={{ fontSize: '16px' }}>
@@ -3602,6 +3598,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </button>
                 </div>
             }
+
+              </div>
 
               <div className="p-4 pt-2 border-t border-border space-y-2">
                 {onLogout &&
