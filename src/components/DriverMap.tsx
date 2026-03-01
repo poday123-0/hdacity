@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 
-// Utility: create a rotated version of an image URL via canvas with circular bg + shadow
+// Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
 const createRotatedIcon = (
   imageUrl: string,
   heading: number,
@@ -12,60 +12,24 @@ const createRotatedIcon = (
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
-    const pad = 14;
-    const arrowLen = 16;
-    const total = size + pad * 2 + arrowLen * 2; // extra room for arrow in any direction
-    const cx = total / 2;
-    const cy = total / 2;
-    const r = size / 2 + 3; // circle radius (slightly bigger than image)
-
     const canvas = document.createElement("canvas");
-    canvas.width = total;
-    canvas.height = total;
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // --- Draw directional arrow (rotated by heading) ---
+    const cx = size / 2;
+    const cy = size / 2;
+
+    // Rotate the entire image by heading
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate((heading * Math.PI) / 180);
-    // Arrow triangle pointing up (north), then rotation moves it
-    const arrowDist = r + 2; // distance from center to arrow base
-    const arrowW = 14;
-    ctx.beginPath();
-    ctx.moveTo(0, -(arrowDist + arrowLen)); // tip
-    ctx.lineTo(-arrowW / 2, -arrowDist);    // bottom-left
-    ctx.lineTo(arrowW / 2, -arrowDist);     // bottom-right
-    ctx.closePath();
-    ctx.fillStyle = "#3b82f6";
-    ctx.shadowColor = "rgba(59,130,246,0.4)";
+    // Add subtle drop shadow for visibility on map
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
     ctx.shadowBlur = 6;
-    ctx.fill();
-    ctx.restore();
-
-    // --- White circle with shadow ---
-    ctx.shadowColor = "rgba(0,0,0,0.3)";
-    ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = "white";
-    ctx.fill();
-
-    // Blue ring
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "#3b82f6";
-    ctx.stroke();
-
-    // --- Clip to inner circle and draw vehicle image (always upright) ---
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+    ctx.drawImage(img, -cx, -cy, size, size);
     ctx.restore();
 
     callback(canvas.toDataURL("image/png"));
