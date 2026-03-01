@@ -223,7 +223,7 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-foreground">{trip.actual_fare || trip.estimated_fare || 0}</p>
+                  <p className="text-sm font-bold text-foreground">{trip.actual_fare || trip.estimated_fare || 0}{(trip as any).passenger_bonus > 0 ? <span className="text-[9px] text-primary font-bold ml-0.5">+{(trip as any).passenger_bonus}</span> : null}</p>
                   <p className="text-[10px] text-muted-foreground">MVR</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />

@@ -812,7 +812,7 @@ const Index = () => {
             <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} />
           )}
           {passengerScreen === "confirmation" && pickup && dropoff && selectedVehicleType && (
-            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} bookingNotes={bookingNotes} />
+            <RideConfirmation key="confirmation" pickup={pickup} dropoff={dropoff} vehicleType={selectedVehicleType} estimatedFare={estimatedFare} passengerBonus={passengerBonus} passengerCount={passengerCount} luggageCount={luggageCount} userId={userProfile?.id} onConfirm={handleConfirmRide} onBack={() => setPassengerScreen("ride-options")} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} bookingNotes={bookingNotes} />
           )}
           {passengerScreen === "searching" && (
             <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng}
@@ -844,7 +844,7 @@ const Index = () => {
         </AnimatePresence>
 
         {passengerScreen === "feedback" && currentTripId && (
-          <RideFeedback tripId={currentTripId} fare={estimatedFare} userId={userProfile?.id} onComplete={handleFeedbackComplete} />
+          <RideFeedback tripId={currentTripId} fare={estimatedFare + passengerBonus} userId={userProfile?.id} onComplete={handleFeedbackComplete} />
         )}
       </div>
 
