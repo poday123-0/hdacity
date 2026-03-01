@@ -83,7 +83,14 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
       }
     });
 
-    return () => { mapInstance.current = null; };
+    // Theme change observer
+    const themeObserver = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains("dark");
+      mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+    return () => { mapInstance.current = null; themeObserver.disconnect(); };
   }, [isLoaded]);
 
   // Update map center when center state changes (initial only)
