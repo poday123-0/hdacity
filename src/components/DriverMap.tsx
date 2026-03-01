@@ -1,6 +1,56 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
+
+// Utility: create a rotated version of an image URL via canvas
+const createRotatedIcon = (
+  imageUrl: string,
+  heading: number,
+  size: number,
+  callback: (dataUrl: string) => void
+) => {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.translate(size / 2, size / 2);
+    ctx.rotate((heading * Math.PI) / 180);
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    callback(canvas.toDataURL("image/png"));
+  };
+  img.onerror = () => callback(imageUrl); // fallback to original
+  img.src = imageUrl;
+};
+
+// Utility: smoothly animate a marker between two positions
+const animateMarker = (
+  marker: any,
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  duration: number,
+  onComplete?: () => void
+) => {
+  const startTime = performance.now();
+  const animate = (currentTime: number) => {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease-out cubic for smooth deceleration
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const lat = from.lat + (to.lat - from.lat) * eased;
+    const lng = from.lng + (to.lng - from.lng) * eased;
+    marker.setPosition({ lat, lng });
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      onComplete?.();
+    }
+  };
+  requestAnimationFrame(animate);
+};
 import { motion, AnimatePresence } from "framer-motion";
 
 
@@ -56,6 +106,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error } = useGoogleMaps();
   const prevHeadingRef = useRef<number>(0);
+  const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const animatingRef = useRef(false);
+  const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
 
   const radiusFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showRadius, setShowRadius] = useState(false);
@@ -111,7 +164,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) setCurrentHeading(pos.coords.heading);
       },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 2000 }
+      { enableHighAccuracy: true, maximumAge: 1000 }
     );
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
@@ -218,7 +271,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   // Update driver marker position, rotation & auto-follow
   useEffect(() => {
     if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
-    driverMarkerRef.current.setPosition(currentPos);
     const g = (window as any).google;
 
     // Calculate heading from GPS or from bearing to next step
@@ -232,7 +284,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         const y = Math.sin(dLng) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         const bearingToStep = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-        // Use GPS heading if moving, otherwise bearing to next step
         if (currentSpeed > 3 && currentHeading != null) {
           heading = currentHeading;
         } else {
@@ -242,8 +293,48 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevHeadingRef.current = heading;
 
+    // Smooth animation: interpolate from previous position to new position
+    const prevPos = prevMarkerPosRef.current;
+    if (prevPos && !animatingRef.current) {
+      const dist = Math.sqrt(Math.pow(currentPos.lat - prevPos.lat, 2) + Math.pow(currentPos.lng - prevPos.lng, 2));
+      // Only animate if distance is small enough (not a GPS jump)
+      if (dist < 0.005 && dist > 0.000005) {
+        animatingRef.current = true;
+        animateMarker(driverMarkerRef.current, prevPos, currentPos, 800, () => {
+          animatingRef.current = false;
+        });
+      } else {
+        driverMarkerRef.current.setPosition(currentPos);
+      }
+    } else if (!animatingRef.current) {
+      driverMarkerRef.current.setPosition(currentPos);
+    }
+    prevMarkerPosRef.current = currentPos;
+
     if (mapIconUrl) {
-      driverMarkerRef.current.setIcon({ url: mapIconUrl, scaledSize: new g.maps.Size(32, 32), anchor: new g.maps.Point(16, 16) });
+      // Rotate custom vehicle icon using canvas
+      const roundedHeading = Math.round(heading / 5) * 5; // snap to 5° increments to reduce redraws
+      const cached = rotatedIconCacheRef.current;
+      if (cached && cached.url === mapIconUrl && cached.heading === roundedHeading) {
+        // Use cached rotated icon
+        driverMarkerRef.current.setIcon({
+          url: cached.dataUrl,
+          scaledSize: new g.maps.Size(36, 36),
+          anchor: new g.maps.Point(18, 18),
+        });
+      } else {
+        // Generate new rotated icon
+        createRotatedIcon(mapIconUrl, roundedHeading, 72, (dataUrl) => {
+          rotatedIconCacheRef.current = { url: mapIconUrl, heading: roundedHeading, dataUrl };
+          if (driverMarkerRef.current) {
+            driverMarkerRef.current.setIcon({
+              url: dataUrl,
+              scaledSize: new g.maps.Size(36, 36),
+              anchor: new g.maps.Point(18, 18),
+            });
+          }
+        });
+      }
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
       // Navigation arrow marker
@@ -258,7 +349,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       mapInstance.current.panTo(currentPos);
       if (isNavigating) {
         mapInstance.current.setZoom(18);
-        // Rotate map heading to match driving direction
         if (heading && mapInstance.current.setHeading) {
           mapInstance.current.setHeading(heading);
         }
