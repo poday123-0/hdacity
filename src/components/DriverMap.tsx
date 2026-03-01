@@ -107,6 +107,7 @@ const getPointAhead = (
 
 
 
+
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 
 export interface NavSettings {
@@ -180,6 +181,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const passengerPulseRef = useRef<any>(null);
   const passengerPulseIntervalRef = useRef<any>(null);
   const directionsRendererRef = useRef<any>(null);
+  const routePolylineRef = useRef<any>(null);
+  const routePathRef = useRef<{ lat: number; lng: number }[]>([]);
   const radiusCircleRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
   const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -199,6 +202,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const lastRouteFetchAtRef = useRef(0);
   const lastRerouteOriginRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastCameraUpdateAtRef = useRef(0);
+  const passengerLiveLocationRef = useRef(passengerLiveLocation);
+  passengerLiveLocationRef.current = passengerLiveLocation;
 
   const radiusFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showRadius, setShowRadius] = useState(false);
@@ -564,6 +569,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
 
+  // Trim route polyline behind driver — remove passed segments
+  useEffect(() => {
+    if (!isNavigating || !currentPos || !routePolylineRef.current || routePathRef.current.length < 2) return;
+    const fullPath = routePathRef.current;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < fullPath.length; i++) {
+      const d = getDistanceMeters(currentPos, fullPath[i]);
+      if (d < closestDist) { closestDist = d; closestIdx = i; }
+    }
+    if (closestIdx > 0) {
+      const trimmedPath = [{ lat: currentPos.lat, lng: currentPos.lng }, ...fullPath.slice(closestIdx)];
+      routePolylineRef.current.setPath(trimmedPath);
+    }
+  }, [currentPos, isNavigating]);
+
   // Apply exact admin map icon when it becomes available
   useEffect(() => {
     if (!mapIconUrl || !driverMarkerRef.current) return;
@@ -655,6 +676,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     rideMarkersRef.current.forEach((m: any) => m.setMap(null));
     rideMarkersRef.current = [];
     if (directionsRendererRef.current) { directionsRendererRef.current.setMap(null); directionsRendererRef.current = null; }
+    if (routePolylineRef.current) { routePolylineRef.current.setMap(null); routePolylineRef.current = null; }
+    routePathRef.current = [];
     if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
 
     if (!isNavigating) {
@@ -687,11 +710,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
 
     // Destination marker with pulse effect
-    // Only use passenger icon on destination if there's NO live passenger location (to avoid duplicate)
     const destMarkerOpts: any = {
       map, position: destination, zIndex: 1000,
     };
-    if (tripPhase === "heading_to_pickup" && passengerMapIconUrl && !passengerLiveLocation) {
+    // Use ref to avoid re-triggering effect when passengerLiveLocation changes
+    if (tripPhase === "heading_to_pickup" && passengerMapIconUrl && !passengerLiveLocationRef.current) {
       destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
     } else {
       destMarkerOpts.label = { text: destLabel, color: "white", fontWeight: "700", fontSize: "13px" };
@@ -726,20 +749,26 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       rideMarkersRef.current.push(dropMarker);
     }
 
-    // Create a single DirectionsRenderer and reuse it to avoid flashing
+    // Use hidden DirectionsRenderer (suppressPolylines) + custom polyline for trimming
     const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
     const dr = new g.maps.DirectionsRenderer({
       map,
       suppressMarkers: true,
       suppressInfoWindows: true,
+      suppressPolylines: true,
       preserveViewport: true,
-      polylineOptions: {
-        strokeColor: routeColor,
-        strokeWeight: 7,
-        strokeOpacity: 0.85,
-      },
     });
     directionsRendererRef.current = dr;
+
+    // Create custom route polyline (will be updated with trimmed path)
+    const polyline = new g.maps.Polyline({
+      map,
+      strokeColor: routeColor,
+      strokeWeight: 7,
+      strokeOpacity: 0.85,
+      zIndex: 100,
+    });
+    routePolylineRef.current = polyline;
 
     const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
       ? { interval: 3000, movement: 10 }
@@ -783,6 +812,16 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           parseNavStepsRef.current(result);
           lastRouteFetchAtRef.current = Date.now();
           lastRerouteOriginRef.current = origin;
+
+          // Extract full path and set on polyline
+          try {
+            const overviewPath = result.routes[0].overview_path;
+            const pathCoords = overviewPath.map((p: any) => ({ lat: p.lat(), lng: p.lng() }));
+            routePathRef.current = pathCoords;
+            if (routePolylineRef.current) {
+              routePolylineRef.current.setPath(pathCoords);
+            }
+          } catch {}
         }
       }).catch((err: any) => console.error("Directions error:", err))
         .finally(() => {
@@ -799,7 +838,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
       routeFetchInFlightRef.current = false;
     };
-  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, passengerLiveLocation, navSettings.rerouteAggressiveness]);
+  }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, navSettings.rerouteAggressiveness]);
 
   // Radius circle
   useEffect(() => {
