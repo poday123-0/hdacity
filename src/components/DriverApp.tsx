@@ -214,6 +214,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
+  const takeoverWindowUntilRef = useRef(0);
   const [sessionReady, setSessionReady] = useState(false);
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
@@ -248,14 +249,32 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setScreen("offline");
     setCurrentTrip(null);
     setShowTakeoverConfirm(false);
-    // Full logout — send old device back to login screen
-    onLogout?.();
     toast({
-      title: "Logged Out",
-      description: "Your account was signed in on another device. Please log in again.",
+      title: "Switched Offline",
+      description: "Another device became active. This device is now offline.",
       variant: "destructive",
     });
-  }, [onLogout]);
+  }, []);
+
+  const handleSessionMismatch = useCallback(async () => {
+    if (!userProfile?.id) return;
+
+    // Grace window: newest device reclaims session once to avoid race during takeover
+    if (Date.now() < takeoverWindowUntilRef.current) {
+      await supabase
+        .from("driver_locations")
+        .update({
+          session_id: deviceSessionId.current,
+          is_online: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("driver_id", userProfile.id);
+      takeoverWindowUntilRef.current = 0;
+      return;
+    }
+
+    forceSessionTakeoverLogout();
+  }, [userProfile?.id, forceSessionTakeoverLogout]);
 
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
@@ -452,8 +471,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         eq("driver_id", userProfile.id).
         single();
         if (locRow && (locRow as any).session_id && (locRow as any).session_id !== deviceSessionId.current) {
-          // Another device is now active — force this device offline
-          forceSessionTakeoverLogout();
+          // Another device is now active — resolve mismatch
+          await handleSessionMismatch();
           return; // Don't upsert — this device is no longer active
         }
         // Only upsert location if session is still ours
@@ -475,7 +494,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationIntervalRef.current = null;
       }
     };
-  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, forceSessionTakeoverLogout]);
+  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch]);
 
   // Claim active driver session before takeover checks start
   useEffect(() => {
@@ -534,8 +553,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         (payload: any) => {
           const newSessionId = payload.new?.session_id;
           if (newSessionId && newSessionId !== deviceSessionId.current) {
-            // Another device took over — immediately force this device offline
-            forceSessionTakeoverLogout();
+            // Another device took over — resolve mismatch
+            void handleSessionMismatch();
           }
         }
       )
@@ -544,7 +563,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, sessionReady, screen, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, sessionReady, screen, handleSessionMismatch]);
 
   // Fallback takeover check — enforce only while this device is actively driving
   useEffect(() => {
@@ -559,7 +578,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       const activeSessionId = (locRow as any)?.session_id;
       if (activeSessionId && activeSessionId !== deviceSessionId.current) {
-        forceSessionTakeoverLogout();
+        await handleSessionMismatch();
       }
     };
 
@@ -577,7 +596,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [userProfile?.id, sessionReady, screen, forceSessionTakeoverLogout]);
+  }, [userProfile?.id, sessionReady, screen, handleSessionMismatch]);
 
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -1515,6 +1534,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 onClick={() => {
                   setShowTakeoverConfirm(false);
                   deviceSessionId.current = crypto.randomUUID();
+                  takeoverWindowUntilRef.current = Date.now() + 10000;
                   // Force effect re-trigger by going offline then online
                   setScreen("offline");
                   setTimeout(() => setScreen("online"), 100);
@@ -1842,6 +1862,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               // Always let this device take over and become active
               const newSessionId = crypto.randomUUID();
               deviceSessionId.current = newSessionId;
+              takeoverWindowUntilRef.current = Date.now() + 10000;
               await supabase
                 .from("driver_locations")
                 .update({
