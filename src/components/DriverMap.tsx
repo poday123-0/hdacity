@@ -274,6 +274,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       disableDefaultUI: true,
       zoomControl: false,
       rotateControl: true,
+      mapId: "hda_driver_map",
       styles: isDark ? darkMapStyle : lightNavStyle,
       gestureHandling: "greedy",
     });
