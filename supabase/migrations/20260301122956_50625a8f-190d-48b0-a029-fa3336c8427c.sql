@@ -1,0 +1,1 @@
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS passenger_bonus numeric NOT NULL DEFAULT 0;

@@ -209,6 +209,9 @@ const AdminTrips = () => {
                     <td className="px-4 py-3 text-sm font-semibold text-foreground whitespace-nowrap">
                       {t.actual_fare ? `${t.actual_fare} MVR` : t.estimated_fare ? `~${t.estimated_fare} MVR` : "—"}
                       {t.fare_type === "hourly" && <span className="text-[10px] text-muted-foreground">/hr</span>}
+                      {(t as any).passenger_bonus > 0 && (
+                        <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">+{(t as any).passenger_bonus}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-muted-foreground whitespace-nowrap">
@@ -274,7 +277,7 @@ const AdminTrips = () => {
                     </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <DollarSign className="w-3 h-3" />
-                      <span>Fare: <span className="text-foreground font-medium">{selectedTrip.actual_fare ? `MVR ${selectedTrip.actual_fare}` : selectedTrip.estimated_fare ? `~MVR ${selectedTrip.estimated_fare}` : "—"}{selectedTrip.fare_type === "hourly" ? "/hr" : ""}</span></span>
+                      <span>Fare: <span className="text-foreground font-medium">{selectedTrip.actual_fare ? `MVR ${selectedTrip.actual_fare}` : selectedTrip.estimated_fare ? `~MVR ${selectedTrip.estimated_fare}` : "—"}{selectedTrip.fare_type === "hourly" ? "/hr" : ""}</span>{(selectedTrip as any).passenger_bonus > 0 && <span className="text-primary font-bold ml-1">(+{(selectedTrip as any).passenger_bonus} boost)</span>}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Clock className="w-3 h-3" />

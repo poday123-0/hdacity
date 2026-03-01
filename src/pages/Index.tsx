@@ -80,6 +80,7 @@ const Index = () => {
   const [intermediateStops, setIntermediateStops] = useState<StopLocation[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
+  const [passengerBonus, setPassengerBonus] = useState(0);
   const [bookingType, setBookingType] = useState<BookingType>("now");
   const [scheduledAt, setScheduledAt] = useState<string | undefined>();
   const [bookingNotes, setBookingNotes] = useState<string | undefined>();
@@ -455,9 +456,10 @@ const Index = () => {
     setPassengerScreen("ride-options");
   }, []);
 
-  const handleSelectVehicle = useCallback((vehicleType: any, fare: number) => {
+  const handleSelectVehicle = useCallback((vehicleType: any, fare: number, bonus: number = 0) => {
     setSelectedVehicleType(vehicleType);
     setEstimatedFare(fare);
+    setPassengerBonus(bonus);
     setPassengerScreen("confirmation");
   }, []);
 
@@ -510,6 +512,7 @@ const Index = () => {
         dropoff_lng: dropoff.lng,
         vehicle_type_id: selectedVehicleType.id,
         estimated_fare: estimatedFare,
+        passenger_bonus: passengerBonus,
         fare_type: bookingType === "hourly" ? "hourly" : "distance",
         status: bookingType === "scheduled" ? "scheduled" : "requested",
         passenger_count: passengerCount,

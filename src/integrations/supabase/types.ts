@@ -969,6 +969,7 @@ export type Database = {
           hourly_started_at: string | null
           id: string
           luggage_count: number
+          passenger_bonus: number
           passenger_count: number
           passenger_id: string | null
           passenger_lat: number | null
@@ -1017,6 +1018,7 @@ export type Database = {
           hourly_started_at?: string | null
           id?: string
           luggage_count?: number
+          passenger_bonus?: number
           passenger_count?: number
           passenger_id?: string | null
           passenger_lat?: number | null
@@ -1065,6 +1067,7 @@ export type Database = {
           hourly_started_at?: string | null
           id?: string
           luggage_count?: number
+          passenger_bonus?: number
           passenger_count?: number
           passenger_id?: string | null
           passenger_lat?: number | null
