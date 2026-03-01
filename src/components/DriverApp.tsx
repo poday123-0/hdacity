@@ -237,17 +237,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       osc.stop(ctx.currentTime + 0.5);
     } catch {}
 
-    setSessionKicked(true);
+    setSessionKicked(false);
     setScreen("offline");
     setCurrentTrip(null);
     setShowTakeoverConfirm(false);
-    onLogout?.();
     toast({
       title: "Session Taken Over",
-      description: "Another device is now active for your account.",
+      description: "Another device is now active. This device is now offline.",
       variant: "destructive",
     });
-  }, [onLogout]);
+  }, []);
 
   const textSizeKey = userProfile?.id ? `hda_driver_text_size_${userProfile.id}` : "hda_driver_text_size";
   const [textSize, setTextSize] = useState<TextSize>(() => {
@@ -362,9 +361,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         clearInterval(locationIntervalRef.current);
         locationIntervalRef.current = null;
       }
-      // Mark driver as offline
+      // Mark driver as offline only if this device still owns the active session
       if (userProfile?.id) {
-        supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
+        supabase
+          .from("driver_locations")
+          .select("session_id")
+          .eq("driver_id", userProfile.id)
+          .single()
+          .then(({ data }) => {
+            const activeSessionId = (data as any)?.session_id;
+            if (activeSessionId === deviceSessionId.current) {
+              supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
+            }
+          });
       }
       return;
     }
@@ -1782,16 +1791,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             onClick={async () => {
-              // Check if another device is already online
-              const { data: existingLoc } = await supabase.
-              from("driver_locations").
-              select("session_id, is_online").
-              eq("driver_id", userProfile!.id).
-              single();
-              if (existingLoc?.is_online && existingLoc.session_id && existingLoc.session_id !== deviceSessionId.current) {
-                setShowTakeoverConfirm(true);
-                return;
-              }
+              // Always let this device take over and become active
+              const newSessionId = crypto.randomUUID();
+              deviceSessionId.current = newSessionId;
+              await supabase
+                .from("driver_locations")
+                .update({
+                  session_id: newSessionId,
+                  is_online: true,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("driver_id", userProfile!.id);
+              setShowTakeoverConfirm(false);
+              setSessionKicked(false);
               setScreen("online");
             }}
             className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-base transition-all active:scale-[0.97] shadow-lg shadow-primary/20"
