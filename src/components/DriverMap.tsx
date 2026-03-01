@@ -806,6 +806,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         destination,
         travelMode: g.maps.TravelMode.DRIVING,
         provideRouteAlternatives: false,
+        drivingOptions: {
+          departureTime: new Date(),
+          trafficModel: g.maps.TrafficModel?.BEST_GUESS || "bestguess",
+        },
       }).then((result: any) => {
         if (directionsRendererRef.current === dr && routeRequestSeqRef.current === requestSeq) {
           dr.setDirections(result);
@@ -813,10 +817,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           lastRouteFetchAtRef.current = Date.now();
           lastRerouteOriginRef.current = origin;
 
-          // Extract full path and set on polyline
+          // Extract detailed path from each step (road-snapped, not overview)
           try {
-            const overviewPath = result.routes[0].overview_path;
-            const pathCoords = overviewPath.map((p: any) => ({ lat: p.lat(), lng: p.lng() }));
+            const legs = result.routes[0].legs;
+            const pathCoords: { lat: number; lng: number }[] = [];
+            for (const leg of legs) {
+              for (const step of leg.steps) {
+                const stepPath = step.path || [];
+                for (const p of stepPath) {
+                  pathCoords.push({ lat: p.lat(), lng: p.lng() });
+                }
+              }
+            }
             routePathRef.current = pathCoords;
             if (routePolylineRef.current) {
               routePolylineRef.current.setPath(pathCoords);
