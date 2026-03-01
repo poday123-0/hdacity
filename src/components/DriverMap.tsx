@@ -53,6 +53,21 @@ const animateMarker = (
 };
 import { motion, AnimatePresence } from "framer-motion";
 
+const getDistanceMeters = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+) => {
+  const R = 6371000;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+};
+
 
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -109,6 +124,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
+  const routeFetchInFlightRef = useRef(false);
+  const routeRequestSeqRef = useRef(0);
+  const lastRouteFetchAtRef = useRef(0);
+  const lastRerouteOriginRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastCameraUpdateAtRef = useRef(0);
 
   const radiusFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showRadius, setShowRadius] = useState(false);
@@ -390,14 +410,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       // Flag programmatic zoom so it doesn't trigger user interaction handler
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
 
-      if (isNavigating) {
+      const now = Date.now();
+      if (now - lastCameraUpdateAtRef.current > 350) {
+        lastCameraUpdateAtRef.current = now;
         map.panTo(currentPos);
-        const currentZoom = map.getZoom();
-        if (currentZoom < 17 || currentZoom > 20) {
-          map.setZoom(18);
+
+        if (isNavigating) {
+          const currentZoom = map.getZoom();
+          if (currentZoom < 17 || currentZoom > 19) {
+            map.setZoom(18);
+          }
         }
-      } else {
-        map.panTo(currentPos);
       }
     }
   }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver]);
@@ -427,23 +450,25 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         }));
         setNavSteps(steps);
         
-        // Auto-advance step based on driver proximity
+        // Auto-advance step based on driver proximity (never jump backwards)
         const pos = currentPos;
         if (pos && steps.length > 0) {
-          let closestIdx = 0;
+          const startIdx = Math.max(0, Math.min(currentStepIndex, steps.length - 1));
+          let closestIdx = startIdx;
           let closestDist = Infinity;
-          
-          leg.steps.forEach((step: any, idx: number) => {
+
+          for (let idx = startIdx; idx < leg.steps.length; idx++) {
+            const step = leg.steps[idx];
             const endLat = step.end_location.lat();
             const endLng = step.end_location.lng();
-            const dist = Math.sqrt(Math.pow(pos.lat - endLat, 2) + Math.pow(pos.lng - endLng, 2));
+            const dist = getDistanceMeters(pos, { lat: endLat, lng: endLng });
             if (dist < closestDist) {
               closestDist = dist;
               closestIdx = idx;
             }
-          });
-          
-          setCurrentStepIndex(Math.min(closestIdx, steps.length - 1));
+          }
+
+          setCurrentStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
         }
       } catch (e) {
         console.warn("Failed to parse nav steps:", e);
@@ -549,15 +574,30 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
     directionsRendererRef.current = dr;
 
-    const fetchRoute = () => {
+    const MIN_REROUTE_INTERVAL_MS = 5000;
+    const MIN_REROUTE_MOVEMENT_M = 20;
+
+    const fetchRoute = (force = false) => {
       const driverPos = currentPosRef.current;
-      if (!driverPos) return;
+      if (!driverPos || routeFetchInFlightRef.current) return;
+
       let origin: { lat: number; lng: number };
       if (tripPhase === "arrived") {
         origin = pickup;
       } else {
         origin = driverPos;
       }
+
+      const now = Date.now();
+      const lastOrigin = lastRerouteOriginRef.current;
+      const movedSinceLastRoute = lastOrigin ? getDistanceMeters(origin, lastOrigin) : Infinity;
+      if (!force) {
+        if (now - lastRouteFetchAtRef.current < MIN_REROUTE_INTERVAL_MS) return;
+        if (movedSinceLastRoute < MIN_REROUTE_MOVEMENT_M) return;
+      }
+
+      routeFetchInFlightRef.current = true;
+      const requestSeq = ++routeRequestSeqRef.current;
 
       const ds = new g.maps.DirectionsService();
       ds.route({
@@ -566,18 +606,26 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         travelMode: g.maps.TravelMode.DRIVING,
         provideRouteAlternatives: false,
       }).then((result: any) => {
-        if (directionsRendererRef.current === dr) {
+        if (directionsRendererRef.current === dr && routeRequestSeqRef.current === requestSeq) {
           dr.setDirections(result);
           parseNavStepsRef.current(result);
+          lastRouteFetchAtRef.current = Date.now();
+          lastRerouteOriginRef.current = origin;
         }
-      }).catch((err: any) => console.error("Directions error:", err));
+      }).catch((err: any) => console.error("Directions error:", err))
+        .finally(() => {
+          if (routeRequestSeqRef.current === requestSeq) {
+            routeFetchInFlightRef.current = false;
+          }
+        });
     };
 
-    fetchRoute();
-    routeRefreshRef.current = setInterval(fetchRoute, 8000);
+    fetchRoute(true);
+    routeRefreshRef.current = setInterval(() => fetchRoute(false), 5000);
 
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
+      routeFetchInFlightRef.current = false;
     };
   }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, passengerLiveLocation]);
 
