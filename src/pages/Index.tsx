@@ -586,7 +586,7 @@ const Index = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, userProfile?.id, intermediateStops, bookingType, scheduledAt, bookingNotes]);
+  }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, passengerBonus, userProfile?.id, intermediateStops, bookingType, scheduledAt, bookingNotes]);
 
   // Passenger notification sounds
   const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});

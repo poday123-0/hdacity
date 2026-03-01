@@ -21,7 +21,7 @@ interface RideConfirmationProps {
   passengerCount: number;
   luggageCount: number;
   userId?: string;
-  onConfirm: (paymentMethod: PaymentMethod) => void;
+  onConfirm: (paymentMethod: PaymentMethod) => void | Promise<void>;
   onBack: () => void;
   stops?: Array<{ name: string; lat: number; lng: number }>;
   bookingType?: "now" | "scheduled" | "hourly";
@@ -88,7 +88,12 @@ const RideConfirmation = ({
   const handleConfirm = async () => {
     if (paymentMethod === "wallet" && walletBalance < totalFare) return;
     setConfirming(true);
-    onConfirm(paymentMethod);
+    try {
+      await onConfirm(paymentMethod);
+    } catch (err) {
+      console.error("Confirm ride error:", err);
+      setConfirming(false);
+    }
   };
 
   const distKm = Math.sqrt(Math.pow(pickup.lat - dropoff.lat, 2) + Math.pow(pickup.lng - dropoff.lng, 2)) * 111;
