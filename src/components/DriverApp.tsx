@@ -2075,38 +2075,51 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[500] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm ride-request-overlay">
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* Header with countdown */}
-            <div className="bg-primary px-4 py-3 text-center relative">
-              <p className="text-primary-foreground/80 text-xs">
-                {currentTrip.booking_type === "scheduled" ? "📅 Scheduled ride" : currentTrip.booking_type === "hourly" ? "⏱ Hourly booking" : "New ride"}{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
-              </p>
-              <p className="text-2xl font-bold text-primary-foreground">
-                {(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}
-              </p>
-              {(currentTrip as any).passenger_bonus > 0 && (
-                <div className="mt-1 inline-flex items-center gap-1.5 bg-primary-foreground/20 backdrop-blur-sm rounded-lg px-2.5 py-1">
-                  <span className="text-primary-foreground/90 text-xs font-medium">Base: {currentTrip.estimated_fare} MVR</span>
-                  <span className="text-primary-foreground/60">+</span>
-                  <span className="text-yellow-300 text-xs font-bold">🔥 Boost: {(currentTrip as any).passenger_bonus} MVR</span>
-                </div>
-              )}
-              {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
-              {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at &&
-            <p className="text-primary-foreground/70 text-xs mt-0.5">Pickup: {new Date(currentTrip.scheduled_at).toLocaleString()}</p>
-            }
-              {/* Countdown timer */}
-              <div className="absolute top-3 right-3 w-10 h-10 rounded-full border-2 border-primary-foreground/40 flex items-center justify-center">
-                <span className={`text-sm font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-primary-foreground"}`}>
+            <div className="bg-gradient-to-b from-primary to-primary/90 px-5 py-5 text-center relative overflow-hidden">
+              {/* Decorative circles */}
+              <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-primary-foreground/5" />
+              <div className="absolute -bottom-4 -right-8 w-32 h-32 rounded-full bg-primary-foreground/5" />
+              
+              {/* Countdown timer - top right */}
+              <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center border border-primary-foreground/20">
+                <span className={`text-base font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-primary-foreground"}`}>
                   {rideRequestCountdown}
                 </span>
               </div>
-              {/* Progress bar */}
-              <div className="mt-2 h-1 bg-primary-foreground/20 rounded-full overflow-hidden">
-                <motion.div
-                className="h-full bg-primary-foreground/60 rounded-full"
-                initial={{ width: "100%" }}
-                animate={{ width: "0%" }}
-                transition={{ duration: acceptTimeoutSeconds, ease: "linear" }} />
 
+              <p className="text-primary-foreground/70 text-[11px] font-medium uppercase tracking-wider">
+                {currentTrip.booking_type === "scheduled" ? "📅 Scheduled ride" : currentTrip.booking_type === "hourly" ? "⏱ Hourly booking" : "New ride request"}{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
+              </p>
+              
+              <p className="text-3xl font-extrabold text-primary-foreground mt-1.5 tracking-tight">
+                {(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} <span className="text-lg font-semibold text-primary-foreground/80">MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}</span>
+              </p>
+
+              {(currentTrip as any).passenger_bonus > 0 && (
+                <div className="mt-2 inline-flex items-center gap-2 bg-primary-foreground/15 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary-foreground/10">
+                  <span className="text-primary-foreground/80 text-[11px] font-medium">Base {currentTrip.estimated_fare}</span>
+                  <div className="w-px h-3 bg-primary-foreground/30" />
+                  <span className="text-amber-300 text-[11px] font-bold">🔥 +{(currentTrip as any).passenger_bonus} boost</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-3 mt-2">
+                {currentTrip.distance_km && (
+                  <span className="text-primary-foreground/60 text-xs font-medium">📍 ~{currentTrip.distance_km} km</span>
+                )}
+                {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at && (
+                  <span className="text-primary-foreground/60 text-xs font-medium">🕐 {new Date(currentTrip.scheduled_at).toLocaleString()}</span>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-3 h-1 bg-primary-foreground/15 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary-foreground/50 rounded-full"
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: acceptTimeoutSeconds, ease: "linear" }}
+                />
               </div>
             </div>
 
