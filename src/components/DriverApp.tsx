@@ -436,6 +436,58 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, selectedVehicleId]);
 
+  // Realtime session takeover — immediately kick old device when session_id changes
+  useEffect(() => {
+    if (!userProfile?.id || screen === "offline") return;
+
+    const channel = supabase
+      .channel(`driver-session-${userProfile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "driver_locations",
+          filter: `driver_id=eq.${userProfile.id}`,
+        },
+        (payload: any) => {
+          const newSessionId = payload.new?.session_id;
+          if (newSessionId && newSessionId !== deviceSessionId.current) {
+            // Another device took over — immediately force this device offline
+            if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+            if (locationWatchRef.current !== null) navigator.geolocation.clearWatch(locationWatchRef.current);
+            try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
+            try {
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = "square";
+              osc.frequency.setValueAtTime(880, ctx.currentTime);
+              osc.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+              osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
+              gain.gain.setValueAtTime(0.3, ctx.currentTime);
+              gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(); osc.stop(ctx.currentTime + 0.5);
+            } catch {}
+            setSessionKicked(true);
+            setScreen("offline");
+            setCurrentTrip(null);
+            toast({
+              title: "Session Taken Over",
+              description: "Another device is now active for your account.",
+              variant: "destructive",
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.id, screen]);
+
   // Listen for new trip requests and play sound when online
   const tripSoundRef = useRef<HTMLAudioElement | null>(null);
   const [tripRequestSoundUrl, setTripRequestSoundUrl] = useState<string>("");
