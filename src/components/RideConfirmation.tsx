@@ -17,6 +17,7 @@ interface RideConfirmationProps {
   dropoff: { name: string; lat: number; lng: number };
   vehicleType: any;
   estimatedFare: number;
+  passengerBonus?: number;
   passengerCount: number;
   luggageCount: number;
   userId?: string;
@@ -33,6 +34,7 @@ const RideConfirmation = ({
   dropoff,
   vehicleType,
   estimatedFare,
+  passengerBonus = 0,
   passengerCount,
   luggageCount,
   userId,
@@ -81,8 +83,10 @@ const RideConfirmation = ({
     setShowAddContact(false);
   };
 
+  const totalFare = estimatedFare + passengerBonus;
+
   const handleConfirm = async () => {
-    if (paymentMethod === "wallet" && walletBalance < estimatedFare) return;
+    if (paymentMethod === "wallet" && walletBalance < totalFare) return;
     setConfirming(true);
     onConfirm(paymentMethod);
   };
@@ -90,7 +94,7 @@ const RideConfirmation = ({
   const distKm = Math.sqrt(Math.pow(pickup.lat - dropoff.lat, 2) + Math.pow(pickup.lng - dropoff.lng, 2)) * 111;
   const etaMin = Math.max(5, Math.round(distKm * 3));
 
-  const walletInsufficient = paymentMethod === "wallet" && walletBalance < estimatedFare;
+  const walletInsufficient = paymentMethod === "wallet" && walletBalance < totalFare;
 
   return (
     <motion.div
@@ -167,7 +171,10 @@ const RideConfirmation = ({
         <div className="bg-primary/10 rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-primary font-semibold">{vehicleType.name}</p>
-            <p className="text-2xl font-bold text-primary">{estimatedFare.toFixed(0)} MVR{bookingType === "hourly" ? "/hr" : ""}</p>
+            <p className="text-2xl font-bold text-primary">{totalFare.toFixed(0)} MVR{bookingType === "hourly" ? "/hr" : ""}</p>
+            {passengerBonus > 0 && (
+              <p className="text-[10px] text-primary/80 font-medium">Base: {estimatedFare} + Boost: {passengerBonus} MVR</p>
+            )}
             {bookingType === "scheduled" && Number(vehicleType.pre_booking_fee) > 0 && (
               <p className="text-[10px] text-muted-foreground">Includes {vehicleType.pre_booking_fee} MVR pre-booking fee</p>
             )}
@@ -198,7 +205,7 @@ const RideConfirmation = ({
                 <m.icon className={`w-5 h-5 ${paymentMethod === m.id ? "text-primary" : m.color}`} />
                 <span className={`text-xs font-semibold ${paymentMethod === m.id ? "text-primary" : "text-foreground"}`}>{m.label}</span>
                 {m.id === "wallet" && (
-                  <span className={`text-[10px] ${walletBalance >= estimatedFare ? "text-green-600" : "text-destructive"}`}>
+                  <span className={`text-[10px] ${walletBalance >= totalFare ? "text-green-600" : "text-destructive"}`}>
                     {walletBalance.toFixed(0)} MVR
                   </span>
                 )}
@@ -206,7 +213,7 @@ const RideConfirmation = ({
             ))}
           </div>
           {walletInsufficient && (
-            <p className="text-[11px] text-destructive text-center">Insufficient wallet balance. Need {estimatedFare.toFixed(0)} MVR.</p>
+            <p className="text-[11px] text-destructive text-center">Insufficient wallet balance. Need {totalFare.toFixed(0)} MVR.</p>
           )}
         </div>
 
@@ -268,7 +275,7 @@ const RideConfirmation = ({
             disabled={confirming || walletInsufficient}
             className="flex-[2] py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-60"
           >
-            {confirming ? "Requesting..." : bookingType === "scheduled" ? `Schedule Ride — ${estimatedFare.toFixed(0)} MVR` : bookingType === "hourly" ? `Request Hourly — ${estimatedFare.toFixed(0)} MVR/hr` : `Request Ride — ${estimatedFare.toFixed(0)} MVR`}
+            {confirming ? "Requesting..." : bookingType === "scheduled" ? `Schedule Ride — ${totalFare.toFixed(0)} MVR` : bookingType === "hourly" ? `Request Hourly — ${totalFare.toFixed(0)} MVR/hr` : `Request Ride — ${totalFare.toFixed(0)} MVR`}
           </button>
         </div>
       </div>

@@ -509,7 +509,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
               <div className="text-[10px] text-muted-foreground space-y-0.5">
                 <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {createdTrip.pickup_address} → {createdTrip.dropoff_address}</p>
                 <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {createdTrip.customer_name} • {createdTrip.customer_phone}</p>
-                {createdTrip.estimated_fare && <p className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {createdTrip.estimated_fare} MVR</p>}
+                {createdTrip.estimated_fare && <p className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {createdTrip.estimated_fare}{(createdTrip as any).passenger_bonus > 0 ? ` (+${(createdTrip as any).passenger_bonus} boost)` : ""} MVR</p>}
               </div>
 
               {/* Driver & vehicle details when accepted */}

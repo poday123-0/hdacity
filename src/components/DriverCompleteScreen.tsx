@@ -71,6 +71,11 @@ const DriverCompleteScreen = ({
           <p className="text-3xl font-bold text-primary">
             {completionFare || currentTrip?.estimated_fare || "—"} MVR
           </p>
+          {(currentTrip as any)?.passenger_bonus > 0 && (
+            <p className="text-xs text-primary/80 font-medium mt-0.5">
+              Includes +{(currentTrip as any).passenger_bonus} MVR boost from passenger
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
             Paid via <span className="font-semibold capitalize">{confirmedPaymentMethod}</span>
           </p>
