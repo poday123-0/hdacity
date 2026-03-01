@@ -610,7 +610,24 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
 
-  // Auto-refocus on turn: when step changes, snap back to follow mode
+  // Update marker icon when mapIconUrl becomes available after initial render
+  useEffect(() => {
+    if (!mapIconUrl || !driverMarkerRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+    createRotatedIcon(mapIconUrl, prevHeadingRef.current || 0, 80, (dataUrl) => {
+      rotatedIconCacheRef.current = { url: mapIconUrl, heading: Math.round((prevHeadingRef.current || 0) / 5) * 5, dataUrl };
+      if (driverMarkerRef.current) {
+        driverMarkerRef.current.setIcon({
+          url: dataUrl,
+          scaledSize: new g.maps.Size(56, 56),
+          anchor: new g.maps.Point(28, 28),
+        });
+        driverMarkerRef.current.setOptions({ optimized: false });
+      }
+    });
+  }, [mapIconUrl]);
+
   const prevStepIndexRef = useRef(0);
   useEffect(() => {
     if (!isNavigating || !navSettings.autoRefocusOnTurn) return;
