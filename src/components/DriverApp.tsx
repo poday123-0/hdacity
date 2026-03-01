@@ -666,10 +666,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
+  // Handle trip cancellation/taken cleanup
+  const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
+    // Trip accepted by ANOTHER driver while we're on ride-request screen
+    if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
+      if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+      if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
+      toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
+      setScreen("online");
+      setCurrentTrip(null);
+      setPassengerProfile(null);
+      return true;
+    }
+
+    // Trip cancelled by passenger (or auto-expired)
+    if (updated.status === "cancelled") {
+      if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+      if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
+      const soundUrl = await fetchSoundUrl("driver_sound_cancelled");
+      playSound(soundUrl);
+      const cancelledByDriver = updated.cancel_reason?.includes("driver");
+      if (!cancelledByDriver) {
+        setCancelledTripReason(updated.cancel_reason || "The passenger cancelled this trip.");
+        setShowCancelledByPassengerPopup(true);
+      }
+      await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+      setScreen("online");
+      setCurrentTrip(null);
+      setPassengerProfile(null);
+      setDriverTripPhase("heading_to_pickup");
+      return true;
+    }
+    return false;
+  }, [userProfile?.id]);
+
   // Monitor active trip for cancellation or acceptance by another driver
   useEffect(() => {
-    if (!currentTrip?.id || screen !== "navigating" && screen !== "ride-request") return;
+    if (!currentTrip?.id || (screen !== "navigating" && screen !== "ride-request")) return;
 
+    // Realtime subscription
     const channel = supabase.
     channel(`driver-trip-monitor-${currentTrip.id}`).
     on("postgres_changes", {
@@ -678,44 +713,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       table: "trips",
       filter: `id=eq.${currentTrip.id}`
     }, async (payload) => {
-      const updated = payload.new as any;
-
-      // Trip accepted by ANOTHER driver while we're on ride-request screen
-      if (updated.status === "accepted" && screen === "ride-request" && updated.driver_id !== userProfile?.id) {
-        // Stop trip request sound immediately
-        if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
-        if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
-        toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
-        setScreen("online");
-        setCurrentTrip(null);
-        setPassengerProfile(null);
-        return;
-      }
-
-      // Trip cancelled by passenger (or auto-expired)
-      if (updated.status === "cancelled") {
-        // Stop trip request sound immediately if still playing
-        if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
-        if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
-        const soundUrl = await fetchSoundUrl("driver_sound_cancelled");
-        playSound(soundUrl);
-        // Don't show popup if driver cancelled it themselves
-        const cancelledByDriver = updated.cancel_reason?.includes("driver");
-        if (!cancelledByDriver) {
-          setCancelledTripReason(updated.cancel_reason || "The passenger cancelled this trip.");
-          setShowCancelledByPassengerPopup(true);
-        }
-        await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-        setScreen("online");
-        setCurrentTrip(null);
-        setPassengerProfile(null);
-        setDriverTripPhase("heading_to_pickup");
-      }
+      await handleTripCancelledOrTaken(payload.new as any);
     }).
     subscribe();
 
-    return () => {supabase.removeChannel(channel);};
-  }, [currentTrip?.id, screen, userProfile?.id]);
+    // Polling fallback every 5s in case realtime misses the event
+    const pollInterval = setInterval(async () => {
+      const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
+      if (data) {
+        await handleTripCancelledOrTaken(data);
+      }
+    }, 5000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [currentTrip?.id, screen, userProfile?.id, handleTripCancelledOrTaken]);
 
   // Sync showDriverChat ref
   useEffect(() => {showDriverChatRef.current = showDriverChat;if (showDriverChat) setUnreadDriverMessages(0);}, [showDriverChat]);
