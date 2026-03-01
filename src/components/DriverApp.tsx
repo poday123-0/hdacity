@@ -1335,7 +1335,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     onRefresh: async () => {
       window.location.reload();
     },
-    disabled: screen !== "offline"
+    disabled: false
   });
 
   // Helper: apply trip cashback rewards to both passenger and driver wallets
