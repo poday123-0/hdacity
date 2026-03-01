@@ -18,7 +18,9 @@ serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify({ key }), {
+  const mapId = Deno.env.get("GOOGLE_MAPS_MAP_ID") || "";
+
+  return new Response(JSON.stringify({ key, mapId }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });

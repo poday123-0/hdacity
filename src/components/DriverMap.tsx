@@ -174,7 +174,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [userPannedAway, setUserPannedAway] = useState(false);
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isLoaded, error } = useGoogleMaps();
+  const { isLoaded, error, mapId } = useGoogleMaps();
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -268,16 +268,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     const isDark = document.documentElement.classList.contains("dark");
 
-    const map = new g.maps.Map(mapRef.current, {
+    const mapOptions: any = {
       center,
       zoom: 16,
       disableDefaultUI: true,
       zoomControl: false,
       rotateControl: true,
-      mapId: "hda_driver_map",
       styles: isDark ? darkMapStyle : lightNavStyle,
       gestureHandling: "greedy",
-    });
+    };
+    // Vector map (enables two-finger rotation, tilt, heading)
+    if (mapId) {
+      mapOptions.mapId = mapId;
+    }
+
+    const map = new g.maps.Map(mapRef.current, mapOptions);
 
     const markerOpts: any = {
       map, position: center, zIndex: 1000,
@@ -319,7 +324,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     return () => { mapInstance.current = null; };
-  }, [isLoaded, !!initialCenterRef.current]);
+  }, [isLoaded, !!initialCenterRef.current, mapId]);
 
   // Theme observer — debounced with overlay fade to mask map style re-render
   const [themeTransition, setThemeTransition] = useState(false);
