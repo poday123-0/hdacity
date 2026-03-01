@@ -2069,6 +2069,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 // For immediate rides, mark driver as on trip
                 if (!isScheduled) {
                   await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                  fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
                   setScreen("navigating");
                 } else {
                   // Scheduled trip accepted — driver goes back to online, stays available
@@ -2280,6 +2281,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             if (!currentTrip) return;
             await supabase.from("trips").update({ status: "arrived" }).eq("id", currentTrip.id);
             setDriverTripPhase("arrived");
+            fetchSoundUrl("driver_sound_arrived").then(u => playSound(u));
             toast({ title: "📍 Arrived", description: "Passenger has been notified" });
           }} className="w-full bg-accent text-accent-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
                 I've Arrived at Pickup
@@ -2293,6 +2295,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
             setCurrentTrip({ ...currentTrip, started_at: now } as any);
             setDriverTripPhase("in_progress");
+            fetchSoundUrl("driver_sound_started").then(u => playSound(u));
             toast({ title: "🚗 Trip Started", description: "Navigate to destination" });
           }} className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
                 Start Trip
@@ -2355,6 +2358,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 await applyTripCashback(currentTrip.id, actualFare || 0, currentTrip.passenger_id);
                 setConfirmedPaymentMethod("wallet");
                 setDriverTripPhase("heading_to_pickup");
+                fetchSoundUrl("driver_sound_completed").then(u => playSound(u));
                 setScreen("complete");
               } else {
                 // Show payment method selection
@@ -2506,6 +2510,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
                 setConfirmedPaymentMethod("cash");
                 setDriverTripPhase("heading_to_pickup");
+                fetchSoundUrl("driver_sound_completed").then(u => playSound(u));
                 setScreen("complete");
               }}
               className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all">
@@ -2525,6 +2530,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
                 setConfirmedPaymentMethod("transfer");
                 setDriverTripPhase("heading_to_pickup");
+                fetchSoundUrl("driver_sound_completed").then(u => playSound(u));
                 setScreen("complete");
               }}
               className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all">
