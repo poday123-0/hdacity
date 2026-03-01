@@ -2083,9 +2083,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}
               </p>
               {(currentTrip as any).passenger_bonus > 0 && (
-                <p className="text-primary-foreground/80 text-[10px] mt-0.5">
-                  Base: {currentTrip.estimated_fare} + Boost: {(currentTrip as any).passenger_bonus} MVR
-                </p>
+                <div className="mt-1 inline-flex items-center gap-1.5 bg-primary-foreground/20 backdrop-blur-sm rounded-lg px-2.5 py-1">
+                  <span className="text-primary-foreground/90 text-xs font-medium">Base: {currentTrip.estimated_fare} MVR</span>
+                  <span className="text-primary-foreground/60">+</span>
+                  <span className="text-yellow-300 text-xs font-bold">🔥 Boost: {(currentTrip as any).passenger_bonus} MVR</span>
+                </div>
               )}
               {currentTrip.distance_km && <p className="text-primary-foreground/70 text-xs mt-0.5">~{currentTrip.distance_km} km</p>}
               {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at &&
