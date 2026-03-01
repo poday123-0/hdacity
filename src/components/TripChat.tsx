@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
+import { playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X, MessageSquare } from "lucide-react";
 
@@ -54,10 +54,20 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
 
     if (readOnly) return;
 
-    // Fetch message sound URL
-    const soundKey = senderType === "passenger" ? "passenger_sound_message" : "driver_sound_message";
+    // Fetch chat message sound from notification_sounds table (admin-configured)
     let messageSoundUrl: string | null = null;
-    fetchSoundUrl(soundKey).then(url => { messageSoundUrl = url; });
+    supabase
+      .from("notification_sounds")
+      .select("file_url")
+      .eq("category", "chat_message")
+      .eq("is_active", true)
+      .order("is_default", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          messageSoundUrl = data[0].file_url;
+        }
+      });
 
     const channel = supabase
       .channel(`trip-chat-${tripId}`)
