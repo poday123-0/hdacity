@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SystemLogo from "@/components/SystemLogo";
 import { UserProfile } from "@/components/AuthScreen";
@@ -411,13 +411,38 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     <PackageSearch className="w-5 h-5 text-orange-500" />
                     <span className="text-[10px] font-semibold text-foreground">Lost Item</span>
                   </button>
-                  <button
-                    onClick={() => { setShowProfile(false); window.location.href = "/install"; }}
-                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
-                  >
-                    <Share2 className="w-5 h-5 text-accent-foreground" />
-                    <span className="text-[10px] font-semibold text-foreground">Share</span>
-                  </button>
+                  {(() => {
+                    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+                    if (isStandalone) {
+                      return (
+                        <button
+                          onClick={async () => {
+                            setShowProfile(false);
+                            const shareData = { title: "HDA Taxi", text: "Book rides easily with HDA Taxi!", url: "https://hdacity.lovable.app" };
+                            if (navigator.share) {
+                              try { await navigator.share(shareData); } catch {}
+                            } else {
+                              await navigator.clipboard.writeText(shareData.url);
+                              toast({ title: "Link copied!", description: "Share this link with friends" });
+                            }
+                          }}
+                          className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
+                        >
+                          <Share2 className="w-5 h-5 text-primary" />
+                          <span className="text-[10px] font-semibold text-foreground">Share App</span>
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => { setShowProfile(false); window.location.href = "/install"; }}
+                        className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
+                      >
+                        <Download className="w-5 h-5 text-primary" />
+                        <span className="text-[10px] font-semibold text-foreground">Install App</span>
+                      </button>
+                    );
+                  })()}
                   {onDriverMode && (
                     <button
                       onClick={() => { setShowProfile(false); onDriverMode(); }}
