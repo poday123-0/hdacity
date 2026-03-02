@@ -134,6 +134,15 @@ export const notifyTripCancelled = async (userIds: string[], cancelledBy: string
   );
 };
 
+export const notifyMessageReceived = async (userId: string, senderName: string, message: string, tripId: string) => {
+  await sendPushNotification(
+    [userId],
+    `💬 ${senderName}`,
+    message.length > 80 ? message.slice(0, 77) + "..." : message,
+    { trip_id: tripId, type: "message_received" }
+  );
+};
+
 export const notifySOSAlert = async (adminIds: string[], userName: string, alertId: string) => {
   await sendPushNotification(
     adminIds,

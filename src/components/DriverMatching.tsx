@@ -22,6 +22,7 @@ interface FavaraAccountInfo {
 }
 
 interface DriverInfo {
+  id?: string;
   name?: string;
   initials?: string;
   rating?: number;
@@ -552,6 +553,8 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
         <TripChat
           tripId={tripId}
           senderId={userId}
+          senderName="Passenger"
+          recipientId={driver?.id}
           senderType="passenger"
           isOpen={showChat}
           onClose={() => setShowChat(false)}
