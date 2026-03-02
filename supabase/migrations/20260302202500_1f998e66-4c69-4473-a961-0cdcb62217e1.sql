@@ -1,0 +1,1 @@
+ALTER TABLE public.promo_watermelons ADD COLUMN IF NOT EXISTS icon_url text DEFAULT NULL;

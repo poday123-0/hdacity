@@ -688,6 +688,7 @@ export type Database = {
           expires_at: string | null
           fee_free_months: number
           free_trips: number
+          icon_url: string | null
           id: string
           lat: number
           lng: number
@@ -706,6 +707,7 @@ export type Database = {
           expires_at?: string | null
           fee_free_months?: number
           free_trips?: number
+          icon_url?: string | null
           id?: string
           lat: number
           lng: number
@@ -724,6 +726,7 @@ export type Database = {
           expires_at?: string | null
           fee_free_months?: number
           free_trips?: number
+          icon_url?: string | null
           id?: string
           lat?: number
           lng?: number
