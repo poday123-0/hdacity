@@ -267,16 +267,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   }, []);
 
   // Use a ref for initial center so GPS updates don't re-trigger map init
+  // IMPORTANT: never block map init on GPS — use fallback center immediately
+  const DEFAULT_MAP_CENTER = { lat: 4.1755, lng: 73.5093 }; // Malé
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   if (!initialCenterRef.current) {
-    initialCenterRef.current = currentPos || (pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null);
-  }
-  // Update ref when we get a position (for first init)
-  if (!initialCenterRef.current && currentPos) {
-    initialCenterRef.current = currentPos;
-  }
-  if (!initialCenterRef.current && pickupCoords) {
-    initialCenterRef.current = { lat: pickupCoords[0], lng: pickupCoords[1] };
+    initialCenterRef.current =
+      currentPos ||
+      (pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null) ||
+      DEFAULT_MAP_CENTER;
   }
 
   // Init map — only once
