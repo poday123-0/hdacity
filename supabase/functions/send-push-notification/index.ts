@@ -95,6 +95,30 @@ function getSoundCategory(notificationType: string, recipientUserType: string): 
   }
 }
 
+/**
+ * Map sound category to native sound file name (without extension).
+ * Android: place matching .mp3 files in android/app/src/main/res/raw/
+ * iOS: place matching .caf files in the Xcode project bundle
+ */
+function getNativeSoundName(soundCategory: string): string {
+  const map: Record<string, string> = {
+    trip_request: "trip_request",
+    driver_trip_accepted: "trip_accepted",
+    driver_arrived: "driver_arrived",
+    driver_trip_started: "trip_started",
+    driver_trip_completed: "trip_completed",
+    driver_trip_cancelled: "trip_cancelled",
+    driver_message_received: "message_received",
+    passenger_accepted: "trip_accepted",
+    passenger_arrived: "driver_arrived",
+    passenger_started: "trip_started",
+    passenger_completed: "trip_completed",
+    passenger_cancelled: "trip_cancelled",
+    passenger_message_received: "message_received",
+  };
+  return map[soundCategory] || "default";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -202,14 +226,15 @@ Deno.serve(async (req) => {
         const isSOS = type === "sos_alert";
         const isUrgent = isTripRequest || isSOS;
 
-        // Resolve the correct sound URL for this recipient
-        const soundCategory = getSoundCategory(type, t.user_type || "passenger");
-        const soundUrl = soundMap[soundCategory] || "";
+        // Resolve native sound file name for Android/iOS
+        const nativeSoundName = getNativeSoundName(soundCategory);
+        const isNative = t.device_type === "android" || t.device_type === "ios";
 
         const messageData: Record<string, string> = {
           ...(data || {}),
           sound_url: soundUrl,
           sound_category: soundCategory,
+          native_sound: nativeSoundName,
         };
 
         const fcmMessage: any = {
@@ -223,7 +248,8 @@ Deno.serve(async (req) => {
             priority: "high",
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
-              sound: "default",
+              // Use native sound file name for native apps, "default" for web
+              sound: isNative ? nativeSoundName : "default",
               channel_id: isTripRequest ? "trip_requests" : isSOS ? "sos_alerts" : "general",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               vibrate_timings: isTripRequest
@@ -239,7 +265,8 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                sound: "default",
+                // Use .caf file for native iOS, "default" for web
+                sound: isNative ? `${nativeSoundName}.caf` : "default",
                 badge: 1,
                 "content-available": 1,
                 "interruption-level": isUrgent ? "time-sensitive" : "active",
