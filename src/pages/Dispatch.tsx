@@ -9,7 +9,7 @@ import {
   MessageSquare, PackageX, AlertTriangle, LayoutDashboard, Users,
   MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building
 } from "lucide-react";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
@@ -275,7 +275,7 @@ const Dispatch = () => {
               <Navigation className="w-8 h-8 text-primary" />
             </div>
             <div className="flex items-center justify-center gap-2">
-              <img src={hdaLogo} alt="HDA" className="w-8 h-8 object-contain" />
+              <SystemLogo className="w-8 h-8 object-contain" alt="HDA" />
               <h1 className="text-2xl font-extrabold text-foreground">HDA <span className="text-primary">DISPATCH</span></h1>
             </div>
             <p className="text-sm text-muted-foreground">Login with your dispatcher phone number</p>
@@ -320,7 +320,7 @@ const Dispatch = () => {
       {/* Header */}
       <header className="bg-card border-b border-border px-3 sm:px-4 lg:px-8 py-3 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <img src={hdaLogo} alt="HDA" className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0" />
+          <SystemLogo className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0" alt="HDA" />
           <h1 className="text-base sm:text-lg font-extrabold text-foreground truncate">HDA <span className="text-primary">DISPATCH</span></h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">

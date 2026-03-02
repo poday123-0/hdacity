@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Phone, ArrowRight, Loader2, X, Shield, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 
 export interface UserProfile {
   id: string;
@@ -188,7 +188,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-16 h-16 rounded-2xl overflow-hidden">
-              <img src={hdaLogo} alt="HDA Taxi" className="w-full h-full object-contain" />
+              <SystemLogo className="w-full h-full object-contain" alt="HDA Taxi" />
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-foreground tracking-tight">

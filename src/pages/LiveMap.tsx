@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import MaldivesMap from "@/components/MaldivesMap";
 import { useTheme } from "@/hooks/use-theme";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 import { Users, Navigation, Maximize2, Minimize2 } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
@@ -163,7 +163,7 @@ const LiveMap = () => {
   if (sharedTripEnded) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-background gap-4">
-        <img src={hdaLogo} alt="HDA" className="w-16 h-16 object-contain" />
+        <SystemLogo className="w-16 h-16 object-contain" alt="HDA" />
         <h1 className="text-xl font-bold text-foreground">Trip has ended</h1>
         <p className="text-sm text-muted-foreground">This ride tracking link is no longer active.</p>
         <p className="text-xs text-muted-foreground animate-pulse">Redirecting to home page...</p>
@@ -176,7 +176,7 @@ const LiveMap = () => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0">
         <div className="flex items-center gap-3">
-          <img src={hdaLogo} alt="HDA" className="w-8 h-8 object-contain" />
+          <SystemLogo className="w-8 h-8 object-contain" alt="HDA" />
           <div>
             <h1 className="text-base font-extrabold text-foreground">
               HDA <span className="text-primary">{sharedTripId ? "TRIP TRACKING" : "LIVE MAP"}</span>
