@@ -56,8 +56,8 @@ const Install = ({ defaultTab }: InstallProps) => {
             <ArrowLeft className="w-4 h-4 text-primary-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-              <SystemLogo className="w-5 h-5 object-contain" alt="HDA" />
+            <div className="w-8 h-8 rounded-xl bg-primary-foreground shadow-md flex items-center justify-center overflow-hidden ring-1 ring-primary-foreground/30">
+              <SystemLogo className="w-6 h-6 object-contain" alt="HDA" />
             </div>
             <span className="text-sm font-black text-primary-foreground tracking-widest uppercase" style={{ fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "0.15em" }}>HDA TAXI</span>
           </div>
