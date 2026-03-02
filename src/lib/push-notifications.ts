@@ -163,3 +163,14 @@ export const notifySOSAlert = async (adminIds: string[], userName: string, alert
     { alert_id: alertId, type: "sos_alert" }
   );
 };
+
+/** Notify other drivers that a trip was taken by another driver */
+export const notifyTripTaken = async (driverIds: string[], tripId: string) => {
+  if (driverIds.length === 0) return;
+  await sendPushNotification(
+    driverIds,
+    "🚫 Trip Taken",
+    "Another driver accepted this trip",
+    { trip_id: tripId, type: "trip_taken" }
+  );
+};

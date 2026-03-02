@@ -88,6 +88,8 @@ function getSoundCategory(notificationType: string, recipientUserType: string): 
       return isDriver ? "driver_trip_cancelled" : "passenger_cancelled";
     case "message_received":
       return isDriver ? "driver_message_received" : "passenger_message_received";
+    case "trip_taken":
+      return "driver_trip_cancelled"; // reuse cancellation sound for trip taken
     default:
       return notificationType;
   }

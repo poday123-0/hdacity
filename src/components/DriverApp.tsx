@@ -67,7 +67,7 @@ import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
-import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted } from "@/lib/push-notifications";
+import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
@@ -2320,6 +2320,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   setPassengerProfile(null);
                   return;
                 }
+
+                // Notify other online drivers that this trip was taken
+                try {
+                  const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+                  const { data: otherDrivers } = await supabase
+                    .from("driver_locations")
+                    .select("driver_id")
+                    .eq("is_online", true)
+                    .eq("is_on_trip", false)
+                    .neq("driver_id", userProfile.id)
+                    .gte("updated_at", twoMinAgo);
+                  if (otherDrivers && otherDrivers.length > 0) {
+                    const otherIds = otherDrivers.map((d: any) => d.driver_id);
+                    notifyTripTaken(otherIds, currentTrip.id);
+                  }
+                } catch (e) { console.warn("Failed to notify other drivers:", e); }
 
                 // For scheduled rides, driver stays available (is_on_trip = false)
                 // For immediate rides, mark driver as on trip

@@ -66,7 +66,7 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
     fetchSettings();
   }, []);
 
-  // Find and sort nearest drivers for auto-nearest mode
+  // Find and sort drivers based on dispatch mode
   const findNearestDrivers = useCallback(async () => {
     if (!pickupLat || !pickupLng) return [];
     const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
@@ -74,22 +74,66 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
       .from("driver_locations").select("driver_id, lat, lng")
       .eq("is_online", true).eq("is_on_trip", false).gte("updated_at", twoMinAgo);
     if (!drivers || drivers.length === 0) return [];
+
     const withDistance = drivers.map(d => {
       const dlat = d.lat - pickupLat; const dlng = d.lng - pickupLng;
-      return { driver_id: d.driver_id, distance: Math.sqrt(dlat * dlat + dlng * dlng) * 111, name: "" };
-    }).filter(d => d.distance <= maxSearchRadius).sort((a, b) => a.distance - b.distance);
-    const limited = maxAutoDrivers > 0 ? withDistance.slice(0, maxAutoDrivers) : withDistance;
-    if (limited.length > 0) {
-      const ids = limited.map(d => d.driver_id);
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
-      profiles?.forEach(p => { const d = limited.find(x => x.driver_id === p.id); if (d) d.name = `${p.first_name} ${p.last_name}`; });
-    }
-    return limited;
-  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers]);
+      return { driver_id: d.driver_id, distance: Math.sqrt(dlat * dlat + dlng * dlng) * 111, name: "", avg_rating: 0 };
+    }).filter(d => d.distance <= maxSearchRadius);
 
-  // Initialize auto-nearest dispatch
+    const limited = maxAutoDrivers > 0 ? withDistance.slice(0, Math.max(maxAutoDrivers * 3, 30)) : withDistance;
+    if (limited.length === 0) return [];
+
+    const ids = limited.map(d => d.driver_id);
+
+    // Fetch profiles and ratings
+    const [profilesRes, ratingsRes] = await Promise.all([
+      supabase.from("profiles").select("id, first_name, last_name").in("id", ids),
+      supabase.from("trips").select("driver_id, driver_rating").in("driver_id", ids).not("driver_rating", "is", null),
+    ]);
+
+    // Compute average ratings
+    const ratingMap: Record<string, { sum: number; count: number }> = {};
+    ratingsRes.data?.forEach((t: any) => {
+      if (!ratingMap[t.driver_id]) ratingMap[t.driver_id] = { sum: 0, count: 0 };
+      ratingMap[t.driver_id].sum += t.driver_rating;
+      ratingMap[t.driver_id].count++;
+    });
+
+    profilesRes.data?.forEach((p: any) => {
+      const d = limited.find(x => x.driver_id === p.id);
+      if (d) d.name = `${p.first_name} ${p.last_name}`;
+    });
+
+    limited.forEach(d => {
+      const r = ratingMap[d.driver_id];
+      d.avg_rating = r ? r.sum / r.count : 0;
+    });
+
+    // Sort based on dispatch mode
+    if (dispatchMode === "auto_rating") {
+      // Highest rated first, then nearest as tiebreaker
+      limited.sort((a, b) => b.avg_rating - a.avg_rating || a.distance - b.distance);
+    } else if (dispatchMode === "auto_rating_nearest") {
+      // Combined score: normalize rating (0-5 → 0-1) and distance, weighted 60% rating + 40% proximity
+      const maxDist = Math.max(...limited.map(d => d.distance), 1);
+      limited.sort((a, b) => {
+        const scoreA = (a.avg_rating / 5) * 0.6 + (1 - a.distance / maxDist) * 0.4;
+        const scoreB = (b.avg_rating / 5) * 0.6 + (1 - b.distance / maxDist) * 0.4;
+        return scoreB - scoreA;
+      });
+    } else {
+      // auto_nearest: nearest first
+      limited.sort((a, b) => a.distance - b.distance);
+    }
+
+    return maxAutoDrivers > 0 ? limited.slice(0, maxAutoDrivers) : limited;
+  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers, dispatchMode]);
+
+  const isAutoMode = ["auto_nearest", "auto_rating", "auto_rating_nearest"].includes(dispatchMode);
+
+  // Initialize auto dispatch
   useEffect(() => {
-    if (dispatchMode !== "auto_nearest" || !tripId) return;
+    if (!isAutoMode || !tripId) return;
     const initDispatch = async () => {
       const drivers = await findNearestDrivers();
       driversListRef.current = drivers;
@@ -100,12 +144,12 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
       await supabase.from("trips").update({ target_driver_id: drivers[0].driver_id, dispatch_attempt: 1 }).eq("id", tripId);
     };
     initDispatch();
-  }, [dispatchMode, tripId, findNearestDrivers, cancelTripNoDriver]);
+  }, [isAutoMode, tripId, findNearestDrivers, cancelTripNoDriver]);
 
   // Timer — skip auto-cancel for scheduled rides
   useEffect(() => {
     if (isScheduled) return; // Scheduled rides don't timeout
-    if (dispatchMode !== "auto_nearest" || !tripId) {
+    if (!isAutoMode || !tripId) {
       const interval = setInterval(() => {
         setElapsedSeconds(prev => {
           const next = prev + 1;
@@ -134,9 +178,8 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
       }
     }, 1000);
     return () => { if (attemptTimerRef.current) clearInterval(attemptTimerRef.current); };
-  }, [dispatchMode, tripId, timeoutSeconds, cancelTripNoDriver, isScheduled]);
+  }, [isAutoMode, tripId, timeoutSeconds, cancelTripNoDriver, isScheduled]);
 
-  const isAutoNearest = dispatchMode === "auto_nearest";
 
   // Vibrate when no driver found (no sound for passengers)
   useEffect(() => {
@@ -241,7 +284,7 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
           <p className="text-sm text-muted-foreground mt-1">
             {isScheduled
               ? `Scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}`
-              : isAutoNearest
+              : isAutoMode
               ? `Requesting driver ${currentAttempt + 1}${totalDriversAvailable > 0 ? ` of ${totalDriversAvailable}` : ""}...`
               : "Waiting for a driver to accept"}
           </p>

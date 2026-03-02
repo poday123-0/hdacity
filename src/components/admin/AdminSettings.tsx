@@ -45,8 +45,10 @@ const featureToggles = [
 const settingsConfig = [
   { key: "system_app_name", label: "App Name (shown in PWA install prompt)", type: "text" },
   { key: "dispatch_mode", label: "Dispatch Mode", type: "select", options: [
-    { value: '"auto_nearest"', label: "Auto - Nearest Driver" },
     { value: '"broadcast"', label: "Broadcast to All Nearby" },
+    { value: '"auto_nearest"', label: "Auto - Nearest Driver First" },
+    { value: '"auto_rating"', label: "Auto - Highest Rated Driver First" },
+    { value: '"auto_rating_nearest"', label: "Auto - Highest Rated + Nearest" },
     { value: '"manual"', label: "Manual Admin Dispatch" },
   ]},
   { key: "surge_multiplier", label: "Surge Multiplier", type: "number" },
