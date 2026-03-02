@@ -258,11 +258,15 @@ const Index = () => {
   });
 
   const fetchOnlineDrivers = useCallback(async () => {
+    // Only fetch drivers updated within the last 10 minutes (filters out stale/inactive)
+    const staleThreshold = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
     const { data } = await supabase
       .from("driver_locations")
-      .select("id, lat, lng, driver_id, vehicle_type_id")
+      .select("id, lat, lng, driver_id, vehicle_type_id, updated_at")
       .eq("is_online", true)
-      .eq("is_on_trip", false);
+      .eq("is_on_trip", false)
+      .gte("updated_at", staleThreshold);
 
     if (data && data.length > 0) {
       // Get unique vehicle type IDs
@@ -285,15 +289,36 @@ const Index = () => {
         lng: dl.lng,
         name: vtMap[dl.vehicle_type_id]?.name || "Driver",
         imageUrl: vtMap[dl.vehicle_type_id]?.map_icon_url || undefined,
+        vehicleTypeId: dl.vehicle_type_id,
       }));
-      // Deduplicate by driver_id (in case of stale records)
+
+      // Deduplicate by driver_id
       const seen = new Set<string>();
       const uniqueMarkers = markers.filter((m: any) => {
         if (seen.has(m.id)) return false;
         seen.add(m.id);
         return true;
       });
-      setVehicleMarkers(uniqueMarkers);
+
+      // Limit to ~8 vehicles per vehicle type for a cleaner map
+      const MAX_PER_TYPE = 8;
+      const byType: Record<string, typeof uniqueMarkers> = {};
+      uniqueMarkers.forEach(m => {
+        const key = m.vehicleTypeId || "unknown";
+        if (!byType[key]) byType[key] = [];
+        byType[key].push(m);
+      });
+
+      const limited: typeof uniqueMarkers = [];
+      Object.values(byType).forEach(group => {
+        // Shuffle then take up to MAX_PER_TYPE for variety
+        const shuffled = group.sort(() => Math.random() - 0.5);
+        limited.push(...shuffled.slice(0, MAX_PER_TYPE));
+      });
+
+      setVehicleMarkers(limited);
+    } else {
+      setVehicleMarkers([]);
     }
   }, []);
 
