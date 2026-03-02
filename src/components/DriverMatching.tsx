@@ -80,7 +80,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   useEffect(() => {
     if (!tripId) return;
     let messageSoundUrl: string | null = null;
-    fetchSoundUrl("passenger_sound_message").then(url => { messageSoundUrl = url; });
+    supabase.from("notification_sounds").select("file_url").eq("category", "passenger_message_received").eq("is_default", true).eq("is_active", true).single().then(({ data }) => {
+      if (data?.file_url) messageSoundUrl = data.file_url;
+    });
 
     const channel = supabase
       .channel(`passenger-bg-chat-${tripId}`)
