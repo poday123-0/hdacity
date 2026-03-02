@@ -1,22 +1,23 @@
 import { useEffect, useCallback, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import { registerDeviceToken } from "@/lib/push-notifications";
+import { playSound, playFallbackBeep } from "@/lib/sound-utils";
 
 /**
  * Hook to register push notification token for the current user.
  * Works on both web (Firebase) and native (Capacitor).
- * Re-attempts registration when notification permission is granted.
+ * Handles foreground sound playback for all notification types.
  */
 export const usePushNotifications = (
   userId: string | undefined,
   userType: "driver" | "passenger" | "admin" | "dispatcher"
 ) => {
   const registeredRef = useRef(false);
+  const swListenerRef = useRef(false);
 
   const setupWeb = useCallback(async () => {
     if (!userId || registeredRef.current) return;
 
-    // Check permission first — if not granted yet, wait for it
     if (!("Notification" in window) || Notification.permission !== "granted") return;
 
     try {
@@ -79,33 +80,42 @@ export const usePushNotifications = (
         registeredRef.current = true;
       }
 
+      // Foreground message handler — play the correct sound
       onMessage(messaging, (payload) => {
         console.log("Foreground message:", payload);
         const msgTitle = payload.notification?.title || payload.data?.title || "Notification";
         const msgBody = payload.notification?.body || payload.data?.body || "";
         const soundUrl = payload.data?.sound_url;
+        const notifType = payload.data?.type || "default";
 
+        // Play admin-configured sound, fallback to beep
         if (soundUrl) {
-          try {
-            const audio = new Audio(soundUrl);
-            audio.play().catch(() => {});
-          } catch {}
+          playSound(soundUrl);
+        } else {
+          // Use different beep tones for different event types
+          const freq = notifType === "trip_requested" ? 1000 :
+                       notifType === "sos_alert" ? 1200 :
+                       notifType === "message_received" ? 800 : 880;
+          playFallbackBeep(freq, notifType === "trip_requested" ? 0.3 : 0.15);
         }
 
-        new Notification(msgTitle, {
-          body: msgBody,
-          icon: "/pwa-192x192.png",
-          silent: !!soundUrl,
-        });
+        // Show browser notification (silent since we play our own sound)
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(msgTitle, {
+            body: msgBody,
+            icon: "/pwa-192x192.png",
+            silent: true, // Always silent — we handle sound ourselves
+          });
+        }
       });
 
-      if ("serviceWorker" in navigator) {
+      // Listen for SW messages (background → foreground sound bridge)
+      if ("serviceWorker" in navigator && !swListenerRef.current) {
+        swListenerRef.current = true;
         navigator.serviceWorker.addEventListener("message", (event) => {
           if (event.data?.type === "PLAY_NOTIFICATION_SOUND" && event.data?.sound_url) {
-            try {
-              const audio = new Audio(event.data.sound_url);
-              audio.play().catch(() => {});
-            } catch {}
+            console.log("SW sound bridge: playing", event.data.sound_category);
+            playSound(event.data.sound_url);
           }
         });
       }
@@ -142,8 +152,15 @@ export const usePushNotifications = (
             console.error("Push registration error:", error);
           });
 
+          // Native foreground: play custom sound
           PushNotifications.addListener("pushNotificationReceived", (notification) => {
             console.log("Push received (foreground):", notification);
+            const soundUrl = notification.data?.sound_url;
+            if (soundUrl) {
+              playSound(soundUrl);
+            } else {
+              playFallbackBeep();
+            }
           });
 
           PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
@@ -158,7 +175,6 @@ export const usePushNotifications = (
       // Web: try immediately, and also listen for permission changes
       setupWeb();
 
-      // Poll for permission changes (covers the case where user grants via our prompt)
       const interval = setInterval(() => {
         if (registeredRef.current) {
           clearInterval(interval);

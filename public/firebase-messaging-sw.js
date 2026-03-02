@@ -53,6 +53,8 @@ messaging.onBackgroundMessage((payload) => {
     badge: "/pwa-192x192.png",
     tag: `${type}-${Date.now()}`,
     data: { ...(payload.data || {}), sound_url: soundUrl, sound_category: soundCategory },
+    // Don't set silent — let the OS play the default notification sound
+    // Our custom sound plays via the client bridge below
     silent: false,
     vibrate: vibratePattern,
     requireInteraction: isTripRequest || isSOS,
@@ -65,9 +67,11 @@ messaging.onBackgroundMessage((payload) => {
   // Show the notification
   self.registration.showNotification(title, notificationOptions);
 
-  // Post message to any open client windows to play the admin-uploaded sound
+  // Try to play custom sound via open client windows
+  // If the app is open (even in background tab), the client will receive this
   if (soundUrl) {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      console.log(`[SW] Found ${clientList.length} client window(s) for sound playback`);
       for (const client of clientList) {
         client.postMessage({
           type: "PLAY_NOTIFICATION_SOUND",
