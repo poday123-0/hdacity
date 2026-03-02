@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, Star, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,34 @@ const DriverCompleteScreen = ({
 }: DriverCompleteScreenProps) => {
   const [driverRating, setDriverRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [companyName, setCompanyName] = useState("HDA TAXI");
+
+  useEffect(() => {
+    const fetchCompany = async () => {
+      // Try driver's own company first
+      if (userProfile?.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_name, company_id")
+          .eq("id", userProfile.id)
+          .maybeSingle();
+        if (profile?.company_name) {
+          setCompanyName(profile.company_name);
+          return;
+        }
+      }
+      // Fall back to system default company setting
+      const { data: setting } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "default_company_name")
+        .maybeSingle();
+      if (setting?.value && typeof setting.value === "string") {
+        setCompanyName(setting.value);
+      }
+    };
+    fetchCompany();
+  }, [userProfile?.id]);
 
   const handleContinue = async () => {
     if (driverRating > 0 && currentTrip?.id) {
@@ -95,7 +123,7 @@ const DriverCompleteScreen = ({
               <div>
                 <p className="text-sm font-semibold text-foreground">Wallet Payment</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  The fare has been added to your wallet. You can withdraw this amount from your nearest taxi center.
+                  The fare has been added to your wallet. You can withdraw this amount from {companyName}.
                 </p>
               </div>
             </div>
