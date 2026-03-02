@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw, Trash2, Power, PowerOff } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, Power, PowerOff, Send } from "lucide-react";
 
 type DeviceToken = {
   id: string;
@@ -35,6 +35,7 @@ const AdminDeviceTokens = () => {
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sendingTestId, setSendingTestId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -129,6 +130,37 @@ const AdminDeviceTokens = () => {
     setBusyId(null);
   };
 
+  const sendTestPush = async (t: DeviceToken) => {
+    setSendingTestId(t.id);
+    try {
+      const profile = profilesById[t.user_id];
+      const name = `${profile?.first_name || "User"} ${profile?.last_name || ""}`.trim();
+      const { data, error } = await supabase.functions.invoke("send-push-notification", {
+        body: {
+          user_ids: [t.user_id],
+          title: "🔔 Test Push Notification",
+          body: `Hi ${name}, this is a test notification from HDA Admin at ${new Date().toLocaleTimeString()}.`,
+          data: { type: "trip_requested" },
+        },
+      });
+
+      if (error) {
+        toast({ title: "Failed to send", description: error.message, variant: "destructive" });
+      } else {
+        const sent = data?.sent ?? 0;
+        const failed = data?.failed ?? 0;
+        toast({
+          title: sent > 0 ? "✅ Test push sent!" : "⚠️ No delivery",
+          description: `Sent: ${sent}, Failed: ${failed}, Total tokens: ${data?.total_tokens ?? 0}`,
+          variant: sent > 0 ? "default" : "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Unknown error", variant: "destructive" });
+    }
+    setSendingTestId(null);
+  };
+
   const activeCount = filteredTokens.filter((t) => t.is_active).length;
 
   return (
@@ -220,7 +252,15 @@ const AdminDeviceTokens = () => {
                     <p className="text-[11px] text-muted-foreground/80 mt-1">Updated: {new Date(t.updated_at).toLocaleString()}</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      disabled={isBusy || sendingTestId === t.id}
+                      onClick={() => sendTestPush(t)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 disabled:opacity-50"
+                    >
+                      {sendingTestId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      Test Push
+                    </button>
                     <button
                       disabled={isBusy}
                       onClick={() => updateTokenStatus(t.id, !t.is_active)}
