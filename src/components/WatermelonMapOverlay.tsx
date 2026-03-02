@@ -153,16 +153,21 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
     : null;
   const inRange = distance != null && selectedItem ? distance <= selectedItem.claim_radius_m : false;
 
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
   return (
     <>
-      {items.length > 0 && !selectedItem && (
+      {items.length > 0 && !selectedItem && !bannerDismissed && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[600] pointer-events-auto">
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5"
+            className="bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-2"
           >
-            🎁 {items.length} reward{items.length !== 1 ? "s" : ""} nearby!
+            <span>🎁 {items.length} reward{items.length !== 1 ? "s" : ""} nearby!</span>
+            <button onClick={() => setBannerDismissed(true)} className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/40 transition-colors">
+              <span className="text-[10px] leading-none">✕</span>
+            </button>
           </motion.div>
         </div>
       )}
