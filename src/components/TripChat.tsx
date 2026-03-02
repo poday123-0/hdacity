@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { playSound, playFallbackBeep } from "@/lib/sound-utils";
+import { notifyMessageReceived } from "@/lib/push-notifications";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X, MessageSquare } from "lucide-react";
 
@@ -16,13 +17,15 @@ interface TripMessage {
 interface TripChatProps {
   tripId: string;
   senderId?: string;
+  senderName?: string;
+  recipientId?: string;
   senderType: "passenger" | "driver";
   onClose: () => void;
   isOpen: boolean;
   readOnly?: boolean;
 }
 
-const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = false }: TripChatProps) => {
+const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClose, isOpen, readOnly = false }: TripChatProps) => {
   const [messages, setMessages] = useState<TripMessage[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -132,6 +135,10 @@ const TripChat = ({ tripId, senderId, senderType, onClose, isOpen, readOnly = fa
       message: messageText,
     } as any);
     if (!msg) setText("");
+    // Notify the other party
+    if (recipientId) {
+      notifyMessageReceived(recipientId, senderName || (senderType === "driver" ? "Driver" : "Passenger"), messageText, tripId);
+    }
     setSending(false);
   };
 

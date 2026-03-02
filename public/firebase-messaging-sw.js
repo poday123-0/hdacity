@@ -23,13 +23,14 @@ const messaging = firebase.messaging();
 
 // Vibration patterns per notification type
 const VIBRATE_PATTERNS = {
-  trip_requested: [300, 100, 300, 100, 300, 100, 300, 100, 300], // urgent, long pattern
+  trip_requested: [300, 100, 300, 100, 300, 100, 300, 100, 300],
   trip_accepted: [200, 100, 200],
   trip_started: [200, 100, 200],
   trip_completed: [100, 50, 100, 50, 200],
   trip_cancelled: [500, 200, 500],
-  sos_alert: [500, 100, 500, 100, 500, 100, 500], // very urgent
+  sos_alert: [500, 100, 500, 100, 500, 100, 500],
   driver_arrived: [200, 100, 200, 100, 200],
+  message_received: [150, 80, 150],
   default: [200, 100, 200, 100, 200],
 };
 
@@ -40,6 +41,7 @@ messaging.onBackgroundMessage((payload) => {
   const body = payload.notification?.body || payload.data?.body || "";
   const type = payload.data?.type || "default";
   const soundUrl = payload.data?.sound_url || "";
+  const soundCategory = payload.data?.sound_category || type;
 
   const vibratePattern = VIBRATE_PATTERNS[type] || VIBRATE_PATTERNS.default;
   const isTripRequest = type === "trip_requested";
@@ -49,27 +51,21 @@ messaging.onBackgroundMessage((payload) => {
     body,
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
-    tag: type,
-    data: { ...(payload.data || {}), sound_url: soundUrl },
+    tag: `${type}-${Date.now()}`,
+    data: { ...(payload.data || {}), sound_url: soundUrl, sound_category: soundCategory },
     silent: false,
     vibrate: vibratePattern,
-    // Keep trip requests and SOS on screen until user interacts
     requireInteraction: isTripRequest || isSOS,
-    // Renotify even if same tag (so repeated trip requests are heard)
     renotify: true,
-    // Add actions for trip requests
     actions: isTripRequest
-      ? [
-          { action: "open", title: "Open App" },
-        ]
+      ? [{ action: "open", title: "Open App" }]
       : [],
   };
 
-  // Show the notification (system notification sound will play)
+  // Show the notification
   self.registration.showNotification(title, notificationOptions);
 
-  // Attempt to play the custom admin-uploaded sound via a client page
-  // Service Workers can't play audio directly, so we post a message to any open client
+  // Post message to any open client windows to play the admin-uploaded sound
   if (soundUrl) {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
@@ -77,6 +73,7 @@ messaging.onBackgroundMessage((payload) => {
           type: "PLAY_NOTIFICATION_SOUND",
           sound_url: soundUrl,
           notification_type: type,
+          sound_category: soundCategory,
         });
       }
     });
@@ -94,6 +91,8 @@ self.addEventListener("notificationclick", (event) => {
     targetUrl = "/driver";
   } else if (data.type === "sos_alert") {
     targetUrl = "/admin";
+  } else if (data.type === "message_received") {
+    targetUrl = data.trip_id ? "/driver" : "/";
   }
 
   event.waitUntil(

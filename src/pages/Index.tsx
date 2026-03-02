@@ -212,6 +212,7 @@ const Index = () => {
           const p = profileRes.data;
           const v = vehicleRes.data;
           setMatchedDriver({
+            id: activeTrip.driver_id,
             name: p ? `${p.first_name} ${p.last_name}` : "Driver",
             initials: p ? `${p.first_name?.[0] || ""}${p.last_name?.[0] || ""}` : "D",
             phone: p ? `+${p.country_code || "960"} ${p.phone_number}` : "",
@@ -652,6 +653,7 @@ const Index = () => {
         const p = profileRes.data;
         const v = vehicleRes.data;
         setMatchedDriver({
+          id: trip.driver_id,
           name: p ? `${p.first_name} ${p.last_name}` : "Driver",
           initials: p ? `${p.first_name?.[0] || ""}${p.last_name?.[0] || ""}` : "D",
           phone: p ? `+${p.country_code || "960"} ${p.phone_number}` : "",

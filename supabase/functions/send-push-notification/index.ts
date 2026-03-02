@@ -24,7 +24,6 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
   const payloadB64 = encodeBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
-  // Import the RSA private key
   const pemContents = serviceAccount.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
@@ -48,7 +47,6 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
   const signatureB64 = encodeBase64Url(new Uint8Array(signature));
   const jwt = `${unsignedToken}.${signatureB64}`;
 
-  // Exchange JWT for access token
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -60,6 +58,39 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
     throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
   }
   return tokenData.access_token;
+}
+
+/**
+ * Map notification data.type to the notification_sounds category,
+ * depending on whether the recipient is a driver or passenger.
+ *
+ * notification_sounds categories:
+ *   trip_request, driver_trip_accepted, driver_arrived, driver_trip_started,
+ *   driver_trip_completed, driver_trip_cancelled, driver_message_received,
+ *   passenger_accepted, passenger_arrived, passenger_started,
+ *   passenger_completed, passenger_cancelled, passenger_message_received
+ */
+function getSoundCategory(notificationType: string, recipientUserType: string): string {
+  const isDriver = recipientUserType === "driver";
+
+  switch (notificationType) {
+    case "trip_requested":
+      return "trip_request";
+    case "trip_accepted":
+      return isDriver ? "driver_trip_accepted" : "passenger_accepted";
+    case "driver_arrived":
+      return isDriver ? "driver_arrived" : "passenger_arrived";
+    case "trip_started":
+      return isDriver ? "driver_trip_started" : "passenger_started";
+    case "trip_completed":
+      return isDriver ? "driver_trip_completed" : "passenger_completed";
+    case "trip_cancelled":
+      return isDriver ? "driver_trip_cancelled" : "passenger_cancelled";
+    case "message_received":
+      return isDriver ? "driver_message_received" : "passenger_message_received";
+    default:
+      return notificationType;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -83,19 +114,21 @@ Deno.serve(async (req) => {
 
     const { user_ids, title, body, data, topic } = await req.json();
 
-    // Fetch the default trip_request sound URL from notification_sounds table
-    let tripRequestSoundUrl = "";
+    // Fetch ALL default sounds (one per category) in a single query
+    const soundMap: Record<string, string> = {};
     try {
-      const { data: soundData } = await supabase
+      const { data: soundRows } = await supabase
         .from("notification_sounds")
-        .select("file_url")
-        .eq("category", "trip_request")
+        .select("category, file_url")
         .eq("is_default", true)
-        .eq("is_active", true)
-        .limit(1)
-        .single();
-      if (soundData?.file_url) tripRequestSoundUrl = soundData.file_url;
+        .eq("is_active", true);
+      if (soundRows) {
+        for (const row of soundRows) {
+          soundMap[row.category] = row.file_url;
+        }
+      }
     } catch {}
+    console.log("Loaded default sounds for categories:", Object.keys(soundMap).join(", "));
 
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
@@ -141,7 +174,7 @@ Deno.serve(async (req) => {
 
     const { data: tokens, error: tokenError } = await supabase
       .from("device_tokens")
-      .select("token, user_id, device_type")
+      .select("token, user_id, device_type, user_type")
       .in("user_id", user_ids)
       .eq("is_active", true);
 
@@ -166,21 +199,19 @@ Deno.serve(async (req) => {
         const isTripRequest = type === "trip_requested";
         const isSOS = type === "sos_alert";
         const isUrgent = isTripRequest || isSOS;
-        const isWeb = t.device_type === "web";
+
+        // Resolve the correct sound URL for this recipient
+        const soundCategory = getSoundCategory(type, t.user_type || "passenger");
+        const soundUrl = soundMap[soundCategory] || "";
 
         const messageData: Record<string, string> = {
           ...(data || {}),
+          sound_url: soundUrl,
+          sound_category: soundCategory,
         };
-        if (tripRequestSoundUrl && (isTripRequest || isSOS)) {
-          messageData.sound_url = tripRequestSoundUrl;
-        }
 
-        // Build the FCM message
-        // For web: include top-level notification so the browser shows it natively
-        // even when the SW is not running (app fully closed)
         const fcmMessage: any = {
           token: t.token,
-          // Top-level notification ensures display on ALL platforms
           notification: {
             title: title || "Notification",
             body: body || "",
@@ -233,12 +264,15 @@ Deno.serve(async (req) => {
           },
         };
 
-        console.log(`Sending to ${t.device_type} token ${t.token.slice(0, 15)}... for user ${t.user_id}`);
+        console.log(`Sending [${soundCategory}] to ${t.device_type}/${t.user_type} token ${t.token.slice(0, 15)}... for user ${t.user_id}${soundUrl ? " with sound" : " (no sound)"}`);
         const result = await sendOne(fcmMessage);
 
         const tokenResult: any = {
           token_prefix: t.token.slice(0, 15),
           device_type: t.device_type,
+          user_type: t.user_type,
+          sound_category: soundCategory,
+          has_sound: !!soundUrl,
           ok: result.ok,
           status: result.status,
         };
