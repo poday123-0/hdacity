@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, X } from "lucide-react";
 
-const DISMISSED_KEY = "hda_notif_permission_dismissed";
+const SNOOZE_UNTIL_KEY = "hda_notif_permission_snooze_until";
 
 /**
  * Shows a prompt asking users to enable notifications on first app load.
@@ -12,13 +12,15 @@ const NotificationPermissionPrompt = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Skip if notifications not supported or already decided
     if (!("Notification" in window)) return;
     if (Notification.permission !== "default") return;
+
     try {
-      if (localStorage.getItem(DISMISSED_KEY)) return;
+      const snoozeUntilRaw = localStorage.getItem(SNOOZE_UNTIL_KEY);
+      const snoozeUntil = snoozeUntilRaw ? Number(snoozeUntilRaw) : 0;
+      if (snoozeUntil > Date.now()) return;
     } catch {}
-    // Show after a short delay so it doesn't feel intrusive
+
     const timer = setTimeout(() => setVisible(true), 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -27,19 +29,19 @@ const NotificationPermissionPrompt = () => {
     try {
       const result = await Notification.requestPermission();
       if (result === "granted") {
-        // The push notification hook will handle token registration
         console.log("Notification permission granted");
+        try { localStorage.removeItem(SNOOZE_UNTIL_KEY); } catch {}
       }
     } catch (err) {
       console.warn("Permission request failed:", err);
     }
     setVisible(false);
-    try { localStorage.setItem(DISMISSED_KEY, "1"); } catch {}
   };
 
   const handleDismiss = () => {
     setVisible(false);
-    try { localStorage.setItem(DISMISSED_KEY, "1"); } catch {}
+    // Snooze prompt for 6 hours, then ask again until granted/denied.
+    try { localStorage.setItem(SNOOZE_UNTIL_KEY, String(Date.now() + 6 * 60 * 60 * 1000)); } catch {}
   };
 
   return (
