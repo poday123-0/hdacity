@@ -1950,10 +1950,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel max-h-[65vh] ${panelMinimized ? "landscape-minimized" : ""}`}
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
 
-          <div className="px-3 pt-2 pb-1.5 space-y-1.5">
+          <div className="px-4 pt-3 pb-4 space-y-2.5">
             {/* Drag handle */}
             <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center py-1 -mt-0.5">
-              <div className="w-8 h-0.5 rounded-full bg-border" />
+              <div className="w-10 h-1 rounded-full bg-border" />
             </button>
 
             {/* Status bar */}
@@ -1989,11 +1989,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-1.5 overflow-hidden">
+                className="space-y-2.5 overflow-hidden">
 
                   {/* Stats row */}
-                  <div className="bg-surface rounded-xl px-2.5 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
+                  <div className="bg-surface rounded-xl px-3 py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
                       <div className="text-center">
                         <p className="text-sm font-bold text-foreground tabular-nums leading-none">{driverStats.rides}</p>
                         <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Rides</p>
@@ -2027,9 +2027,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
 
                   {/* Radius + Vehicle row */}
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     {/* Radius */}
-                    <div className="bg-surface rounded-xl px-2 py-1.5 flex items-center gap-1.5 shrink-0">
+                    <div className="bg-surface rounded-xl px-2.5 py-2 flex items-center gap-2 shrink-0">
                       <Radar className="w-3.5 h-3.5 text-primary shrink-0" />
                       <div className="flex items-center gap-0">
                         <button
@@ -2052,7 +2052,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {vehicleInfo && (() => {
                     const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
                     return (
-                      <div className="bg-surface rounded-xl px-2 py-1.5 flex items-center gap-2 flex-1 min-w-0">
+                      <div className="bg-surface rounded-xl px-2.5 py-2 flex items-center gap-2.5 flex-1 min-w-0">
                           <div className="w-7 h-7 flex items-center justify-center shrink-0 overflow-hidden">
                             {vTypeImg ?
                           <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" /> :
