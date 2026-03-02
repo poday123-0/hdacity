@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Star } from "lucide-react";
+import { CheckCircle, Star, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 
 interface DriverCompleteScreenProps {
   completionFare: number;
@@ -39,6 +38,8 @@ const DriverCompleteScreen = ({
   const passengerName = passengerProfile
     ? `${passengerProfile.first_name} ${passengerProfile.last_name}`
     : currentTrip?.customer_name || "Passenger";
+
+  const isWalletPayment = confirmedPaymentMethod === "wallet";
 
   return (
     <motion.div
@@ -80,6 +81,26 @@ const DriverCompleteScreen = ({
             Paid via <span className="font-semibold capitalize">{confirmedPaymentMethod}</span>
           </p>
         </div>
+
+        {/* Wallet payment info for driver */}
+        {isWalletPayment && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-left"
+          >
+            <div className="flex items-start gap-2">
+              <Wallet className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Wallet Payment</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  The fare has been added to your wallet. You can withdraw this amount from your nearest taxi center.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Rate Passenger */}
         <div className="space-y-2">

@@ -617,7 +617,7 @@ const Index = () => {
     }
   }, [pickup, dropoff, passengerCount, luggageCount, selectedVehicleType, estimatedFare, passengerBonus, userProfile?.id, intermediateStops, bookingType, scheduledAt, bookingNotes]);
 
-  // Passenger notification sounds
+  // Passenger notification sounds — fetch from notification_sounds table
   const [passengerSounds, setPassengerSounds] = useState<Record<string, string>>({});
   const passengerAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastPlayedStatusRef = useRef<string | null>(null);
@@ -625,10 +625,22 @@ const Index = () => {
 
   useEffect(() => {
     const fetchSounds = async () => {
-      const map = await fetchSoundUrls(
-        ["passenger_sound_accepted", "passenger_sound_arrived", "passenger_sound_started", "passenger_sound_completed", "passenger_sound_cancelled", "passenger_sound_message"],
-        "passenger_sound_"
-      );
+      const categories = [
+        "passenger_accepted", "passenger_arrived", "passenger_started",
+        "passenger_completed", "passenger_cancelled", "passenger_message_received"
+      ];
+      const { data } = await supabase
+        .from("notification_sounds")
+        .select("category, file_url")
+        .in("category", categories)
+        .eq("is_default", true)
+        .eq("is_active", true);
+      const map: Record<string, string> = {};
+      data?.forEach((s: any) => {
+        // Map category to short key: passenger_accepted -> accepted, passenger_started -> started, etc.
+        const key = s.category.replace("passenger_", "").replace("_received", "");
+        map[key] = s.file_url;
+      });
       setPassengerSounds(map);
       passengerSoundsRef.current = map;
     };

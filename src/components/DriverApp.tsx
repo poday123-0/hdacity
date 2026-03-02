@@ -73,7 +73,7 @@ import NotificationPermissionPrompt from "@/components/NotificationPermissionPro
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 
-type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete" | "payment_confirm";
+type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
@@ -866,8 +866,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (updated.status === "cancelled") {
       if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
-      const soundUrl = await fetchSoundUrl("driver_sound_cancelled");
-      playSound(soundUrl);
+      // Fetch cancel sound from notification_sounds table
+      const { data: cancelSound } = await supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_cancelled").eq("is_default", true).eq("is_active", true).single();
+      if (cancelSound?.file_url) playSound(cancelSound.file_url);
       const cancelledByDriver = updated.cancel_reason?.includes("driver");
       if (!cancelledByDriver) {
         setCancelledTripReason(updated.cancel_reason || "The passenger cancelled this trip.");
@@ -921,7 +922,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   useEffect(() => {
     if (!currentTrip?.id) return;
     let messageSoundUrl: string | null = null;
-    fetchSoundUrl("driver_sound_message").then((url) => {messageSoundUrl = url;});
+    // Fetch from notification_sounds table
+    supabase.from("notification_sounds").select("file_url").eq("category", "driver_message_received").eq("is_default", true).eq("is_active", true).single().then(({ data }) => {
+      if (data?.file_url) messageSoundUrl = data.file_url;
+    });
 
     const channel = supabase.
     channel(`driver-bg-chat-${currentTrip.id}`).
@@ -2646,11 +2650,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
                 setConfirmedPaymentMethod("wallet");
                 setDriverTripPhase("heading_to_pickup");
-                fetchSoundUrl("driver_sound_completed").then(u => playSound(u));
+                supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_completed").eq("is_default", true).eq("is_active", true).single().then(({ data: s }) => { if (s?.file_url) playSound(s.file_url); });
                 setScreen("complete");
               } else {
-                // Show payment method selection
-                setScreen("payment_confirm");
+                // Auto-complete with passenger's selected payment method (no driver confirmation needed)
+                const tripPM = (currentTrip as any).payment_method || "cash";
+                await supabase.from("trips").update({
+                  status: "completed", completed_at: now, actual_fare: actualFare,
+                  payment_confirmed_method: tripPM,
+                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
+                } as any).eq("id", currentTrip.id);
+                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                await applyTripCashback(currentTrip.id, actualFare, currentTrip.passenger_id);
+                if (currentTrip.passenger_id) notifyTripCompleted(currentTrip.passenger_id, String(actualFare), currentTrip.id);
+                setConfirmedPaymentMethod(tripPM);
+                setDriverTripPhase("heading_to_pickup");
+                supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_completed").eq("is_default", true).eq("is_active", true).single().then(({ data: s }) => { if (s?.file_url) playSound(s.file_url); });
+                setScreen("complete");
               }
             }} />
 
@@ -2775,68 +2791,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         isOpen={showDriverChat}
         onClose={() => setShowDriverChat(false)} />
 
-      }
-
-      {/* Payment Confirmation */}
-      {screen === "payment_confirm" && currentTrip &&
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="absolute inset-0 z-[500] flex items-center justify-center bg-foreground/50 backdrop-blur-sm complete-overlay">
-          <motion.div initial={{ y: 30 }} animate={{ y: 0 }} className="bg-card rounded-2xl shadow-2xl mx-6 w-full max-w-sm p-6 text-center space-y-5">
-            <div>
-              <h3 className="text-xl font-bold text-foreground">Confirm Payment</h3>
-              <p className="text-muted-foreground text-sm mt-1">How did the passenger pay?</p>
-            </div>
-            <div className="bg-surface rounded-xl p-4">
-              <p className="text-3xl font-bold text-primary">{completionFare} MVR</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Passenger selected: <span className="font-semibold capitalize">{(currentTrip as any).payment_method || "cash"}</span>
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-              onClick={async () => {
-                const now = new Date().toISOString();
-                await supabase.from("trips").update({
-                  status: "completed", completed_at: now, actual_fare: completionFare,
-                  payment_confirmed_method: "cash",
-                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
-                } as any).eq("id", currentTrip.id);
-                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
-                await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
-                if (currentTrip.passenger_id) notifyTripCompleted(currentTrip.passenger_id, String(completionFare), currentTrip.id);
-                setConfirmedPaymentMethod("cash");
-                setDriverTripPhase("heading_to_pickup");
-                fetchSoundUrl("driver_sound_completed").then(u => playSound(u));
-                setScreen("complete");
-              }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all">
-
-                <Banknote className="w-8 h-8 text-green-600" />
-                <span className="text-sm font-semibold text-foreground">Cash</span>
-              </button>
-              <button
-              onClick={async () => {
-                const now = new Date().toISOString();
-                await supabase.from("trips").update({
-                  status: "completed", completed_at: now, actual_fare: completionFare,
-                  payment_confirmed_method: "transfer",
-                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
-                } as any).eq("id", currentTrip.id);
-                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
-                await applyTripCashback(currentTrip.id, completionFare, currentTrip.passenger_id);
-                if (currentTrip.passenger_id) notifyTripCompleted(currentTrip.passenger_id, String(completionFare), currentTrip.id);
-                setConfirmedPaymentMethod("transfer");
-                setDriverTripPhase("heading_to_pickup");
-                fetchSoundUrl("driver_sound_completed").then(u => playSound(u));
-                setScreen("complete");
-              }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border bg-card hover:border-primary active:scale-95 transition-all">
-
-                <CreditCard className="w-8 h-8 text-blue-500" />
-                <span className="text-sm font-semibold text-foreground">Transfer</span>
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
       }
 
       {/* Complete */}
