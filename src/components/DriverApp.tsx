@@ -65,6 +65,7 @@ import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
+import WatermelonMapOverlay from "./WatermelonMapOverlay";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -217,6 +218,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
+  const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
+  const [driverLat, setDriverLat] = useState<number | null>(null);
+  const [driverLng, setDriverLng] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
@@ -451,6 +455,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationWatchRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             setGpsEnabled(true);
+            setDriverLat(pos.coords.latitude);
+            setDriverLng(pos.coords.longitude);
             upsertLocation(pos.coords.latitude, pos.coords.longitude);
           },
           (err) => {
@@ -1724,8 +1730,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         onNavStepChange={setNavStepData}
         navSettings={driverNavSettings}
         onMapHeadingChange={setMapHeading}
+        onMapReady={setDriverMapInstance}
         resetNorthRef={resetNorthRef} />
 
+      {/* Promo Items Overlay — only when online and NOT on a trip */}
+      {userProfile?.id && screen === "online" && driverMapInstance && (
+        <WatermelonMapOverlay
+          userType="driver"
+          userId={userProfile.id}
+          userLat={driverLat}
+          userLng={driverLng}
+          mapInstance={driverMapInstance}
+        />
+      )}
 
       {/* Map action buttons — right side, positioned for thumb reach */}
       {screen !== "offline" &&

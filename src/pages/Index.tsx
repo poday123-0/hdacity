@@ -798,7 +798,7 @@ const Index = () => {
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} onMapReady={setPassengerMapInstance} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
-        {userProfile?.id && passengerScreen === "home" && (
+        {userProfile?.id && passengerScreen === "driver-matching" && (
           <WatermelonMapOverlay
             userType="passenger"
             userId={userProfile.id}
