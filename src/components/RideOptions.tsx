@@ -375,29 +375,32 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
             </div>
 
             {/* Fare Boost / Tip adjuster */}
-            <div className="bg-surface rounded-xl px-3 py-2.5">
+            <div className={`rounded-xl px-3 py-3 border transition-all ${passengerBonus > 0 ? "bg-primary/5 border-primary/30 shadow-sm shadow-primary/10" : "bg-accent/40 border-accent/50"}`}>
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">Boost Fare</p>
-                  <p className="text-[10px] text-muted-foreground">Add extra to attract drivers faster{maxBoost > 0 ? ` (max ${maxBoost} MVR)` : ""}</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">🚀</span>
+                    <p className="text-xs font-bold text-foreground">Boost Fare</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Add extra to attract drivers faster{maxBoost > 0 ? ` (max ${maxBoost} MVR)` : ""}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPassengerBonus(Math.max(0, passengerBonus - boostStep))}
                     disabled={passengerBonus <= 0}
-                    className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
+                    className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
                   >
                     <Minus className="w-3.5 h-3.5 text-foreground" />
                   </button>
-                  <span className={`text-sm font-bold tabular-nums min-w-[3rem] text-center ${passengerBonus > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`text-base font-extrabold tabular-nums min-w-[3rem] text-center ${passengerBonus > 0 ? "text-primary" : "text-muted-foreground"}`}>
                     +{passengerBonus}
                   </span>
                   <button
                     onClick={() => setPassengerBonus(passengerBonus + boostStep)}
                     disabled={maxBoost > 0 && passengerBonus >= maxBoost}
-                    className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
+                    className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center active:scale-90 transition-all disabled:opacity-30"
                   >
-                    <Plus className="w-3.5 h-3.5 text-primary" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
