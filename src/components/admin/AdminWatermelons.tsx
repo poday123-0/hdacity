@@ -35,6 +35,66 @@ interface PromoItem {
 
 const randomOffset = (base: number, range: number) => base + (Math.random() - 0.5) * range;
 
+/**
+ * Snap a lat/lng to the nearest road using Google Maps Geocoder.
+ * Returns snapped coords or null if no road found nearby.
+ */
+async function snapToRoad(lat: number, lng: number): Promise<{ lat: number; lng: number } | null> {
+  const g = (window as any).google;
+  if (!g?.maps?.Geocoder) return { lat, lng }; // fallback if no Google Maps
+
+  const geocoder = new g.maps.Geocoder();
+  return new Promise((resolve) => {
+    geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
+      if (status !== "OK" || !results?.length) {
+        resolve(null);
+        return;
+      }
+      // Look for a result that includes a road/street — means it's on land near a road
+      for (const r of results) {
+        const types: string[] = r.types || [];
+        if (
+          types.some((t: string) =>
+            ["street_address", "route", "intersection", "premise", "subpremise",
+             "point_of_interest", "establishment", "neighborhood", "sublocality"].includes(t)
+          )
+        ) {
+          const loc = r.geometry?.location;
+          if (loc) {
+            return resolve({ lat: loc.lat(), lng: loc.lng() });
+          }
+        }
+      }
+      // If first result is at least not "natural_feature" or "water" type, accept it
+      const first = results[0];
+      const firstTypes: string[] = first.types || [];
+      if (firstTypes.some((t: string) => ["natural_feature", "water", "ocean"].includes(t))) {
+        resolve(null); // In water
+      } else if (first.geometry?.location) {
+        resolve({ lat: first.geometry.location.lat(), lng: first.geometry.location.lng() });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+/**
+ * Generate a random point near a service location and snap it to a road.
+ * Retries up to maxRetries times with smaller offsets.
+ */
+async function generateRoadPoint(baseLat: number, baseLng: number, maxRetries = 5): Promise<{ lat: number; lng: number } | null> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    // Use smaller range for Maldives islands (0.003 ≈ 300m)
+    const range = 0.003 - attempt * 0.0004; // shrink range on retries
+    const lat = randomOffset(baseLat, Math.max(range, 0.001));
+    const lng = randomOffset(baseLng, Math.max(range, 0.001));
+    const snapped = await snapToRoad(lat, lng);
+    if (snapped) return snapped;
+  }
+  return null;
+}
+
 const AdminWatermelons = () => {
   const [items, setItems] = useState<PromoItem[]>([]);
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
@@ -112,17 +172,21 @@ const AdminWatermelons = () => {
     setCreating(true);
     try {
       const rows = [];
+      let skipped = 0;
       for (let i = 0; i < count; i++) {
         const loc = selectedLocationId === "random"
           ? serviceLocations[Math.floor(Math.random() * serviceLocations.length)]
           : serviceLocations.find(l => l.id === selectedLocationId) || serviceLocations[0];
 
-        const lat = randomOffset(Number(loc.lat), 0.01);
-        const lng = randomOffset(Number(loc.lng), 0.01);
+        const snapped = await generateRoadPoint(Number(loc.lat), Number(loc.lng));
+        if (!snapped) {
+          skipped++;
+          continue;
+        }
 
         rows.push({
-          lat,
-          lng,
+          lat: snapped.lat,
+          lng: snapped.lng,
           promo_type: promoType,
           amount: promoType === "wallet_amount" ? amt : 0,
           fee_free_months: promoType === "fee_free" ? parseInt(feeMonths) : 0,
@@ -134,10 +198,19 @@ const AdminWatermelons = () => {
         });
       }
 
+      if (rows.length === 0) {
+        toast({ title: "No valid positions", description: "Could not find road positions near the selected location(s). Try a different area.", variant: "destructive" });
+        setCreating(false);
+        return;
+      }
+
       const { error } = await supabase.from("promo_watermelons").insert(rows);
       if (error) throw error;
 
-      toast({ title: "🎁 Items Dropped!", description: `${count} promo items placed on the map!` });
+      const msg = skipped > 0
+        ? `${rows.length} items placed on roads! (${skipped} skipped — in water)`
+        : `${rows.length} promo items placed on roads!`;
+      toast({ title: "🎁 Items Dropped!", description: msg });
       setShowCreate(false);
       fetchItems();
     } catch (err: any) {
@@ -153,17 +226,20 @@ const AdminWatermelons = () => {
     if (activeItems.length === 0) return;
 
     try {
+      let moved = 0;
       for (const item of activeItems) {
         const loc = item.service_location_id
           ? serviceLocations.find(l => l.id === item.service_location_id)
           : serviceLocations[Math.floor(Math.random() * serviceLocations.length)];
         if (!loc) continue;
 
-        const lat = randomOffset(Number(loc.lat), 0.01);
-        const lng = randomOffset(Number(loc.lng), 0.01);
-        await supabase.from("promo_watermelons").update({ lat, lng }).eq("id", item.id);
+        const snapped = await generateRoadPoint(Number(loc.lat), Number(loc.lng));
+        if (!snapped) continue;
+
+        await supabase.from("promo_watermelons").update({ lat: snapped.lat, lng: snapped.lng }).eq("id", item.id);
+        moved++;
       }
-      toast({ title: "🔀 Reshuffled!", description: "All items moved to new random positions" });
+      toast({ title: "🔀 Reshuffled!", description: `${moved} items moved to road positions` });
       fetchItems();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
