@@ -149,9 +149,13 @@ const AdminDeviceTokens = () => {
       } else {
         const sent = data?.sent ?? 0;
         const failed = data?.failed ?? 0;
+        const details = data?.details || [];
+        const detailStr = details.map((d: any) =>
+          `${d.device_type}: ${d.ok ? "✅" : `❌ ${d.error || d.status}`}`
+        ).join(", ");
         toast({
           title: sent > 0 ? "✅ Test push sent!" : "⚠️ No delivery",
-          description: `Sent: ${sent}, Failed: ${failed}, Total tokens: ${data?.total_tokens ?? 0}`,
+          description: `Sent: ${sent}, Failed: ${failed}, Tokens: ${data?.total_tokens ?? 0}${detailStr ? ` — ${detailStr}` : ""}`,
           variant: sent > 0 ? "default" : "destructive",
         });
       }
