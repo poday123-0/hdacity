@@ -1938,17 +1938,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         <AnimatePresence>
           {panelMinimized &&
           <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
             onClick={() => setPanelMinimized(false)}
-            className="absolute bottom-20 left-4 z-[460] rounded-2xl px-4 py-2.5 flex items-center gap-2.5 active:scale-95 transition-transform bg-card border border-border shadow-xl landscape-expand-btn">
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[460] rounded-2xl px-5 py-3 flex items-center gap-3 active:scale-95 transition-transform bg-card border border-border shadow-xl landscape-expand-btn">
               <div className="relative flex items-center justify-center w-4 h-4">
-                <div className="w-2 h-2 rounded-full bg-[hsl(var(--success))]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--success))]" />
                 <div className="absolute w-4 h-4 rounded-full border-2 border-[hsl(var(--success)/0.4)] animate-ping" />
               </div>
-              <span className="text-xs font-bold text-foreground">Online</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-bold text-foreground">Online</span>
+                {driverStats.rides > 0 && (
+                  <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">{driverStats.rides} rides</span>
+                )}
+                {driverStats.avgRating > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground">
+                    <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                    {driverStats.avgRating}
+                  </span>
+                )}
+              </div>
               <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
             </motion.button>
           }
