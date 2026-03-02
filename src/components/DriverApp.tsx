@@ -1950,33 +1950,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel max-h-[65vh] ${panelMinimized ? "landscape-minimized" : ""}`}
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
 
-          <div className="px-4 pt-3 pb-4 space-y-2.5">
+          <div className="px-4 pt-3 pb-5 space-y-3">
             {/* Drag handle */}
-            <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center py-1 -mt-0.5">
+            <button onClick={() => setPanelMinimized(!panelMinimized)} className="w-full flex justify-center py-1.5 -mt-1">
               <div className="w-10 h-1 rounded-full bg-border" />
             </button>
 
             {/* Status bar */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <div className="relative flex items-center justify-center w-3 h-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))]" />
-                  <div className="absolute w-3 h-3 rounded-full border border-[hsl(var(--success)/0.3)] animate-ping" />
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="relative flex items-center justify-center w-3.5 h-3.5">
+                  <div className="w-2 h-2 rounded-full bg-[hsl(var(--success))]" />
+                  <div className="absolute w-3.5 h-3.5 rounded-full border border-[hsl(var(--success)/0.3)] animate-ping" />
                 </div>
-                <span className="font-bold text-xs text-foreground">Online</span>
+                <span className="font-bold text-sm text-foreground">Online</span>
                 {driverStats.avgRating > 0 &&
-                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                    <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                    <Star className="w-3 h-3 text-primary fill-primary" />
                     {driverStats.avgRating}
                   </span>
                 }
               </div>
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button onClick={() => setShowEarnings(!showEarnings)} className="w-6 h-6 rounded-md bg-surface flex items-center justify-center active:scale-90 transition-transform">
-                  {showEarnings ? <EyeOff className="w-3 h-3 text-muted-foreground" /> : <Eye className="w-3 h-3 text-muted-foreground" />}
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => setShowEarnings(!showEarnings)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+                  {showEarnings ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
-                <button onClick={() => setPanelMinimized(true)} className="w-6 h-6 rounded-md bg-surface flex items-center justify-center active:scale-90 transition-transform">
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                <button onClick={() => setPanelMinimized(true)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             </div>
@@ -1989,61 +1989,61 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-2.5 overflow-hidden">
+                className="space-y-3 overflow-hidden">
 
                   {/* Stats row */}
-                  <div className="bg-surface rounded-xl px-3 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-foreground tabular-nums leading-none">{driverStats.rides}</p>
-                        <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Rides</p>
+                  <div className="bg-surface rounded-2xl px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4 sm:gap-6 flex-1">
+                      <div className="text-center min-w-0">
+                        <p className="text-base sm:text-lg font-bold text-foreground tabular-nums leading-none">{driverStats.rides}</p>
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">Rides</p>
                       </div>
-                      <div className="w-px h-6 bg-border/40" />
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-foreground tabular-nums leading-none">{showEarnings ? driverStats.earnings.toFixed(0) : "•••"}</p>
-                        <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">MVR</p>
+                      <div className="w-px h-7 bg-border/40" />
+                      <div className="text-center min-w-0">
+                        <p className="text-base sm:text-lg font-bold text-foreground tabular-nums leading-none">{showEarnings ? driverStats.earnings.toFixed(0) : "•••"}</p>
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">MVR</p>
                       </div>
-                      <div className="w-px h-6 bg-border/40" />
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-foreground tabular-nums leading-none">{driverStats.hours}</p>
-                        <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Time</p>
+                      <div className="w-px h-7 bg-border/40" />
+                      <div className="text-center min-w-0">
+                        <p className="text-base sm:text-lg font-bold text-foreground tabular-nums leading-none">{driverStats.hours}</p>
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">Time</p>
                       </div>
                       {driverStats.declinedToday > 0 &&
                     <>
-                        <div className="w-px h-6 bg-border/40" />
-                        <div className="text-center">
-                          <p className="text-sm font-bold text-destructive tabular-nums leading-none">{driverStats.declinedToday}</p>
-                          <p className="text-[7px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Declined</p>
+                        <div className="w-px h-7 bg-border/40" />
+                        <div className="text-center min-w-0">
+                          <p className="text-base sm:text-lg font-bold text-destructive tabular-nums leading-none">{driverStats.declinedToday}</p>
+                          <p className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">Declined</p>
                         </div>
                       </>
                     }
                     </div>
                     <button
                     onClick={() => setShowEarningsHistory(true)}
-                    className="flex items-center gap-0.5 px-2 py-1 rounded-lg bg-primary/10 active:scale-95 transition-transform shrink-0 ml-2">
-                      <DollarSign className="w-3 h-3 text-primary" />
-                      <span className="text-[9px] font-semibold text-primary">History</span>
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary/10 active:scale-95 transition-transform shrink-0 ml-3">
+                      <DollarSign className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[10px] sm:text-xs font-semibold text-primary">History</span>
                     </button>
                   </div>
 
                   {/* Radius + Vehicle row */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2.5">
                     {/* Radius */}
-                    <div className="bg-surface rounded-xl px-2.5 py-2 flex items-center gap-2 shrink-0">
-                      <Radar className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <div className="flex items-center gap-0">
+                    <div className="bg-surface rounded-2xl px-3 py-2.5 flex items-center gap-2 shrink-0">
+                      <Radar className="w-4 h-4 text-primary shrink-0" />
+                      <div className="flex items-center gap-0.5">
                         <button
                         onClick={() => updateRadius(Math.max(0.1, +(tripRadius - (tripRadius <= 1 ? 0.1 : 1)).toFixed(1)))}
-                        className="w-5 h-5 rounded-md bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
-                          <span className="text-[10px] font-bold leading-none">−</span>
+                        className="w-7 h-7 rounded-lg bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
+                          <span className="text-xs font-bold leading-none">−</span>
                         </button>
-                        <span className="text-[10px] font-bold text-foreground tabular-nums w-9 text-center">
+                        <span className="text-xs font-bold text-foreground tabular-nums w-10 text-center">
                           {tripRadius < 1 ? `${(tripRadius * 1000).toFixed(0)}m` : `${tripRadius}km`}
                         </span>
                         <button
                         onClick={() => updateRadius(Math.min(50, +(tripRadius + (tripRadius < 1 ? 0.1 : 1)).toFixed(1)))}
-                        className="w-5 h-5 rounded-md bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
-                          <span className="text-[10px] font-bold leading-none">+</span>
+                        className="w-7 h-7 rounded-lg bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
+                          <span className="text-xs font-bold leading-none">+</span>
                         </button>
                       </div>
                     </div>
@@ -2052,19 +2052,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {vehicleInfo && (() => {
                     const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
                     return (
-                      <div className="bg-surface rounded-xl px-2.5 py-2 flex items-center gap-2.5 flex-1 min-w-0">
-                          <div className="w-7 h-7 flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="bg-surface rounded-2xl px-3 py-2.5 flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-8 h-8 flex items-center justify-center shrink-0 overflow-hidden">
                             {vTypeImg ?
                           <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" /> :
-                          <Car className="w-3.5 h-3.5 text-primary" />
+                          <Car className="w-4 h-4 text-primary" />
                           }
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
-                            <p className="text-[9px] text-muted-foreground truncate">{vehicleInfo.plate_number}{vehicleInfo.color ? ` • ${vehicleInfo.color}` : ""}</p>
+                            <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{vehicleInfo.plate_number}{vehicleInfo.color ? ` • ${vehicleInfo.color}` : ""}</p>
                           </div>
                           {driverVehicles.length > 1 &&
-                        <button onClick={() => {setShowProfile(true);setProfileTab("vehicles");}} className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md shrink-0 active:scale-95 transition-transform">
+                        <button onClick={() => {setShowProfile(true);setProfileTab("vehicles");}} className="text-[10px] sm:text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-lg shrink-0 active:scale-95 transition-transform">
                               Switch
                             </button>
                         }
