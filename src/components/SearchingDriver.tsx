@@ -229,8 +229,8 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
             ))}
             <div className="absolute inset-0 flex items-center justify-center">
               <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 rounded-full bg-primary flex items-center justify-center overflow-hidden">
-                <SystemLogo className="w-10 h-10 object-contain" alt="HDA" />
+                className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden">
+                <SystemLogo className="w-14 h-14 object-contain" alt="HDA" />
               </motion.div>
             </div>
           </div>
