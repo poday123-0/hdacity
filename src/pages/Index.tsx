@@ -871,7 +871,10 @@ const Index = () => {
               scheduledAt={scheduledAt}
               onCancel={async () => {
               if (currentTripId) {
+                const { data: tripData } = await supabase.from("trips").select("driver_id, target_driver_id").eq("id", currentTripId).maybeSingle();
                 await supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString(), target_driver_id: null }).eq("id", currentTripId);
+                const driverId = tripData?.driver_id || tripData?.target_driver_id;
+                if (driverId) notifyTripCancelled([driverId], "passenger", currentTripId);
               }
               setCurrentTripId(null);
               setPassengerScreen("home");
@@ -933,14 +936,17 @@ const Index = () => {
               </div>
               <div className="px-6 pb-6 space-y-3">
                 <button
-                  onClick={async () => {
+                   onClick={async () => {
                     setShowPassengerCancelConfirm(false);
                     if (currentTripId) {
+                      const { data: tripData } = await supabase.from("trips").select("driver_id").eq("id", currentTripId).maybeSingle();
                       await supabase.from("trips").update({
                         status: "cancelled",
                         cancel_reason: "Cancelled by passenger",
                         cancelled_at: new Date().toISOString(),
                       }).eq("id", currentTripId);
+                      const driverId = tripData?.driver_id || matchedDriver?.id;
+                      if (driverId) notifyTripCancelled([driverId], "passenger", currentTripId);
                     }
                     setCurrentTripId(null);
                     setMatchedDriver(null);
