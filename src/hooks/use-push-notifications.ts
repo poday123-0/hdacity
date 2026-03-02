@@ -132,12 +132,34 @@ export const usePushNotifications = (
             console.log("Foreground message:", payload);
             const msgTitle = payload.notification?.title || payload.data?.title || "Notification";
             const msgBody = payload.notification?.body || payload.data?.body || "";
+            const soundUrl = payload.data?.sound_url;
+
+            // Play admin-uploaded sound if available
+            if (soundUrl) {
+              try {
+                const audio = new Audio(soundUrl);
+                audio.play().catch(() => {});
+              } catch {}
+            }
+
             new Notification(msgTitle, {
               body: msgBody,
               icon: "/pwa-192x192.png",
-              silent: false,
+              silent: !!soundUrl, // silent if we're playing custom sound
             });
           });
+
+          // Listen for Service Worker messages to play sounds when app is in background but page is open
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.addEventListener("message", (event) => {
+              if (event.data?.type === "PLAY_NOTIFICATION_SOUND" && event.data?.sound_url) {
+                try {
+                  const audio = new Audio(event.data.sound_url);
+                  audio.play().catch(() => {});
+                } catch {}
+              }
+            });
+          }
         } catch (err) {
           console.error("Web push setup failed:", err);
         }
