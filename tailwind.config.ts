@@ -58,6 +58,8 @@ export default {
           DEFAULT: "hsl(var(--sos))",
           foreground: "hsl(var(--sos-foreground))",
         },
+        "primary-dark": "hsl(var(--primary-dark))",
+        "primary-light": "hsl(var(--primary-light))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

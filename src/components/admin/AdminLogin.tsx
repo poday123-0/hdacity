@@ -22,9 +22,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("send-otp", {
-        body: { phone_number: phone },
-      });
+      const { data, error: fnError } = await supabase.functions.invoke("send-otp", { body: { phone_number: phone } });
       if (fnError) throw new Error(fnError.message);
       if (data?.error) throw new Error(data.error);
       setStep("otp");
@@ -40,12 +38,9 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("verify-otp", {
-        body: { phone_number: phone, code },
-      });
+      const { data, error: fnError } = await supabase.functions.invoke("verify-otp", { body: { phone_number: phone, code } });
       if (fnError) throw new Error(fnError.message);
       if (!data?.success) throw new Error(data?.error || "Invalid code");
-
       const success = await onLogin(phone);
       if (!success) {
         setError("You don't have admin access");
@@ -66,9 +61,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
     newOtp[index] = value;
     setOtp(newOtp);
     if (value && index < 5) otpRefs.current[index + 1]?.focus();
-    if (newOtp.every((d) => d !== "")) {
-      handleVerify(newOtp.join(""));
-    }
+    if (newOtp.every((d) => d !== "")) handleVerify(newOtp.join(""));
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -76,43 +69,44 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-5">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-6"
+        className="w-full max-w-xs space-y-5"
       >
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-            <Shield className="w-8 h-8 text-primary" />
+        {/* Logo + branding */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mx-auto shadow-sm">
+            <Shield className="w-6 h-6 text-primary" />
           </div>
-          <div className="flex items-center justify-center gap-2">
-            <SystemLogo className="w-8 h-8 object-contain" alt="HDA" />
-            <h1 className="text-2xl font-extrabold text-foreground">
+          <div className="flex items-center justify-center gap-1.5">
+            <SystemLogo className="w-6 h-6 object-contain" alt="HDA" />
+            <h1 className="text-lg font-extrabold text-foreground">
               HDA <span className="text-primary">ADMIN</span>
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground">Login with your admin phone number</p>
+          <p className="text-[11px] text-muted-foreground">Login with your admin phone number</p>
         </div>
 
         {error && (
-          <div className="bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-xl">{error}</div>
+          <div className="bg-destructive/10 text-destructive text-xs px-3 py-2.5 rounded-xl font-medium">{error}</div>
         )}
 
         {step === "phone" ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-muted-foreground">
-                <Phone className="w-4 h-4" />
-                <span className="text-sm font-semibold">+960</span>
-                <div className="w-px h-5 bg-border" />
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-muted-foreground">
+                <Phone className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold">+960</span>
+                <div className="w-px h-4 bg-border" />
               </div>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
                 placeholder="7XX XXXX"
-                className="w-full pl-24 pr-4 py-4 bg-surface rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base font-medium"
+                className="w-full pl-[5.5rem] pr-3 py-3 bg-surface rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm font-medium transition-shadow"
                 autoFocus
                 disabled={loading}
               />
@@ -120,17 +114,17 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             <button
               onClick={handlePhoneSubmit}
               disabled={phone.length < 7 || loading}
-              className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40"
+              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-all shadow-md shadow-primary/20"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Continue <ArrowRight className="w-4 h-4" /></>}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continue <ArrowRight className="w-3.5 h-3.5" /></>}
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground text-center">
               Code sent to <span className="font-semibold text-foreground">+960 {phone}</span>
             </p>
-            <div className="flex gap-3 justify-center py-2">
+            <div className="flex gap-2 justify-center py-1">
               {otp.map((digit, i) => (
                 <input
                   key={i}
@@ -140,7 +134,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
                   maxLength={1}
-                  className="w-12 h-14 text-center text-2xl font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-10 h-11 text-center text-lg font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                   autoFocus={i === 0}
                   disabled={loading}
                 />
@@ -148,14 +142,14 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             </div>
             {loading && (
               <div className="flex justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
               </div>
             )}
             <button
               onClick={() => { setStep("phone"); setError(""); setOtp(["", "", "", "", "", ""]); }}
-              className="w-full text-center text-sm text-muted-foreground font-medium py-1"
+              className="w-full text-center text-xs text-muted-foreground font-medium py-1"
             >
-              Change number
+              ← Change number
             </button>
           </div>
         )}
