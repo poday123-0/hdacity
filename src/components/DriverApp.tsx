@@ -68,6 +68,7 @@ import RideRequestMap from "./RideRequestMap";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { notifyTripCancelled } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 
@@ -3623,6 +3624,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </AnimatePresence>
 
       <PWAInstallPrompt />
+      <NotificationPermissionPrompt />
       <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
 
       {/* Withdraw Modal */}

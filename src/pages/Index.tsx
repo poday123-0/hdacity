@@ -26,6 +26,7 @@ import SOSButton from "@/components/SOSButton";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPanel from "@/components/DriverNotifications";
+import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 
 type AppPhase = "splash" | "auth" | "register" | "driver-register" | "driver-pending" | "passenger" | "driver";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
@@ -875,6 +876,7 @@ const Index = () => {
       </div>
 
       <PWAInstallPrompt />
+      <NotificationPermissionPrompt />
       <NotificationPanel userId={userProfile?.id} userType="passenger" visible={showPassengerNotifs} onClose={() => setShowPassengerNotifs(false)} />
 
       {/* Passenger Cancel Confirmation Popup */}

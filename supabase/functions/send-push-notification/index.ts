@@ -82,6 +82,21 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { user_ids, title, body, data, topic } = await req.json();
+
+    // Fetch the default trip_request sound URL from notification_sounds table
+    let tripRequestSoundUrl = "";
+    try {
+      const { data: soundData } = await supabase
+        .from("notification_sounds")
+        .select("file_url")
+        .eq("category", "trip_request")
+        .eq("is_default", true)
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+      if (soundData?.file_url) tripRequestSoundUrl = soundData.file_url;
+    } catch {}
+
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
     const sendOne = async (message: any) => {
@@ -147,14 +162,21 @@ Deno.serve(async (req) => {
         const isUrgent = isTripRequest || isSOS;
 
         // Send as data-only for web (SW handles display)
+        // Include sound URL so the SW can play it
+        const messageData: Record<string, string> = {
+          title: title || "Notification",
+          body: body || "",
+          ...(data || {}),
+        };
+        // Attach the sound URL for the Service Worker to use
+        if (tripRequestSoundUrl && (isTripRequest || isSOS)) {
+          messageData.sound_url = tripRequestSoundUrl;
+        }
+
         // Add android notification for native sound/vibrate when app is closed
         const result = await sendOne({
           token: t.token,
-          data: {
-            title: title || "Notification",
-            body: body || "",
-            ...(data || {}),
-          },
+          data: messageData,
           android: {
             priority: "high",
             // TTL 0 = deliver immediately, don't store

@@ -39,6 +39,7 @@ messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || payload.data?.title || "New Notification";
   const body = payload.notification?.body || payload.data?.body || "";
   const type = payload.data?.type || "default";
+  const soundUrl = payload.data?.sound_url || "";
 
   const vibratePattern = VIBRATE_PATTERNS[type] || VIBRATE_PATTERNS.default;
   const isTripRequest = type === "trip_requested";
@@ -49,7 +50,7 @@ messaging.onBackgroundMessage((payload) => {
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
     tag: type,
-    data: payload.data || {},
+    data: { ...(payload.data || {}), sound_url: soundUrl },
     silent: false,
     vibrate: vibratePattern,
     // Keep trip requests and SOS on screen until user interacts
@@ -64,7 +65,22 @@ messaging.onBackgroundMessage((payload) => {
       : [],
   };
 
+  // Show the notification (system notification sound will play)
   self.registration.showNotification(title, notificationOptions);
+
+  // Attempt to play the custom admin-uploaded sound via a client page
+  // Service Workers can't play audio directly, so we post a message to any open client
+  if (soundUrl) {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        client.postMessage({
+          type: "PLAY_NOTIFICATION_SOUND",
+          sound_url: soundUrl,
+          notification_type: type,
+        });
+      }
+    });
+  }
 });
 
 // Handle notification click — open/focus the app
