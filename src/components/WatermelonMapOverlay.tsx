@@ -34,13 +34,50 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * Snap a lat/lng to the nearest road using Geocoder reverse geocoding.
+ * Returns null if the point is in water.
+ */
+async function snapToNearestRoad(lat: number, lng: number): Promise<{ lat: number; lng: number } | null> {
+  const g = (window as any).google;
+  if (!g?.maps?.Geocoder) return { lat, lng };
+
+  const geocoder = new g.maps.Geocoder();
+  return new Promise((resolve) => {
+    geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
+      if (status !== "OK" || !results?.length) {
+        resolve(null);
+        return;
+      }
+      // Find a road/street result
+      for (const r of results) {
+        const types: string[] = r.types || [];
+        if (types.some((t: string) => ["street_address", "route", "intersection"].includes(t))) {
+          const loc = r.geometry?.location;
+          if (loc) return resolve({ lat: loc.lat(), lng: loc.lng() });
+        }
+      }
+      // Check if first result is water — hide the marker
+      const first = results[0];
+      const firstTypes: string[] = first.types || [];
+      if (firstTypes.some((t: string) => ["natural_feature", "water", "ocean"].includes(t))) {
+        resolve(null); // In water — don't show
+      } else if (first.geometry?.location) {
+        resolve({ lat: first.geometry.location.lat(), lng: first.geometry.location.lng() });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
 const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance }: WatermelonMapOverlayProps) => {
   const [items, setItems] = useState<PromoItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<PromoItem | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimedReward, setClaimedReward] = useState<{ type: string; description: string } | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-
+  const snappedCacheRef = useRef<Map<string, { lat: number; lng: number } | null>>(new Map());
   const fetchItems = useCallback(async () => {
     // Fetch rewards targeted at this user type OR "both"
     const { data } = await supabase
@@ -61,31 +98,50 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
     return () => { supabase.removeChannel(channel); };
   }, [fetchItems, userType]);
 
-  // Place markers on map
+  // Place markers on map — snap to roads, hide water markers
   useEffect(() => {
     if (!mapInstance || !window.google?.maps?.marker?.AdvancedMarkerElement) return;
 
-    markersRef.current.forEach(m => m.map = null);
-    markersRef.current = [];
+    let cancelled = false;
 
-    items.forEach(item => {
-      const el = document.createElement("div");
-      el.className = "promo-item-marker";
+    const placeMarkers = async () => {
+      // Clear old markers
+      markersRef.current.forEach(m => m.map = null);
+      markersRef.current = [];
 
-      if (item.icon_url) {
-        el.innerHTML = `<img src="${item.icon_url}" style="width:36px;height:36px;cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));animation:promo-bob 2s ease-in-out infinite;object-fit:contain;border-radius:6px;" />`;
-      } else {
-        el.innerHTML = `<div style="font-size:30px;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));animation:promo-bob 2s ease-in-out infinite;transform-origin:center bottom;">🍉</div>`;
+      for (const item of items) {
+        if (cancelled) return;
+
+        // Check cache first
+        let snapped = snappedCacheRef.current.get(item.id);
+        if (snapped === undefined) {
+          snapped = await snapToNearestRoad(item.lat, item.lng);
+          snappedCacheRef.current.set(item.id, snapped);
+        }
+
+        // Skip items that are in water
+        if (!snapped) continue;
+
+        const el = document.createElement("div");
+        el.className = "promo-item-marker";
+
+        if (item.icon_url) {
+          el.innerHTML = `<img src="${item.icon_url}" style="width:36px;height:36px;cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));animation:promo-bob 2s ease-in-out infinite;object-fit:contain;border-radius:6px;" />`;
+        } else {
+          el.innerHTML = `<div style="font-size:30px;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));animation:promo-bob 2s ease-in-out infinite;transform-origin:center bottom;">🍉</div>`;
+        }
+        el.onclick = () => setSelectedItem(item);
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+          position: snapped,
+          map: mapInstance,
+          content: el,
+        });
+        markersRef.current.push(marker);
       }
-      el.onclick = () => setSelectedItem(item);
+    };
 
-      const marker = new google.maps.marker.AdvancedMarkerElement({
-        position: { lat: item.lat, lng: item.lng },
-        map: mapInstance,
-        content: el,
-      });
-      markersRef.current.push(marker);
-    });
+    placeMarkers();
 
     if (!document.getElementById("promo-item-styles")) {
       const style = document.createElement("style");
@@ -100,6 +156,7 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
     }
 
     return () => {
+      cancelled = true;
       markersRef.current.forEach(m => m.map = null);
       markersRef.current = [];
     };
