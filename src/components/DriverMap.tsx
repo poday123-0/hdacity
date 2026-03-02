@@ -358,10 +358,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
 
+  // Track map readiness for dependent effects
+  const [mapReady, setMapReady] = useState(false);
+  useEffect(() => {
+    if (mapInstance.current && !mapReady) setMapReady(true);
+  });
+
   // Theme observer — smooth crossfade overlay
   const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapReady || !mapInstance.current) return;
+    const map = mapInstance.current;
     let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
     const observer = new MutationObserver(() => {
       setThemeTransition(true);
@@ -371,19 +378,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         if (mapId) {
           const colorScheme = g?.maps?.ColorScheme;
           if (colorScheme) {
-            mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+            map?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
           }
-          // Always also apply raster styles for dark mode reliability
-          mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+          map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         } else {
-          mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+          map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         }
         t2 = setTimeout(() => setThemeTransition(false), 500);
       }, 50);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
-  }, [isLoaded, isNavigating, mapId]);
+  }, [mapReady, isNavigating, mapId]);
 
   // Navigation mode: tilt map + higher zoom + heading rotation
   useEffect(() => {
