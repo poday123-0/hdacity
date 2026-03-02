@@ -207,12 +207,8 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
               </div>
 
               <div className="px-6 py-5 text-center">
-                <p className="text-3xl font-extrabold text-primary mb-1">{promoLabel(selectedItem)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedItem.promo_type === "wallet_amount" && "Wallet credit"}
-                  {selectedItem.promo_type === "fee_free" && "Center fee waived"}
-                  {selectedItem.promo_type === "free_trip" && "Free ride credit"}
-                </p>
+                <p className="text-3xl font-extrabold text-primary mb-1">🎁 Mystery Reward</p>
+                <p className="text-sm text-muted-foreground">Claim to reveal your prize!</p>
                 {distance != null && (
                   <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
                     inRange ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
