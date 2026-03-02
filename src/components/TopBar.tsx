@@ -287,29 +287,9 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
             <Menu className="w-5 h-5 text-foreground" />
           </button>
 
-          {onDriverMode ? (
-            <button
-              onClick={onDriverMode}
-              className="flex items-center gap-1.5 bg-card shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
-            >
-               <SystemLogo className="w-6 h-6 object-contain" alt="HDA Taxi" />
-              <span className="text-xs font-bold text-muted-foreground">Switch to Driver</span>
-              <Car className="w-3.5 h-3.5 text-primary" />
-            </button>
-          ) : onRegisterDriver ? (
-            <button
-              onClick={onRegisterDriver}
-              className="flex items-center gap-1.5 bg-card shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
-            >
-              <SystemLogo className="w-6 h-6 object-contain" alt="HDA Taxi" />
-              <span className="text-xs font-bold text-muted-foreground">Become a Driver</span>
-              <Car className="w-3.5 h-3.5 text-primary" />
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <SystemLogo className="w-8 h-8 object-contain" alt="HDA Taxi" />
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <SystemLogo className="w-8 h-8 object-contain" alt="HDA Taxi" />
+          </div>
 
           <div className="flex items-center gap-2">
             <button
@@ -438,7 +418,16 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     <Share2 className="w-5 h-5 text-accent-foreground" />
                     <span className="text-[10px] font-semibold text-foreground">Share</span>
                   </button>
-                  {onRegisterDriver && (
+                  {onDriverMode && (
+                    <button
+                      onClick={() => { setShowProfile(false); onDriverMode(); }}
+                      className="flex flex-col items-center gap-1.5 bg-primary/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
+                    >
+                      <Car className="w-5 h-5 text-primary" />
+                      <span className="text-[10px] font-semibold text-foreground">Driver Mode</span>
+                    </button>
+                  )}
+                  {onRegisterDriver && !onDriverMode && (
                     <button
                       onClick={() => { setShowProfile(false); onRegisterDriver(); }}
                       className="flex flex-col items-center gap-1.5 bg-primary/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
