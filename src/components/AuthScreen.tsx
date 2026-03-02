@@ -159,12 +159,6 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
             </p>
           </motion.div>
         </div>
-        {/* Subtle curve */}
-        <div className="absolute -bottom-px left-0 right-0">
-          <svg viewBox="0 0 1440 40" fill="none" className="w-full h-4">
-            <path d="M0 0h1440v16C1200 38 240 38 0 16V0z" className="fill-background" />
-          </svg>
-        </div>
       </div>
 
       {/* Main content */}
