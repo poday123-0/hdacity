@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { Loader } from "@googlemaps/js-api-loader";
 import { supabase } from "@/integrations/supabase/client";
 
+const MAPS_CACHE_KEY = "hda_maps_key_cache";
+
+type MapsCache = {
+  key: string;
+  mapId: string;
+};
+
 let cachedKey: string | null = null;
 let cachedMapId: string | null = null;
 let loaderInstance: Loader | null = null;
@@ -10,8 +17,34 @@ let loadPromise: Promise<void> | null = null;
 // Start fetching the key immediately on module load (not on component mount)
 let keyPromise: Promise<{ key: string; mapId: string }> | null = null;
 
+const readLocalCache = (): MapsCache | null => {
+  try {
+    const raw = localStorage.getItem(MAPS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as MapsCache;
+    if (!parsed?.key) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeLocalCache = (cache: MapsCache) => {
+  try {
+    localStorage.setItem(MAPS_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+};
+
 const fetchKey = () => {
   if (cachedKey) return Promise.resolve({ key: cachedKey, mapId: cachedMapId || "" });
+
+  const localCache = readLocalCache();
+  if (localCache?.key) {
+    cachedKey = localCache.key;
+    cachedMapId = localCache.mapId || "";
+    return Promise.resolve({ key: cachedKey, mapId: cachedMapId });
+  }
+
   if (!keyPromise) {
     keyPromise = supabase.functions
       .invoke("get-maps-key")
@@ -19,6 +52,7 @@ const fetchKey = () => {
         if (error || !data?.key) throw new Error("Failed to load maps key");
         cachedKey = data.key;
         cachedMapId = data.mapId || "";
+        writeLocalCache({ key: cachedKey, mapId: cachedMapId });
         return { key: cachedKey, mapId: cachedMapId };
       });
   }
