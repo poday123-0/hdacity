@@ -109,11 +109,14 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ message }),
       });
       const text = await res.text();
+      let parsed: any;
       try {
-        return { ok: res.ok, status: res.status, data: JSON.parse(text) };
+        parsed = JSON.parse(text);
       } catch {
-        return { ok: false, status: res.status, data: text };
+        parsed = text;
       }
+      console.log(`FCM response [${res.status}]:`, JSON.stringify(parsed).slice(0, 500));
+      return { ok: res.ok, status: res.status, data: parsed };
     };
 
     // Topic-based notification
@@ -138,52 +141,55 @@ Deno.serve(async (req) => {
 
     const { data: tokens, error: tokenError } = await supabase
       .from("device_tokens")
-      .select("token, user_id")
+      .select("token, user_id, device_type")
       .in("user_id", user_ids)
       .eq("is_active", true);
 
     if (tokenError) throw tokenError;
     if (!tokens || tokens.length === 0) {
+      console.log("No active tokens found for user_ids:", user_ids);
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: "No active tokens found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log(`Found ${tokens.length} active token(s) for user_ids:`, user_ids);
+
     let totalSent = 0;
     const failedTokens: string[] = [];
+    const perTokenResults: any[] = [];
 
-    // FCM v1 sends one message at a time (or use batch endpoint)
     const results = await Promise.allSettled(
       tokens.map(async (t: any) => {
         const type = data?.type || "default";
         const isTripRequest = type === "trip_requested";
         const isSOS = type === "sos_alert";
         const isUrgent = isTripRequest || isSOS;
+        const isWeb = t.device_type === "web";
 
-        // Send as data-only for web (SW handles display)
-        // Include sound URL so the SW can play it
         const messageData: Record<string, string> = {
-          title: title || "Notification",
-          body: body || "",
           ...(data || {}),
         };
-        // Attach the sound URL for the Service Worker to use
         if (tripRequestSoundUrl && (isTripRequest || isSOS)) {
           messageData.sound_url = tripRequestSoundUrl;
         }
 
-        // Add android notification for native sound/vibrate when app is closed
-        const result = await sendOne({
+        // Build the FCM message
+        // For web: include top-level notification so the browser shows it natively
+        // even when the SW is not running (app fully closed)
+        const fcmMessage: any = {
           token: t.token,
+          // Top-level notification ensures display on ALL platforms
+          notification: {
+            title: title || "Notification",
+            body: body || "",
+          },
           data: messageData,
           android: {
             priority: "high",
-            // TTL 0 = deliver immediately, don't store
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
-              title: title || "Notification",
-              body: body || "",
               sound: "default",
               channel_id: isTripRequest ? "trip_requests" : isSOS ? "sos_alerts" : "general",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
@@ -200,7 +206,6 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                alert: { title: title || "Notification", body: body || "" },
                 sound: "default",
                 badge: 1,
                 "content-available": 1,
@@ -215,7 +220,7 @@ Deno.serve(async (req) => {
               body: body || "",
               icon: "/pwa-192x192.png",
               badge: "/pwa-192x192.png",
-              tag: type,
+              tag: `${type}-${Date.now()}`,
               renotify: true,
               require_interaction: isUrgent,
               vibrate: isTripRequest
@@ -226,27 +231,43 @@ Deno.serve(async (req) => {
             },
             fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
           },
-        });
+        };
+
+        console.log(`Sending to ${t.device_type} token ${t.token.slice(0, 15)}... for user ${t.user_id}`);
+        const result = await sendOne(fcmMessage);
+
+        const tokenResult: any = {
+          token_prefix: t.token.slice(0, 15),
+          device_type: t.device_type,
+          ok: result.ok,
+          status: result.status,
+        };
 
         if (result.ok) {
           totalSent++;
         } else {
           const errMsg = result.data?.error?.details?.[0]?.errorCode || result.data?.error?.status || "";
+          tokenResult.error = errMsg;
           if (errMsg === "UNREGISTERED" || errMsg === "INVALID_ARGUMENT") {
             failedTokens.push(t.token);
           }
         }
+
+        perTokenResults.push(tokenResult);
         return result;
       })
     );
 
     // Deactivate invalid tokens
     if (failedTokens.length > 0) {
+      console.log(`Deactivating ${failedTokens.length} invalid token(s)`);
       await supabase
         .from("device_tokens")
         .update({ is_active: false })
         .in("token", failedTokens);
     }
+
+    console.log("Push results:", JSON.stringify(perTokenResults));
 
     return new Response(
       JSON.stringify({
@@ -254,6 +275,7 @@ Deno.serve(async (req) => {
         sent: totalSent,
         failed: failedTokens.length,
         total_tokens: tokens.length,
+        details: perTokenResults,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
