@@ -35,40 +35,78 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 }
 
 /**
- * Snap a lat/lng to the nearest road using Geocoder reverse geocoding.
- * Returns null if the point is in water.
+ * Road-type identifiers from Google Geocoding results.
+ */
+const ROAD_TYPES = new Set(["street_address", "route", "intersection", "premise", "subpremise"]);
+const WATER_TYPES = new Set(["natural_feature", "water", "ocean", "lake", "pond"]);
+
+/**
+ * Try to reverse-geocode a single point and return a road-snapped position.
+ * Returns null if the location is water, undefined if no road found.
+ */
+function geocodeForRoad(
+  geocoder: google.maps.Geocoder,
+  lat: number,
+  lng: number
+): Promise<{ lat: number; lng: number } | null | undefined> {
+  return new Promise((resolve) => {
+    geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
+      if (status !== "OK" || !results?.length) {
+        resolve(undefined);
+        return;
+      }
+      // Check if this is water first
+      const firstTypes: string[] = results[0].types || [];
+      if (firstTypes.some((t: string) => WATER_TYPES.has(t))) {
+        resolve(null); // Water — hide marker
+        return;
+      }
+      // Look for a road-type result
+      for (const r of results) {
+        const types: string[] = r.types || [];
+        if (types.some((t: string) => ROAD_TYPES.has(t))) {
+          const loc = r.geometry?.location;
+          if (loc) {
+            resolve({ lat: loc.lat(), lng: loc.lng() });
+            return;
+          }
+        }
+      }
+      resolve(undefined); // No road found at this offset
+    });
+  });
+}
+
+/**
+ * Snap a lat/lng to the nearest road by trying the original point
+ * and several nearby offsets (~50m apart). Returns null to hide the marker.
  */
 async function snapToNearestRoad(lat: number, lng: number): Promise<{ lat: number; lng: number } | null> {
   const g = (window as any).google;
   if (!g?.maps?.Geocoder) return { lat, lng };
 
   const geocoder = new g.maps.Geocoder();
-  return new Promise((resolve) => {
-    geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
-      if (status !== "OK" || !results?.length) {
-        resolve(null);
-        return;
-      }
-      // Find a road/street result
-      for (const r of results) {
-        const types: string[] = r.types || [];
-        if (types.some((t: string) => ["street_address", "route", "intersection"].includes(t))) {
-          const loc = r.geometry?.location;
-          if (loc) return resolve({ lat: loc.lat(), lng: loc.lng() });
-        }
-      }
-      // Check if first result is water — hide the marker
-      const first = results[0];
-      const firstTypes: string[] = first.types || [];
-      if (firstTypes.some((t: string) => ["natural_feature", "water", "ocean"].includes(t))) {
-        resolve(null); // In water — don't show
-      } else if (first.geometry?.location) {
-        resolve({ lat: first.geometry.location.lat(), lng: first.geometry.location.lng() });
-      } else {
-        resolve(null);
-      }
-    });
-  });
+
+  // Try original point first
+  const direct = await geocodeForRoad(geocoder, lat, lng);
+  if (direct === null) return null; // Water
+  if (direct) return direct; // Found a road
+
+  // Try offsets in 8 directions (~60m each) to find the nearest road
+  const OFFSET = 0.0006; // ~60m in degrees
+  const offsets = [
+    [OFFSET, 0], [-OFFSET, 0], [0, OFFSET], [0, -OFFSET],
+    [OFFSET, OFFSET], [-OFFSET, -OFFSET], [OFFSET, -OFFSET], [-OFFSET, OFFSET],
+  ];
+
+  for (const [dLat, dLng] of offsets) {
+    const result = await geocodeForRoad(geocoder, lat + dLat, lng + dLng);
+    if (result === null) return null; // Nearby is water
+    if (result) return result; // Found a road nearby
+  }
+
+  // No road found anywhere nearby — hide the marker
+  return null;
 }
 
 const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance }: WatermelonMapOverlayProps) => {
@@ -99,6 +137,8 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
   }, [fetchItems, userType]);
 
   // Place markers on map — snap to roads, hide water markers
+  // Clear cache when items change so new data gets fresh snapping
+  useEffect(() => { snappedCacheRef.current.clear(); }, [items]);
   useEffect(() => {
     if (!mapInstance || !window.google?.maps?.marker?.AdvancedMarkerElement) return;
 
