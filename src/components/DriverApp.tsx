@@ -315,22 +315,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   }, [userProfile?.id]);
 
   // Fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    if (!userProfile?.id) return;
+    const { data } = await supabase
+      .from("notifications")
+      .select("id, read_by")
+      .in("target_type", ["all", "drivers"])
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (data) {
+      const unread = data.filter(n => {
+        const readBy = Array.isArray(n.read_by) ? n.read_by : [];
+        return !(readBy as string[]).includes(userProfile.id);
+      });
+      setUnreadNotifCount(unread.length);
+    }
+  }, [userProfile?.id]);
+
   useEffect(() => {
-    const lastSeen = localStorage.getItem("hda_driver_notif_seen") || "2000-01-01T00:00:00Z";
-    supabase.
-    from("notifications").
-    select("id", { count: "exact", head: true }).
-    in("target_type", ["all", "drivers"]).
-    gt("created_at", lastSeen).
-    then(({ count }) => setUnreadNotifCount(count || 0));
-  }, [showNotifications]);
+    fetchUnreadCount();
+  }, [fetchUnreadCount, showNotifications]);
 
   useEffect(() => {
     if (showNotifications) {
-      localStorage.setItem("hda_driver_notif_seen", new Date().toISOString());
-      setUnreadNotifCount(0);
+      // When closing notifications, recount
+      return () => { fetchUnreadCount(); };
     }
-  }, [showNotifications]);
+  }, [showNotifications, fetchUnreadCount]);
 
   useEffect(() => {
     try {localStorage.setItem(driverScreenKey, screen);} catch {}
