@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
-import { registerDeviceToken, removeDeviceToken } from "@/lib/push-notifications";
+import { registerDeviceToken } from "@/lib/push-notifications";
 
 /**
  * Hook to register push notification token for the current user.
@@ -10,7 +10,7 @@ export const usePushNotifications = (
   userId: string | undefined,
   userType: "driver" | "passenger" | "admin" | "dispatcher"
 ) => {
-  const tokenRef = useRef<string | null>(null);
+  
 
   useEffect(() => {
     if (!userId) return;
@@ -31,7 +31,6 @@ export const usePushNotifications = (
 
           PushNotifications.addListener("registration", async (token) => {
             console.log("FCM Token (native):", token.value);
-            tokenRef.current = token.value;
             const deviceType = Capacitor.getPlatform() === "ios" ? "ios" : "android";
             await registerDeviceToken(userId, token.value, userType, deviceType);
           });
@@ -123,7 +122,6 @@ export const usePushNotifications = (
           });
           if (token) {
             console.log("FCM Token (web):", token);
-            tokenRef.current = token;
             await registerDeviceToken(userId, token, userType, "web");
           }
 
@@ -168,11 +166,7 @@ export const usePushNotifications = (
 
     setup();
 
-    // Cleanup: deactivate token on unmount
-    return () => {
-      if (tokenRef.current && userId) {
-        removeDeviceToken(userId, tokenRef.current);
-      }
-    };
+    // Keep token active across app minimize/background/close so pushes continue to arrive.
+    // Tokens are invalidated server-side when FCM reports UNREGISTERED, or can be managed from Admin.
   }, [userId, userType]);
 };

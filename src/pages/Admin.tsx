@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -30,8 +30,9 @@ import AdminWallets from "@/components/admin/AdminWallets";
 import AdminTopupCards from "@/components/admin/AdminTopupCards";
 import AdminWatermelons from "@/components/admin/AdminWatermelons";
 import hdaLogo from "@/assets/hda-logo.png";
+import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "device_tokens" | "settings";
 
 type NavGroup = {
   label: string;
@@ -90,6 +91,7 @@ const navGroups: NavGroup[] = [
   {
     label: "System",
     items: [
+      { id: "device_tokens", label: "Device Tokens", icon: Smartphone },
       { id: "settings", label: "Settings", icon: Settings },
     ],
   },
@@ -377,6 +379,7 @@ const Admin = () => {
           {activeTab === "sos_history" && <AdminSOSHistory />}
           {activeTab === "users" && <AdminUsers />}
           {activeTab === "notifications" && <AdminNotifications />}
+          {activeTab === "device_tokens" && <AdminDeviceTokens />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
