@@ -203,6 +203,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const lastRouteFetchAtRef = useRef(0);
   const lastRerouteOriginRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastCameraUpdateAtRef = useRef(0);
+  const hasReceivedFirstGpsRef = useRef(false);
   const passengerLiveLocationRef = useRef(passengerLiveLocation);
   passengerLiveLocationRef.current = passengerLiveLocation;
 
@@ -436,6 +437,15 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
     const g = (window as any).google;
     const map = mapInstance.current;
+
+    // On first real GPS fix, snap map center to driver's actual location
+    if (!hasReceivedFirstGpsRef.current) {
+      hasReceivedFirstGpsRef.current = true;
+      map.setCenter(currentPos);
+      driverMarkerRef.current.setPosition(currentPos);
+      filteredPosRef.current = currentPos;
+      prevMarkerPosRef.current = currentPos;
+    }
 
     // Position filtering (Uber-like stability)
     const prevFiltered = filteredPosRef.current;
