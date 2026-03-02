@@ -41,6 +41,7 @@ export const removeDeviceToken = async (userId: string, token: string) => {
 
 /**
  * Send push notification to specific users via the edge function.
+ * The edge function resolves the correct sound per recipient user type.
  */
 export const sendPushNotification = async (
   userIds: string[],
@@ -78,8 +79,12 @@ export const sendTopicNotification = async (
 };
 
 /**
- * Trip event notification helpers
+ * Trip event notification helpers.
+ * Each passes a `type` field used by the edge function to resolve
+ * the correct sound category per recipient (driver vs passenger).
  */
+
+/** Notify driver(s) of a new ride request */
 export const notifyTripRequested = async (driverIds: string[], tripId: string, pickupAddress: string) => {
   await sendPushNotification(
     driverIds,
@@ -89,6 +94,7 @@ export const notifyTripRequested = async (driverIds: string[], tripId: string, p
   );
 };
 
+/** Notify passenger that a driver accepted */
 export const notifyTripAccepted = async (passengerId: string, driverName: string, tripId: string) => {
   await sendPushNotification(
     [passengerId],
@@ -98,6 +104,7 @@ export const notifyTripAccepted = async (passengerId: string, driverName: string
   );
 };
 
+/** Notify passenger that driver has arrived at pickup */
 export const notifyDriverArrived = async (passengerId: string, driverName: string, tripId: string) => {
   await sendPushNotification(
     [passengerId],
@@ -107,6 +114,7 @@ export const notifyDriverArrived = async (passengerId: string, driverName: strin
   );
 };
 
+/** Notify passenger that trip has started */
 export const notifyTripStarted = async (passengerId: string, tripId: string) => {
   await sendPushNotification(
     [passengerId],
@@ -116,6 +124,7 @@ export const notifyTripStarted = async (passengerId: string, tripId: string) => 
   );
 };
 
+/** Notify passenger that trip is completed */
 export const notifyTripCompleted = async (passengerId: string, fare: string, tripId: string) => {
   await sendPushNotification(
     [passengerId],
@@ -125,6 +134,7 @@ export const notifyTripCompleted = async (passengerId: string, fare: string, tri
   );
 };
 
+/** Notify user(s) that trip was cancelled */
 export const notifyTripCancelled = async (userIds: string[], cancelledBy: string, tripId: string) => {
   await sendPushNotification(
     userIds,
@@ -134,6 +144,7 @@ export const notifyTripCancelled = async (userIds: string[], cancelledBy: string
   );
 };
 
+/** Notify user of a new chat message */
 export const notifyMessageReceived = async (userId: string, senderName: string, message: string, tripId: string) => {
   await sendPushNotification(
     [userId],
@@ -143,6 +154,7 @@ export const notifyMessageReceived = async (userId: string, senderName: string, 
   );
 };
 
+/** Notify admins of an SOS alert */
 export const notifySOSAlert = async (adminIds: string[], userName: string, alertId: string) => {
   await sendPushNotification(
     adminIds,
