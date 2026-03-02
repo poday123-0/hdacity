@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -36,7 +36,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
         className="mb-6"
       >
         <div className="w-28 h-28 rounded-3xl bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm p-3">
-            <img src={hdaLogo} alt="HDA Taxi" className="w-full h-full object-contain" />
+            <SystemLogo className="w-full h-full object-contain" alt="HDA Taxi" />
           </div>
       </motion.div>
 

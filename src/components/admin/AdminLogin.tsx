@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Phone, ArrowRight, Loader2, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 
 interface AdminLoginProps {
   onLogin: (phone: string) => Promise<boolean>;
@@ -87,7 +87,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             <Shield className="w-8 h-8 text-primary" />
           </div>
           <div className="flex items-center justify-center gap-2">
-            <img src={hdaLogo} alt="HDA" className="w-8 h-8 object-contain" />
+            <SystemLogo className="w-8 h-8 object-contain" alt="HDA" />
             <h1 className="text-2xl font-extrabold text-foreground">
               HDA <span className="text-primary">ADMIN</span>
             </h1>

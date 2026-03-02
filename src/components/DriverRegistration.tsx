@@ -4,7 +4,7 @@ import { User, Phone, Loader2, UserPlus, Camera, Car, Building2, Upload, Chevron
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 
 interface DriverRegistrationProps {
   phoneNumber: string;
@@ -279,7 +279,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       <div className="px-6 pt-6 pb-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl overflow-hidden">
-            <img src={hdaLogo} alt="HDA" className="w-full h-full object-contain" />
+            <SystemLogo className="w-full h-full object-contain" alt="HDA" />
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-foreground">Driver Registration</h1>

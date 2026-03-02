@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 import { UserProfile } from "@/components/AuthScreen";
 import RideHistory from "@/components/RideHistory";
 import LostItemReport from "@/components/LostItemReport";
@@ -292,7 +292,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
               onClick={onDriverMode}
               className="flex items-center gap-1.5 bg-card shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
             >
-              <img src={hdaLogo} alt="HDA Taxi" className="w-6 h-6 object-contain" />
+               <SystemLogo className="w-6 h-6 object-contain" alt="HDA Taxi" />
               <span className="text-xs font-bold text-muted-foreground">Switch to Driver</span>
               <Car className="w-3.5 h-3.5 text-primary" />
             </button>
@@ -301,13 +301,13 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
               onClick={onRegisterDriver}
               className="flex items-center gap-1.5 bg-card shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
             >
-              <img src={hdaLogo} alt="HDA Taxi" className="w-6 h-6 object-contain" />
+              <SystemLogo className="w-6 h-6 object-contain" alt="HDA Taxi" />
               <span className="text-xs font-bold text-muted-foreground">Become a Driver</span>
               <Car className="w-3.5 h-3.5 text-primary" />
             </button>
           ) : (
             <div className="flex items-center gap-1.5">
-              <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
+              <SystemLogo className="w-8 h-8 object-contain" alt="HDA Taxi" />
             </div>
           )}
 

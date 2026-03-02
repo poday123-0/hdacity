@@ -29,7 +29,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminWallets from "@/components/admin/AdminWallets";
 import AdminTopupCards from "@/components/admin/AdminTopupCards";
 import AdminWatermelons from "@/components/admin/AdminWatermelons";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
 
 type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "device_tokens" | "settings";
@@ -237,7 +237,7 @@ const Admin = () => {
         {/* Header */}
         <div className="px-4 py-4 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-2.5">
-            <img src={hdaLogo} alt="HDA" className="w-9 h-9 object-contain" />
+            <SystemLogo className="w-9 h-9 object-contain" alt="HDA" />
             <div>
               <h1 className="text-base font-extrabold text-foreground leading-tight">
                 HDA <span className="text-primary">ADMIN</span>

@@ -11,12 +11,16 @@ import Dispatch from "./pages/Dispatch";
 import LiveMap from "./pages/LiveMap";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import { useBranding } from "@/hooks/use-branding";
 
 const queryClient = new QueryClient();
+
+const BrandingInit = () => { useBranding(); return null; };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <BrandingInit />
       <Toaster />
       <Sonner />
       <BrowserRouter>

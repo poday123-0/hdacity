@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame, Image, Globe } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { invalidateBranding } from "@/hooks/use-branding";
 
 interface SoundFile {
   id: string;
@@ -110,6 +111,13 @@ const AdminSettings = () => {
   const [defaultCompanyId, setDefaultCompanyId] = useState("");
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
   const [newBlockedCode, setNewBlockedCode] = useState("");
+  // Branding: system logo, share image, favicon
+  const [systemLogoUrl, setSystemLogoUrl] = useState<string | null>(null);
+  const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
+  const [uploadingBranding, setUploadingBranding] = useState<string | null>(null);
+  const brandingInputRef = useRef<HTMLInputElement>(null);
+  const [brandingUploadKey, setBrandingUploadKey] = useState("");
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -159,6 +167,10 @@ const AdminSettings = () => {
     // Load default company & blocked codes
     if (map["default_company_id"]) setDefaultCompanyId(typeof map["default_company_id"] === "string" ? map["default_company_id"] : "");
     if (map["blocked_center_codes"] && Array.isArray(map["blocked_center_codes"])) setBlockedCodes(map["blocked_center_codes"].map(String));
+    // Branding
+    if (map["system_logo_url"] && typeof map["system_logo_url"] === "string") setSystemLogoUrl(map["system_logo_url"]);
+    if (map["system_share_image_url"] && typeof map["system_share_image_url"] === "string") setShareImageUrl(map["system_share_image_url"]);
+    if (map["system_favicon_url"] && typeof map["system_favicon_url"] === "string") setFaviconUrl(map["system_favicon_url"]);
     setLoading(false);
   };
 
@@ -257,6 +269,121 @@ const AdminSettings = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">System Settings</h2>
+
+      {/* Branding: Logo, Share Image, Favicon */}
+      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <Image className="w-5 h-5 text-primary" /> Branding
+      </h2>
+      <p className="text-sm text-muted-foreground">Upload your system logo, social share image (OG), and favicon. These will be used across the entire app.</p>
+
+      <input
+        ref={brandingInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file || !brandingUploadKey) return;
+          setUploadingBranding(brandingUploadKey);
+          const path = `branding/${brandingUploadKey}_${Date.now()}.${file.name.split(".").pop()}`;
+          const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+          if (error) {
+            toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+            setUploadingBranding(null);
+            return;
+          }
+          const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+          const url = `${urlData.publicUrl}?t=${Date.now()}`;
+          await updateSetting(brandingUploadKey, url);
+          if (brandingUploadKey === "system_logo_url") setSystemLogoUrl(url);
+          if (brandingUploadKey === "system_share_image_url") setShareImageUrl(url);
+          if (brandingUploadKey === "system_favicon_url") setFaviconUrl(url);
+          invalidateBranding();
+          setUploadingBranding(null);
+          toast({ title: "Branding updated!" });
+          e.target.value = "";
+        }}
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* System Logo */}
+        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">System Logo</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Used in sidebar, splash screen, login. PNG recommended.</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-20 h-20 rounded-2xl bg-muted border-2 border-border flex items-center justify-center overflow-hidden shadow">
+              {systemLogoUrl ? (
+                <img src={systemLogoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <Image className="w-8 h-8 text-muted-foreground" />
+              )}
+            </div>
+            <button
+              onClick={() => { setBrandingUploadKey("system_logo_url"); setTimeout(() => brandingInputRef.current?.click(), 50); }}
+              disabled={uploadingBranding === "system_logo_url"}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploadingBranding === "system_logo_url" ? "Uploading..." : "Upload Logo"}
+            </button>
+          </div>
+        </div>
+
+        {/* Share Image (OG) */}
+        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Image className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Share Image</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Shown when sharing links on social media. 1200×630px recommended.</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-full aspect-[1200/630] rounded-xl bg-muted border-2 border-border flex items-center justify-center overflow-hidden shadow">
+              {shareImageUrl ? (
+                <img src={shareImageUrl} alt="Share" className="w-full h-full object-cover" />
+              ) : (
+                <Image className="w-8 h-8 text-muted-foreground" />
+              )}
+            </div>
+            <button
+              onClick={() => { setBrandingUploadKey("system_share_image_url"); setTimeout(() => brandingInputRef.current?.click(), 50); }}
+              disabled={uploadingBranding === "system_share_image_url"}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploadingBranding === "system_share_image_url" ? "Uploading..." : "Upload Share Image"}
+            </button>
+          </div>
+        </div>
+
+        {/* Favicon */}
+        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Favicon</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Browser tab icon. 32×32 or 64×64 PNG/ICO.</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 rounded-xl bg-muted border-2 border-border flex items-center justify-center overflow-hidden shadow">
+              {faviconUrl ? (
+                <img src={faviconUrl} alt="Favicon" className="w-full h-full object-contain p-1" />
+              ) : (
+                <Globe className="w-6 h-6 text-muted-foreground" />
+              )}
+            </div>
+            <button
+              onClick={() => { setBrandingUploadKey("system_favicon_url"); setTimeout(() => brandingInputRef.current?.click(), 50); }}
+              disabled={uploadingBranding === "system_favicon_url"}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploadingBranding === "system_favicon_url" ? "Uploading..." : "Upload Favicon"}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* General Settings */}
       <div className="bg-card border border-border rounded-xl divide-y divide-border">

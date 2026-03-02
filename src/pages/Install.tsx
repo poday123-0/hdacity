@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { Download, Share2, Smartphone, Car, Users, ChevronRight, Copy, Check, ExternalLink, Apple, Chrome, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/hooks/use-theme";
@@ -72,7 +72,7 @@ const Install = ({ defaultTab }: InstallProps) => {
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <img src={hdaLogo} alt="HDA Taxi" className="w-8 h-8 object-contain" />
+            <SystemLogo className="w-8 h-8 object-contain" alt="HDA Taxi" />
             <span className="text-lg font-extrabold tracking-tight text-foreground">HDA</span>
             <span className="text-lg font-extrabold tracking-tight text-primary">TAXI</span>
           </div>
@@ -91,7 +91,7 @@ const Install = ({ defaultTab }: InstallProps) => {
             {currentIcon ? (
               <img src={currentIcon} alt={currentLabel} className="w-full h-full object-cover rounded-2xl" />
             ) : (
-              <img src={hdaLogo} alt="HDA TAXI" className="w-12 h-12 object-contain" />
+              <SystemLogo className="w-12 h-12 object-contain" alt="HDA TAXI" />
             )}
           </div>
           <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Install {currentLabel}</h1>

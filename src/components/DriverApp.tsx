@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/components/AuthScreen";
 import DriverMap from "@/components/DriverMap";
 import { type NavSettings, DEFAULT_NAV_SETTINGS, loadNavSettings, saveNavSettings } from "@/components/DriverMap";
-import hdaLogo from "@/assets/hda-logo.png";
+import SystemLogo from "@/components/SystemLogo";
 import DriverEarnings from "@/components/DriverEarnings";
 import DriverWallet from "@/components/DriverWallet";
 import DriverCompleteScreen from "@/components/DriverCompleteScreen";
