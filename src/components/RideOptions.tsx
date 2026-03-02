@@ -1,4 +1,4 @@
-import { Car, Users, Crown, ArrowLeft, Loader2, Bike, Truck, Bus, Luggage, Plus, Minus } from "lucide-react";
+import { Car, Users, Crown, ArrowLeft, Loader2, Bike, Truck, Bus, Luggage, Plus, Minus, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -379,7 +379,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-base">🚀</span>
+                    <div className="w-5 h-5 rounded-md bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
+                      <Zap className="w-3 h-3 text-primary-foreground" fill="currentColor" />
+                    </div>
                     <p className="text-xs font-bold text-foreground">Boost Fare</p>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-0.5">Add extra to attract drivers faster{maxBoost > 0 ? ` (max ${maxBoost} MVR)` : ""}</p>
