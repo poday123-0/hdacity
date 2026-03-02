@@ -147,10 +147,17 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
 
+  // Track map readiness for dependent effects
+  const [mapReady, setMapReady] = useState(false);
+  useEffect(() => {
+    if (mapInstance.current && !mapReady) setMapReady(true);
+  });
+
   // Theme observer — smooth crossfade overlay
   const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapReady || !mapInstance.current) return;
+    const map = mapInstance.current;
     let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
 
     const applyTheme = () => {
@@ -159,12 +166,11 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       if (mapId) {
         const colorScheme = g?.maps?.ColorScheme;
         if (colorScheme) {
-          mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+          map?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
         }
-        // Also apply raster styles as fallback
-        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+        map?.setOptions({ styles: isDark ? darkMapStyle : [] });
       } else {
-        mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
+        map?.setOptions({ styles: isDark ? darkMapStyle : [] });
       }
     };
 
@@ -177,7 +183,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
-  }, [isLoaded, mapId]);
+  }, [mapReady, mapId]);
 
   // Update user marker
   useEffect(() => {
