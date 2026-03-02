@@ -156,7 +156,7 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
   return (
     <>
       {items.length > 0 && !selectedItem && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[600] pointer-events-auto">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[600] pointer-events-auto">
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
