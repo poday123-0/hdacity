@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { notifyMessageReceived } from "@/lib/push-notifications";
@@ -31,6 +31,25 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
   const [sending, setSending] = useState(false);
   const [quickReplies, setQuickReplies] = useState<{ text: string; target: string }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageSoundRef = useRef<string | null>(null);
+  const messagesRef = useRef<TripMessage[]>([]);
+
+  // Keep ref in sync
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    });
+  }, []);
+
+  const addMessage = useCallback((msg: TripMessage) => {
+    setMessages(prev => {
+      if (prev.some(m => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+    scrollToBottom();
+  }, [scrollToBottom]);
 
   // Fetch messages & subscribe to realtime
   useEffect(() => {
@@ -43,7 +62,10 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
         .select("*")
         .eq("trip_id", tripId)
         .order("created_at", { ascending: true });
-      if (isActive) setMessages((data as TripMessage[]) || []);
+      if (isActive && data) {
+        setMessages(data as TripMessage[]);
+        scrollToBottom();
+      }
     };
     fetchMessages();
 
@@ -60,7 +82,6 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
     if (readOnly) return () => { isActive = false; };
 
     // Fetch chat message sound
-    let messageSoundUrl: string | null = null;
     supabase
       .from("notification_sounds")
       .select("file_url")
@@ -69,12 +90,12 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
       .order("is_default", { ascending: false })
       .limit(1)
       .then(({ data }) => {
-        if (data && data.length > 0) messageSoundUrl = data[0].file_url;
+        if (data && data.length > 0) messageSoundRef.current = data[0].file_url;
       });
 
     // Realtime subscription
     const channel = supabase
-      .channel(`trip-chat-${tripId}`)
+      .channel(`trip-chat-${tripId}-${Date.now()}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
@@ -82,60 +103,76 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
         filter: `trip_id=eq.${tripId}`,
       }, (payload) => {
         const msg = payload.new as TripMessage;
-        setMessages((prev) => {
-          if (prev.some(m => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
+        addMessage(msg);
         if (msg.sender_type !== senderType) {
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-          if (messageSoundUrl) playSound(messageSoundUrl);
+          if (messageSoundRef.current) playSound(messageSoundRef.current);
           else playFallbackBeep();
         }
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log(`[TripChat] Realtime status: ${status}`, err || "");
+      });
 
-    // Fallback polling every 5s to catch missed realtime events
+    // Fallback polling every 2s
     const pollInterval = setInterval(async () => {
+      if (!isActive) return;
+      const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+      const since = lastMsg?.created_at || "1970-01-01";
       const { data } = await supabase
         .from("trip_messages")
         .select("*")
         .eq("trip_id", tripId)
+        .gt("created_at", since)
         .order("created_at", { ascending: true });
-      if (isActive && data) {
-        setMessages(prev => {
-          const prevIds = new Set(prev.map(m => m.id));
-          const newMsgs = (data as TripMessage[]).filter(m => !prevIds.has(m.id));
-          if (newMsgs.length === 0) return prev;
-          return [...prev, ...newMsgs];
-        });
+      if (data && data.length > 0) {
+        data.forEach(m => addMessage(m as TripMessage));
       }
-    }, 5000);
+    }, 2000);
 
     return () => {
       isActive = false;
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
-  }, [tripId, isOpen, readOnly, senderType]);
+  }, [tripId, isOpen, readOnly, senderType, addMessage, scrollToBottom]);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
   const sendMessage = async (msg?: string) => {
     const messageText = msg || text.trim();
     if (!messageText || sending || !tripId) return;
     setSending(true);
-    await supabase.from("trip_messages").insert({
+    if (!msg) setText("");
+
+    // Optimistic: add message to local state immediately
+    const optimisticId = `opt-${Date.now()}-${Math.random()}`;
+    const optimisticMsg: TripMessage = {
+      id: optimisticId,
       trip_id: tripId,
       sender_id: senderId || null,
       sender_type: senderType,
       message: messageText,
-    } as any);
-    if (!msg) setText("");
-    // Notify the other party
+      created_at: new Date().toISOString(),
+    };
+    addMessage(optimisticMsg);
+
+    const { data: inserted, error } = await supabase.from("trip_messages").insert({
+      trip_id: tripId,
+      sender_id: senderId || null,
+      sender_type: senderType,
+      message: messageText,
+    } as any).select().single();
+
+    if (inserted) {
+      // Replace optimistic message with real one
+      setMessages(prev => prev.map(m => m.id === optimisticId ? (inserted as TripMessage) : m));
+    } else if (error) {
+      // Remove optimistic on failure
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
+    }
+
+    // Notify the other party (fire and forget)
     if (recipientId) {
       notifyMessageReceived(recipientId, senderName || (senderType === "driver" ? "Driver" : "Passenger"), messageText, tripId);
     }
@@ -183,7 +220,7 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
               </div>
             ) : (
               messages.map((msg) => {
-                const isMine = msg.sender_type === senderType || (readOnly && false);
+                const isMine = msg.sender_type === senderType;
                 const isSystem = msg.sender_type === "system";
                 return (
                   <div
@@ -218,7 +255,6 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
           {/* Input */}
           {!readOnly && (
             <div className="p-4 border-t border-border space-y-2">
-              {/* Quick replies */}
               {quickReplies.length > 0 && (
                 <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
                   {quickReplies.map((qr, i) => (
