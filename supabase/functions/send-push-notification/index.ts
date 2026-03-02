@@ -210,7 +210,21 @@ Deno.serve(async (req) => {
           },
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
-            fcm_options: { link: "/" },
+            notification: {
+              title: title || "Notification",
+              body: body || "",
+              icon: "/pwa-192x192.png",
+              badge: "/pwa-192x192.png",
+              tag: type,
+              renotify: true,
+              require_interaction: isUrgent,
+              vibrate: isTripRequest
+                ? [300, 100, 300, 100, 300, 100, 300]
+                : isSOS
+                ? [500, 100, 500, 100, 500]
+                : [200, 100, 200],
+            },
+            fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
           },
         });
 
