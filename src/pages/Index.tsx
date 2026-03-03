@@ -333,6 +333,31 @@ const Index = () => {
     return () => { supabase.removeChannel(channel); };
   }, [fetchOnlineDrivers]);
 
+  // Listen for admin force-refresh signal via realtime
+  useEffect(() => {
+    const channel = supabase
+      .channel("force-refresh-listener")
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "system_settings",
+        filter: "key=eq.force_refresh",
+      }, (payload) => {
+        try {
+          const val = payload.new as any;
+          const parsed = typeof val.value === "string" ? JSON.parse(val.value) : val.value;
+          const target = parsed?.target || "all";
+          const currentUserType = appMode === "driver" ? "drivers" : "passengers";
+          if (target === "all" || target === currentUserType) {
+            // Hard refresh
+            window.location.reload();
+          }
+        } catch {}
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [appMode]);
+
   // Live track driver location when trip is accepted
   useEffect(() => {
     if (!currentTripId || passengerScreen !== "driver-matching") return;
