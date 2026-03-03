@@ -104,7 +104,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
     }
   }, [center, mapReady]);
 
-  // Reverse geocode on center change
+  // Reverse geocode on center change — don't clear name while loading
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {

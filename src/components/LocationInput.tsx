@@ -532,7 +532,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       className="fixed bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col"
-      style={{ maxHeight: "min(calc(100dvh - 3.5rem), calc(100vh - 3.5rem))" }}
+      style={{ maxHeight: "min(calc(100dvh - 3.5rem), calc(100vh - 3.5rem))", touchAction: "pan-y" }}
     >
       <div className="px-4 pt-3 pb-2 space-y-2.5 overflow-y-auto flex-1 overscroll-contain min-h-0">
         {/* Handle */}
@@ -771,13 +771,15 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   }`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Pickup</p>
-                      <input
+                       <input
                         ref={pickupRef}
                         type="text"
+                        inputMode="search"
+                        autoComplete="off"
                         placeholder="Search pickup location..."
                         value={pickupQuery}
                         onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
-                        onFocus={() => setActiveField("pickup")}
+                        onFocus={() => { setActiveField("pickup"); setTimeout(() => pickupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
                         className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
                       />
                       {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
@@ -879,13 +881,15 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   }`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Destination</p>
-                      <input
+                       <input
                         ref={dropoffRef}
                         type="text"
+                        inputMode="search"
+                        autoComplete="off"
                         placeholder="Search destination..."
                         value={dropoffQuery}
                         onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
-                        onFocus={() => setActiveField("dropoff")}
+                        onFocus={() => { setActiveField("dropoff"); setTimeout(() => dropoffRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
                         className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
                       />
                       {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (

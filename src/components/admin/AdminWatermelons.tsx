@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles, Upload, Shuffle, Image } from "lucide-react";
+import { Plus, Trash2, Sparkles, Upload, Shuffle, Image, MapPin, Check, X } from "lucide-react";
 
 interface ServiceLocation {
   id: string;
@@ -34,6 +34,20 @@ interface PromoItem {
 }
 
 const randomOffset = (base: number, range: number) => base + (Math.random() - 0.5) * range;
+
+const MIN_DISTANCE_METERS = 50; // Minimum distance between items
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function isTooClose(lat: number, lng: number, existingItems: { lat: number; lng: number }[]): boolean {
+  return existingItems.some(item => haversineDistance(lat, lng, item.lat, item.lng) < MIN_DISTANCE_METERS);
+}
 
 /**
  * Snap a lat/lng to the nearest road using Google Maps Geocoder.
@@ -100,6 +114,10 @@ const AdminWatermelons = () => {
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editLat, setEditLat] = useState("");
+  const [editLng, setEditLng] = useState("");
 
   // Form state
   const [promoType, setPromoType] = useState("wallet_amount");
@@ -184,6 +202,30 @@ const AdminWatermelons = () => {
           continue;
         }
 
+        // Enforce minimum distance from existing items AND items being created
+        const allExisting = [...items.filter(x => x.status === "active"), ...rows].map(r => ({ lat: r.lat, lng: r.lng }));
+        if (isTooClose(snapped.lat, snapped.lng, allExisting)) {
+          // Try again with a different position
+          const retry = await generateRoadPoint(Number(loc.lat), Number(loc.lng));
+          if (!retry || isTooClose(retry.lat, retry.lng, allExisting)) {
+            skipped++;
+            continue;
+          }
+          rows.push({
+            lat: retry.lat,
+            lng: retry.lng,
+            promo_type: promoType,
+            amount: promoType === "wallet_amount" ? amt : 0,
+            fee_free_months: promoType === "fee_free" ? parseInt(feeMonths) : 0,
+            free_trips: promoType === "free_trip" ? parseInt(freeTrips) : 0,
+            target_user_type: targetUser,
+            claim_radius_m: radius,
+            service_location_id: loc.id,
+            icon_url: iconUrl || null,
+          });
+          continue;
+        }
+
         rows.push({
           lat: snapped.lat,
           lng: snapped.lng,
@@ -254,6 +296,25 @@ const AdminWatermelons = () => {
     else query = query.eq("status", "active");
     await query;
     toast({ title: "Deleted" });
+    fetchItems();
+  };
+
+  const handleMoveItem = async (id: string) => {
+    const lat = parseFloat(editLat);
+    const lng = parseFloat(editLng);
+    if (isNaN(lat) || isNaN(lng)) {
+      toast({ title: "Invalid coordinates", variant: "destructive" });
+      return;
+    }
+    // Check minimum distance
+    const others = items.filter(i => i.id !== id && i.status === "active");
+    if (isTooClose(lat, lng, others)) {
+      toast({ title: "Too close to another item", description: `Items must be at least ${MIN_DISTANCE_METERS}m apart`, variant: "destructive" });
+      return;
+    }
+    await supabase.from("promo_watermelons").update({ lat, lng }).eq("id", id);
+    toast({ title: "📍 Item moved!" });
+    setEditingItemId(null);
     fetchItems();
   };
 
@@ -443,35 +504,59 @@ const AdminWatermelons = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {items.slice(0, 60).map(m => (
-            <div
-              key={m.id}
-              className={`border rounded-xl p-4 flex items-center gap-3 transition-colors ${
-                m.status === "claimed"
-                  ? "border-muted bg-muted/20 opacity-60"
-                  : "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
-              }`}
-            >
-              {m.icon_url ? (
-                <img src={m.icon_url} alt="" className="w-10 h-10 rounded-lg object-contain" />
-              ) : (
-                <span className="text-3xl">{m.status === "claimed" ? "💥" : "🍉"}</span>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-bold text-sm text-foreground">{promoLabel(m)}</span>
-                  <Badge variant={m.target_user_type === "driver" ? "default" : "secondary"} className="text-[10px]">
-                    {m.target_user_type === "driver" ? "🚗 Driver" : "👤 Passenger"}
-                  </Badge>
-                  {m.status === "claimed" && <Badge variant="outline" className="text-[10px]">Claimed</Badge>}
+            <div key={m.id} className="space-y-1">
+              <div
+                className={`border rounded-xl p-4 flex items-center gap-3 transition-colors ${
+                  m.status === "claimed"
+                    ? "border-muted bg-muted/20 opacity-60"
+                    : "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
+                }`}
+              >
+                {m.icon_url ? (
+                  <img src={m.icon_url} alt="" className="w-10 h-10 rounded-lg object-contain" />
+                ) : (
+                  <span className="text-3xl">{m.status === "claimed" ? "💥" : "🍉"}</span>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-sm text-foreground">{promoLabel(m)}</span>
+                    <Badge variant={m.target_user_type === "driver" ? "default" : "secondary"} className="text-[10px]">
+                      {m.target_user_type === "driver" ? "🚗 Driver" : "👤 Passenger"}
+                    </Badge>
+                    {m.status === "claimed" && <Badge variant="outline" className="text-[10px]">Claimed</Badge>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                    {m.lat.toFixed(4)}, {m.lng.toFixed(4)} • {m.claim_radius_m}m radius
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                  {m.lat.toFixed(4)}, {m.lng.toFixed(4)} • {m.claim_radius_m}m radius
-                </p>
+                {m.status === "active" && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => { setEditingItemId(m.id); setEditLat(m.lat.toFixed(6)); setEditLng(m.lng.toFixed(6)); }}>
+                      <MapPin className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteOne(m.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              {m.status === "active" && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => handleDeleteOne(m.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+              {editingItemId === m.id && (
+                <div className="border border-primary/30 rounded-xl p-3 bg-primary/5 flex items-end gap-2">
+                  <div className="flex-1">
+                    <Label className="text-[10px]">Latitude</Label>
+                    <Input type="number" step="0.000001" value={editLat} onChange={e => setEditLat(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-[10px]">Longitude</Label>
+                    <Input type="number" step="0.000001" value={editLng} onChange={e => setEditLng(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                  <Button size="sm" className="h-8 gap-1" onClick={() => handleMoveItem(m.id)}>
+                    <Check className="w-3 h-3" /> Move
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingItemId(null)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
               )}
             </div>
           ))}

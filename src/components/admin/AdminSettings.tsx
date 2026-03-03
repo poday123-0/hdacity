@@ -1100,6 +1100,35 @@ const AdminSettings = () => {
           </button>
         </div>
       </div>
+
+      {/* Force Update / Refresh Section */}
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+          <Download className="w-4 h-4 text-primary" /> Push App Update
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Force all connected devices to reload the app with the latest version. You can target all users, or just passengers or drivers.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { target: "all", label: "🔄 Update All Devices" },
+            { target: "passengers", label: "👤 Passengers Only" },
+            { target: "drivers", label: "🚗 Drivers Only" },
+          ].map(({ target, label }) => (
+            <button
+              key={target}
+              onClick={async () => {
+                const ts = new Date().toISOString();
+                await updateSetting("force_refresh", JSON.stringify({ target, triggered_at: ts }));
+                toast({ title: "Update pushed!", description: `All ${target === "all" ? "" : target + " "}devices will refresh.` });
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold active:scale-95 transition-transform"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
