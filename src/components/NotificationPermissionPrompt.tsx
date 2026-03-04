@@ -67,10 +67,18 @@ const NotificationPermissionPrompt = () => {
   }, []);
 
   const handleRequestNotification = useCallback(async () => {
+    if (!("Notification" in window)) {
+      setNotifGranted(false);
+      setStep("done");
+      setTimeout(() => setVisible(false), 1800);
+      return;
+    }
     try {
+      // On mobile browsers, requestPermission must be called from a user gesture
       const result = await Notification.requestPermission();
-      setNotifGranted(result === "granted");
-      if (result === "granted") {
+      const granted = result === "granted";
+      setNotifGranted(granted);
+      if (granted) {
         try { localStorage.removeItem(SNOOZE_UNTIL_KEY); } catch {}
       }
     } catch {
@@ -84,14 +92,35 @@ const NotificationPermissionPrompt = () => {
     // If location not yet granted, ask for it first
     if (!locationGranted) {
       setStep("location");
-      handleRequestLocation();
+      // Request location, then auto-advance to notification step
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setLocationGranted(true);
+          if ("Notification" in window && Notification.permission === "default") {
+            setStep("notification");
+          } else {
+            setStep("done");
+            setTimeout(() => setVisible(false), 1800);
+          }
+        },
+        () => {
+          setLocationGranted(false);
+          if ("Notification" in window && Notification.permission === "default") {
+            setStep("notification");
+          } else {
+            setStep("done");
+            setTimeout(() => setVisible(false), 1800);
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
     } else if ("Notification" in window && Notification.permission === "default") {
       setStep("notification");
     } else {
       setStep("done");
       setTimeout(() => setVisible(false), 1800);
     }
-  }, [locationGranted, handleRequestLocation]);
+  }, [locationGranted]);
 
   const handleDismiss = () => {
     setVisible(false);

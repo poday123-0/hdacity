@@ -1969,11 +1969,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           }
         </AnimatePresence>
 
-        {!showProfile && <motion.div
+        <AnimatePresence>{!showProfile && !panelMinimized && <motion.div
           initial={{ y: "100%" }}
-          animate={{ y: panelMinimized ? "calc(100% - 0px)" : 0 }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel ${panelMinimized ? "landscape-minimized" : ""}`}
+          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel`}
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)", maxHeight: "min(65vh, calc(100dvh - 120px))" }}>
 
           <div className="px-4 pt-3 pb-5 space-y-3 overflow-y-auto flex-1 min-h-0">
@@ -2102,7 +2103,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               }
             </AnimatePresence>
           </div>
-        </motion.div>}
+        </motion.div>}</AnimatePresence>
 
         {/* Earnings History Modal */}
         {userProfile?.id &&

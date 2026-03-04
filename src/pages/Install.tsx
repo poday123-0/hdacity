@@ -9,7 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "@/hooks/use-toast";
 
-const APP_URL = "https://my.hda.taxi";
+const APP_URL = "https://app.hdataxi";
 
 interface InstallProps {
   defaultTab?: "passenger" | "driver";
