@@ -134,7 +134,24 @@ export const usePushNotifications = (
         try {
           const { PushNotifications } = await import("@capacitor/push-notifications");
 
-          const permResult = await PushNotifications.requestPermissions();
+          let permResult;
+          try {
+            permResult = await PushNotifications.checkPermissions();
+          } catch {
+            console.warn("Push permission check failed");
+            return;
+          }
+
+          // If not yet determined, request
+          if (permResult.receive === "prompt") {
+            try {
+              permResult = await PushNotifications.requestPermissions();
+            } catch {
+              console.warn("Push permission request failed");
+              return;
+            }
+          }
+
           if (permResult.receive !== "granted") {
             console.warn("Push notification permission denied");
             return;
@@ -143,9 +160,13 @@ export const usePushNotifications = (
           await PushNotifications.register();
 
           PushNotifications.addListener("registration", async (token) => {
-            console.log("FCM Token (native):", token.value);
-            const deviceType = Capacitor.getPlatform() === "ios" ? "ios" : "android";
-            await registerDeviceToken(userId, token.value, userType, deviceType);
+            try {
+              console.log("FCM Token (native):", token.value);
+              const deviceType = Capacitor.getPlatform() === "ios" ? "ios" : "android";
+              await registerDeviceToken(userId, token.value, userType, deviceType);
+            } catch (err) {
+              console.error("Failed to register device token:", err);
+            }
           });
 
           PushNotifications.addListener("registrationError", (error) => {
@@ -154,12 +175,16 @@ export const usePushNotifications = (
 
           // Native foreground: play custom sound
           PushNotifications.addListener("pushNotificationReceived", (notification) => {
-            console.log("Push received (foreground):", notification);
-            const soundUrl = notification.data?.sound_url;
-            if (soundUrl) {
-              playSound(soundUrl);
-            } else {
-              playFallbackBeep();
+            try {
+              console.log("Push received (foreground):", notification);
+              const soundUrl = notification.data?.sound_url;
+              if (soundUrl) {
+                playSound(soundUrl);
+              } else {
+                playFallbackBeep();
+              }
+            } catch (err) {
+              console.error("Foreground notification handler error:", err);
             }
           });
 
