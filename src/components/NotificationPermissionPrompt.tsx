@@ -1,14 +1,72 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, MapPin, X, Check, ChevronRight } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 
 const SNOOZE_UNTIL_KEY = "hda_permissions_snooze_until";
 
 type PermissionStep = "intro" | "location" | "notification" | "done";
 
+const isNative = Capacitor.isNativePlatform();
+
+/**
+ * Check if notification permission is already granted (works on both web and native).
+ */
+async function isNotifGranted(): Promise<boolean> {
+  if (isNative) {
+    try {
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+      const perm = await PushNotifications.checkPermissions();
+      return perm.receive === "granted";
+    } catch {
+      return false;
+    }
+  }
+  return "Notification" in window && Notification.permission === "granted";
+}
+
+/**
+ * Check if notification permission is in "prompt" state (not yet asked).
+ */
+async function isNotifPromptable(): Promise<boolean> {
+  if (isNative) {
+    try {
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+      const perm = await PushNotifications.checkPermissions();
+      return perm.receive === "prompt";
+    } catch {
+      return false;
+    }
+  }
+  return "Notification" in window && Notification.permission === "default";
+}
+
+/**
+ * Request notification permission (works on both web and native).
+ */
+async function requestNotifPermission(): Promise<boolean> {
+  if (isNative) {
+    try {
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+      const result = await PushNotifications.requestPermissions();
+      return result.receive === "granted";
+    } catch {
+      return false;
+    }
+  }
+  if (!("Notification" in window)) return false;
+  try {
+    const result = await Notification.requestPermission();
+    return result === "granted";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Unified permission prompt — asks for both Location and Notification
  * permissions in a friendly two-step flow on first app load.
+ * Works on both web (PWA) and native (Capacitor) platforms.
  */
 const NotificationPermissionPrompt = () => {
   const [visible, setVisible] = useState(false);
@@ -17,13 +75,19 @@ const NotificationPermissionPrompt = () => {
   const [notifGranted, setNotifGranted] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if both permissions are already granted
-    const notifAlready = "Notification" in window && Notification.permission === "granted";
-    const locAlready = navigator.permissions
-      ? navigator.permissions.query({ name: "geolocation" as PermissionName }).then(r => r.state === "granted").catch(() => false)
-      : Promise.resolve(false);
+    let cancelled = false;
 
-    locAlready.then((locGranted) => {
+    const checkPermissions = async () => {
+      const notifAlready = await isNotifGranted();
+      
+      let locGranted = false;
+      try {
+        if (navigator.permissions) {
+          const result = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+          locGranted = result.state === "granted";
+        }
+      } catch {}
+
       if (notifAlready && locGranted) return; // All good
 
       // Check snooze
@@ -34,49 +98,21 @@ const NotificationPermissionPrompt = () => {
       } catch {}
 
       // Show after a short delay
-      const timer = setTimeout(() => {
+      setTimeout(() => {
+        if (cancelled) return;
         setLocationGranted(locGranted);
         setNotifGranted(notifAlready);
         setVisible(true);
       }, 1500);
-      return () => clearTimeout(timer);
-    });
-  }, []);
+    };
 
-  const handleRequestLocation = useCallback(async () => {
-    try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-      });
-      if (pos) {
-        setLocationGranted(true);
-      }
-    } catch {
-      setLocationGranted(false);
-    }
-    // Move to notification step
-    if ("Notification" in window && Notification.permission === "default") {
-      setStep("notification");
-    } else {
-      setStep("done");
-      setTimeout(() => setVisible(false), 1800);
-    }
+    checkPermissions();
+    return () => { cancelled = true; };
   }, []);
 
   const handleRequestNotification = useCallback(async () => {
-    if (!("Notification" in window)) {
-      setNotifGranted(false);
-      setStep("done");
-      setTimeout(() => setVisible(false), 1800);
-      return;
-    }
     try {
-      // On mobile browsers, requestPermission must be called from a user gesture
-      const result = await Notification.requestPermission();
-      const granted = result === "granted";
+      const granted = await requestNotifPermission();
       setNotifGranted(granted);
       if (granted) {
         try { localStorage.removeItem(SNOOZE_UNTIL_KEY); } catch {}
@@ -88,43 +124,39 @@ const NotificationPermissionPrompt = () => {
     setTimeout(() => setVisible(false), 1800);
   }, []);
 
-  const handleStart = useCallback(() => {
-    // If location not yet granted, ask for it first
-    if (!locationGranted) {
-      setStep("location");
-      // Request location, then auto-advance to notification step
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          setLocationGranted(true);
-          if ("Notification" in window && Notification.permission === "default") {
-            setStep("notification");
-          } else {
-            setStep("done");
-            setTimeout(() => setVisible(false), 1800);
-          }
-        },
-        () => {
-          setLocationGranted(false);
-          if ("Notification" in window && Notification.permission === "default") {
-            setStep("notification");
-          } else {
-            setStep("done");
-            setTimeout(() => setVisible(false), 1800);
-          }
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    } else if ("Notification" in window && Notification.permission === "default") {
+  const advanceAfterLocation = useCallback(async () => {
+    const canPrompt = await isNotifPromptable();
+    if (canPrompt) {
       setStep("notification");
     } else {
+      const alreadyGranted = await isNotifGranted();
+      setNotifGranted(alreadyGranted);
       setStep("done");
       setTimeout(() => setVisible(false), 1800);
     }
-  }, [locationGranted]);
+  }, []);
+
+  const handleStart = useCallback(() => {
+    if (!locationGranted) {
+      setStep("location");
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setLocationGranted(true);
+          advanceAfterLocation();
+        },
+        () => {
+          setLocationGranted(false);
+          advanceAfterLocation();
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      advanceAfterLocation();
+    }
+  }, [locationGranted, advanceAfterLocation]);
 
   const handleDismiss = () => {
     setVisible(false);
-    // Snooze for 3 hours
     try { localStorage.setItem(SNOOZE_UNTIL_KEY, String(Date.now() + 3 * 60 * 60 * 1000)); } catch {}
   };
 
@@ -245,7 +277,7 @@ const NotificationPermissionPrompt = () => {
                       <MapPin className="w-6 h-6 text-blue-600 animate-pulse" />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Please allow location access in the browser popup…
+                      Please allow location access…
                     </p>
                   </motion.div>
                 )}
@@ -309,8 +341,8 @@ const NotificationPermissionPrompt = () => {
                         : locationGranted
                         ? "Location enabled. You can enable notifications in settings."
                         : notifGranted
-                        ? "Notifications enabled. Enable location in browser settings for GPS."
-                        : "You can enable permissions later in your browser settings."}
+                        ? "Notifications enabled. Enable location in settings for GPS."
+                        : "You can enable permissions later in settings."}
                     </p>
                   </motion.div>
                 )}
