@@ -466,54 +466,35 @@ const AdminDrivers = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">Drivers & Vehicles</h1>
-          <p className="text-sm text-muted-foreground">{drivers.length} drivers · {allVehicles.length} vehicles</p>
+          <p className="text-sm text-muted-foreground">{filteredDrivers.length} of {drivers.length} drivers · {allVehicles.length} vehicles</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-muted transition-colors">
             <FileUp className="w-3.5 h-3.5" />Import CSV
           </button>
-          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${showFilters ? "bg-primary text-primary-foreground" : "bg-surface border border-border text-foreground hover:bg-muted"}`}>
-            <Filter className="w-3.5 h-3.5" />Filters
-          </button>
         </div>
       </div>
 
-      {/* ── Pending Tasks Summary ── */}
-      {!loading && (pendingDrivers.length > 0 || pendingVehicles.length > 0 || incompleteDocDrivers.length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {pendingDrivers.length > 0 && (
-            <button onClick={() => setStatusFilter(statusFilter === "Pending" ? "all" : "Pending")} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${statusFilter === "Pending" ? "bg-primary/10 border-primary/30" : "bg-card border-border hover:border-primary/20"}`}>
-              <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
-                <Clock className="w-5 h-5 text-yellow-600" />
+      {/* ── Statistics Grid ── */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Active", value: drivers.filter(d => d.status === "Active").length, icon: UserCheck, color: "text-green-600", bg: "bg-green-500/10", filter: "Active" as StatusFilter },
+            { label: "Inactive", value: drivers.filter(d => d.status === "Inactive").length, icon: UserX, color: "text-muted-foreground", bg: "bg-muted/50", filter: "Inactive" as StatusFilter },
+            { label: "Pending", value: pendingDrivers.length, icon: Clock, color: "text-yellow-600", bg: "bg-yellow-500/10", filter: "Pending" as StatusFilter },
+            { label: "Vehicles", value: allVehicles.filter(v => v.vehicle_status === "approved").length, icon: Car, color: "text-blue-600", bg: "bg-blue-500/10", filter: null },
+            { label: "Pending Vehicles", value: pendingVehicles.length, icon: Car, color: "text-orange-600", bg: "bg-orange-500/10", filter: null },
+            { label: "Incomplete Docs", value: incompleteDocDrivers.length, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", filter: null },
+          ].map((stat) => (
+            <button key={stat.label} onClick={() => { if (stat.filter) setStatusFilter(statusFilter === stat.filter ? "all" : stat.filter); }}
+              className={`flex flex-col items-center gap-1 p-3 rounded-2xl border transition-all ${stat.filter && statusFilter === stat.filter ? "bg-primary/10 border-primary/30 ring-1 ring-primary/20" : "bg-card border-border hover:border-primary/20"} ${stat.filter ? "cursor-pointer" : "cursor-default"}`}>
+              <div className={`w-8 h-8 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
-              <div className="text-left">
-                <p className="text-lg font-bold text-foreground">{pendingDrivers.length}</p>
-                <p className="text-[11px] text-muted-foreground">Pending Drivers</p>
-              </div>
+              <p className="text-xl font-bold text-foreground leading-none">{stat.value}</p>
+              <p className="text-[10px] text-muted-foreground font-medium leading-tight text-center">{stat.label}</p>
             </button>
-          )}
-          {pendingVehicles.length > 0 && (
-            <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
-                <Car className="w-5 h-5 text-orange-600" />
-              </div>
-              <div className="text-left">
-                <p className="text-lg font-bold text-foreground">{pendingVehicles.length}</p>
-                <p className="text-[11px] text-muted-foreground">Vehicles Awaiting Approval</p>
-              </div>
-            </div>
-          )}
-          {incompleteDocDrivers.length > 0 && (
-            <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-              </div>
-              <div className="text-left">
-                <p className="text-lg font-bold text-foreground">{incompleteDocDrivers.length}</p>
-                <p className="text-[11px] text-muted-foreground">Incomplete Documents</p>
-              </div>
-            </div>
-          )}
+          ))}
         </div>
       )}
 
@@ -528,7 +509,6 @@ const AdminDrivers = () => {
           <div className="divide-y divide-border">
             {pendingVehicles.map((v) => (
               <div key={v.id} className="px-4 py-3 flex items-center gap-4">
-                {/* Vehicle photo thumbnail */}
                 <div className="w-14 h-10 rounded-lg bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
                   {v.image_url ? (
                     <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
@@ -540,7 +520,6 @@ const AdminDrivers = () => {
                   <p className="text-sm font-bold text-foreground truncate">{v.plate_number} — {v.make} {v.model}</p>
                   <p className="text-[11px] text-muted-foreground">{v.color} · {v.vehicle_types?.name || "No type"} · Driver: {getDriverName(v.driver_id)}</p>
                 </div>
-                {/* Doc badges */}
                 <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                   {[
                     { url: v.image_url, label: "Photo", bg: "bg-purple-50", border: "border-purple-100", text: "text-purple-600", hoverBg: "hover:bg-purple-100" },
@@ -554,7 +533,6 @@ const AdminDrivers = () => {
                     <span key={doc.label} className="text-[10px] text-muted-foreground/40 px-2 py-1">No {doc.label}</span>
                   ))}
                 </div>
-                {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-colors">
                     <Check className="w-3.5 h-3.5" /> Approve
@@ -571,55 +549,71 @@ const AdminDrivers = () => {
 
       {/* ── Search + Filters ── */}
       <div className="space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, phone, plate number, or center code..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, phone, plate number, or center code..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors shrink-0 ${showFilters ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"}`}>
+            <Filter className="w-3.5 h-3.5" />Filters
+            {(statusFilter !== "all" || companyFilter || vehicleStatusFilter || docFilter !== "all") && (
+              <span className="w-2 h-2 rounded-full bg-destructive" />
+            )}
+          </button>
         </div>
 
         {showFilters && (
-          <div className="flex items-center gap-3 flex-wrap bg-card border border-border rounded-xl px-4 py-3">
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status</label>
-              <div className="flex gap-1.5 mt-1">
-                {(["all", "Active", "Inactive", "Pending", "Pending Review"] as StatusFilter[]).map((s) => (
-                  <button key={s} onClick={() => setStatusFilter(s)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
-                    {s === "all" ? "All" : s}
-                  </button>
-                ))}
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Status</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["all", "Active", "Inactive", "Pending", "Pending Review"] as StatusFilter[]).map((s) => {
+                    const count = s === "all" ? drivers.length : drivers.filter(d => d.status === s).length;
+                    return (
+                      <button key={s} onClick={() => setStatusFilter(s)}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+                        {s === "all" ? "All" : s} <span className="opacity-60">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Company</label>
+                <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="w-full px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">All Companies</option>
+                  {companies.map((c) => {
+                    const count = drivers.filter(d => d.company_id === c.id).length;
+                    return <option key={c.id} value={c.id}>{c.name} ({count})</option>;
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Vehicle Status</label>
+                <select value={vehicleStatusFilter} onChange={(e) => setVehicleStatusFilter(e.target.value)} className="w-full px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">All</option>
+                  <option value="pending">Pending ({allVehicles.filter(v => v.vehicle_status === "pending").length})</option>
+                  <option value="approved">Approved ({allVehicles.filter(v => v.vehicle_status === "approved").length})</option>
+                  <option value="rejected">Rejected ({allVehicles.filter(v => v.vehicle_status === "rejected").length})</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Documents</label>
+                <select value={docFilter} onChange={(e) => setDocFilter(e.target.value as any)} className="w-full px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="all">All</option>
+                  <option value="complete">Complete ({drivers.filter(d => [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length >= 4).length})</option>
+                  <option value="incomplete">Incomplete ({incompleteDocDrivers.length})</option>
+                </select>
               </div>
             </div>
-            <div className="h-8 w-px bg-border" />
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Company</label>
-              <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="mt-1 block px-2.5 py-1 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">All Companies</option>
-                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="h-8 w-px bg-border" />
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Vehicle Status</label>
-              <select value={vehicleStatusFilter} onChange={(e) => setVehicleStatusFilter(e.target.value)} className="mt-1 block px-2.5 py-1 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">All</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-            <div className="h-8 w-px bg-border" />
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Documents</label>
-              <select value={docFilter} onChange={(e) => setDocFilter(e.target.value as any)} className="mt-1 block px-2.5 py-1 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="all">All</option>
-                <option value="complete">Complete</option>
-                <option value="incomplete">Incomplete</option>
-              </select>
-            </div>
             {(statusFilter !== "all" || companyFilter || vehicleStatusFilter || docFilter !== "all") && (
-              <button onClick={() => { setStatusFilter("all"); setCompanyFilter(""); setVehicleStatusFilter(""); setDocFilter("all"); }} className="text-[11px] text-primary font-semibold hover:underline ml-auto">
-                Clear filters
-              </button>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <p className="text-[11px] text-muted-foreground">Showing <span className="font-bold text-foreground">{filteredDrivers.length}</span> of {drivers.length} drivers</p>
+                <button onClick={() => { setStatusFilter("all"); setCompanyFilter(""); setVehicleStatusFilter(""); setDocFilter("all"); }} className="text-[11px] text-primary font-semibold hover:underline">
+                  Clear all filters
+                </button>
+              </div>
             )}
           </div>
         )}
