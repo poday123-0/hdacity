@@ -73,12 +73,12 @@ const Install = ({ defaultTab }: InstallProps) => {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="w-24 h-24 rounded-[28px] bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-primary/20 shadow-lg shadow-primary/10 mb-5"
+          className="w-32 h-32 rounded-[32px] bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-primary/20 shadow-lg shadow-primary/10 mb-5"
         >
           {appIconUrl ? (
-            <img src={appIconUrl} alt="HDA TAXI" className="w-full h-full object-cover rounded-[28px]" />
+            <img src={appIconUrl} alt="HDA TAXI" className="w-full h-full object-cover rounded-[32px]" />
           ) : (
-            <SystemLogo className="w-14 h-14 object-contain" alt="HDA" />
+            <SystemLogo className="w-20 h-20 object-contain" alt="HDA" />
           )}
         </motion.div>
 
