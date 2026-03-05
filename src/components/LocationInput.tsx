@@ -140,7 +140,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   }, [userId]);
 
   useEffect(() => {
-    if (!pickup) detectCurrentLocation();
+    if (!pickup) detectCurrentLocation(false);
   }, [locations.length]);
 
   // Point-in-polygon check
@@ -294,20 +294,37 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     return nearest;
   }, [locations]);
 
-  const detectCurrentLocation = () => {
+  const watchIdRef = useRef<number | null>(null);
+
+  // Clean up watcher on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  const detectCurrentLocation = (autoFocusDropoff = false) => {
     if (!navigator.geolocation) return;
     setDetectingLocation(true);
 
-    // Try fast low-accuracy first, then refine with high accuracy
-    const onPosition = async (pos: GeolocationPosition, isFinal: boolean) => {
-      const { latitude, longitude } = pos.coords;
+    // Clear any previous watcher
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    let resolved = false;
+
+    const onPosition = async (pos: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = pos.coords;
       const nearest = findNearestServiceArea(latitude, longitude);
 
-      // Set immediately with nearest area name so UI feels instant
       const quickLoc: ServiceLocation = {
         id: nearest?.id || "current-location",
         name: nearest?.name || "Current Location",
-        address: nearest?.address || "",
+        address: nearest?.address || `±${Math.round(accuracy)}m`,
         lat: latitude,
         lng: longitude,
       };
@@ -315,35 +332,37 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       setPickupQuery(quickLoc.name);
       setDetectingLocation(false);
 
-      if (!dropoff) {
+      if (!resolved && autoFocusDropoff && !dropoff) {
         setActiveField("dropoff");
-        setTimeout(() => dropoffRef.current?.focus(), 100);
       }
+      resolved = true;
 
-      // Resolve actual place name in background (non-blocking)
+      // Resolve actual place name in background
       reverseGeocodeLocation(latitude, longitude).then((result) => {
-        const detailedLoc: ServiceLocation = {
-          ...quickLoc,
+        setPickup(prev => prev?.lat === latitude && prev?.lng === longitude ? {
+          ...prev,
           name: result.name,
           address: result.address,
-        };
-        setPickup(detailedLoc);
-        setPickupQuery(result.name);
+        } : prev);
+        setPickupQuery(prev => prev === quickLoc.name || prev === nearest?.name ? result.name : prev);
       }).catch(() => {});
     };
 
-    // 1) Fast coarse position (cell/wifi, no GPS wait)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => onPosition(pos, false),
-      () => {},
-      { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+    // Use watchPosition for real-time continuous location updates
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      onPosition,
+      (err) => {
+        console.warn("Geolocation error:", err.message);
+        setDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
 
-    // 2) Accurate GPS position (refines the coarse one)
+    // Also get a fast coarse position immediately
     navigator.geolocation.getCurrentPosition(
-      (pos) => onPosition(pos, true),
-      () => setDetectingLocation(false),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      onPosition,
+      () => {},
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 30000 }
     );
   };
 
@@ -354,7 +373,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       setPlaceResults([]);
       if (!dropoff) {
         setActiveField("dropoff");
-        setTimeout(() => dropoffRef.current?.focus(), 100);
+        // Don't auto-focus to avoid keyboard popup on mobile
         return;
       }
     } else if (activeField === "dropoff") {
@@ -552,7 +571,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
           <div className="flex items-center gap-1.5 shrink-0">
             {!minimized && (
               <button
-                onClick={detectCurrentLocation}
+                onClick={() => detectCurrentLocation(false)}
                 disabled={detectingLocation}
                 className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-primary/10 text-primary text-[11px] font-semibold active:scale-95 transition-all"
               >

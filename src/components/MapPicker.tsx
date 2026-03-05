@@ -16,6 +16,8 @@ interface MapPickerProps {
   onCancel: () => void;
   initialLat?: number;
   initialLng?: number;
+  /** If true, selecting a nearby place updates the pin instead of closing */
+  keepOpenOnNearbySelect?: boolean;
 }
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
@@ -30,7 +32,7 @@ const darkMapStyle = [
   { featureType: "poi", elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
 ];
 
-const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerProps) => {
+const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNearbySelect = true }: MapPickerProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const [center, setCenter] = useState({ lat: initialLat || MALE_CENTER.lat, lng: initialLng || MALE_CENTER.lng });
@@ -263,7 +265,18 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng }: MapPickerPro
             {nearbyPlaces.map((place, i) => (
               <button
                 key={i}
-                onClick={() => onConfirm(place.lat, place.lng, place.name, place.vicinity)}
+                onClick={() => {
+                  if (keepOpenOnNearbySelect && mapInstance.current) {
+                    // Pan to the nearby place instead of closing
+                    const newCenter = { lat: place.lat, lng: place.lng };
+                    mapInstance.current.panTo(newCenter);
+                    setCenter(newCenter);
+                    setPlaceName(place.name);
+                    setAddress(place.vicinity);
+                  } else {
+                    onConfirm(place.lat, place.lng, place.name, place.vicinity);
+                  }
+                }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl bg-surface border border-border hover:border-primary/30 hover:bg-primary/5 active:scale-[0.98] transition-all"
               >
                 <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
