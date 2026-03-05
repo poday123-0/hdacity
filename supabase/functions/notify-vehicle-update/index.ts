@@ -40,15 +40,15 @@ serve(async (req) => {
     if (MSGOWL_API_KEY && phones.length > 0) {
       for (const phone of phones) {
         try {
-          const res = await fetch("https://api.msgowl.com/api/sms", {
+          const res = await fetch("https://rest.msgowl.com/messages", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${MSGOWL_API_KEY}`,
+              Authorization: `AccessKey ${MSGOWL_API_KEY}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              to: phone.startsWith("+") ? phone : `+960${phone}`,
-              message: adminMessage,
+              recipients: phone.startsWith("+") ? phone.replace("+", "") : `960${phone}`,
+              body: adminMessage,
             }),
           });
           console.log(`SMS to ${phone}: status=${res.status}`);
@@ -111,13 +111,13 @@ serve(async (req) => {
         try {
           const cc = country_code || "960";
           const driverPhone = phone_number.startsWith("+") ? phone_number : `+${cc}${phone_number}`;
-          await fetch("https://api.msgowl.com/api/sms", {
+          await fetch("https://rest.msgowl.com/messages", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${MSGOWL_API_KEY}`,
+              Authorization: `AccessKey ${MSGOWL_API_KEY}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ to: driverPhone, message: driverMessage }),
+            body: JSON.stringify({ recipients: driverPhone.replace("+", ""), body: driverMessage }),
           });
           console.log("SMS sent to driver:", driverPhone);
         } catch (e) {
