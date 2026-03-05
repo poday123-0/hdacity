@@ -101,6 +101,7 @@ const Dispatch = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
+  const [lostTrips, setLostTrips] = useState<any[]>([]);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
@@ -139,7 +140,7 @@ const Dispatch = () => {
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
-      const [vtRes, driversRes, tripsRes] = await Promise.all([
+      const [vtRes, driversRes, tripsRes, lostRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("driver_locations").select(`
           driver_id, lat, lng,
@@ -147,10 +148,13 @@ const Dispatch = () => {
           vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
         `).eq("is_online", true).eq("is_on_trip", false),
         supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
-          .eq("dispatch_type", "operator").order("created_at", { ascending: false }).limit(20),
+          .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(30),
+        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name)")
+          .eq("dispatch_type", "operator").in("status", ["cancelled", "expired", "no_driver"]).order("created_at", { ascending: false }).limit(20),
       ]);
       setVehicleTypes(vtRes.data || []);
       setRecentTrips(tripsRes.data || []);
+      setLostTrips(lostRes.data || []);
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
         first_name: (d.profiles as any)?.first_name || "",
@@ -167,9 +171,14 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
-    const { data } = await supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
-      .eq("dispatch_type", "operator").order("created_at", { ascending: false }).limit(20);
+    const [{ data }, { data: lost }] = await Promise.all([
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
+        .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(30),
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name)")
+        .eq("dispatch_type", "operator").in("status", ["cancelled", "expired", "no_driver"]).order("created_at", { ascending: false }).limit(20),
+    ]);
     setRecentTrips(data || []);
+    setLostTrips(lost || []);
   };
 
   // Login handlers
@@ -363,23 +372,122 @@ const Dispatch = () => {
       {/* Content area - scrollable */}
       <div className="flex-1 overflow-auto">
         {activeTab === "dispatch" && (
-          <div className="p-3 sm:p-4 lg:p-6 space-y-4">
+          <div className="p-2 sm:p-3 lg:p-4">
             {/* SOS Alerts */}
             <SOSAlertPanel />
 
+            {/* Two-column layout: tables left, forms right */}
+            <div className="flex flex-col xl:flex-row gap-3 mt-3">
+              {/* Left side — Recent Rides + Lost Rides */}
+              <div className="flex-1 min-w-0 space-y-3">
+                {/* Recent Rides */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Navigation className="w-3.5 h-3.5 text-primary" /> Recent Rides
+                      <span className="text-[10px] font-normal text-muted-foreground ml-1">({recentTrips.length})</span>
+                    </h3>
+                    <button onClick={refreshTrips} className="text-[10px] text-primary font-medium hover:underline">Refresh</button>
+                  </div>
+                  <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
+                    <table className="w-full text-[11px]">
+                      <thead className="bg-surface sticky top-0">
+                        <tr className="text-left text-muted-foreground">
+                          <th className="px-2 py-1.5 font-medium">Time</th>
+                          <th className="px-2 py-1.5 font-medium">Customer</th>
+                          <th className="px-2 py-1.5 font-medium">From → To</th>
+                          <th className="px-2 py-1.5 font-medium">Driver</th>
+                          <th className="px-2 py-1.5 font-medium">Status</th>
+                          <th className="px-2 py-1.5 font-medium">Fare</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {recentTrips.length === 0 ? (
+                          <tr><td colSpan={6} className="px-2 py-4 text-center text-muted-foreground">No recent rides</td></tr>
+                        ) : recentTrips.map((t: any) => (
+                          <tr key={t.id} className="hover:bg-surface/50 transition-colors">
+                            <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td className="px-2 py-1.5 text-foreground font-medium truncate max-w-[100px]">{t.customer_name || "—"}</td>
+                            <td className="px-2 py-1.5 text-foreground truncate max-w-[180px]">
+                              <span className="text-muted-foreground">{(t.pickup_address || "").split(",")[0]}</span>
+                              <span className="text-primary mx-1">→</span>
+                              <span>{(t.dropoff_address || "").split(",")[0]}</span>
+                            </td>
+                            <td className="px-2 py-1.5 text-foreground truncate max-w-[100px]">
+                              {t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                t.status === "completed" ? "bg-green-500/10 text-green-600" :
+                                t.status === "started" ? "bg-blue-500/10 text-blue-600" :
+                                t.status === "accepted" ? "bg-amber-500/10 text-amber-600" :
+                                "bg-surface text-muted-foreground"
+                              }`}>{t.status}</span>
+                            </td>
+                            <td className="px-2 py-1.5 text-foreground font-medium">{t.actual_fare || t.estimated_fare || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-            {/* 3 horizontal bid forms */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {[0, 1, 2].map(i => (
-                <DispatchTripForm
-                  key={i}
-                  formIndex={i}
-                  dispatcherProfile={dispatcherProfile}
-                  vehicleTypes={vehicleTypes}
-                  onlineDrivers={onlineDrivers}
-                  onTripCreated={refreshTrips}
-                />
-              ))}
+                {/* Lost Rides */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border">
+                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-destructive" /> Lost / Cancelled Rides
+                      <span className="text-[10px] font-normal text-muted-foreground ml-1">({lostTrips.length})</span>
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto max-h-[220px] overflow-y-auto">
+                    <table className="w-full text-[11px]">
+                      <thead className="bg-surface sticky top-0">
+                        <tr className="text-left text-muted-foreground">
+                          <th className="px-2 py-1.5 font-medium">Time</th>
+                          <th className="px-2 py-1.5 font-medium">Customer</th>
+                          <th className="px-2 py-1.5 font-medium">From → To</th>
+                          <th className="px-2 py-1.5 font-medium">Status</th>
+                          <th className="px-2 py-1.5 font-medium">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {lostTrips.length === 0 ? (
+                          <tr><td colSpan={5} className="px-2 py-4 text-center text-muted-foreground">No lost rides</td></tr>
+                        ) : lostTrips.map((t: any) => (
+                          <tr key={t.id} className="hover:bg-surface/50 transition-colors">
+                            <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td className="px-2 py-1.5 text-foreground font-medium truncate max-w-[100px]">{t.customer_name || "—"}</td>
+                            <td className="px-2 py-1.5 text-foreground truncate max-w-[180px]">
+                              <span className="text-muted-foreground">{(t.pickup_address || "").split(",")[0]}</span>
+                              <span className="text-destructive mx-1">→</span>
+                              <span>{(t.dropoff_address || "").split(",")[0]}</span>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive">{t.status}</span>
+                            </td>
+                            <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[120px]">{t.cancel_reason || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right side — 3 compact bid forms */}
+              <div className="xl:w-[480px] 2xl:w-[540px] shrink-0 space-y-2">
+                {[0, 1, 2].map(i => (
+                  <DispatchTripForm
+                    key={i}
+                    formIndex={i}
+                    dispatcherProfile={dispatcherProfile}
+                    vehicleTypes={vehicleTypes}
+                    onlineDrivers={onlineDrivers}
+                    onTripCreated={refreshTrips}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
