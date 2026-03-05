@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/hooks/use-theme";
 import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "@/hooks/use-toast";
+import { useBranding } from "@/hooks/use-branding";
 
 const APP_URL = "https://app.hdataxi";
 
@@ -20,6 +21,7 @@ const Install = ({ defaultTab }: InstallProps) => {
   useTheme();
   const { canInstall, isIOS, isInstalled, promptInstall } = usePWAInstall();
   const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
+  const { appName } = useBranding();
 
   useEffect(() => {
     const loadIcon = async () => {
@@ -87,7 +89,7 @@ const Install = ({ defaultTab }: InstallProps) => {
           transition={{ delay: 0.1 }}
           className="text-center mb-8"
         >
-          <h1 className="text-xl font-extrabold text-foreground">HDA Taxi</h1>
+          <h1 className="text-xl font-extrabold text-foreground">{appName || "HDA Taxi"}</h1>
           <p className="text-sm text-muted-foreground mt-1">On Time · Every Time</p>
         </motion.div>
 

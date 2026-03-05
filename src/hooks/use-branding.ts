@@ -5,6 +5,7 @@ interface Branding {
   logoUrl: string | null;
   shareImageUrl: string | null;
   faviconUrl: string | null;
+  appName: string | null;
 }
 
 let cachedBranding: Branding | null = null;
@@ -17,13 +18,14 @@ const fetchBranding = (): Promise<Branding> => {
       const { data } = await supabase
         .from("system_settings")
         .select("key, value")
-        .in("key", ["system_logo_url", "system_share_image_url", "system_favicon_url"]);
+        .in("key", ["system_logo_url", "system_share_image_url", "system_favicon_url", "system_app_name"]);
       const map: Record<string, any> = {};
       data?.forEach((s: any) => { map[s.key] = s.value; });
       cachedBranding = {
         logoUrl: (typeof map.system_logo_url === "string" ? map.system_logo_url : null),
         shareImageUrl: (typeof map.system_share_image_url === "string" ? map.system_share_image_url : null),
         faviconUrl: (typeof map.system_favicon_url === "string" ? map.system_favicon_url : null),
+        appName: (typeof map.system_app_name === "string" ? map.system_app_name : null),
       };
       return cachedBranding;
     })();
@@ -41,7 +43,7 @@ export const invalidateBranding = () => {
 };
 
 export const useBranding = () => {
-  const [branding, setBranding] = useState<Branding>(cachedBranding || { logoUrl: null, shareImageUrl: null, faviconUrl: null });
+  const [branding, setBranding] = useState<Branding>(cachedBranding || { logoUrl: null, shareImageUrl: null, faviconUrl: null, appName: null });
 
   useEffect(() => {
     fetchBranding().then(setBranding);
