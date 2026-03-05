@@ -37,8 +37,8 @@ const VIBRATE_PATTERNS = {
 messaging.onBackgroundMessage((payload) => {
   console.log("[SW] Background message received:", payload);
 
-  const title = payload.notification?.title || payload.data?.title || "New Notification";
-  const body = payload.notification?.body || payload.data?.body || "";
+  const title = payload.data?.title || payload.notification?.title || "New Notification";
+  const body = payload.data?.body || payload.notification?.body || "";
   const type = payload.data?.type || "default";
   const soundUrl = payload.data?.sound_url || "";
   const soundCategory = payload.data?.sound_category || type;
@@ -99,6 +99,8 @@ messaging.onBackgroundMessage((payload) => {
         });
       }
     });
+  }
+});
   }
 });
 
