@@ -259,7 +259,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         </div>
 
         {/* Nearby places */}
-        {!loading && nearbyPlaces.length > 0 && (
+        {nearbyPlaces.length > 0 && (
           <div className="mb-3 space-y-1">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">Nearby places</p>
             {nearbyPlaces.map((place, i) => (
