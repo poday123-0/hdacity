@@ -35,66 +35,71 @@ serve(async (req) => {
 
     const adminMessage = `Vehicle update from ${driver_name} (+960 ${phone_number}): ${update_type} for plate ${plate_number || "N/A"}. Please review in admin panel.`;
 
-    // Send SMS to configured admin phones
     const MSGOWL_API_KEY = Deno.env.get("MSGOWL_API_KEY");
-    if (MSGOWL_API_KEY && phones.length > 0) {
-      for (const phone of phones) {
-        try {
-          const res = await fetch("https://rest.msgowl.com/messages", {
-            method: "POST",
-            headers: {
-              Authorization: `AccessKey ${MSGOWL_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              recipients: phone.startsWith("+") ? phone.replace("+", "") : `960${phone}`,
-              sender_id: "HDA TAXI",
-              body: adminMessage,
-            }),
-          });
-          const resBody = await res.text();
-          console.log(`SMS to ${phone}: status=${res.status} body=${resBody}`);
-        } catch (e) {
-          console.error("SMS send failed for", phone, e);
+
+    // Only send SMS/email to admin when it's NOT an approval/rejection action (i.e. new registration notifications)
+    if (!notify_driver) {
+      if (MSGOWL_API_KEY && phones.length > 0) {
+        for (const phone of phones) {
+          try {
+            const res = await fetch("https://rest.msgowl.com/messages", {
+              method: "POST",
+              headers: {
+                Authorization: `AccessKey ${MSGOWL_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                recipients: phone.startsWith("+") ? phone.replace("+", "") : `960${phone}`,
+                sender_id: "HDA TAXI",
+                body: adminMessage,
+              }),
+            });
+            const resBody = await res.text();
+            console.log(`SMS to ${phone}: status=${res.status} body=${resBody}`);
+          } catch (e) {
+            console.error("SMS send failed for", phone, e);
+          }
         }
       }
     }
 
-    // Send email via Resend to each email recipient
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (RESEND_API_KEY && emails.length > 0) {
-      const resend = new Resend(RESEND_API_KEY);
-      const subject = `🚕 Vehicle Update: ${update_type} — ${driver_name}`;
-      const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #40A3DB; color: white; padding: 16px 24px; border-radius: 12px 12px 0 0;">
-            <h2 style="margin: 0; font-size: 18px;">Vehicle / Driver Update</h2>
+    // Send email via Resend to admin only for new registrations (not approvals/rejections)
+    if (!notify_driver) {
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (RESEND_API_KEY && emails.length > 0) {
+        const resend = new Resend(RESEND_API_KEY);
+        const subject = `🚕 Vehicle Update: ${update_type} — ${driver_name}`;
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #40A3DB; color: white; padding: 16px 24px; border-radius: 12px 12px 0 0;">
+              <h2 style="margin: 0; font-size: 18px;">Vehicle / Driver Update</h2>
+            </div>
+            <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0 0 12px; font-size: 15px; color: #111;">${adminMessage}</p>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Driver</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${driver_name}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Phone</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">+960 ${phone_number}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Update</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${update_type}</td></tr>
+                ${plate_number ? `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Plate</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${plate_number}</td></tr>` : ""}
+              </table>
+              <p style="margin: 20px 0 0; font-size: 13px; color: #9ca3af;">Please review in the admin panel.</p>
+            </div>
           </div>
-          <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-            <p style="margin: 0 0 12px; font-size: 15px; color: #111;">${adminMessage}</p>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Driver</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${driver_name}</td></tr>
-              <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Phone</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">+960 ${phone_number}</td></tr>
-              <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Update</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${update_type}</td></tr>
-              ${plate_number ? `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Plate</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${plate_number}</td></tr>` : ""}
-            </table>
-            <p style="margin: 20px 0 0; font-size: 13px; color: #9ca3af;">Please review in the admin panel.</p>
-          </div>
-        </div>
-      `;
+        `;
 
-      for (const email of emails) {
-        try {
-          const { error } = await resend.emails.send({
-            from: "HDA Taxi <onboarding@resend.dev>",
-            to: email,
-            subject,
-            html,
-          });
-          if (error) console.error(`Email to ${email} failed:`, error);
-          else console.log(`Email sent to ${email}`);
-        } catch (e) {
-          console.error("Email send failed for", email, e);
+        for (const email of emails) {
+          try {
+            const { error } = await resend.emails.send({
+              from: "HDA Taxi <onboarding@resend.dev>",
+              to: email,
+              subject,
+              html,
+            });
+            if (error) console.error(`Email to ${email} failed:`, error);
+            else console.log(`Email sent to ${email}`);
+          } catch (e) {
+            console.error("Email send failed for", email, e);
+          }
         }
       }
     }
