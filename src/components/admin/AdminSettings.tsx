@@ -75,6 +75,8 @@ const settingsConfig = [
   { key: "boost_step_amount", label: "Boost Step Amount (MVR)", type: "number" },
   { key: "default_driver_font_size", label: "Default Driver Font Size (%)", type: "number" },
   { key: "default_passenger_font_size", label: "Default Passenger Font Size (%)", type: "number" },
+  { key: "driver_location_interval_ms", label: "Driver Location Update Interval (ms)", type: "number" },
+  { key: "passenger_location_interval_ms", label: "Passenger Location Update Interval (ms)", type: "number" },
 ];
 
 const AdminSettings = () => {

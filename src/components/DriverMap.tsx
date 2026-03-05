@@ -398,7 +398,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (!map) return;
 
     if (isNavigating) {
-      map.setTilt(45);
+      map.setTilt(0);
       // Reset follow mode when entering navigation
       setFollowDriver(true);
       userInteractingRef.current = false;
@@ -1055,7 +1055,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           if (currentPos && mapInstance.current) {
             mapInstance.current.panTo(currentPos);
             mapInstance.current.setZoom(18);
-            mapInstance.current.setTilt(45);
+            mapInstance.current.setTilt(0);
           }
         }
       };

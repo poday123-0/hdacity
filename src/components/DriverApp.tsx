@@ -481,7 +481,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
       }
 
-      // Heartbeat every 10s
+      // Heartbeat — use admin-configured interval or default 3s
+      let driverIntervalMs = 3000;
+      try {
+        const { data: intervalSetting } = await supabase.from("system_settings").select("value").eq("key", "driver_location_interval_ms").single();
+        if (intervalSetting?.value) {
+          const val = typeof intervalSetting.value === "number" ? intervalSetting.value : parseInt(String(intervalSetting.value), 10);
+          if (!isNaN(val) && val >= 1000) driverIntervalMs = val;
+        }
+      } catch {}
       locationIntervalRef.current = setInterval(async () => {
         // Check if another device took over this driver's session FIRST
         const { data: locRow } = await supabase.
@@ -498,7 +506,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (lastPosRef.current) {
           upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
         }
-      }, 3000);
+      }, driverIntervalMs);
     };
 
     startTracking();

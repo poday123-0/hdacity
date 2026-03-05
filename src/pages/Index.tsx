@@ -425,10 +425,19 @@ const Index = () => {
 
     let watchId: number | null = null;
     let lastUpdate = 0;
+    let throttleMs = 5000;
+
+    // Fetch admin-configured passenger location interval
+    supabase.from("system_settings").select("value").eq("key", "passenger_location_interval_ms").single().then(({ data }) => {
+      if (data?.value) {
+        const val = typeof data.value === "number" ? data.value : parseInt(String(data.value), 10);
+        if (!isNaN(val) && val >= 1000) throttleMs = val;
+      }
+    });
 
     const updateLocation = (lat: number, lng: number) => {
       const now = Date.now();
-      if (now - lastUpdate < 5000) return;
+      if (now - lastUpdate < throttleMs) return;
       lastUpdate = now;
       supabase.from("trips").update({
         passenger_lat: lat,
@@ -445,7 +454,7 @@ const Index = () => {
       watchId = navigator.geolocation.watchPosition(
         (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
         () => {},
-        { enableHighAccuracy: true, maximumAge: 5000 }
+        { enableHighAccuracy: true, maximumAge: 3000 }
       );
     }
 
