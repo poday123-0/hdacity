@@ -178,12 +178,51 @@ const AdminVehicles = () => {
   const approveVehicle = async (id: string) => {
     await supabase.from("vehicles").update({ vehicle_status: "approved", rejection_reason: null } as any).eq("id", id);
     toast({ title: "Vehicle approved ✅" });
+    // Notify driver via SMS
+    const vehicle = vehicles.find(v => v.id === id);
+    if (vehicle?.driver_id) {
+      const driver = drivers.find(d => d.id === vehicle.driver_id);
+      if (driver) {
+        try {
+          await supabase.functions.invoke("notify-vehicle-update", {
+            body: {
+              driver_name: `${driver.first_name} ${driver.last_name}`,
+              phone_number: driver.phone_number,
+              country_code: driver.country_code || "960",
+              plate_number: vehicle.plate_number,
+              update_type: "approved",
+              notify_driver: true,
+            },
+          });
+        } catch (e) { console.error("Notify driver failed", e); }
+      }
+    }
     fetchAll();
   };
 
   const rejectVehicle = async (id: string, reason: string) => {
     await supabase.from("vehicles").update({ vehicle_status: "rejected", rejection_reason: reason || "Documents not acceptable" } as any).eq("id", id);
     toast({ title: "Vehicle rejected", description: reason || "Documents not acceptable" });
+    // Notify driver via SMS
+    const vehicle = vehicles.find(v => v.id === id);
+    if (vehicle?.driver_id) {
+      const driver = drivers.find(d => d.id === vehicle.driver_id);
+      if (driver) {
+        try {
+          await supabase.functions.invoke("notify-vehicle-update", {
+            body: {
+              driver_name: `${driver.first_name} ${driver.last_name}`,
+              phone_number: driver.phone_number,
+              country_code: driver.country_code || "960",
+              plate_number: vehicle.plate_number,
+              update_type: "rejected",
+              rejection_reason: reason || "Documents not acceptable",
+              notify_driver: true,
+            },
+          });
+        } catch (e) { console.error("Notify driver failed", e); }
+      }
+    }
     setRejectingId(null);
     setRejectReason("");
     fetchAll();
