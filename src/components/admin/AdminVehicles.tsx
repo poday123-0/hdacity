@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
-const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "" };
+const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
 
 type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected";
 
@@ -24,6 +25,7 @@ const AdminVehicles = () => {
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState("");
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -31,6 +33,7 @@ const AdminVehicles = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState("");
+  const [importing, setImporting] = useState(false);
 
   const handleDocUpload = async (file: File, target: string) => {
     setUploading(target);
@@ -64,6 +67,7 @@ const AdminVehicles = () => {
       color: v.color || "", year: v.year?.toString() || "", driver_id: v.driver_id || "",
       vehicle_type_id: v.vehicle_type_id || "", registration_url: v.registration_url || "",
       insurance_url: v.insurance_url || "", image_url: v.image_url || "",
+      center_code: v.center_code || "",
     });
     setEditingId(v.id);
     setShowForm(true);
@@ -84,6 +88,78 @@ const AdminVehicles = () => {
       : await supabase.from("vehicles").insert(payload);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: editingId ? "Vehicle updated!" : "Vehicle added!" }); resetForm(); fetchAll(); }
+  };
+
+  const handleCsvImport = async (file: File) => {
+    setImporting(true);
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      if (rows.length === 0) { toast({ title: "Empty file", variant: "destructive" }); setImporting(false); return; }
+
+      const vtMap: Record<string, string> = {};
+      vehicleTypes.forEach(vt => { vtMap[vt.name.toLowerCase()] = vt.id; });
+
+      let imported = 0, skipped = 0;
+      for (const row of rows) {
+        const plateNumber = String(row.plate_number || row.PlateNumber || "").trim();
+        if (!plateNumber) { skipped++; continue; }
+
+        let driverId: string | null = null;
+        const driverPhone = String(row.driver_phone || row.DriverPhone || "").trim().replace(/\D/g, "");
+        if (driverPhone) {
+          const cleanPhone = driverPhone.slice(-7);
+          const { data: prof } = await supabase.from("profiles").select("id").ilike("user_type", "%Driver%").ilike("phone_number", `%${cleanPhone}`).maybeSingle();
+          if (prof) driverId = prof.id;
+        }
+
+        const vtName = String(row.vehicle_type || row.VehicleType || "").trim().toLowerCase();
+        const vtId = vtMap[vtName] || null;
+        const centerCode = String(row.center_code || row.CenterCode || "").trim() || null;
+
+        const { data: existing } = await supabase.from("vehicles").select("id").eq("plate_number", plateNumber).maybeSingle();
+        if (existing) {
+          if (driverId || vtId || centerCode) {
+            const upd: any = {};
+            if (driverId) upd.driver_id = driverId;
+            if (vtId) upd.vehicle_type_id = vtId;
+            if (centerCode) upd.center_code = centerCode;
+            await supabase.from("vehicles").update(upd).eq("id", existing.id);
+          }
+          skipped++;
+          continue;
+        }
+
+        const { error } = await supabase.from("vehicles").insert({
+          plate_number: plateNumber,
+          make: String(row.make || row.Make || "").trim(),
+          model: String(row.model || row.Model || "").trim(),
+          color: String(row.color || row.Color || "").trim(),
+          year: parseInt(row.year || row.Year) || null,
+          driver_id: driverId,
+          vehicle_type_id: vtId,
+          center_code: centerCode,
+          vehicle_status: "approved",
+          is_active: true,
+        });
+        if (error) skipped++; else imported++;
+      }
+
+      toast({ title: "Import complete", description: `${imported} imported, ${skipped} skipped` });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    }
+    setImporting(false);
+  };
+
+  const downloadSampleCsv = () => {
+    const sample = "plate_number,make,model,color,year,vehicle_type,driver_phone,center_code\nP-1234,Toyota,Yaris,White,2023,Car,9991234,101";
+    const blob = new Blob([sample], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "sample-vehicles-import.csv"; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleDelete = async (id: string) => {
@@ -171,10 +247,19 @@ const AdminVehicles = () => {
           <h2 className="text-2xl font-extrabold text-foreground">Vehicles</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} of {vehicles.length} vehicles</p>
         </div>
-        <button onClick={() => { showForm ? resetForm() : setShowForm(true); }} className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-semibold">
-          {showForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-          {showForm ? "Cancel" : "Add Vehicle"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCsvImport(f); e.target.value = ""; }} />
+          <button onClick={downloadSampleCsv} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted">
+            <Download className="w-3.5 h-3.5" /> Sample
+          </button>
+          <button onClick={() => csvInputRef.current?.click()} disabled={importing} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted">
+            <Upload className="w-3.5 h-3.5" /> {importing ? "Importing..." : "Import CSV"}
+          </button>
+          <button onClick={() => { showForm ? resetForm() : setShowForm(true); }} className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-semibold">
+            {showForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            {showForm ? "Cancel" : "Add Vehicle"}
+          </button>
+        </div>
       </div>
 
       {/* Add/Edit form */}
