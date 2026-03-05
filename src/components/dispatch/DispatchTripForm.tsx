@@ -112,6 +112,15 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     load();
   }, []);
 
+  // Default vehicle type to "Car"
+  useEffect(() => {
+    if (!selectedVehicleType && vehicleTypes.length > 0) {
+      const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
+      if (carType) setSelectedVehicleType(carType.id);
+      else setSelectedVehicleType(vehicleTypes[0].id);
+    }
+  }, [vehicleTypes]);
+
   // Calculate OSRM distance
   useEffect(() => {
     const allPoints: { lat: number; lng: number }[] = [];
@@ -478,14 +487,6 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
           {/* Vehicle type - buttons instead of select */}
           <div className="space-y-1.5">
             <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setSelectedVehicleType("")}
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
-                  !selectedVehicleType ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
-                }`}
-              >
-                Any vehicle
-              </button>
               {vehicleTypes.map(vt => (
                 <button
                   key={vt.id}
