@@ -241,18 +241,30 @@ Deno.serve(async (req) => {
           native_sound: nativeSoundName,
         };
 
+        // For web devices, send data-only messages so the service worker's
+        // onBackgroundMessage handler fires and plays custom sounds.
+        // For native devices, include the notification payload for OS-level display.
+        const isWebDevice = t.device_type === "web";
+
         const fcmMessage: any = {
           token: t.token,
-          notification: {
+          // Only include notification for native devices — web SW handles display
+          ...(isWebDevice ? {} : {
+            notification: {
+              title: title || "Notification",
+              body: body || "",
+            },
+          }),
+          data: {
+            ...messageData,
+            // Pass title/body in data so the SW can use them
             title: title || "Notification",
             body: body || "",
           },
-          data: messageData,
           android: {
             priority: "high",
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
-              // Use native sound file name for native apps, "default" for web
               sound: isNative ? nativeSoundName : "default",
               channel_id: isTripRequest ? "trip_requests" : isSOS ? "sos_alerts" : "general",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
@@ -269,7 +281,6 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                // Use .caf file for native iOS, "default" for web
                 sound: isNative ? `${nativeSoundName}.caf` : "default",
                 badge: 1,
                 "content-available": 1,
@@ -279,20 +290,6 @@ Deno.serve(async (req) => {
           },
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
-            notification: {
-              title: title || "Notification",
-              body: body || "",
-              icon: "/pwa-192x192.png",
-              badge: "/pwa-192x192.png",
-              tag: `${type}-${Date.now()}`,
-              renotify: true,
-              require_interaction: isUrgent,
-              vibrate: isTripRequest
-                ? [300, 100, 300, 100, 300, 100, 300]
-                : isSOS
-                ? [500, 100, 500, 100, 500]
-                : [200, 100, 200],
-            },
             fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
           },
         };
