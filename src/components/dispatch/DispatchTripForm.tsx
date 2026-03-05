@@ -5,7 +5,8 @@ import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
-  Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock
+  Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
+  ChevronUp, ChevronDown, RotateCcw
 } from "lucide-react";
 
 interface NominatimResult {
@@ -50,13 +51,15 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 };
 
 const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDrivers, onTripCreated }: DispatchTripFormProps) => {
-  const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [pickupQuery, setPickupQuery] = useState("");
   const [pickup, setPickup] = useState<StopLocation | null>(null);
   const [dropoff, setDropoff] = useState<StopLocation | null>(null);
   const [stops, setStops] = useState<StopLocation[]>([]);
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
+  const [centerCode, setCenterCode] = useState("");
+
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [osmResults, setOsmResults] = useState<NominatimResult[]>([]);
@@ -67,6 +70,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   const [dispatchMethod, setDispatchMethod] = useState<"broadcast" | "specific">("broadcast");
   const [selectedDriverId, setSelectedDriverId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   // Post-submit tracking state
   const [createdTrip, setCreatedTrip] = useState<any>(null);
@@ -138,7 +142,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
       });
   }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, stops]);
 
-  // Fare calculation (mirrors passenger RideOptions logic)
+  // Fare calculation
   useEffect(() => {
     if (!pickup || !dropoff || !selectedVehicleType) {
       setEstimatedFare(null);
@@ -241,7 +245,6 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     setTripVehicle(null);
   };
 
-
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 3) { setOsmResults([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -277,16 +280,38 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     setOsmResults([]);
   };
 
+  const selectServiceAreaAsDropoff = (sl: any) => {
+    setDropoff({ address: sl.name, lat: sl.lat, lng: sl.lng });
+  };
+
   const addStop = () => setStops([...stops, { address: "", lat: 0, lng: 0 }]);
   const removeStop = (i: number) => setStops(stops.filter((_, idx) => idx !== i));
+
+  const clearForm = () => {
+    setCustomerPhone("");
+    setPickup(null);
+    setPickupQuery("");
+    setDropoff(null);
+    setStops([]);
+    setPassengerCount(1);
+    setLuggageCount(0);
+    setCenterCode("");
+    setSelectedVehicleType("");
+    setDispatchMethod("broadcast");
+    setSelectedDriverId("");
+    setEstimatedFare(null);
+    setCreatedTrip(null);
+    setTripDriver(null);
+    setTripVehicle(null);
+  };
 
   const handleSubmit = async () => {
     if (!pickup || !dropoff) {
       toast({ title: "Select pickup and dropoff", variant: "destructive" });
       return;
     }
-    if (!customerName.trim() || !customerPhone.trim()) {
-      toast({ title: "Enter customer name and phone", variant: "destructive" });
+    if (!customerPhone.trim()) {
+      toast({ title: "Enter customer phone", variant: "destructive" });
       return;
     }
     if (dispatchMethod === "specific" && !selectedDriverId) {
@@ -296,6 +321,8 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
 
     setSubmitting(true);
     try {
+      const customerName = "Dispatch";
+
       const tripPayload: any = {
         pickup_address: pickup.address,
         pickup_lat: pickup.lat,
@@ -305,7 +332,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         dropoff_lng: dropoff.lng,
         passenger_count: passengerCount,
         luggage_count: luggageCount,
-        customer_name: customerName.trim(),
+        customer_name: customerName,
         customer_phone: customerPhone.trim(),
         created_by: dispatcherProfile?.id || null,
         dispatch_type: "operator",
@@ -315,12 +342,12 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         accepted_at: dispatchMethod === "specific" ? new Date().toISOString() : null,
         fare_type: "distance",
         estimated_fare: estimatedFare || null,
+        booking_notes: centerCode ? `Center: ${centerCode}` : null,
       };
 
       const { data: trip, error } = await supabase.from("trips").insert(tripPayload).select("*").single();
       if (error) throw error;
 
-      // For specific driver assignment, fetch driver/vehicle details right away
       if (dispatchMethod === "specific" && selectedDriverId) {
         setCreatedTrip(trip);
         const driverLoc = onlineDrivers.find(d => d.driver_id === selectedDriverId);
@@ -329,7 +356,6 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
           setTripVehicle({ plate_number: driverLoc.plate_number, make: driverLoc.vehicle_name });
         }
       } else {
-        // For broadcast, track the trip waiting for driver acceptance
         setCreatedTrip(trip);
       }
 
@@ -342,7 +368,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         }
       }
 
-      toast({ title: `Trip ${formIndex + 1} created!`, description: dispatchMethod === "specific" ? "Assigned to driver" : "Broadcasting to nearby drivers" });
+      toast({ title: `Bid ${formIndex + 1} sent!`, description: dispatchMethod === "specific" ? "Assigned to driver" : "Broadcasting to nearby drivers" });
 
       try {
         if (dispatchMethod === "specific" && selectedDriverId) {
@@ -357,14 +383,15 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         console.warn("Push notification failed:", pushErr);
       }
 
-      // Reset form
-      setCustomerName("");
+      // Reset form after send
       setCustomerPhone("");
       setPickup(null);
+      setPickupQuery("");
       setDropoff(null);
       setStops([]);
       setPassengerCount(1);
       setLuggageCount(0);
+      setCenterCode("");
       setSelectedDriverId("");
       setEstimatedFare(null);
       onTripCreated();
@@ -374,170 +401,238 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     setSubmitting(false);
   };
 
-  const formLabels = ["Trip 1", "Trip 2", "Trip 3"];
+  const formLabels = ["Bid 1", "Bid 2", "Bid 3"];
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
       {/* Form header */}
-      <div className="bg-primary/5 border-b border-border px-4 py-2.5 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-foreground">{formLabels[formIndex]}</h3>
-        {estimatedFare != null && (
-          <span className="flex items-center gap-1 text-sm font-bold text-primary">
-            <DollarSign className="w-3.5 h-3.5" />
-            {estimatedFare} MVR
-          </span>
-        )}
+      <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
+        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-foreground">{formLabels[formIndex]}</h3>
+          {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />}
+        </button>
+        <div className="flex items-center gap-3">
+          {estimatedFare != null && (
+            <span className="flex items-center gap-1 text-sm font-bold text-primary">
+              <DollarSign className="w-3.5 h-3.5" />
+              {estimatedFare} MVR
+            </span>
+          )}
+          <button onClick={clearForm} className="text-xs text-muted-foreground hover:text-foreground font-medium">Clear Form</button>
+        </div>
       </div>
 
-      <div className="p-3 space-y-3 overflow-y-auto flex-1">
-        {/* Customer */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Customer</p>
-          <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Name *" className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-semibold">+960</span>
-            <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))} placeholder="7XXXXXX" className="w-full pl-10 pr-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+      {!collapsed && (
+        <div className="p-3 space-y-3 overflow-y-auto flex-1">
+          {/* FROM - Pickup */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">From*</p>
+            <button onClick={() => { setSelecting("pickup"); setSearchQuery(""); setOsmResults([]); }} className={`w-full px-3 py-2.5 rounded-lg text-left text-xs transition-all ${pickup ? "bg-surface border border-border text-foreground" : "bg-surface border border-border text-muted-foreground"}`}>
+              {pickup ? pickup.address : "Type location (e.g., Male, Airport, Sifco...)"}
+            </button>
           </div>
-        </div>
 
-        {/* Locations */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><MapPin className="w-3 h-3" /> Route</p>
-          <button onClick={() => { setSelecting("pickup"); setSearchQuery(""); setOsmResults([]); }} className={`w-full px-2.5 py-2 rounded-lg text-left text-xs transition-all ${pickup ? "bg-surface border border-border text-foreground" : "bg-surface border-2 border-dashed border-border text-muted-foreground"}`}>
-            {pickup ? pickup.address : "Pickup *"}
-          </button>
-          {stops.map((stop, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <button onClick={() => { setSelecting(i); setSearchQuery(""); setOsmResults([]); }} className={`flex-1 px-2.5 py-2 rounded-lg text-left text-xs ${stop.address ? "bg-surface border border-border text-foreground" : "bg-surface border-2 border-dashed border-border text-muted-foreground"}`}>
-                {stop.address || `Stop ${i + 1}`}
+          {/* TO - Service area buttons */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">To*</p>
+            {serviceLocations.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {serviceLocations.map(sl => (
+                  <button
+                    key={sl.id}
+                    onClick={() => selectServiceAreaAsDropoff(sl)}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                      dropoff?.address === sl.name
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-surface border-border text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {sl.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button onClick={() => { setSelecting("dropoff"); setSearchQuery(""); setOsmResults([]); }} className={`w-full px-3 py-2.5 rounded-lg text-left text-xs transition-all ${dropoff ? "bg-surface border border-border text-foreground" : "bg-surface border border-border text-muted-foreground"}`}>
+                {dropoff ? dropoff.address : "Select destination"}
               </button>
-              <button onClick={() => removeStop(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+            )}
+            {distanceKm != null && (
+              <p className="text-[10px] text-muted-foreground">Distance: <span className="font-semibold text-foreground">{distanceKm.toFixed(1)} km</span></p>
+            )}
+          </div>
+
+          {/* Stops */}
+          {stops.length > 0 && (
+            <div className="space-y-1.5">
+              {stops.map((stop, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <button onClick={() => { setSelecting(i); setSearchQuery(""); setOsmResults([]); }} className={`flex-1 px-2.5 py-2 rounded-lg text-left text-xs ${stop.address ? "bg-surface border border-border text-foreground" : "bg-surface border-2 border-dashed border-border text-muted-foreground"}`}>
+                    {stop.address || `Stop ${i + 1}`}
+                  </button>
+                  <button onClick={() => removeStop(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
           <button onClick={addStop} className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline">
             <Plus className="w-3 h-3" /> Add Stop
           </button>
-          <button onClick={() => { setSelecting("dropoff"); setSearchQuery(""); setOsmResults([]); }} className={`w-full px-2.5 py-2 rounded-lg text-left text-xs transition-all ${dropoff ? "bg-surface border border-border text-foreground" : "bg-surface border-2 border-dashed border-border text-muted-foreground"}`}>
-            {dropoff ? dropoff.address : "Dropoff *"}
-          </button>
-          {distanceKm != null && (
-            <p className="text-[10px] text-muted-foreground">Distance: <span className="font-semibold text-foreground">{distanceKm.toFixed(1)} km</span></p>
-          )}
-        </div>
 
-        {/* Pax & Luggage */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
-            <div className="flex items-center gap-2 mt-1">
-              <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-3 h-3" /></button>
-              <span className="text-sm font-bold text-foreground w-4 text-center">{passengerCount}</span>
-              <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+          {/* Contact */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Contact</p>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-semibold">+960</span>
+              <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))} placeholder="Customer phone" className="w-full pl-10 pr-2.5 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
-            <div className="flex items-center gap-2 mt-1">
-              <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-3 h-3" /></button>
-              <span className="text-sm font-bold text-foreground w-4 text-center">{luggageCount}</span>
-              <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+
+          {/* Center Code */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Center Code*</p>
+            <input
+              value={centerCode}
+              onChange={e => setCenterCode(e.target.value.toUpperCase())}
+              placeholder="Type code & press Enter"
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              onKeyDown={e => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+            />
+          </div>
+
+          {/* Pax & Luggage - compact */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-3 h-3" /></button>
+                <span className="text-sm font-bold text-foreground w-4 text-center">{passengerCount}</span>
+                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-3 h-3" /></button>
+                <span className="text-sm font-bold text-foreground w-4 text-center">{luggageCount}</span>
+                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Vehicle type */}
-        <div className="space-y-2">
-          <select value={selectedVehicleType} onChange={e => setSelectedVehicleType(e.target.value)} className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="">Any vehicle</option>
-            {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name} {estimatedFare != null && selectedVehicleType === vt.id ? "" : ""}</option>)}
-          </select>
-        </div>
-
-        {/* Dispatch method */}
-        <div className="space-y-2">
-          <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="broadcast">Broadcast</option>
-            <option value="specific">Assign driver</option>
-          </select>
-
-          {dispatchMethod === "specific" && (
-            <div className="max-h-32 overflow-y-auto space-y-1">
-              {onlineDrivers.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground">No drivers online</p>
-              ) : (
-                onlineDrivers.map(d => (
-                  <button key={d.driver_id} onClick={() => setSelectedDriverId(d.driver_id)} className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs transition-all ${selectedDriverId === d.driver_id ? "bg-primary/10 ring-1 ring-primary" : "bg-surface hover:bg-muted"}`}>
-                    <div>
-                      <p className="font-medium text-foreground">{d.first_name} {d.last_name}</p>
-                      <p className="text-[10px] text-muted-foreground">{d.vehicle_name} • {d.plate_number}</p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Fare display */}
-        {estimatedFare != null && (
-          <div className="bg-primary/5 rounded-lg px-3 py-2 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Estimated Fare</span>
-            <span className="text-base font-bold text-primary">{estimatedFare} MVR</span>
-          </div>
-        )}
-        {/* Trip status tracker */}
-        {createdTrip && (
-          <div className="space-y-2">
-            <div className={`rounded-xl p-3 space-y-2 ${createdTrip.status === "accepted" || createdTrip.status === "arrived" || createdTrip.status === "in_progress" ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" : createdTrip.status === "cancelled" ? "bg-destructive/5 border border-destructive/20" : "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800"}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {createdTrip.status === "requested" ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
-                  ) : createdTrip.status === "cancelled" ? (
-                    <X className="w-4 h-4 text-destructive" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  )}
-                  <span className="text-xs font-bold text-foreground capitalize">{createdTrip.status === "requested" ? "Waiting for driver..." : createdTrip.status}</span>
-                </div>
-                <button onClick={dismissTrip} className="text-muted-foreground hover:text-foreground">
-                  <X className="w-3.5 h-3.5" />
+          {/* Vehicle type - buttons instead of select */}
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setSelectedVehicleType("")}
+                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
+                  !selectedVehicleType ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
+                }`}
+              >
+                Any vehicle
+              </button>
+              {vehicleTypes.map(vt => (
+                <button
+                  key={vt.id}
+                  onClick={() => setSelectedVehicleType(vt.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
+                    selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {vt.name}
                 </button>
-              </div>
-
-              {/* Trip summary */}
-              <div className="text-[10px] text-muted-foreground space-y-0.5">
-                <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {createdTrip.pickup_address} → {createdTrip.dropoff_address}</p>
-                <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {createdTrip.customer_name} • {createdTrip.customer_phone}</p>
-                {createdTrip.estimated_fare && <p className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {createdTrip.estimated_fare}{(createdTrip as any).passenger_bonus > 0 ? ` (+${(createdTrip as any).passenger_bonus} boost)` : ""} MVR</p>}
-              </div>
-
-              {/* Driver & vehicle details when accepted */}
-              {tripDriver && (
-                <div className="bg-card rounded-lg p-2.5 space-y-1 border border-border">
-                  <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Driver Assigned</p>
-                  <p className="text-sm font-bold text-foreground">{tripDriver.first_name} {tripDriver.last_name}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {tripDriver.phone_number}</p>
-                  {tripVehicle && (
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-border mt-1">
-                      <Car className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs font-bold text-foreground">{tripVehicle.plate_number}</span>
-                      <span className="text-[10px] text-muted-foreground">{tripVehicle.make} {tripVehicle.model} {tripVehicle.color ? `• ${tripVehicle.color}` : ""}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+              ))}
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Dispatch method */}
+          <div className="space-y-2">
+            <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="broadcast">Broadcast</option>
+              <option value="specific">Assign driver</option>
+            </select>
+
+            {dispatchMethod === "specific" && (
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {onlineDrivers.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground">No drivers online</p>
+                ) : (
+                  onlineDrivers.map(d => (
+                    <button key={d.driver_id} onClick={() => setSelectedDriverId(d.driver_id)} className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs transition-all ${selectedDriverId === d.driver_id ? "bg-primary/10 ring-1 ring-primary" : "bg-surface hover:bg-muted"}`}>
+                      <div>
+                        <p className="font-medium text-foreground">{d.first_name} {d.last_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{d.vehicle_name} • {d.plate_number}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Fare display */}
+          {estimatedFare != null && (
+            <div className="bg-primary/5 rounded-lg px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Estimated Fare</span>
+              <span className="text-base font-bold text-primary">{estimatedFare} MVR</span>
+            </div>
+          )}
+
+          {/* Trip status tracker */}
+          {createdTrip && (
+            <div className="space-y-2">
+              <div className={`rounded-xl p-3 space-y-2 ${createdTrip.status === "accepted" || createdTrip.status === "arrived" || createdTrip.status === "in_progress" ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" : createdTrip.status === "cancelled" ? "bg-destructive/5 border border-destructive/20" : "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {createdTrip.status === "requested" ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
+                    ) : createdTrip.status === "cancelled" ? (
+                      <X className="w-4 h-4 text-destructive" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    )}
+                    <span className="text-xs font-bold text-foreground capitalize">{createdTrip.status === "requested" ? "Waiting for driver..." : createdTrip.status}</span>
+                  </div>
+                  <button onClick={dismissTrip} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-muted-foreground space-y-0.5">
+                  <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {createdTrip.pickup_address} → {createdTrip.dropoff_address}</p>
+                  <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {createdTrip.customer_name} • {createdTrip.customer_phone}</p>
+                  {createdTrip.estimated_fare && <p className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {createdTrip.estimated_fare}{(createdTrip as any).passenger_bonus > 0 ? ` (+${(createdTrip as any).passenger_bonus} boost)` : ""} MVR</p>}
+                </div>
+
+                {tripDriver && (
+                  <div className="bg-card rounded-lg p-2.5 space-y-1 border border-border">
+                    <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Driver Assigned</p>
+                    <p className="text-sm font-bold text-foreground">{tripDriver.first_name} {tripDriver.last_name}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {tripDriver.phone_number}</p>
+                    {tripVehicle && (
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-border mt-1">
+                        <Car className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-bold text-foreground">{tripVehicle.plate_number}</span>
+                        <span className="text-[10px] text-muted-foreground">{tripVehicle.make} {tripVehicle.model} {tripVehicle.color ? `• ${tripVehicle.color}` : ""}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Submit */}
-      <div className="p-3 pt-0">
-        <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || !customerName || !customerPhone} className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm">
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Send</>}
-        </button>
-      </div>
+      {!collapsed && (
+        <div className="p-3 pt-0">
+          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || !customerPhone} className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm">
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Send</>}
+          </button>
+        </div>
+      )}
 
       {/* Location selector modal */}
       <AnimatePresence>
