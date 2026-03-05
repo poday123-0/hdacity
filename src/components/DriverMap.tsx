@@ -253,7 +253,15 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     );
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setCurrentPos(prev => {
+          // On first real GPS fix, pan map from fallback to real position
+          if (!prev && mapInstance.current) {
+            mapInstance.current.panTo(newPos);
+            mapInstance.current.setZoom(17);
+          }
+          return newPos;
+        });
         if (pos.coords.speed != null && pos.coords.speed >= 0) {
           const spd = Math.round(pos.coords.speed * 3.6);
           setCurrentSpeed(spd);
@@ -262,7 +270,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) setCurrentHeading(pos.coords.heading);
       },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 1000 }
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
