@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
       },
       manifest: {
+        id: "/",
         name: "HDA APP",
         short_name: "HDA APP",
         description: "On Time · Every Time",
@@ -33,6 +34,8 @@ export default defineConfig(({ mode }) => ({
         orientation: "portrait",
         start_url: "/",
         scope: "/",
+        categories: ["transportation", "travel"],
+        prefer_related_applications: false,
         icons: [
           {
             src: "/pwa-192x192.png",
