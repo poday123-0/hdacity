@@ -460,11 +460,11 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   const formLabels = ["Bid 1", "Bid 2", "Bid 3"];
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+    <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col">
       {/* Form header */}
-      <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
-        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-2">
-          <h3 className="text-sm font-bold text-foreground">{formLabels[formIndex]}</h3>
+      <div className="border-b border-border px-2.5 py-1.5 flex items-center justify-between">
+        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-1.5">
+          <h3 className="text-xs font-bold text-foreground">{formLabels[formIndex]}</h3>
           {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />}
         </button>
         <div className="flex items-center gap-3">
@@ -474,35 +474,35 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
               {estimatedFare} MVR
             </span>
           )}
-          <button onClick={clearForm} className="text-xs text-muted-foreground hover:text-foreground font-medium">Clear Form</button>
+          <button onClick={clearForm} className="text-[10px] text-muted-foreground hover:text-foreground font-medium">Clear Form</button>
         </div>
       </div>
 
       {!collapsed && (
-        <div className="p-3 space-y-3 overflow-y-auto flex-1">
+        <div className="p-2 space-y-2 overflow-y-auto flex-1">
           {/* Pax & Luggage - compact */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
               <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-3 h-3" /></button>
-                <span className="text-sm font-bold text-foreground w-4 text-center">{passengerCount}</span>
-                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-2.5 h-2.5" /></button>
+                <span className="text-xs font-bold text-foreground w-4 text-center">{passengerCount}</span>
+                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
               </div>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
               <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-3 h-3" /></button>
-                <span className="text-sm font-bold text-foreground w-4 text-center">{luggageCount}</span>
-                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-2.5 h-2.5" /></button>
+                <span className="text-xs font-bold text-foreground w-4 text-center">{luggageCount}</span>
+                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
               </div>
             </div>
           </div>
 
           {/* Vehicle type - buttons instead of select */}
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1">
+            <div className="flex flex-wrap gap-1">
               {[...vehicleTypes].sort((a, b) => {
                 const order = ["car", "van", "mini pickup", "big pickup", "hda wav"];
                 const aName = a.name.toLowerCase();
@@ -516,7 +516,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                 <button
                   key={vt.id}
                   onClick={() => setSelectedVehicleType(vt.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
+                  className={`px-2 py-1 rounded text-[9px] font-medium transition-all border ${
                     selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
                   }`}
                 >
@@ -536,8 +536,8 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                 value={selecting === "pickup" ? searchQuery : (pickup?.address || pickupQuery)}
                 onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
                 onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
-                placeholder="Type location (e.g., Male, Airport, Sifco...)"
-                className="w-full pl-8 pr-8 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+               placeholder="Type location (e.g., Male, Airport, Sifco...)"
+                className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               {pickup && (
                 <button onClick={() => { setPickup(null); setPickupQuery(""); setSearchQuery(""); setSelecting("pickup"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -570,7 +570,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                   <button
                     key={sl.id}
                     onClick={() => selectServiceAreaAsDropoff(sl)}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                    className={`px-2 py-1 rounded text-[10px] font-medium transition-all border ${
                       dropoff?.address === sl.name
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-surface border-border text-foreground hover:bg-muted"
@@ -655,7 +655,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Contact</p>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-semibold">+960</span>
-              <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))} placeholder="Customer phone" className="w-full pl-10 pr-2.5 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))} placeholder="Customer phone" className="w-full pl-10 pr-2.5 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
 
@@ -668,7 +668,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                 setCenterCode(e.target.value.toUpperCase());
               }}
               placeholder="Type code & press Enter (multiple allowed)"
-              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-2.5 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               onKeyDown={async e => {
                 if (e.key === "Enter") {
                   e.currentTarget.blur();

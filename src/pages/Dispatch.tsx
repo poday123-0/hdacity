@@ -393,19 +393,19 @@ const Dispatch = () => {
             <SOSAlertPanel />
 
             {/* 4-column layout: Tables | Bid 1 | Bid 2 | Bid 3 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-2 mt-3">
+             <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-1.5 mt-2">
               {/* Column 1 — Lost Rides + Recent Rides */}
-              <div className="space-y-2 min-w-0">
+              <div className="space-y-1.5 min-w-0">
                 {/* Lost Rides */}
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 text-destructive" /> Lost Rides
-                      <span className="text-[10px] font-normal text-muted-foreground ml-1">({lostTrips.length})</span>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="px-2 py-1.5 border-b border-border">
+                    <h3 className="text-[11px] font-bold text-foreground flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-destructive" /> Lost Rides
+                      <span className="text-[9px] font-normal text-muted-foreground ml-1">({lostTrips.length})</span>
                     </h3>
                   </div>
-                  <div className="overflow-x-auto max-h-[240px] overflow-y-auto">
-                    <table className="w-full text-[10px]">
+                  <div className="overflow-x-auto max-h-[180px] overflow-y-auto">
+                    <table className="w-full text-[9px]">
                       <thead className="bg-surface sticky top-0">
                         <tr className="text-left text-muted-foreground">
                           <th className="px-1.5 py-1 font-medium">Time</th>
@@ -435,16 +435,16 @@ const Dispatch = () => {
                 </div>
 
                 {/* Recent Rides */}
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Navigation className="w-3.5 h-3.5 text-primary" /> Recent Rides
-                      <span className="text-[10px] font-normal text-muted-foreground ml-1">({recentTrips.length})</span>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="px-2 py-1.5 border-b border-border flex items-center justify-between">
+                    <h3 className="text-[11px] font-bold text-foreground flex items-center gap-1">
+                      <Navigation className="w-3 h-3 text-primary" /> Recent Rides
+                      <span className="text-[9px] font-normal text-muted-foreground ml-1">({recentTrips.length})</span>
                     </h3>
-                    <button onClick={refreshTrips} className="text-[10px] text-primary font-medium hover:underline">Refresh</button>
+                    <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
                   </div>
-                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                    <table className="w-full text-[10px]">
+                  <div className="overflow-x-auto max-h-[240px] overflow-y-auto">
+                    <table className="w-full text-[9px]">
                       <thead className="bg-surface sticky top-0">
                         <tr className="text-left text-muted-foreground">
                           <th className="px-1.5 py-1 font-medium">Time</th>
