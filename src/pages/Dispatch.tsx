@@ -147,9 +147,9 @@ const Dispatch = () => {
           profiles:driver_id (first_name, last_name, phone_number),
           vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
         `).eq("is_online", true).eq("is_on_trip", false),
-        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
+        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
           .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(30),
-        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name)")
+        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
           .eq("dispatch_type", "operator").in("status", ["cancelled", "expired", "no_driver"]).order("created_at", { ascending: false }).limit(20),
       ]);
       setVehicleTypes(vtRes.data || []);
@@ -188,9 +188,9 @@ const Dispatch = () => {
 
   const refreshTrips = async () => {
     const [{ data }, { data: lost }] = await Promise.all([
-      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(30),
-      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name)")
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").in("status", ["cancelled", "expired", "no_driver"]).order("created_at", { ascending: false }).limit(20),
     ]);
     setRecentTrips(data || []);
@@ -415,6 +415,14 @@ const Dispatch = () => {
                           {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
+                        {t.vehicle ? (
+                          <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                        ) : (
+                          <span className="text-destructive whitespace-nowrap">No Vehicle</span>
+                        )}
+                        {t.vehicle && (t.vehicle as any).center_code && (
+                          <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                        )}
                         <span className="text-foreground truncate flex-1">
                           {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
                         </span>
@@ -440,6 +448,14 @@ const Dispatch = () => {
                         <span className="text-muted-foreground whitespace-nowrap font-medium">
                           {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
+                        {t.vehicle ? (
+                          <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""}</span>
+                        ) : (
+                          <span className="text-destructive whitespace-nowrap">No Vehicle</span>
+                        )}
+                        {t.vehicle && (t.vehicle as any).center_code && (
+                          <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                        )}
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
                           t.status === "completed" ? "bg-green-500/15 text-green-500" :
                           t.status === "started" ? "bg-blue-500/15 text-blue-500" :
@@ -447,7 +463,7 @@ const Dispatch = () => {
                           "bg-surface text-muted-foreground"
                         }`}>{t.status}</span>
                         <span className="text-foreground truncate flex-1">
-                          {t.driver ? `${(t.driver as any).first_name}` : "No Driver"} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                          {t.vehicle ? `${(t.vehicle as any).plate_number}` : ""}{t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                         </span>
                         <button onClick={() => viewMessages(t.id)} className="text-muted-foreground hover:text-primary shrink-0">
                           <MessageSquare className="w-3 h-3" />
