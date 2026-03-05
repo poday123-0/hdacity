@@ -393,7 +393,7 @@ const Dispatch = () => {
             <SOSAlertPanel />
 
             {/* 4-column layout: Tables | Bid 1 | Bid 2 | Bid 3 */}
-             <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-1.5 mt-2">
+             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-1.5 mt-2">
               {/* Column 1 — Lost Rides + Recent Rides */}
               <div className="space-y-1.5 min-w-0">
                 {/* Lost Rides */}
