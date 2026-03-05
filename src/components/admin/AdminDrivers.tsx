@@ -38,7 +38,9 @@ const AdminDrivers = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [companyFilter, setCompanyFilter] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
+  const [vehicleStatusFilter, setVehicleStatusFilter] = useState("");
+  const [docFilter, setDocFilter] = useState<"all" | "complete" | "incomplete">("all");
   const [rejectVehicleId, setRejectVehicleId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
@@ -47,11 +49,7 @@ const AdminDrivers = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [driversRes, banksRes, companiesRes, vtRes, vehiclesRes, settingsRes] = await Promise.all([
-      (() => {
-        let q = supabase.from("profiles").select("*").ilike("user_type", "%Driver%").order("created_at", { ascending: false });
-        if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
-        return q;
-      })(),
+      supabase.from("profiles").select("*").ilike("user_type", "%Driver%").order("created_at", { ascending: false }),
       supabase.from("banks").select("*").eq("is_active", true).order("name"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
       supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
@@ -110,7 +108,7 @@ const AdminDrivers = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAll(); }, [search]);
+  useEffect(() => { fetchAll(); }, []);
 
   // Computed stats
   const pendingDrivers = drivers.filter(d => d.status === "Pending" || d.status === "Pending Review");
@@ -125,6 +123,21 @@ const AdminDrivers = () => {
   const filteredDrivers = drivers.filter(d => {
     if (statusFilter !== "all" && d.status !== statusFilter) return false;
     if (companyFilter && d.company_id !== companyFilter) return false;
+    if (docFilter === "complete" && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4) return false;
+    if (docFilter === "incomplete" && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length >= 4) return false;
+    if (vehicleStatusFilter) {
+      const dVehicles = driverVehicles[d.id] || [];
+      if (!dVehicles.some((v: any) => v.vehicle_status === vehicleStatusFilter)) return false;
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      const nameMatch = `${d.first_name} ${d.last_name}`.toLowerCase().includes(q);
+      const phoneMatch = d.phone_number?.toLowerCase().includes(q);
+      const dVehicles = driverVehicles[d.id] || [];
+      const plateMatch = dVehicles.some((v: any) => v.plate_number?.toLowerCase().includes(q));
+      const centerMatch = dVehicles.some((v: any) => v.center_code?.toLowerCase().includes(q));
+      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch) return false;
+    }
     return true;
   });
 
@@ -560,7 +573,7 @@ const AdminDrivers = () => {
       <div className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers by name or phone..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, phone, plate number, or center code..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
 
         {showFilters && (
@@ -584,8 +597,27 @@ const AdminDrivers = () => {
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            {(statusFilter !== "all" || companyFilter) && (
-              <button onClick={() => { setStatusFilter("all"); setCompanyFilter(""); }} className="text-[11px] text-primary font-semibold hover:underline ml-auto">
+            <div className="h-8 w-px bg-border" />
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Vehicle Status</label>
+              <select value={vehicleStatusFilter} onChange={(e) => setVehicleStatusFilter(e.target.value)} className="mt-1 block px-2.5 py-1 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Documents</label>
+              <select value={docFilter} onChange={(e) => setDocFilter(e.target.value as any)} className="mt-1 block px-2.5 py-1 bg-surface border border-border rounded-lg text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="all">All</option>
+                <option value="complete">Complete</option>
+                <option value="incomplete">Incomplete</option>
+              </select>
+            </div>
+            {(statusFilter !== "all" || companyFilter || vehicleStatusFilter || docFilter !== "all") && (
+              <button onClick={() => { setStatusFilter("all"); setCompanyFilter(""); setVehicleStatusFilter(""); setDocFilter("all"); }} className="text-[11px] text-primary font-semibold hover:underline ml-auto">
                 Clear filters
               </button>
             )}
