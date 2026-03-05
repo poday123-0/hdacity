@@ -334,6 +334,9 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     let resolved = false;
 
     const onPosition = async (pos: GeolocationPosition) => {
+      if (resolved) return; // Only use the first fix
+      resolved = true;
+
       const { latitude, longitude, accuracy } = pos.coords;
       const nearest = findNearestServiceArea(latitude, longitude);
 
@@ -348,10 +351,15 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       setPickupQuery(quickLoc.name);
       setDetectingLocation(false);
 
-      if (!resolved && autoFocusDropoff && !dropoff) {
+      if (autoFocusDropoff && !dropoff) {
         setActiveField("dropoff");
       }
-      resolved = true;
+
+      // Stop watching — location is set, user must manually change it
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
 
       // Resolve actual place name in background
       reverseGeocodeLocation(latitude, longitude).then((result) => {
@@ -364,7 +372,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       }).catch(() => {});
     };
 
-    // Use watchPosition for real-time continuous location updates
+    // Use watchPosition to get the best fix quickly, then stop
     watchIdRef.current = navigator.geolocation.watchPosition(
       onPosition,
       (err) => {
