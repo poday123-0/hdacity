@@ -455,6 +455,51 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
 
       {!collapsed && (
         <div className="p-3 space-y-3 overflow-y-auto flex-1">
+          {/* Pax & Luggage - compact */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-3 h-3" /></button>
+                <span className="text-sm font-bold text-foreground w-4 text-center">{passengerCount}</span>
+                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-3 h-3" /></button>
+                <span className="text-sm font-bold text-foreground w-4 text-center">{luggageCount}</span>
+                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
+              </div>
+            </div>
+          </div>
+
+          {/* Vehicle type - buttons instead of select */}
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setSelectedVehicleType("")}
+                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
+                  !selectedVehicleType ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
+                }`}
+              >
+                Any vehicle
+              </button>
+              {vehicleTypes.map(vt => (
+                <button
+                  key={vt.id}
+                  onClick={() => setSelectedVehicleType(vt.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
+                    selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {vt.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* FROM - Pickup */}
           <div className="space-y-1.5 relative">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">From*</p>
@@ -726,52 +771,8 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
           </div>
 
 
-          {/* Pax & Luggage - compact */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-3 h-3" /></button>
-                <span className="text-sm font-bold text-foreground w-4 text-center">{passengerCount}</span>
-                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-7 h-7 rounded-md bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-3 h-3" /></button>
-                <span className="text-sm font-bold text-foreground w-4 text-center">{luggageCount}</span>
-                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center"><Plus className="w-3 h-3 text-primary" /></button>
-              </div>
-            </div>
-          </div>
 
-          {/* Vehicle type - buttons instead of select */}
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setSelectedVehicleType("")}
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
-                  !selectedVehicleType ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
-                }`}
-              >
-                Any vehicle
-              </button>
-              {vehicleTypes.map(vt => (
-                <button
-                  key={vt.id}
-                  onClick={() => setSelectedVehicleType(vt.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
-                    selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {vt.name}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Dispatch method */}
           <div className="space-y-2">
             <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="broadcast">Broadcast</option>
