@@ -1,7 +1,8 @@
 /**
- * Reverse-geocoding using Google Maps Geocoder + Places Nearby Search for rich POI names.
- * Falls back to Nominatim if Google isn't loaded yet.
+ * Reverse-geocoding using admin service locations first, then Google Maps, then Nominatim.
  */
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ReverseGeocodeResult {
   name: string;
@@ -13,16 +14,70 @@ const FALLBACK: ReverseGeocodeResult = {
   address: "",
 };
 
+// Cache service locations to avoid repeated DB calls
+let cachedServiceLocations: { name: string; address: string; lat: number; lng: number }[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60000; // 1 minute
+
+async function getServiceLocations() {
+  const now = Date.now();
+  if (cachedServiceLocations && now - cacheTimestamp < CACHE_TTL) {
+    return cachedServiceLocations;
+  }
+  const { data } = await supabase
+    .from("service_locations")
+    .select("name, address, lat, lng")
+    .eq("is_active", true);
+  cachedServiceLocations = (data || []).map((d: any) => ({
+    name: d.name,
+    address: d.address || d.name,
+    lat: Number(d.lat),
+    lng: Number(d.lng),
+  }));
+  cacheTimestamp = now;
+  return cachedServiceLocations;
+}
+
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 /**
- * Try Google Maps first (instant, rich POI data), then Nominatim fallback.
+ * Check admin-added service locations first (within 500m radius).
+ */
+async function findAdminLocation(lat: number, lng: number): Promise<ReverseGeocodeResult | null> {
+  const locations = await getServiceLocations();
+  let closest: { name: string; address: string; dist: number } | null = null;
+  for (const loc of locations) {
+    const dist = haversineMeters(lat, lng, loc.lat, loc.lng);
+    if (dist <= 500 && (!closest || dist < closest.dist)) {
+      closest = { name: loc.name, address: loc.address, dist };
+    }
+  }
+  return closest ? { name: closest.name, address: closest.address } : null;
+}
+
+/** Export for use by other components */
+export { getServiceLocations, haversineMeters, findAdminLocation };
+
+/**
+ * Try admin locations first, then Google Maps, then Nominatim fallback.
  */
 export const reverseGeocodeLocation = async (
   lat: number,
   lng: number
 ): Promise<ReverseGeocodeResult> => {
+  // 1. Check admin-added locations first
+  const adminResult = await findAdminLocation(lat, lng);
+  if (adminResult) return adminResult;
+
   const g = (window as any).google;
 
-  // If Google Maps is loaded, use it
+  // 2. If Google Maps is loaded, use it
   if (g?.maps?.Geocoder) {
     try {
       const result = await googleReverseGeocode(g, lat, lng);
@@ -30,7 +85,7 @@ export const reverseGeocodeLocation = async (
     } catch {}
   }
 
-  // Fallback to Nominatim
+  // 3. Fallback to Nominatim
   return nominatimReverse(lat, lng);
 };
 
