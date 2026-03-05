@@ -362,7 +362,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     navigator.geolocation.getCurrentPosition(
       onPosition,
       () => {},
-      { enableHighAccuracy: false, timeout: 3000, maximumAge: 30000 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 }
     );
   };
 
