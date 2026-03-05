@@ -101,8 +101,6 @@ messaging.onBackgroundMessage((payload) => {
     });
   }
 });
-  }
-});
 
 // Handle notification click — open/focus the app
 self.addEventListener("notificationclick", (event) => {
