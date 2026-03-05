@@ -367,44 +367,6 @@ const Dispatch = () => {
             {/* SOS Alerts */}
             <SOSAlertPanel />
 
-            {/* Recent trips - shown FIRST */}
-            {recentTrips.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-bold text-foreground">Recent Dispatch Trips ({recentTrips.length})</h3>
-                <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-y-auto max-h-64">
-                  {recentTrips.map(t => (
-                    <div key={t.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).toUpperCase()}</span>
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            t.status === "completed" ? "bg-primary/10 text-primary" :
-                            t.status === "cancelled" ? "bg-destructive/10 text-destructive" :
-                            t.status === "requested" ? "bg-yellow-500/10 text-yellow-600" :
-                            "bg-accent text-accent-foreground"
-                          }`}>{t.status}</span>
-                          {t.vehicle && <span className="text-[10px] font-bold text-primary">{t.vehicle.plate_number}</span>}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {t.customer_name || "Dispatch"} • {t.pickup_address} → {t.dropoff_address}
-                        </p>
-                        {t.driver && (
-                          <span className="text-[10px] text-foreground font-medium">{t.driver.first_name} {t.driver.last_name}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => viewMessages(t.id)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors" title="View chat">
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </button>
-                        {t.estimated_fare && (
-                          <span className="text-xs font-bold text-foreground">{t.actual_fare || t.estimated_fare}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* 3 horizontal bid forms */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
