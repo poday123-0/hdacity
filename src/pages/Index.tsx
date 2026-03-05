@@ -362,7 +362,7 @@ const Index = () => {
     return () => { supabase.removeChannel(channel); };
   }, [fetchOnlineDrivers]);
 
-  // Listen for admin force-refresh signal via realtime
+  // Listen for admin force-refresh signal via realtime (handle each trigger only once per device)
   useEffect(() => {
     const channel = supabase
       .channel("force-refresh-listener")
@@ -376,11 +376,26 @@ const Index = () => {
           const val = payload.new as any;
           const parsed = typeof val.value === "string" ? JSON.parse(val.value) : val.value;
           const target = parsed?.target || "all";
+          const triggeredAt = String(parsed?.triggered_at || "");
           const currentUserType = appMode === "driver" ? "drivers" : "passengers";
-          if (target === "all" || target === currentUserType) {
-            // Hard refresh
-            window.location.reload();
+
+          if (!(target === "all" || target === currentUserType)) return;
+
+          // Prevent reload loops: handle each triggered_at only once on this device
+          const handledKey = `hda_force_refresh_handled_${currentUserType}`;
+          if (triggeredAt) {
+            const lastHandled = localStorage.getItem(handledKey);
+            if (lastHandled === triggeredAt) return;
+            localStorage.setItem(handledKey, triggeredAt);
+          } else {
+            // Fallback guard if timestamp is missing
+            const now = Date.now();
+            const last = Number(localStorage.getItem(handledKey) || "0");
+            if (now - last < 15000) return;
+            localStorage.setItem(handledKey, String(now));
           }
+
+          window.location.reload();
         } catch {}
       })
       .subscribe();
