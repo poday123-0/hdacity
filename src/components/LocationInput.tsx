@@ -790,7 +790,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                   }`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Pickup</p>
-                       <input
+                      <input
                         ref={pickupRef}
                         type="text"
                         inputMode="search"
@@ -799,10 +799,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         value={pickupQuery}
                         onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
                         onFocus={() => { setActiveField("pickup"); setTimeout(() => pickupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 truncate"
                       />
                       {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{pickup.address}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
