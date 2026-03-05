@@ -43,6 +43,7 @@ interface StopLocation extends SelectedLocation {}
 
 const SESSION_KEY = "hda_user_session";
 const MODE_KEY = "hda_app_mode";
+const REG_PHASE_KEY = "hda_reg_phase";
 
 const Index = () => {
   // Determine initial mode from localStorage
@@ -63,6 +64,13 @@ const Index = () => {
     savedSession?.isDriver && initialMode === "driver" ? "driver" : "passenger"
   );
   const [phase, setPhase] = useState<AppPhase>(() => {
+    // Restore registration phase if it was interrupted (e.g. by file picker on mobile)
+    try {
+      const savedRegPhase = localStorage.getItem(REG_PHASE_KEY);
+      if (savedRegPhase && savedSession && (savedRegPhase === "driver-register" || savedRegPhase === "register")) {
+        return savedRegPhase as AppPhase;
+      }
+    } catch {}
     if (!savedSession) return "splash";
     if (appMode === "driver" && savedSession.driverProfile) return "driver";
     return "passenger";
@@ -72,7 +80,9 @@ const Index = () => {
   const [driverProfile, setDriverProfile] = useState<UserProfile | null>(savedSession?.driverProfile || null);
   const [hasDriverProfile, setHasDriverProfile] = useState(savedSession?.isDriver || false);
   usePushNotifications(userProfile?.id, appMode === "driver" ? "driver" : "passenger");
-  const [pendingPhone, setPendingPhone] = useState("");
+  const [pendingPhone, setPendingPhone] = useState(() => {
+    try { return localStorage.getItem("hda_pending_phone") || ""; } catch { return ""; }
+  });
   const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [passengerMapInstance, setPassengerMapInstance] = useState<google.maps.Map | null>(null);
@@ -121,6 +131,25 @@ const Index = () => {
   useEffect(() => {
     try { localStorage.setItem(MODE_KEY, appMode); } catch {}
   }, [appMode]);
+
+  // Persist registration phase so file picker page reloads don't lose it
+  useEffect(() => {
+    try {
+      if (phase === "driver-register" || phase === "register") {
+        localStorage.setItem(REG_PHASE_KEY, phase);
+      } else {
+        localStorage.removeItem(REG_PHASE_KEY);
+      }
+    } catch {}
+  }, [phase]);
+
+  // Persist pending phone for registration survival across reloads
+  useEffect(() => {
+    try {
+      if (pendingPhone) localStorage.setItem("hda_pending_phone", pendingPhone);
+      else localStorage.removeItem("hda_pending_phone");
+    } catch {}
+  }, [pendingPhone]);
 
   // Check if user has a driver profile on login
   const checkDriverProfile = useCallback(async (phone: string) => {
