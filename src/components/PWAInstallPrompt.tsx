@@ -8,7 +8,7 @@ const DISMISS_KEY = "hda_pwa_dismiss";
 const SHOW_DELAY_MS = 3000; // Show after 3 seconds
 
 const PWAInstallPrompt = () => {
-  const { canInstall, isIOS, promptInstall } = usePWAInstall();
+  const { canInstall, isIOS, promptInstall, deferredPrompt } = usePWAInstall();
   const [dismissed, setDismissed] = useState(() => {
     const d = localStorage.getItem(DISMISS_KEY);
     if (!d) return false;
@@ -19,6 +19,8 @@ const PWAInstallPrompt = () => {
   const [appName, setAppName] = useState("HDA TAXI");
   const [visible, setVisible] = useState(false);
   const [iosStep, setIosStep] = useState(0); // 0 = overview, 1 = step-by-step
+  const [showManualSteps, setShowManualSteps] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     supabase
@@ -56,8 +58,17 @@ const PWAInstallPrompt = () => {
       setIosStep(1);
       return;
     }
-    const accepted = await promptInstall();
-    if (accepted) handleDismiss();
+    // If native prompt is available, try it
+    if (deferredPrompt) {
+      setInstalling(true);
+      const accepted = await promptInstall();
+      setInstalling(false);
+      if (accepted) handleDismiss();
+      else setShowManualSteps(true); // user dismissed native prompt, show manual
+    } else {
+      // No native prompt available on this device — show manual instructions
+      setShowManualSteps(true);
+    }
   };
 
   return (
@@ -204,6 +215,44 @@ const PWAInstallPrompt = () => {
                     </button>
                   </motion.div>
                 )
+              ) : showManualSteps ? (
+                <motion.div
+                  key="android-manual-steps"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-2.5"
+                >
+                  <p className="text-xs font-bold text-foreground text-center">Follow these steps to install:</p>
+                  <div className="bg-surface rounded-2xl p-3.5 space-y-3 border border-border/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-primary">1</span>
+                      </div>
+                      <span className="text-xs text-foreground">Tap the <strong>⋮ menu</strong> (3 dots) in your browser</span>
+                    </div>
+                    <div className="w-full h-px bg-border/50" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-primary">2</span>
+                      </div>
+                      <span className="text-xs text-foreground">Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong></span>
+                    </div>
+                    <div className="w-full h-px bg-border/50" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-primary">3</span>
+                      </div>
+                      <span className="text-xs text-foreground">Tap <strong>Install</strong> to confirm</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDismiss}
+                    className="w-full text-xs text-muted-foreground font-medium py-2 active:opacity-70"
+                  >
+                    I'll do it later
+                  </button>
+                </motion.div>
               ) : (
                 <motion.div
                   key="android-install"
@@ -213,10 +262,20 @@ const PWAInstallPrompt = () => {
                 >
                   <button
                     onClick={handleInstall}
-                    className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] hover:opacity-90 flex items-center justify-center gap-2 shadow-lg"
+                    disabled={installing}
+                    className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] hover:opacity-90 flex items-center justify-center gap-2 shadow-lg disabled:opacity-70"
                   >
-                    <Download className="w-4.5 h-4.5" />
-                    Install App
+                    {installing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                        Installing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4.5 h-4.5" />
+                        Install App
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={handleDismiss}
