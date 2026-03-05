@@ -44,15 +44,15 @@ serve(async (req) => {
     if (MSGOWL_API_KEY && phones.length > 0) {
       for (const phone of phones) {
         try {
-          const res = await fetch("https://api.msgowl.com/api/sms", {
+          const res = await fetch("https://rest.msgowl.com/messages", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${MSGOWL_API_KEY}`,
+              Authorization: `AccessKey ${MSGOWL_API_KEY}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              to: phone.startsWith("+") ? phone : `+960${phone}`,
-              message,
+              recipients: phone.startsWith("+") ? phone.replace("+", "") : `960${phone}`,
+              body: message,
             }),
           });
           console.log(`SMS to ${phone}: status=${res.status}`);
