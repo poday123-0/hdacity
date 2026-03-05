@@ -62,6 +62,15 @@ export const useBranding = () => {
     }
   }, [branding.faviconUrl]);
 
+  // Apply app name to document title and apple meta tag
+  useEffect(() => {
+    if (branding.appName) {
+      document.title = branding.appName;
+      const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
+      if (appleMeta) appleMeta.content = branding.appName;
+    }
+  }, [branding.appName]);
+
   // Apply OG share image dynamically
   useEffect(() => {
     if (branding.shareImageUrl) {
