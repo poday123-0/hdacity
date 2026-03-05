@@ -392,123 +392,105 @@ const Dispatch = () => {
             {/* SOS Alerts */}
             <SOSAlertPanel />
 
-            {/* 4-column layout: Tables | Bid 1 | Bid 2 | Bid 3 */}
-             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-1.5 mt-2">
-              {/* Column 1 — Lost Rides + Recent Rides */}
-              <div className="space-y-1.5 min-w-0">
-                {/* Lost Rides */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="px-2 py-1.5 border-b border-border">
-                    <h3 className="text-[11px] font-bold text-foreground flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-destructive" /> Lost Rides
-                      <span className="text-[9px] font-normal text-muted-foreground ml-1">({lostTrips.length})</span>
+            {/* Layout: Left tables column | 3 Bid forms right */}
+            <div className="flex flex-col xl:flex-row gap-1.5 mt-2">
+              {/* Left Column — IN LOSS + Todays Booking (takes ~40% on desktop) */}
+              <div className="xl:w-[38%] xl:min-w-[360px] space-y-1.5 min-w-0 shrink-0">
+                {/* IN LOSS */}
+                <div className="bg-card border border-destructive/30 rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border">
+                    <h3 className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                      IN LOSS
+                      <span className="text-[10px] font-normal text-muted-foreground ml-1">{lostTrips.length} LOSS bookings • Auto-clears at 00:00hrs</span>
                     </h3>
                   </div>
-                  <div className="overflow-x-auto max-h-[180px] overflow-y-auto">
-                    <table className="w-full text-[9px]">
-                      <thead className="bg-surface sticky top-0">
-                        <tr className="text-left text-muted-foreground">
-                          <th className="px-1.5 py-1 font-medium">Time</th>
-                          <th className="px-1.5 py-1 font-medium">Customer</th>
-                          <th className="px-1.5 py-1 font-medium">Route</th>
-                          <th className="px-1.5 py-1 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {lostTrips.length === 0 ? (
-                          <tr><td colSpan={4} className="px-2 py-3 text-center text-muted-foreground">No lost rides</td></tr>
-                        ) : lostTrips.map((t: any) => (
-                          <tr key={t.id} className="hover:bg-surface/50">
-                            <td className="px-1.5 py-1 text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                            <td className="px-1.5 py-1 text-foreground font-medium truncate max-w-[80px]">{t.customer_name || "—"}</td>
-                            <td className="px-1.5 py-1 text-foreground truncate max-w-[120px]">
-                              {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
-                            </td>
-                            <td className="px-1.5 py-1">
-                              <span className="inline-block px-1 py-0.5 rounded text-[9px] font-semibold bg-destructive/10 text-destructive">{t.status}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="max-h-[220px] overflow-y-auto p-1.5 space-y-1">
+                    {lostTrips.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
+                    ) : lostTrips.map((t: any) => (
+                      <div key={t.id} className="bg-surface border border-destructive/20 rounded-md px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
+                        <span className="text-muted-foreground whitespace-nowrap font-medium">
+                          {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()}{" "}
+                          {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
+                        <span className="text-foreground truncate flex-1">
+                          {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Recent Rides */}
+                {/* Todays Booking */}
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="px-2 py-1.5 border-b border-border flex items-center justify-between">
-                    <h3 className="text-[11px] font-bold text-foreground flex items-center gap-1">
-                      <Navigation className="w-3 h-3 text-primary" /> Recent Rides
-                      <span className="text-[9px] font-normal text-muted-foreground ml-1">({recentTrips.length})</span>
+                  <div className="px-3 py-2 border-b border-border">
+                    <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                      <Navigation className="w-3.5 h-3.5 text-primary" />
+                      Todays Booking ({recentTrips.length})
                     </h3>
-                    <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">💡 Search by center code or from location.</p>
                   </div>
-                  <div className="overflow-x-auto max-h-[240px] overflow-y-auto">
-                    <table className="w-full text-[9px]">
-                      <thead className="bg-surface sticky top-0">
-                        <tr className="text-left text-muted-foreground">
-                          <th className="px-1.5 py-1 font-medium">Time</th>
-                          <th className="px-1.5 py-1 font-medium">Customer</th>
-                          <th className="px-1.5 py-1 font-medium">Route</th>
-                          <th className="px-1.5 py-1 font-medium">Driver</th>
-                          <th className="px-1.5 py-1 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {recentTrips.length === 0 ? (
-                          <tr><td colSpan={5} className="px-2 py-3 text-center text-muted-foreground">No recent rides</td></tr>
-                        ) : recentTrips.map((t: any) => (
-                          <tr key={t.id} className="hover:bg-surface/50">
-                            <td className="px-1.5 py-1 text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                            <td className="px-1.5 py-1 text-foreground font-medium truncate max-w-[80px]">{t.customer_name || "—"}</td>
-                            <td className="px-1.5 py-1 text-foreground truncate max-w-[120px]">
-                              {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
-                            </td>
-                            <td className="px-1.5 py-1 text-foreground truncate max-w-[80px]">
-                              {t.driver ? `${(t.driver as any).first_name}` : "—"}
-                            </td>
-                            <td className="px-1.5 py-1">
-                              <span className={`inline-block px-1 py-0.5 rounded text-[9px] font-semibold ${
-                                t.status === "completed" ? "bg-green-500/10 text-green-600" :
-                                t.status === "started" ? "bg-blue-500/10 text-blue-600" :
-                                t.status === "accepted" ? "bg-amber-500/10 text-amber-600" :
-                                "bg-surface text-muted-foreground"
-                              }`}>{t.status}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex-1 overflow-y-auto max-h-[calc(100vh-420px)] p-1.5 space-y-1">
+                    {recentTrips.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No recent rides</p>
+                    ) : recentTrips.map((t: any) => (
+                      <div key={t.id} className="bg-surface border border-border rounded-md px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
+                        <span className="text-muted-foreground whitespace-nowrap font-medium">
+                          {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          t.status === "completed" ? "bg-green-500/15 text-green-500" :
+                          t.status === "started" ? "bg-blue-500/15 text-blue-500" :
+                          t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
+                          "bg-surface text-muted-foreground"
+                        }`}>{t.status}</span>
+                        <span className="text-foreground truncate flex-1">
+                          {t.driver ? `${(t.driver as any).first_name}` : "No Driver"} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                        </span>
+                        <button onClick={() => viewMessages(t.id)} className="text-muted-foreground hover:text-primary shrink-0">
+                          <MessageSquare className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-3 py-1.5 border-t border-border flex items-center justify-between">
+                    <span className="text-[9px] text-muted-foreground">Showing {recentTrips.length} bookings</span>
+                    <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
                   </div>
                 </div>
               </div>
 
-              {/* Column 2 — Bid 1 */}
-              <DispatchTripForm
-                formIndex={0}
-                dispatcherProfile={dispatcherProfile}
-                vehicleTypes={vehicleTypes}
-                onlineDrivers={onlineDrivers}
-                onTripCreated={refreshTrips}
-              />
+              {/* Right — 3 Bid Forms side by side */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5 min-w-0">
+                {/* Bid 1 */}
+                <DispatchTripForm
+                  formIndex={0}
+                  dispatcherProfile={dispatcherProfile}
+                  vehicleTypes={vehicleTypes}
+                  onlineDrivers={onlineDrivers}
+                  onTripCreated={refreshTrips}
+                />
 
-              {/* Column 3 — Bid 2 */}
-              <DispatchTripForm
-                formIndex={1}
-                dispatcherProfile={dispatcherProfile}
-                vehicleTypes={vehicleTypes}
-                onlineDrivers={onlineDrivers}
-                onTripCreated={refreshTrips}
-              />
+                {/* Bid 2 */}
+                <DispatchTripForm
+                  formIndex={1}
+                  dispatcherProfile={dispatcherProfile}
+                  vehicleTypes={vehicleTypes}
+                  onlineDrivers={onlineDrivers}
+                  onTripCreated={refreshTrips}
+                />
 
-              {/* Column 4 — Bid 3 */}
-              <DispatchTripForm
-                formIndex={2}
-                dispatcherProfile={dispatcherProfile}
-                vehicleTypes={vehicleTypes}
-                onlineDrivers={onlineDrivers}
-                onTripCreated={refreshTrips}
-              />
+                {/* Bid 3 */}
+                <DispatchTripForm
+                  formIndex={2}
+                  dispatcherProfile={dispatcherProfile}
+                  vehicleTypes={vehicleTypes}
+                  onlineDrivers={onlineDrivers}
+                  onTripCreated={refreshTrips}
+                />
+              </div>
             </div>
           </div>
         )}
