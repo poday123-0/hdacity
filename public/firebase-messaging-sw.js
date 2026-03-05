@@ -67,8 +67,9 @@ messaging.onBackgroundMessage((payload) => {
   // Show the notification
   self.registration.showNotification(title, notificationOptions);
 
-  // For trip requests: auto-focus the app window if open (brings PWA to foreground)
-  if (isTripRequest || isSOS) {
+  // Auto-focus the app window for important trip events (brings PWA to foreground)
+  const autoFocusTypes = ["trip_requested", "sos_alert", "trip_accepted", "driver_arrived", "trip_started", "trip_completed", "trip_cancelled"];
+  if (autoFocusTypes.includes(type)) {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && "focus" in client) {

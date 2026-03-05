@@ -707,6 +707,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const tripAge = Date.now() - new Date(freshTrip.requested_at).getTime();
     if (tripAge > 5 * 60 * 1000) return;
 
+    // Vibrate to alert driver
+    try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
+
     // Play sound
     if (tripRequestSoundUrl) {
       try {
@@ -786,6 +789,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Handle direct-assigned dispatch trips (already accepted)
   const handleDirectAssignedTrip = async (trip: TripRequest) => {
     if (currentTrip) return;
+
+    // Vibrate to alert driver
+    try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
 
     // Play sound to alert driver
     if (tripRequestSoundUrl) {
