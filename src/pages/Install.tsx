@@ -19,7 +19,7 @@ interface InstallProps {
 const Install = ({ defaultTab }: InstallProps) => {
   const navigate = useNavigate();
   useTheme();
-  const { canInstall, isIOS, isInstalled, promptInstall } = usePWAInstall();
+  const { canInstall, isIOS, isInstalled, promptInstall, browser, hasNativePrompt } = usePWAInstall();
   const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
   const { appName } = useBranding();
 
@@ -120,7 +120,7 @@ const Install = ({ defaultTab }: InstallProps) => {
           ) : (
             <>
               {/* Install button */}
-              {canInstall && !isIOS && (
+              {canInstall && !isIOS && hasNativePrompt && (
                 <button
                   onClick={handleInstall}
                   className="w-full flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-bold py-4 rounded-2xl text-sm transition-all active:scale-[0.98] shadow-lg shadow-primary/25"
@@ -128,6 +128,32 @@ const Install = ({ defaultTab }: InstallProps) => {
                   <Download className="w-5 h-5" />
                   Install App
                 </button>
+              )}
+
+              {/* Android manual instructions (Samsung Internet, Firefox, Opera, etc.) */}
+              {canInstall && !isIOS && !hasNativePrompt && (
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-bold text-foreground">
+                      Install on {browser === "samsung" ? "Samsung Internet" : browser === "firefox" ? "Firefox" : browser === "opera" ? "Opera" : "your browser"}
+                    </span>
+                  </div>
+                  <ol className="space-y-2 text-xs text-muted-foreground pl-1">
+                    <li className="flex gap-2">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
+                      <span>Tap the <strong className="text-foreground">⋮ menu</strong> {browser === "samsung" ? "(☰) at the bottom" : "(3 dots)"}</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
+                      <span>Tap <strong className="text-foreground">{browser === "samsung" ? "\"Add page to\" → \"Home screen\"" : "\"Install app\" or \"Add to Home screen\""}</strong></span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
+                      <span>Tap <strong className="text-foreground">Add</strong> to confirm</span>
+                    </li>
+                  </ol>
+                </div>
               )}
 
               {/* iOS instructions */}
