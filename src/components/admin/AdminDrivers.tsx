@@ -281,6 +281,12 @@ const AdminDrivers = () => {
         toast({ title: "Blocked code", description: `Center code "${vehicleForm.center_code}" is reserved and cannot be used.`, variant: "destructive" });
         return;
       }
+      // Check uniqueness
+      const { data: existingCode } = await supabase.from("vehicles").select("id, plate_number").eq("center_code", vehicleForm.center_code).maybeSingle();
+      if (existingCode && existingCode.id !== editingVehicleId) {
+        toast({ title: "Duplicate center code", description: `Center code "${vehicleForm.center_code}" is already assigned to vehicle ${existingCode.plate_number}.`, variant: "destructive" });
+        return;
+      }
     }
     const payload: any = {
       plate_number: vehicleForm.plate_number, make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
