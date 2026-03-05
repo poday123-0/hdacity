@@ -49,7 +49,7 @@ export function usePWAInstall() {
     return outcome === "accepted";
   }, [deferredPrompt]);
 
-  const canInstall = !isInstalled && (!!deferredPrompt || isIOS);
+  const canInstall = !isInstalled;
 
   return { canInstall, isInstalled, isIOS, promptInstall, deferredPrompt };
 }
