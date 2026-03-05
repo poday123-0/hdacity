@@ -739,19 +739,22 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
             {centerCodeResults.length > 0 && (
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {centerCodeResults.map((info, idx) => (
-                  <div key={info.code} className={`bg-surface border rounded-lg p-2.5 space-y-1 text-xs ${idx === 0 ? "border-primary/40" : "border-border"}`}>
+                  <div key={info.code} className={`bg-surface border rounded-lg px-2.5 py-1.5 text-xs ${idx === 0 ? "border-primary/40" : "border-border"}`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-foreground">#{info.code}</span>
-                        {info.color && <span className="text-muted-foreground">{info.color}</span>}
-                        <span className="font-semibold text-foreground">{info.plate_number}</span>
-                        {info.vehicle_type && (
-                          <>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">{info.vehicle_type}</span>
-                          </>
-                        )}
-                      </div>
+                      <span className="text-foreground">
+                        <span className="font-bold">{info.code}</span>
+                        {" "}<span className="font-semibold">{info.plate_number}</span>
+                        {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type}</span>}
+                        {info.last_trip_date && (() => {
+                          const d = new Date(info.last_trip_date);
+                          const today = new Date();
+                          const isToday = d.toDateString() === today.toDateString();
+                          const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+                          const isYesterday = d.toDateString() === yesterday.toDateString();
+                          const dayLabel = isToday ? "TODAY" : isYesterday ? "YESTERDAY" : d.toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase();
+                          return <span className="text-muted-foreground"> {dayLabel}</span>;
+                        })()}
+                      </span>
                       <button onClick={() => {
                         const updated = centerCodeResults.filter(r => r.code !== info.code);
                         setCenterCodeResults(updated);
@@ -762,18 +765,11 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                    {info.last_trip_date && (
-                      <p className="text-muted-foreground">
-                        <Clock className="w-3 h-3 inline mr-1" />
-                        Last trip: {new Date(info.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    )}
-                    {info.driver_phone && (
-                      <p className="text-muted-foreground">
-                        <Phone className="w-3 h-3 inline mr-1" />
-                        Driver: {info.driver_name || "Unknown"} • {info.driver_phone}
-                      </p>
-                    )}
+                    <p className="text-muted-foreground text-[10px]">
+                      {info.last_trip_date && <>Last: {new Date(info.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" }).toUpperCase()} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</>}
+                      {info.last_trip_date && info.driver_phone && " • "}
+                      {info.driver_phone && <>Driver: {info.driver_phone}</>}
+                    </p>
                   </div>
                 ))}
               </div>
