@@ -85,8 +85,9 @@ const PWAInstallPrompt = () => {
       const accepted = await promptInstall();
       setInstalling(false);
       if (accepted) handleDismiss();
-      else setShowSteps(true);
+      // Don't show manual steps — native prompt was available, user just declined
     } else {
+      // No native prompt (Samsung Internet, Firefox, Opera, etc.) — show manual steps
       setShowSteps(true);
     }
   };
