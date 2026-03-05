@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { notifyTripRequested, notifyTripAccepted } from "@/lib/push-notifications";
+import { notifyTripRequested } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -426,7 +426,8 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
 
       try {
         if (isAssigned && assignedDriverId) {
-          await notifyTripAccepted(assignedDriverId, "Dispatch", trip.id);
+          // Notify the assigned driver with trip_requested type so they hear the trip sound
+          await notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address);
         } else {
           const { data: drivers } = await supabase.from("driver_locations").select("driver_id").eq("is_online", true).eq("is_on_trip", false);
           if (drivers && drivers.length > 0) {

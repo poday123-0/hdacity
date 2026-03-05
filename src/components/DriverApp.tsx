@@ -783,6 +783,50 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, [userProfile?.id]);
 
+  // Handle direct-assigned dispatch trips (already accepted)
+  const handleDirectAssignedTrip = async (trip: TripRequest) => {
+    if (currentTrip) return;
+
+    // Play sound to alert driver
+    if (tripRequestSoundUrl) {
+      try {
+        if (tripSoundRef.current) {
+          tripSoundRef.current.pause();
+          tripSoundRef.current.currentTime = 0;
+        }
+        tripSoundRef.current = new Audio(tripRequestSoundUrl);
+        tripSoundRef.current.loop = true;
+        tripSoundRef.current.play().catch(() => {});
+      } catch {}
+    }
+
+    // Fetch passenger profile and trip stops
+    const [pProfileRes, stopsRes] = await Promise.all([
+      trip.passenger_id
+        ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single()
+        : Promise.resolve({ data: null }),
+      supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
+    ]);
+
+    toast({
+      title: "🚗 New Dispatch Assignment!",
+      description: `${trip.pickup_address} → ${trip.dropoff_address}`,
+    });
+
+    setCurrentTrip(trip);
+    setPassengerProfile(pProfileRes.data);
+    setTripStops(stopsRes.data as any[] || []);
+    setScreen("ride-request");
+
+    // Auto-stop sound after 15 seconds for assigned trips
+    setTimeout(() => {
+      if (tripSoundRef.current) {
+        tripSoundRef.current.pause();
+        tripSoundRef.current.currentTime = 0;
+      }
+    }, 15000);
+  };
+
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) return;
     let isActive = true;
@@ -796,12 +840,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       table: "trips"
     }, async (payload) => {
       const trip = payload.new as any;
-      if (trip.status !== "requested" && trip.status !== "scheduled") return;
-      if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
-        // In auto_nearest mode, only show if targeted at this driver
-        if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
-        lastSeenTripRef.current = trip.id;
-        handleNewTrip(trip);
+      // Handle broadcast trips (requested/scheduled)
+      if (trip.status === "requested" || trip.status === "scheduled") {
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
+        }
+      }
+      // Handle direct-assigned dispatch trips (inserted as "accepted" with driver_id)
+      if (trip.status === "accepted" && trip.driver_id === userProfile.id) {
+        if (trip.id !== lastSeenTripRef.current) {
+          lastSeenTripRef.current = trip.id;
+          handleDirectAssignedTrip(trip);
+        }
       }
     }).
     subscribe();
@@ -824,11 +876,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 5s for new requested/scheduled trips (only recent ones)
+    // Fallback: Poll every 5s for new requested/scheduled trips AND direct-assigned trips
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
-      // Only look at trips from the last 5 minutes to avoid stale requests
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+      // Poll for broadcast trips
       const { data } = await supabase.
       from("trips").
       select("*").
@@ -840,11 +893,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (data && data.length > 0) {
         const trip = data[0] as any;
-        // Skip if targeted at another driver
         if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
         if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
+        }
+      }
+
+      // Poll for direct-assigned dispatch trips
+      const { data: assignedTrips } = await supabase.
+      from("trips").
+      select("*").
+      eq("status", "accepted").
+      eq("driver_id", userProfile.id).
+      gte("created_at", fiveMinAgo).
+      order("created_at", { ascending: false }).
+      limit(1);
+
+      if (assignedTrips && assignedTrips.length > 0) {
+        const trip = assignedTrips[0] as any;
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          lastSeenTripRef.current = trip.id;
+          handleDirectAssignedTrip(trip);
         }
       }
     }, 5000);
