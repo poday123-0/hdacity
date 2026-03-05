@@ -11,11 +11,12 @@ export function usePWAInstall() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if already installed (standalone mode)
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    setIsInstalled(isStandalone);
+    // Conservative install detection to avoid false positives on some Android browsers
+    const isIOSStandalone = (navigator as any).standalone === true;
+    const isAndroidTwa = document.referrer.startsWith("android-app://");
+    const installedByEvent = localStorage.getItem("hda_pwa_installed") === "1";
+    const installed = isIOSStandalone || isAndroidTwa || installedByEvent;
+    setIsInstalled(installed);
 
     // Detect iOS
     const ua = navigator.userAgent;
@@ -29,13 +30,17 @@ export function usePWAInstall() {
 
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Listen for app installed
-    window.addEventListener("appinstalled", () => {
+    const onInstalled = () => {
+      localStorage.setItem("hda_pwa_installed", "1");
       setIsInstalled(true);
       setDeferredPrompt(null);
-    });
+    };
+    window.addEventListener("appinstalled", onInstalled);
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
   }, []);
 
   const promptInstall = useCallback(async () => {
@@ -43,6 +48,7 @@ export function usePWAInstall() {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
+      localStorage.setItem("hda_pwa_installed", "1");
       setIsInstalled(true);
       setDeferredPrompt(null);
     }
