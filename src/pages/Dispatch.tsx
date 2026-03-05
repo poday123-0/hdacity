@@ -170,6 +170,22 @@ const Dispatch = () => {
     load();
   }, [isAuthed]);
 
+  // Realtime: auto-refresh trips table on any change
+  useEffect(() => {
+    if (!isAuthed) return;
+    const channel = supabase
+      .channel("dispatch-trips-realtime")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "trips",
+      }, () => {
+        refreshTrips();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAuthed]);
+
   const refreshTrips = async () => {
     const [{ data }, { data: lost }] = await Promise.all([
       supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, make, model, color)")
