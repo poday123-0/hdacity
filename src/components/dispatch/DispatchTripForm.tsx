@@ -69,7 +69,9 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     driver_phone: string | null;
     last_trip_date: string | null;
     driver_id: string | null;
+    today_trips: number;
   }[]>([]);
+  const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(null);
   const [centerCodeLoading, setCenterCodeLoading] = useState(false);
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
@@ -336,6 +338,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     setLuggageCount(0);
     setCenterCode("");
     setCenterCodeResults([]);
+    setSelectedCenterCode(null);
     setSelectedVehicleType("");
     setDispatchMethod("broadcast");
     setSelectedDriverId("");
@@ -354,7 +357,13 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
       toast({ title: "Enter customer phone", variant: "destructive" });
       return;
     }
-    if (dispatchMethod === "specific" && !selectedDriverId) {
+
+    // Determine assigned driver: from center code selection or specific driver dropdown
+    const assignedEntry = selectedCenterCode ? centerCodeResults.find(r => r.code === selectedCenterCode) : null;
+    const assignedDriverId = assignedEntry?.driver_id || (dispatchMethod === "specific" ? selectedDriverId : null);
+    const isAssigned = !!assignedDriverId;
+
+    if (dispatchMethod === "specific" && !isAssigned) {
       toast({ title: "Select a driver", variant: "destructive" });
       return;
     }
@@ -377,9 +386,9 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         created_by: dispatcherProfile?.id || null,
         dispatch_type: "operator",
         vehicle_type_id: selectedVehicleType || null,
-        status: dispatchMethod === "specific" ? "accepted" : "requested",
-        driver_id: dispatchMethod === "specific" ? selectedDriverId : null,
-        accepted_at: dispatchMethod === "specific" ? new Date().toISOString() : null,
+        status: isAssigned ? "accepted" : "requested",
+        driver_id: assignedDriverId || null,
+        accepted_at: isAssigned ? new Date().toISOString() : null,
         fare_type: "distance",
         estimated_fare: estimatedFare || null,
         booking_notes: centerCodeResults.length > 0 ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
@@ -388,12 +397,17 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
       const { data: trip, error } = await supabase.from("trips").insert(tripPayload).select("*").single();
       if (error) throw error;
 
-      if (dispatchMethod === "specific" && selectedDriverId) {
+      if (isAssigned && assignedDriverId) {
         setCreatedTrip(trip);
-        const driverLoc = onlineDrivers.find(d => d.driver_id === selectedDriverId);
-        if (driverLoc) {
-          setTripDriver({ first_name: driverLoc.first_name, last_name: driverLoc.last_name, phone_number: driverLoc.phone_number });
-          setTripVehicle({ plate_number: driverLoc.plate_number, make: driverLoc.vehicle_name });
+        if (assignedEntry) {
+          setTripDriver({ first_name: assignedEntry.driver_name || "", last_name: "", phone_number: assignedEntry.driver_phone || "" });
+          setTripVehicle({ plate_number: assignedEntry.plate_number, make: assignedEntry.vehicle_type || "" });
+        } else {
+          const driverLoc = onlineDrivers.find(d => d.driver_id === assignedDriverId);
+          if (driverLoc) {
+            setTripDriver({ first_name: driverLoc.first_name, last_name: driverLoc.last_name, phone_number: driverLoc.phone_number });
+            setTripVehicle({ plate_number: driverLoc.plate_number, make: driverLoc.vehicle_name });
+          }
         }
       } else {
         setCreatedTrip(trip);
@@ -408,11 +422,11 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         }
       }
 
-      toast({ title: `Bid ${formIndex + 1} sent!`, description: dispatchMethod === "specific" ? "Assigned to driver" : "Broadcasting to nearby drivers" });
+      toast({ title: `Bid ${formIndex + 1} sent!`, description: isAssigned ? "Assigned to driver" : "Broadcasting to nearby drivers" });
 
       try {
-        if (dispatchMethod === "specific" && selectedDriverId) {
-          await notifyTripAccepted(selectedDriverId, "Dispatch", trip.id);
+        if (isAssigned && assignedDriverId) {
+          await notifyTripAccepted(assignedDriverId, "Dispatch", trip.id);
         } else {
           const { data: drivers } = await supabase.from("driver_locations").select("driver_id").eq("is_online", true).eq("is_on_trip", false);
           if (drivers && drivers.length > 0) {
@@ -432,6 +446,8 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
       setPassengerCount(1);
       setLuggageCount(0);
       setCenterCode("");
+      setCenterCodeResults([]);
+      setSelectedCenterCode(null);
       setSelectedDriverId("");
       setEstimatedFare(null);
       onTripCreated();
@@ -681,11 +697,15 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                     let driverName: string | null = null;
                     let driverPhone: string | null = null;
                     let lastTripDate: string | null = null;
+                    let todayTrips = 0;
 
                     if (vehicle.driver_id) {
-                      const [{ data: profile }, { data: lastTrip }] = await Promise.all([
+                      const todayStart = new Date();
+                      todayStart.setHours(0, 0, 0, 0);
+                      const [{ data: profile }, { data: lastTrip }, { count: todayCount }] = await Promise.all([
                         supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", vehicle.driver_id).single(),
                         supabase.from("trips").select("completed_at").eq("driver_id", vehicle.driver_id).eq("status", "completed").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
+                        supabase.from("trips").select("id", { count: "exact", head: true }).eq("driver_id", vehicle.driver_id).gte("created_at", todayStart.toISOString()).in("status", ["requested", "accepted", "started", "completed"]),
                       ]);
                       if (profile) {
                         driverName = `${profile.first_name} ${profile.last_name}`.trim();
@@ -694,6 +714,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                       if (lastTrip?.completed_at) {
                         lastTripDate = lastTrip.completed_at;
                       }
+                      todayTrips = todayCount || 0;
                     }
 
                     const newEntry = {
@@ -706,14 +727,15 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                       driver_phone: driverPhone,
                       last_trip_date: lastTripDate,
                       driver_id: vehicle.driver_id,
+                      today_trips: todayTrips,
                     };
 
-                    // Add and sort: latest trip first, vehicles without trips last
+                    // Sort: least recent trip first (driver who hasn't had a trip recently comes up)
                     const updated = [...centerCodeResults, newEntry].sort((a, b) => {
                       if (!a.last_trip_date && !b.last_trip_date) return 0;
-                      if (!a.last_trip_date) return 1;
-                      if (!b.last_trip_date) return -1;
-                      return new Date(b.last_trip_date).getTime() - new Date(a.last_trip_date).getTime();
+                      if (!a.last_trip_date) return -1;
+                      if (!b.last_trip_date) return 1;
+                      return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
                     });
                     setCenterCodeResults(updated);
 
@@ -738,26 +760,35 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
             )}
             {centerCodeResults.length > 0 && (
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                {centerCodeResults.map((info, idx) => (
-                  <div key={info.code} className={`bg-surface border rounded-lg px-2.5 py-1.5 text-xs ${idx === 0 ? "border-primary/40" : "border-border"}`}>
+                {centerCodeResults.map((info) => (
+                  <div
+                    key={info.code}
+                    onClick={() => {
+                      if (!info.driver_id) return;
+                      setSelectedCenterCode(selectedCenterCode === info.code ? null : info.code);
+                      if (info.vehicle_type_id) setSelectedVehicleType(info.vehicle_type_id);
+                      setDispatchMethod("specific");
+                      setSelectedDriverId(info.driver_id);
+                    }}
+                    className={`border rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-all ${
+                      selectedCenterCode === info.code
+                        ? "bg-primary/10 border-primary ring-1 ring-primary/30"
+                        : "bg-surface border-border hover:border-muted-foreground/30"
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-foreground">
+                        {selectedCenterCode === info.code && <CheckCircle2 className="w-3 h-3 inline mr-1 text-primary" />}
                         <span className="font-bold">{info.code}</span>
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type}</span>}
-                        {info.last_trip_date && (() => {
-                          const d = new Date(info.last_trip_date);
-                          const today = new Date();
-                          const isToday = d.toDateString() === today.toDateString();
-                          const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-                          const isYesterday = d.toDateString() === yesterday.toDateString();
-                          const dayLabel = isToday ? "TODAY" : isYesterday ? "YESTERDAY" : d.toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase();
-                          return <span className="text-muted-foreground"> {dayLabel}</span>;
-                        })()}
+                        {info.today_trips > 0 && <span className="text-primary font-semibold"> • {info.today_trips} today</span>}
                       </span>
-                      <button onClick={() => {
+                      <button onClick={(e) => {
+                        e.stopPropagation();
                         const updated = centerCodeResults.filter(r => r.code !== info.code);
                         setCenterCodeResults(updated);
+                        if (selectedCenterCode === info.code) setSelectedCenterCode(null);
                         if (updated.length > 0 && updated[0].vehicle_type_id) {
                           setSelectedVehicleType(updated[0].vehicle_type_id);
                         }
@@ -767,8 +798,8 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                     </div>
                     <p className="text-muted-foreground text-[10px]">
                       {info.last_trip_date && <>Last: {new Date(info.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" }).toUpperCase()} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</>}
-                      {info.last_trip_date && info.driver_phone && " • "}
-                      {info.driver_phone && <>Driver: {info.driver_phone}</>}
+                      {!info.last_trip_date && <span>No trips yet</span>}
+                      {info.driver_phone && <> • Driver: {info.driver_phone}</>}
                     </p>
                   </div>
                 ))}
