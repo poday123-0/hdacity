@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
       },
       manifest: {
-        name: "HDA TAXI",
-        short_name: "HDA TAXI",
+        name: "HDA APP",
+        short_name: "HDA APP",
         description: "On Time · Every Time",
         theme_color: "#40A3DB",
         background_color: "#0f172a",
