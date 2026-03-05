@@ -226,6 +226,10 @@ Deno.serve(async (req) => {
         const isSOS = type === "sos_alert";
         const isUrgent = isTripRequest || isSOS;
 
+        // Resolve sound category and URL based on recipient's user type
+        const soundCategory = getSoundCategory(type, t.user_type || "passenger");
+        const soundUrl = soundMap[soundCategory] || "";
+
         // Resolve native sound file name for Android/iOS
         const nativeSoundName = getNativeSoundName(soundCategory);
         const isNative = t.device_type === "android" || t.device_type === "ios";
