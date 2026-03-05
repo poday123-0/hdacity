@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "npm:resend@6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,7 +44,7 @@ serve(async (req) => {
     if (MSGOWL_API_KEY && phones.length > 0) {
       for (const phone of phones) {
         try {
-          await fetch("https://api.msgowl.com/api/sms", {
+          const res = await fetch("https://api.msgowl.com/api/sms", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${MSGOWL_API_KEY}`,
@@ -51,26 +52,55 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               to: phone.startsWith("+") ? phone : `+960${phone}`,
-              message: message,
+              message,
             }),
           });
+          console.log(`SMS to ${phone}: status=${res.status}`);
         } catch (e) {
           console.error("SMS send failed for", phone, e);
         }
       }
     }
 
-    // For email notifications, create a notification record that admins can see
-    // (Full email sending would require an email service integration)
-    if (emails.length > 0) {
-      await supabaseAdmin.from("notifications").insert({
-        title: "New Driver Registration",
-        message: `${message}\n\nNotify emails: ${emails.join(", ")}`,
-        target_type: "admin",
-      });
+    // Send email via Resend to each email recipient
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (RESEND_API_KEY && emails.length > 0) {
+      const resend = new Resend(RESEND_API_KEY);
+      const subject = `🚕 New Driver Registration: ${driver_name}`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #40A3DB; color: white; padding: 16px 24px; border-radius: 12px 12px 0 0;">
+            <h2 style="margin: 0; font-size: 18px;">New Driver Registration</h2>
+          </div>
+          <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+            <p style="margin: 0 0 12px; font-size: 15px; color: #111;">A new driver has registered and needs review:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Name</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${driver_name}</td></tr>
+              <tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Phone</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">+960 ${phone_number}</td></tr>
+              ${company_name ? `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Company</td><td style="padding: 8px 0; font-weight: bold; font-size: 14px;">${company_name}</td></tr>` : ""}
+            </table>
+            <p style="margin: 20px 0 0; font-size: 13px; color: #9ca3af;">Please review this registration in the admin panel.</p>
+          </div>
+        </div>
+      `;
+
+      for (const email of emails) {
+        try {
+          const { error } = await resend.emails.send({
+            from: "HDA Taxi <onboarding@resend.dev>",
+            to: email,
+            subject,
+            html,
+          });
+          if (error) console.error(`Email to ${email} failed:`, error);
+          else console.log(`Email sent to ${email}`);
+        } catch (e) {
+          console.error("Email send failed for", email, e);
+        }
+      }
     }
 
-    // Always create an admin notification
+    // Create admin notification
     await supabaseAdmin.from("notifications").insert({
       title: "New Driver Registration",
       message,
