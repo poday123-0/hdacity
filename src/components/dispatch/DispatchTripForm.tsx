@@ -59,6 +59,15 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
   const [centerCode, setCenterCode] = useState("");
+  const [centerCodeInfo, setCenterCodeInfo] = useState<{
+    color: string | null;
+    plate_number: string;
+    vehicle_type: string | null;
+    driver_name: string | null;
+    driver_phone: string | null;
+    last_trip_date: string | null;
+  } | null>(null);
+  const [centerCodeLoading, setCenterCodeLoading] = useState(false);
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -314,6 +323,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     setPassengerCount(1);
     setLuggageCount(0);
     setCenterCode("");
+    setCenterCodeInfo(null);
     setSelectedVehicleType("");
     setDispatchMethod("broadcast");
     setSelectedDriverId("");
@@ -580,13 +590,97 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Center Code*</p>
             <input
               value={centerCode}
-              onChange={e => setCenterCode(e.target.value.toUpperCase())}
+              onChange={e => {
+                setCenterCode(e.target.value.toUpperCase());
+                if (!e.target.value.trim()) setCenterCodeInfo(null);
+              }}
               placeholder="Type code & press Enter"
               className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              onKeyDown={e => {
-                if (e.key === "Enter") e.currentTarget.blur();
+              onKeyDown={async e => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                  const code = centerCode.trim();
+                  if (!code) return;
+                  setCenterCodeLoading(true);
+                  setCenterCodeInfo(null);
+                  try {
+                    const { data: vehicle } = await supabase
+                      .from("vehicles")
+                      .select("plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)")
+                      .eq("center_code", code)
+                      .eq("is_active", true)
+                      .limit(1)
+                      .single();
+                    if (!vehicle) {
+                      toast({ title: "No vehicle found", description: `Center code "${code}" not found`, variant: "destructive" });
+                      setCenterCodeLoading(false);
+                      return;
+                    }
+                    let driverName: string | null = null;
+                    let driverPhone: string | null = null;
+                    let lastTripDate: string | null = null;
+
+                    if (vehicle.driver_id) {
+                      const [{ data: profile }, { data: lastTrip }] = await Promise.all([
+                        supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", vehicle.driver_id).single(),
+                        supabase.from("trips").select("completed_at").eq("driver_id", vehicle.driver_id).eq("status", "completed").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
+                      ]);
+                      if (profile) {
+                        driverName = `${profile.first_name} ${profile.last_name}`.trim();
+                        driverPhone = profile.phone_number;
+                      }
+                      if (lastTrip?.completed_at) {
+                        lastTripDate = lastTrip.completed_at;
+                      }
+                    }
+
+                    setCenterCodeInfo({
+                      color: vehicle.color,
+                      plate_number: vehicle.plate_number,
+                      vehicle_type: (vehicle.vehicle_types as any)?.name || null,
+                      driver_name: driverName,
+                      driver_phone: driverPhone,
+                      last_trip_date: lastTripDate,
+                    });
+                  } catch {
+                    toast({ title: "Lookup failed", variant: "destructive" });
+                  }
+                  setCenterCodeLoading(false);
+                }
               }}
             />
+            {centerCodeLoading && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" /> Looking up...
+              </div>
+            )}
+            {centerCodeInfo && (
+              <div className="bg-surface border border-border rounded-lg p-2.5 space-y-1 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-foreground">Code {centerCode}</span>
+                  {centerCodeInfo.color && <span className="text-muted-foreground">{centerCodeInfo.color}</span>}
+                  <span className="font-semibold text-foreground">{centerCodeInfo.plate_number}</span>
+                  {centerCodeInfo.vehicle_type && (
+                    <>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="text-muted-foreground">{centerCodeInfo.vehicle_type}</span>
+                    </>
+                  )}
+                </div>
+                {centerCodeInfo.last_trip_date && (
+                  <p className="text-muted-foreground">
+                    <Clock className="w-3 h-3 inline mr-1" />
+                    Last trip: {new Date(centerCodeInfo.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" })} {new Date(centerCodeInfo.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+                {centerCodeInfo.driver_phone && (
+                  <p className="text-muted-foreground">
+                    <Phone className="w-3 h-3 inline mr-1" />
+                    Driver: {centerCodeInfo.driver_name || "Unknown"} • {centerCodeInfo.driver_phone}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pax & Luggage - compact */}
