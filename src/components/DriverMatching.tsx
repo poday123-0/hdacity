@@ -181,7 +181,15 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     };
 
     fetchDriverLocation();
-    const interval = setInterval(fetchDriverLocation, 5000);
+    // Use admin-configured driver location interval for polling
+    let pollMs = 3000;
+    supabase.from("system_settings").select("value").eq("key", "driver_location_interval_ms").single().then(({ data }) => {
+      if (data?.value) {
+        const val = typeof data.value === "number" ? data.value : parseInt(String(data.value), 10);
+        if (!isNaN(val) && val >= 1000) pollMs = val;
+      }
+    });
+    const interval = setInterval(fetchDriverLocation, pollMs);
     return () => clearInterval(interval);
   }, [tripId, speed]);
 
