@@ -77,11 +77,20 @@ const AdminVehicles = () => {
 
   const handleSubmit = async () => {
     if (!form.plate_number) return;
+    // Check center code uniqueness
+    if (form.center_code) {
+      const { data: existingCode } = await supabase.from("vehicles").select("id, plate_number").eq("center_code", form.center_code).maybeSingle();
+      if (existingCode && existingCode.id !== editingId) {
+        toast({ title: "Duplicate center code", description: `Center code "${form.center_code}" is already assigned to vehicle ${existingCode.plate_number}.`, variant: "destructive" });
+        return;
+      }
+    }
     const payload: any = {
       plate_number: form.plate_number, make: form.make, model: form.model, color: form.color,
       year: form.year ? parseInt(form.year) : null, driver_id: form.driver_id || null,
       vehicle_type_id: form.vehicle_type_id || null, registration_url: form.registration_url || null,
       insurance_url: form.insurance_url || null, image_url: form.image_url || null,
+      center_code: form.center_code || null,
     };
     const { error } = editingId
       ? await supabase.from("vehicles").update(payload).eq("id", editingId)
