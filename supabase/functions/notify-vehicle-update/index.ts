@@ -48,10 +48,12 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               recipients: phone.startsWith("+") ? phone.replace("+", "") : `960${phone}`,
+              sender_id: "HDA TAXI",
               body: adminMessage,
             }),
           });
-          console.log(`SMS to ${phone}: status=${res.status}`);
+          const resBody = await res.text();
+          console.log(`SMS to ${phone}: status=${res.status} body=${resBody}`);
         } catch (e) {
           console.error("SMS send failed for", phone, e);
         }

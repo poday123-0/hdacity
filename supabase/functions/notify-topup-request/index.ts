@@ -64,6 +64,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               recipients: phone.startsWith("+") ? phone.replace("+", "") : `960${phone}`,
+              sender_id: "HDA TAXI",
               body: message,
             }),
           });
