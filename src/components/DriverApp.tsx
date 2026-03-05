@@ -193,6 +193,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", phone_number: "", gender: "" });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [notifPermissionDenied, setNotifPermissionDenied] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
@@ -342,6 +343,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return () => { fetchUnreadCount(); };
     }
   }, [showNotifications, fetchUnreadCount]);
+
+  // Check notification permission when driver goes online
+  useEffect(() => {
+    if (screen === "online") {
+      const check = () => {
+        if ("Notification" in window && Notification.permission !== "granted") {
+          setNotifPermissionDenied(true);
+        } else {
+          setNotifPermissionDenied(false);
+        }
+      };
+      check();
+      // Re-check periodically in case user grants permission externally
+      const interval = setInterval(check, 5000);
+      return () => clearInterval(interval);
+    } else {
+      setNotifPermissionDenied(false);
+    }
+  }, [screen]);
 
   useEffect(() => {
     try {localStorage.setItem(driverScreenKey, screen);} catch {}
@@ -3739,6 +3759,37 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       <PWAInstallPrompt />
       <NotificationPermissionPrompt />
+
+      {/* Persistent banner when driver is online but notifications not granted */}
+      {screen === "online" && notifPermissionDenied && (
+        <div className="fixed top-14 left-2 right-2 z-[999] mx-auto max-w-md">
+          <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 flex items-center gap-3 shadow-lg">
+            <BellIcon className="w-5 h-5 text-destructive shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-destructive">Notifications are OFF</p>
+              <p className="text-[10px] text-destructive/80">You won't hear trip requests when the app is minimized</p>
+            </div>
+            <button
+              onClick={async () => {
+                if ("Notification" in window && Notification.permission === "default") {
+                  const result = await Notification.requestPermission();
+                  if (result === "granted") setNotifPermissionDenied(false);
+                } else {
+                  // Permission was denied — user must enable in browser settings
+                  toast({
+                    title: "Enable in Browser Settings",
+                    description: "Go to your browser settings → Site Settings → Notifications → Allow for this site",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="text-[10px] font-bold text-primary-foreground bg-destructive px-3 py-1.5 rounded-lg shrink-0"
+            >
+              Enable
+            </button>
+          </div>
+        </div>
+      )}
       <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
 
       {/* Withdraw Modal */}
