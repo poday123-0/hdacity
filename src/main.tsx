@@ -2,10 +2,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Show update banner instead of auto-reloading when new SW takes control
+// Show update banner when a new SW version is detected (one-time only)
 if ("serviceWorker" in navigator) {
+  let bannerShown = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    // Don't reload — show a banner instead
+    if (bannerShown) return;
+    // Only show banner if the page has been loaded for at least 5 seconds
+    // (avoids triggering on initial SW registration)
+    if (performance.now() < 5000) return;
+    bannerShown = true;
+
     const existing = document.getElementById("sw-update-banner");
     if (existing) return;
 
@@ -28,7 +34,6 @@ if ("serviceWorker" in navigator) {
       ">Update Now</button>
     `;
 
-    // Add animation keyframes
     const style = document.createElement("style");
     style.textContent = `@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }`;
     document.head.appendChild(style);
