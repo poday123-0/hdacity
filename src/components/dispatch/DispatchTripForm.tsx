@@ -246,21 +246,39 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   };
 
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 3) { setOsmResults([]); return; }
+    if (!searchQuery.trim() || searchQuery.length < 2) { setOsmResults([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setOsmSearching(true);
       try {
+        // First, search admin-added service locations
+        const q = searchQuery.toLowerCase();
+        const adminMatches: NominatimResult[] = serviceLocations
+          .filter((sl: any) => sl.name.toLowerCase().includes(q))
+          .map((sl: any) => ({
+            place_id: Date.now() + Math.random(),
+            display_name: sl.name,
+            lat: String(sl.lat),
+            lon: String(sl.lng),
+            name: sl.name,
+          }));
+
+        // Then fetch from Nominatim
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
           { headers: { "Accept-Language": "en" } }
         );
-        setOsmResults(await res.json());
+        const osmData = await res.json();
+
+        // Combine: admin locations first, then OSM results (deduplicated)
+        const adminNames = new Set(adminMatches.map(m => m.name?.toLowerCase()));
+        const filtered = osmData.filter((r: any) => !adminNames.has((r.name || "").toLowerCase()));
+        setOsmResults([...adminMatches, ...filtered]);
       } catch { setOsmResults([]); }
       setOsmSearching(false);
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery]);
+  }, [searchQuery, serviceLocations]);
 
   const selectLocation = (result: NominatimResult) => {
     const loc: StopLocation = {

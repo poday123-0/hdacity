@@ -165,7 +165,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     return null;
   }, [serviceAreas, isPointInPolygon]);
 
-  // Google Places search with debounce — only show results within service areas
+  // Google Places search with debounce — admin locations shown first, then Google/Nominatim
   useEffect(() => {
     if (!activeQuery.trim() || activeQuery.length < 2) {
       setPlaceResults([]);
@@ -174,9 +174,22 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
+
+      // 1. Search admin-added service locations first
+      const q = activeQuery.toLowerCase();
+      const adminMatches: PlaceResult[] = locations
+        .filter(loc => loc.name.toLowerCase().includes(q) || loc.address.toLowerCase().includes(q))
+        .map(loc => ({
+          place_id: `admin-${loc.id}`,
+          name: loc.name,
+          address: loc.address || loc.name,
+          lat: loc.lat,
+          lng: loc.lng,
+        }));
+
       const g = (window as any).google;
 
-      // Try Google Places Autocomplete
+      // 2. Try Google Places Autocomplete
       if (g?.maps?.places?.AutocompleteService) {
         if (!autocompleteServiceRef.current) {
           autocompleteServiceRef.current = new g.maps.places.AutocompleteService();
@@ -186,7 +199,6 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
           placesServiceRef.current = new g.maps.places.PlacesService(mapDiv);
         }
 
-        // Calculate bounds from all service areas
         const bounds = new g.maps.LatLngBounds();
         serviceAreas.forEach(area => {
           if (area.polygon) {
@@ -210,7 +222,6 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             );
           });
 
-          // Get details for each prediction to get lat/lng
           const detailedResults: PlaceResult[] = [];
           const detailPromises = predictions.slice(0, 8).map(
             (pred) =>
@@ -221,7 +232,6 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                     if (status === "OK" && place?.geometry?.location) {
                       const lat = place.geometry.location.lat();
                       const lng = place.geometry.location.lng();
-                      // Only include if within a service area
                       const area = isInServiceArea(lat, lng);
                       if (area) {
                         resolve({
@@ -244,9 +254,13 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
           const results = await Promise.all(detailPromises);
           results.forEach((r) => { if (r) detailedResults.push(r); });
-          setPlaceResults(detailedResults);
+          
+          // Deduplicate: remove Google results that match admin location names
+          const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
+          const uniqueGoogle = detailedResults.filter(r => !adminNames.has(r.name.toLowerCase()));
+          setPlaceResults([...adminMatches, ...uniqueGoogle]);
         } catch {
-          setPlaceResults([]);
+          setPlaceResults(adminMatches);
         }
       } else {
         // Fallback to Nominatim if Google not loaded
@@ -271,15 +285,17 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
               });
             }
           }
-          setPlaceResults(filtered);
+          const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
+          const uniqueNom = filtered.filter(r => !adminNames.has(r.name.toLowerCase()));
+          setPlaceResults([...adminMatches, ...uniqueNom]);
         } catch {
-          setPlaceResults([]);
+          setPlaceResults(adminMatches);
         }
       }
       setSearching(false);
     }, 350);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [activeQuery, serviceAreas, isInServiceArea]);
+  }, [activeQuery, serviceAreas, isInServiceArea, locations]);
 
   const findNearestServiceArea = useCallback((lat: number, lng: number): ServiceLocation | null => {
     let nearest: ServiceLocation | null = null;
