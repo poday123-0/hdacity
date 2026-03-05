@@ -67,8 +67,25 @@ messaging.onBackgroundMessage((payload) => {
   // Show the notification
   self.registration.showNotification(title, notificationOptions);
 
+  // For trip requests: auto-focus the app window if open (brings PWA to foreground)
+  if (isTripRequest || isSOS) {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.focus().catch(() => {});
+          // Also post a message so the app can show an in-app alert
+          client.postMessage({
+            type: "TRIP_REQUEST_FOCUS",
+            notification_type: type,
+            data: payload.data || {},
+          });
+          break;
+        }
+      }
+    });
+  }
+
   // Try to play custom sound via open client windows
-  // If the app is open (even in background tab), the client will receive this
   if (soundUrl) {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       console.log(`[SW] Found ${clientList.length} client window(s) for sound playback`);
