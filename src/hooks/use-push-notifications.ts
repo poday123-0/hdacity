@@ -46,6 +46,11 @@ export const usePushNotifications = (
           swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
           console.log("Firebase SW registered:", swRegistration.scope);
 
+          // Check for updates every 60 seconds — forces new SW to install
+          setInterval(() => {
+            swRegistration?.update().catch(() => {});
+          }, 60_000);
+
           const sw = swRegistration.installing || swRegistration.waiting || swRegistration.active;
           if (sw) {
             const waitForActive = () =>

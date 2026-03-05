@@ -17,6 +17,17 @@ const firebaseConfig = {
   measurementId: "G-V167TVMRDT",
 };
 
+// Force activate new service worker immediately (skip waiting)
+self.addEventListener("install", (event) => {
+  console.log("[SW] Installing new service worker version");
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  console.log("[SW] Activating new service worker version");
+  event.waitUntil(self.clients.claim());
+});
+
 // Initialize Firebase immediately so background messages always work
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
