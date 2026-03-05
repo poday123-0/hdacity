@@ -249,7 +249,20 @@ const AdminUsers = () => {
               filtered.map((u) => (
                 <tr key={u.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-sm font-medium text-foreground">
-                    {u.profile?.first_name} {u.profile?.last_name}
+                    {u.profile ? (
+                      <div>
+                        <span>{u.profile.first_name} {u.profile.last_name}</span>
+                        {u.profile.user_type && (
+                          <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            u.profile.user_type === "Driver" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                          }`}>
+                            {u.profile.user_type}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground italic">No profile</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     +960 {u.profile?.phone_number}

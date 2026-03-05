@@ -117,7 +117,7 @@ serve(async (req) => {
         const userIds = roles.map((r: any) => r.user_id);
         const { data: profiles } = await supabaseAdmin
           .from("profiles")
-          .select("id, first_name, last_name, phone_number, email")
+          .select("id, first_name, last_name, phone_number, email, user_type")
           .in("id", userIds);
 
         const merged = roles.map((r: any) => ({
