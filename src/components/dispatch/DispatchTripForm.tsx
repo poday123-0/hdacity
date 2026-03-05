@@ -59,14 +59,17 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
   const [centerCode, setCenterCode] = useState("");
-  const [centerCodeInfo, setCenterCodeInfo] = useState<{
+  const [centerCodeResults, setCenterCodeResults] = useState<{
+    code: string;
     color: string | null;
     plate_number: string;
     vehicle_type: string | null;
+    vehicle_type_id: string | null;
     driver_name: string | null;
     driver_phone: string | null;
     last_trip_date: string | null;
-  } | null>(null);
+    driver_id: string | null;
+  }[]>([]);
   const [centerCodeLoading, setCenterCodeLoading] = useState(false);
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
@@ -323,7 +326,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     setPassengerCount(1);
     setLuggageCount(0);
     setCenterCode("");
-    setCenterCodeInfo(null);
+    setCenterCodeResults([]);
     setSelectedVehicleType("");
     setDispatchMethod("broadcast");
     setSelectedDriverId("");
@@ -370,7 +373,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
         accepted_at: dispatchMethod === "specific" ? new Date().toISOString() : null,
         fare_type: "distance",
         estimated_fare: estimatedFare || null,
-        booking_notes: centerCode ? `Center: ${centerCode}` : null,
+        booking_notes: centerCodeResults.length > 0 ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
       };
 
       const { data: trip, error } = await supabase.from("trips").insert(tripPayload).select("*").single();
@@ -592,17 +595,21 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
               value={centerCode}
               onChange={e => {
                 setCenterCode(e.target.value.toUpperCase());
-                if (!e.target.value.trim()) setCenterCodeInfo(null);
               }}
-              placeholder="Type code & press Enter"
+              placeholder="Type code & press Enter (multiple allowed)"
               className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               onKeyDown={async e => {
                 if (e.key === "Enter") {
                   e.currentTarget.blur();
                   const code = centerCode.trim();
                   if (!code) return;
+                  // Don't add duplicates
+                  if (centerCodeResults.some(r => r.code === code)) {
+                    toast({ title: "Already added", description: `Code "${code}" is already in the list` });
+                    setCenterCode("");
+                    return;
+                  }
                   setCenterCodeLoading(true);
-                  setCenterCodeInfo(null);
                   try {
                     const { data: vehicle } = await supabase
                       .from("vehicles")
@@ -634,14 +641,34 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                       }
                     }
 
-                    setCenterCodeInfo({
+                    const newEntry = {
+                      code,
                       color: vehicle.color,
                       plate_number: vehicle.plate_number,
                       vehicle_type: (vehicle.vehicle_types as any)?.name || null,
+                      vehicle_type_id: vehicle.vehicle_type_id,
                       driver_name: driverName,
                       driver_phone: driverPhone,
                       last_trip_date: lastTripDate,
+                      driver_id: vehicle.driver_id,
+                    };
+
+                    // Add and sort: latest trip first, vehicles without trips last
+                    const updated = [...centerCodeResults, newEntry].sort((a, b) => {
+                      if (!a.last_trip_date && !b.last_trip_date) return 0;
+                      if (!a.last_trip_date) return 1;
+                      if (!b.last_trip_date) return -1;
+                      return new Date(b.last_trip_date).getTime() - new Date(a.last_trip_date).getTime();
                     });
+                    setCenterCodeResults(updated);
+
+                    // Auto-select vehicle type from first (most recent) result
+                    const topResult = updated[0];
+                    if (topResult?.vehicle_type_id) {
+                      setSelectedVehicleType(topResult.vehicle_type_id);
+                    }
+
+                    setCenterCode("");
                   } catch {
                     toast({ title: "Lookup failed", variant: "destructive" });
                   }
@@ -654,34 +681,50 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
                 <Loader2 className="w-3 h-3 animate-spin" /> Looking up...
               </div>
             )}
-            {centerCodeInfo && (
-              <div className="bg-surface border border-border rounded-lg p-2.5 space-y-1 text-xs">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-foreground">Code {centerCode}</span>
-                  {centerCodeInfo.color && <span className="text-muted-foreground">{centerCodeInfo.color}</span>}
-                  <span className="font-semibold text-foreground">{centerCodeInfo.plate_number}</span>
-                  {centerCodeInfo.vehicle_type && (
-                    <>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">{centerCodeInfo.vehicle_type}</span>
-                    </>
-                  )}
-                </div>
-                {centerCodeInfo.last_trip_date && (
-                  <p className="text-muted-foreground">
-                    <Clock className="w-3 h-3 inline mr-1" />
-                    Last trip: {new Date(centerCodeInfo.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" })} {new Date(centerCodeInfo.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                )}
-                {centerCodeInfo.driver_phone && (
-                  <p className="text-muted-foreground">
-                    <Phone className="w-3 h-3 inline mr-1" />
-                    Driver: {centerCodeInfo.driver_name || "Unknown"} • {centerCodeInfo.driver_phone}
-                  </p>
-                )}
+            {centerCodeResults.length > 0 && (
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {centerCodeResults.map((info, idx) => (
+                  <div key={info.code} className={`bg-surface border rounded-lg p-2.5 space-y-1 text-xs ${idx === 0 ? "border-primary/40" : "border-border"}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-foreground">#{info.code}</span>
+                        {info.color && <span className="text-muted-foreground">{info.color}</span>}
+                        <span className="font-semibold text-foreground">{info.plate_number}</span>
+                        {info.vehicle_type && (
+                          <>
+                            <span className="text-muted-foreground">•</span>
+                            <span className="text-muted-foreground">{info.vehicle_type}</span>
+                          </>
+                        )}
+                      </div>
+                      <button onClick={() => {
+                        const updated = centerCodeResults.filter(r => r.code !== info.code);
+                        setCenterCodeResults(updated);
+                        if (updated.length > 0 && updated[0].vehicle_type_id) {
+                          setSelectedVehicleType(updated[0].vehicle_type_id);
+                        }
+                      }} className="text-muted-foreground hover:text-destructive ml-2">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    {info.last_trip_date && (
+                      <p className="text-muted-foreground">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        Last trip: {new Date(info.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
+                    {info.driver_phone && (
+                      <p className="text-muted-foreground">
+                        <Phone className="w-3 h-3 inline mr-1" />
+                        Driver: {info.driver_name || "Unknown"} • {info.driver_phone}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
+
 
           {/* Pax & Luggage - compact */}
           <div className="grid grid-cols-2 gap-2">
