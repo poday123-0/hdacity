@@ -1997,6 +1997,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             onClick={async () => {
+              // Block going online if notification permission not granted
+              if ("Notification" in window && Notification.permission !== "granted") {
+                if (Notification.permission === "default") {
+                  const result = await Notification.requestPermission();
+                  if (result !== "granted") {
+                    toast({ title: "Notifications Required", description: "You must enable notifications to go online and receive trip requests.", variant: "destructive" });
+                    return;
+                  }
+                } else {
+                  toast({ title: "Notifications Blocked", description: "Please enable notifications in your browser settings to go online.", variant: "destructive" });
+                  return;
+                }
+              }
               // Always let this device take over and become active
               const newSessionId = crypto.randomUUID();
               deviceSessionId.current = newSessionId;
