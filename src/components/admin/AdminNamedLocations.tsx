@@ -70,9 +70,14 @@ const AdminNamedLocations = () => {
     try {
       const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
       if (result) {
+        // Build a detailed address: prefer the specific name + address parts
+        const addressText = result.address && result.address !== result.name
+          ? `${result.name}, ${result.address}`
+          : result.name || result.address || "";
         setForm(prev => ({
           ...prev,
-          address: prev.address || result.address || result.name || "",
+          name: prev.name || result.name || "",
+          address: addressText,
         }));
       }
     } catch {}
