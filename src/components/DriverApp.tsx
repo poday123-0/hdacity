@@ -72,6 +72,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
+import { stopAllSounds, playTrackedSound } from "@/lib/sound-manager";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -739,13 +740,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Play sound
     if (tripRequestSoundUrl) {
       try {
-        if (tripSoundRef.current) {
-          tripSoundRef.current.pause();
-          tripSoundRef.current.currentTime = 0;
-        }
-        tripSoundRef.current = new Audio(tripRequestSoundUrl);
-        tripSoundRef.current.loop = true;
-        tripSoundRef.current.play().catch(() => {});
+        stopAllSounds();
+        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
       } catch {}
     }
 
@@ -791,10 +787,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setCurrentTrip(null);
         setPassengerProfile(null);
         setTripStops([]);
-        if (tripSoundRef.current) {
-          tripSoundRef.current.pause();
-          tripSoundRef.current.currentTime = 0;
-        }
+        stopAllSounds();
+        tripSoundRef.current = null;
       }
     }, 1000);
   };
@@ -822,13 +816,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Play sound to alert driver
     if (tripRequestSoundUrl) {
       try {
-        if (tripSoundRef.current) {
-          tripSoundRef.current.pause();
-          tripSoundRef.current.currentTime = 0;
-        }
-        tripSoundRef.current = new Audio(tripRequestSoundUrl);
-        tripSoundRef.current.loop = true;
-        tripSoundRef.current.play().catch(() => {});
+        stopAllSounds();
+        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
       } catch {}
     }
 
@@ -852,10 +841,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Auto-stop sound after 15 seconds for assigned trips
     setTimeout(() => {
-      if (tripSoundRef.current) {
-        tripSoundRef.current.pause();
-        tripSoundRef.current.currentTime = 0;
-      }
+      stopAllSounds();
+      tripSoundRef.current = null;
     }, 15000);
   };
 
@@ -963,7 +950,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Trip accepted by ANOTHER driver while we're on ride-request screen
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
-      if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+      stopAllSounds(); tripSoundRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
       toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
       setScreen("online");
@@ -974,7 +961,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Trip cancelled by passenger (or auto-expired)
     if (updated.status === "cancelled") {
-      if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+      stopAllSounds(); tripSoundRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
       // Fetch cancel sound from notification_sounds table
       const { data: cancelSound } = await supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_cancelled").eq("is_default", true).eq("is_active", true).single();
@@ -2414,7 +2401,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="flex gap-2">
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
-                if (tripSoundRef.current) {tripSoundRef.current.pause();tripSoundRef.current.currentTime = 0;}
+                stopAllSounds(); tripSoundRef.current = null;
                 if (currentTrip?.id) {
                   declinedTripIdsRef.current.add(currentTrip.id);
                   if (userProfile?.id) {
@@ -2429,7 +2416,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
                 <button onClick={async () => {
                 // Stop sound immediately on accept
-                if (tripSoundRef.current) {tripSoundRef.current.pause();tripSoundRef.current.currentTime = 0;}
+                stopAllSounds(); tripSoundRef.current = null;
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 if (!currentTrip || !userProfile?.id) return;
 
@@ -2452,7 +2439,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 const isScheduled = freshTrip.booking_type === "scheduled" || currentTrip.booking_type === "scheduled";
 
                 // Stop trip request sound immediately on accept
-                if (tripSoundRef.current) { tripSoundRef.current.pause(); tripSoundRef.current.currentTime = 0; }
+                stopAllSounds(); tripSoundRef.current = null;
                 if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
 
                 // Accept trip in database
