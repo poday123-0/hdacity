@@ -26,9 +26,10 @@ interface TopBarProps {
   userName?: string;
   userProfile?: UserProfile | null;
   onNotificationPress?: () => void;
+  onProfileUpdate?: (updated: UserProfile) => void;
 }
 
-const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfile, onNotificationPress }: TopBarProps) => {
+const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfile, onNotificationPress, onProfileUpdate }: TopBarProps) => {
   useTheme();
   const [showProfile, setShowProfile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -73,11 +74,8 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
       .eq("id", userProfile.id);
     setSavingName(false);
     if (!error) {
-      // Update local state via the userProfile object (mutable for UI refresh)
-      if (userProfile) {
-        userProfile.first_name = editFirstName.trim();
-        userProfile.last_name = editLastName.trim();
-      }
+      const updatedProfile = { ...userProfile, first_name: editFirstName.trim(), last_name: editLastName.trim() } as UserProfile;
+      onProfileUpdate?.(updatedProfile);
       setEditingName(false);
       toast({ title: "Name updated" });
     } else {
