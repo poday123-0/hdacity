@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -28,6 +28,9 @@ const AdminBilling = () => {
   // Filter state for drivers table
   const [filterCompany, setFilterCompany] = useState("");
   const [filterVehicleType, setFilterVehicleType] = useState("");
+  const [editingVtFee, setEditingVtFee] = useState<string | null>(null);
+  const [editingVtFeeValue, setEditingVtFeeValue] = useState(0);
+  const [savingVtFee, setSavingVtFee] = useState(false);
 
   const fetchDrivers = async () => {
     setLoading(true);
@@ -38,7 +41,7 @@ const AdminBilling = () => {
         return q;
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
-      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee:base_fare").eq("is_active", true).order("sort_order"),
+      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day"]),
     ]);
@@ -228,10 +231,46 @@ const AdminBilling = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {vehicleTypes.map(vt => {
               const vtDriverCount = vehicles.filter(v => v.vehicle_type_id === vt.id).length;
+              const isEditing = editingVtFee === vt.id;
               return (
                 <div key={vt.id} className="bg-surface rounded-lg p-3 border border-border">
                   <p className="text-xs font-semibold text-foreground">{vt.name}</p>
-                  <p className="text-lg font-bold text-primary mt-0.5">{vt.base_fare} MVR</p>
+                  {isEditing ? (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={editingVtFeeValue}
+                        onChange={e => setEditingVtFeeValue(parseFloat(e.target.value) || 0)}
+                        className="w-20 px-2 py-1 bg-card border border-primary rounded-lg text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        autoFocus
+                      />
+                      <button
+                        disabled={savingVtFee}
+                        onClick={async () => {
+                          setSavingVtFee(true);
+                          await supabase.from("vehicle_types").update({ monthly_fee: editingVtFeeValue, updated_at: new Date().toISOString() } as any).eq("id", vt.id);
+                          setSavingVtFee(false);
+                          setEditingVtFee(null);
+                          toast({ title: `${vt.name} monthly fee updated to ${editingVtFeeValue} MVR` });
+                          fetchDrivers();
+                        }}
+                        className="w-7 h-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setEditingVtFee(null)} className="w-7 h-7 rounded-lg bg-surface border border-border text-muted-foreground flex items-center justify-center">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-lg font-bold text-primary">{vt.monthly_fee || 0} MVR</p>
+                      <button onClick={() => { setEditingVtFee(vt.id); setEditingVtFeeValue(vt.monthly_fee || 0); }} className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                   <p className="text-[10px] text-muted-foreground">{vtDriverCount} driver{vtDriverCount !== 1 ? "s" : ""}</p>
                 </div>
               );

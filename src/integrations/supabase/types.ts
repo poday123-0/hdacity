@@ -1354,6 +1354,7 @@ export type Database = {
           is_active: boolean
           map_icon_url: string | null
           minimum_fare: number
+          monthly_fee: number
           name: string
           passenger_tax_pct: number
           per_hour_rate: number
@@ -1375,6 +1376,7 @@ export type Database = {
           is_active?: boolean
           map_icon_url?: string | null
           minimum_fare?: number
+          monthly_fee?: number
           name: string
           passenger_tax_pct?: number
           per_hour_rate?: number
@@ -1396,6 +1398,7 @@ export type Database = {
           is_active?: boolean
           map_icon_url?: string | null
           minimum_fare?: number
+          monthly_fee?: number
           name?: string
           passenger_tax_pct?: number
           per_hour_rate?: number
