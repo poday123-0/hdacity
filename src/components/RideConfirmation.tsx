@@ -106,7 +106,8 @@ const RideConfirmation = ({
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-10 max-h-[85vh] overflow-y-auto"
+      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-10 max-h-[85vh] overflow-y-auto
+                 lg:static lg:rounded-2xl lg:shadow-2xl lg:m-4 lg:max-h-[calc(100dvh-6rem)] lg:border lg:border-border/40"
     >
       <div className="p-4 pb-6 space-y-3">
         <div className="flex justify-center"><div className="w-10 h-1 rounded-full bg-border" /></div>

@@ -908,7 +908,7 @@ const Index = () => {
 
   // PASSENGER MODE
   return (
-    <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] max-w-screen-sm mx-auto overflow-hidden bg-background" style={{ fontSize: `${passengerTextSize * 16}px` }}>
+    <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] overflow-hidden bg-background" style={{ fontSize: `${passengerTextSize * 16}px` }}>
       <PullToRefreshIndicator pullDistance={passengerPTR.pullDistance} refreshing={passengerPTR.refreshing} progress={passengerPTR.progress} />
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} onMapReady={setPassengerMapInstance} />
@@ -946,7 +946,7 @@ const Index = () => {
         </div>
       )}
 
-      <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto">
+      <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto lg:left-0 lg:right-auto lg:w-[420px] lg:top-[4.5rem]">
         <AnimatePresence mode="wait">
           {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} userId={userProfile?.id} />}
           {passengerScreen === "ride-options" && (
