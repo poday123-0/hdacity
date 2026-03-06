@@ -68,18 +68,39 @@ const AdminNamedLocations = () => {
 
   const autoFetchAddress = useCallback(async (lat: number, lng: number) => {
     try {
-      const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
-      if (result) {
-        // Build a detailed address: prefer the specific name + address parts
-        const addressText = result.address && result.address !== result.name
-          ? `${result.name}, ${result.address}`
-          : result.name || result.address || "";
-        setForm(prev => ({
-          ...prev,
-          name: prev.name || result.name || "",
-          address: addressText,
-        }));
+      // Use Google geocoder directly for road name only
+      const g = (window as any).google;
+      let roadName = "";
+      if (g?.maps?.Geocoder) {
+        const geocoder = new g.maps.Geocoder();
+        const res = await new Promise<any[]>((resolve) => {
+          geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
+            resolve(status === "OK" ? results || [] : []);
+          });
+        });
+        // Find the route/street_address result
+        for (const r of res) {
+          const types: string[] = r.types || [];
+          if (types.includes("route") || types.includes("street_address")) {
+            const route = (r.address_components || []).find((c: any) => c.types?.includes("route"));
+            if (route) { roadName = route.long_name; break; }
+          }
+        }
+        // Fallback: first result's route component
+        if (!roadName && res.length > 0) {
+          const route = (res[0].address_components || []).find((c: any) => c.types?.includes("route"));
+          if (route) roadName = route.long_name;
+        }
       }
+      // If no road found via Google, fall back to general geocode
+      if (!roadName) {
+        const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
+        roadName = result?.address?.split(",")[0] || result?.name || "";
+      }
+      setForm(prev => ({
+        ...prev,
+        address: roadName,
+      }));
     } catch {}
   }, []);
 
