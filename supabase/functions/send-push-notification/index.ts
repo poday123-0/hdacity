@@ -246,6 +246,10 @@ Deno.serve(async (req) => {
         // For native devices, include the notification payload for OS-level display.
         const isWebDevice = t.device_type === "web";
 
+        // Use default OS sound for background native notifications for reliability.
+        // Foreground/custom sounds are still handled via sound_url in app code.
+        const nativeBackgroundSound = "default";
+
         const fcmMessage: any = {
           token: t.token,
           // Only include notification for native devices — web SW handles display
@@ -265,8 +269,9 @@ Deno.serve(async (req) => {
             priority: "high",
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
-              sound: isNative ? nativeSoundName : "default",
-              channel_id: isTripRequest ? "trip_requests" : isSOS ? "sos_alerts" : "general",
+              sound: isNative ? nativeBackgroundSound : "default",
+              default_sound: true,
+              channel_id: isTripRequest ? "trip_requests_v2" : isSOS ? "sos_alerts_v2" : "general_v2",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               vibrate_timings: isTripRequest
                 ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
@@ -281,7 +286,7 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                sound: isNative ? `${nativeSoundName}.caf` : "default",
+                sound: isNative ? nativeBackgroundSound : "default",
                 badge: 1,
                 "content-available": 1,
                 "interruption-level": isUrgent ? "time-sensitive" : "active",
