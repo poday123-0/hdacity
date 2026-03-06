@@ -281,6 +281,11 @@ const Index = () => {
 
   const passengerPTR = usePullToRefresh({
     onRefresh: async () => {
+      // Force SW to check for updates, then hard-reload to bypass cache
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) await reg.update().catch(() => {});
+      }
       window.location.reload();
     },
     disabled: passengerScreen !== "home",
