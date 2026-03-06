@@ -19,6 +19,10 @@ let cachedServiceLocations: { name: string; address: string; lat: number; lng: n
 let cacheTimestamp = 0;
 const CACHE_TTL = 60000; // 1 minute
 
+// Cache named locations
+let cachedNamedLocations: { name: string; address: string; lat: number; lng: number }[] | null = null;
+let namedCacheTimestamp = 0;
+
 async function getServiceLocations() {
   const now = Date.now();
   if (cachedServiceLocations && now - cacheTimestamp < CACHE_TTL) {
@@ -38,6 +42,26 @@ async function getServiceLocations() {
   return cachedServiceLocations;
 }
 
+async function getNamedLocations() {
+  const now = Date.now();
+  if (cachedNamedLocations && now - namedCacheTimestamp < CACHE_TTL) {
+    return cachedNamedLocations;
+  }
+  const { data } = await supabase
+    .from("named_locations")
+    .select("name, address, lat, lng")
+    .eq("is_active", true)
+    .eq("status", "approved");
+  cachedNamedLocations = (data || []).map((d: any) => ({
+    name: d.name,
+    address: d.address || d.name,
+    lat: Number(d.lat),
+    lng: Number(d.lng),
+  }));
+  namedCacheTimestamp = now;
+  return cachedNamedLocations;
+}
+
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -47,11 +71,23 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 }
 
 /**
- * Check admin-added service locations first (within 500m radius).
+ * Check admin-added service locations AND named locations (within 500m radius).
+ * Named locations take priority as they are more specific POIs.
  */
 async function findAdminLocation(lat: number, lng: number): Promise<ReverseGeocodeResult | null> {
-  const locations = await getServiceLocations();
+  // Check named locations first (more specific POIs)
+  const namedLocs = await getNamedLocations();
   let closest: { name: string; address: string; dist: number } | null = null;
+  for (const loc of namedLocs) {
+    const dist = haversineMeters(lat, lng, loc.lat, loc.lng);
+    if (dist <= 200 && (!closest || dist < closest.dist)) {
+      closest = { name: loc.name, address: loc.address, dist };
+    }
+  }
+  if (closest) return { name: closest.name, address: closest.address };
+
+  // Fall back to service locations (broader areas)
+  const locations = await getServiceLocations();
   for (const loc of locations) {
     const dist = haversineMeters(lat, lng, loc.lat, loc.lng);
     if (dist <= 500 && (!closest || dist < closest.dist)) {

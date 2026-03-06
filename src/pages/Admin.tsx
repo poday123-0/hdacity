@@ -31,8 +31,9 @@ import AdminTopupCards from "@/components/admin/AdminTopupCards";
 import AdminWatermelons from "@/components/admin/AdminWatermelons";
 import SystemLogo from "@/components/SystemLogo";
 import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
+import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "device_tokens" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "device_tokens" | "settings";
 
 type NavGroup = {
   label: string;
@@ -83,6 +84,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "trips", label: "Trips", icon: MapPin },
       { id: "locations", label: "Service Areas", icon: Navigation },
+      { id: "named_locations", label: "Named Locations", icon: MapPin },
       { id: "lost_items", label: "Lost Items", icon: PackageX },
       { id: "sos_history", label: "SOS Alerts", icon: Siren },
       { id: "notifications", label: "Notifications", icon: BellRing },
@@ -374,6 +376,7 @@ const Admin = () => {
           {activeTab === "banks" && <AdminBanks />}
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}
+          {activeTab === "named_locations" && <AdminNamedLocations />}
           {activeTab === "trips" && <AdminTrips />}
           {activeTab === "lost_items" && <AdminLostItems />}
           {activeTab === "sos_history" && <AdminSOSHistory />}

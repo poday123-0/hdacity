@@ -1,7 +1,8 @@
-import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Home, Briefcase, Star, Heart, MapPinned, Calendar, Clock, FileText } from "lucide-react";
+import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage, Minus, Plus, Navigation, X, CirclePlus, Home, Briefcase, Star, Heart, MapPinned, Calendar, Clock, FileText, MessageSquarePlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import MapPicker from "./MapPicker";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 
@@ -84,6 +85,9 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [serviceAreas, setServiceAreas] = useState<ServiceAreaPolygon[]>([]);
   const [featureScheduled, setFeatureScheduled] = useState(true);
   const [featureHourly, setFeatureHourly] = useState(true);
+  const [showSuggestForm, setShowSuggestForm] = useState(false);
+  const [suggestName, setSuggestName] = useState("");
+  const [suggestAddress, setSuggestAddress] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
@@ -96,14 +100,20 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     : activeField?.startsWith("stop-") ? stopQueries[parseInt(activeField.split("-")[1])] || ""
     : "";
 
-  // Fetch service locations + polygons + feature toggles
+  // Fetch service locations + named locations + polygons + feature toggles
   useEffect(() => {
     const fetchLocations = async () => {
-      const [locRes, settingsRes] = await Promise.all([
+      const [locRes, namedRes, settingsRes] = await Promise.all([
         supabase
           .from("service_locations")
           .select("id, name, address, lat, lng, polygon")
           .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("named_locations")
+          .select("id, name, address, lat, lng")
+          .eq("is_active", true)
+          .eq("status", "approved")
           .order("name"),
         supabase
           .from("system_settings")
@@ -111,8 +121,12 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
           .in("key", ["feature_scheduled_rides", "feature_hourly_booking"]),
       ]);
       const data = locRes.data;
+      const namedData = namedRes.data || [];
       if (data) {
-        setLocations(data.map((d: any) => ({ id: d.id, name: d.name, address: d.address, lat: d.lat, lng: d.lng })));
+        // Combine service locations + named locations for search
+        const serviceLocs = data.map((d: any) => ({ id: d.id, name: d.name, address: d.address, lat: d.lat, lng: d.lng }));
+        const namedLocs = namedData.map((d: any) => ({ id: `named-${d.id}`, name: d.name, address: d.address, lat: d.lat, lng: d.lng }));
+        setLocations([...serviceLocs, ...namedLocs]);
         setServiceAreas(data.map((d: any) => ({ id: d.id, name: d.name, lat: d.lat, lng: d.lng, polygon: d.polygon })));
       }
       // Parse feature toggles
@@ -486,6 +500,38 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   };
 
 
+  const handleSuggestLocation = async () => {
+    if (!suggestName.trim() || !userId) return;
+    // Get current active field location or use pickup
+    const loc = activeField === "dropoff" ? dropoff : pickup;
+    if (!loc) {
+      toast({ title: "Set a location on the map first", variant: "destructive" });
+      return;
+    }
+    // Determine user type
+    const { data: profile } = await supabase.from("profiles").select("user_type").eq("id", userId).single();
+    const userType = profile?.user_type?.toLowerCase().includes("driver") ? "driver" : "passenger";
+    
+    const { error } = await supabase.from("named_locations").insert({
+      name: suggestName.trim(),
+      address: suggestAddress.trim() || loc.address || "",
+      lat: loc.lat,
+      lng: loc.lng,
+      status: "pending",
+      suggested_by: userId,
+      suggested_by_type: userType,
+    });
+    if (error) {
+      toast({ title: "Failed to suggest", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Location suggested! ✅", description: "An admin will review your suggestion." });
+      setShowSuggestForm(false);
+      setSuggestName("");
+      setSuggestAddress("");
+    }
+  };
+
+
   const handleSetOnMap = (field: "pickup" | "dropoff" | `stop-${number}`) => {
     setMapPickerField(field);
     setSettingOnMap(true);
@@ -553,6 +599,30 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             </div>
           </button>
         ))}
+        {/* Suggest location button */}
+        {userId && activeQuery.length >= 2 && !searching && (
+          <div className="border-t border-border">
+            {!showSuggestForm ? (
+              <button onClick={() => { setShowSuggestForm(true); setSuggestName(activeQuery); }} className="flex items-center gap-2 w-full px-4 py-3 hover:bg-surface text-left">
+                <MessageSquarePlus className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-primary">Can't find this place?</p>
+                  <p className="text-[10px] text-muted-foreground">Suggest a name for this location</p>
+                </div>
+              </button>
+            ) : (
+              <div className="px-4 py-3 space-y-2">
+                <p className="text-xs font-semibold text-foreground">Suggest a location name</p>
+                <input value={suggestName} onChange={(e) => setSuggestName(e.target.value)} placeholder="Location name" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                <input value={suggestAddress} onChange={(e) => setSuggestAddress(e.target.value)} placeholder="Address (optional)" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                <div className="flex gap-2">
+                  <button onClick={() => setShowSuggestForm(false)} className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold bg-surface text-foreground border border-border">Cancel</button>
+                  <button onClick={handleSuggestLocation} disabled={!suggestName.trim()} className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50">Submit</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -918,6 +988,30 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                           </div>
                         </button>
                       ))}
+                      {/* Suggest location */}
+                      {userId && dropoffQuery.length >= 2 && !searching && (
+                        <div className="border-t border-border">
+                          {!showSuggestForm ? (
+                            <button onClick={() => { setShowSuggestForm(true); setSuggestName(dropoffQuery); }} className="flex items-center gap-2 w-full px-4 py-3 hover:bg-surface text-left">
+                              <MessageSquarePlus className="w-4 h-4 text-primary shrink-0" />
+                              <div>
+                                <p className="text-xs font-semibold text-primary">Can't find this place?</p>
+                                <p className="text-[10px] text-muted-foreground">Suggest a name for this location</p>
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="px-4 py-3 space-y-2">
+                              <p className="text-xs font-semibold text-foreground">Suggest a location name</p>
+                              <input value={suggestName} onChange={(e) => setSuggestName(e.target.value)} placeholder="Location name" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                              <input value={suggestAddress} onChange={(e) => setSuggestAddress(e.target.value)} placeholder="Address (optional)" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                              <div className="flex gap-2">
+                                <button onClick={() => setShowSuggestForm(false)} className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold bg-surface text-foreground border border-border">Cancel</button>
+                                <button onClick={handleSuggestLocation} disabled={!suggestName.trim()} className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50">Submit</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all ${

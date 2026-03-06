@@ -506,6 +506,72 @@ export type Database = {
           },
         ]
       }
+      named_locations: {
+        Row: {
+          address: string
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          lat: number
+          lng: number
+          name: string
+          status: string
+          suggested_by: string | null
+          suggested_by_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          lat: number
+          lng: number
+          name: string
+          status?: string
+          suggested_by?: string | null
+          suggested_by_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          lat?: number
+          lng?: number
+          name?: string
+          status?: string
+          suggested_by?: string | null
+          suggested_by_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "named_locations_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "named_locations_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_sounds: {
         Row: {
           category: string
