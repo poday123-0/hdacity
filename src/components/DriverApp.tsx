@@ -74,6 +74,7 @@ import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { stopAllSounds, playTrackedSound, unlockAudioPool } from "@/lib/sound-manager";
 import RideTypesTab from "@/components/RideTypesTab";
+import SuggestPlace from "@/components/SuggestPlace";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -209,6 +210,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const sessionKickedRef = useRef(false);
   const [showTakeoverConfirm, setShowTakeoverConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSuggestPlace, setShowSuggestPlace] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showDriverCancelConfirm, setShowDriverCancelConfirm] = useState(false);
   const [showCancelledByPassengerPopup, setShowCancelledByPassengerPopup] = useState(false);
@@ -3780,6 +3782,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </div>
                   </div>
 
+                  {/* Suggest a Place */}
+                  <button
+                    onClick={() => { setShowProfile(false); setShowSuggestPlace(true); }}
+                    className="w-full flex items-center gap-2.5 bg-surface rounded-2xl p-3.5 active:scale-[0.97] transition-transform">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <MapPin className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p style={{ fontSize: '13px' }} className="font-semibold text-foreground leading-tight">Suggest a Place</p>
+                      <p style={{ fontSize: '10px' }} className="text-muted-foreground">Help us name locations on the map</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </button>
+
                   {/* Switch to Passenger */}
                   <button
                     onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
@@ -3816,6 +3832,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       <PWAInstallPrompt />
       <NotificationPermissionPrompt />
+      <SuggestPlace userId={userProfile?.id} userType="driver" visible={showSuggestPlace} onClose={() => setShowSuggestPlace(false)} />
 
       {/* Persistent banner when driver is online but notifications not granted */}
       {screen === "online" && notifPermissionDenied && (

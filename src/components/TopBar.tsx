@@ -8,6 +8,7 @@ import LostItemReport from "@/components/LostItemReport";
 import MapPicker from "@/components/MapPicker";
 import ThemeToggle from "@/components/ThemeToggle";
 import PassengerWallet from "@/components/PassengerWallet";
+import SuggestPlace from "@/components/SuggestPlace";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -60,6 +61,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
   const [placeSearching, setPlaceSearching] = useState(false);
   const placeSearchDebounce = useRef<ReturnType<typeof setTimeout>>();
   const [showWallet, setShowWallet] = useState(false);
+  const [showSuggestPlace, setShowSuggestPlace] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
@@ -471,6 +473,13 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                   >
                     <MapPin className="w-5 h-5 text-primary" />
                     <span className="text-[10px] font-semibold text-foreground">My Places</span>
+                  </button>
+                  <button
+                    onClick={() => { setShowProfile(false); setShowSuggestPlace(true); }}
+                    className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
+                  >
+                    <MapPinned className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground leading-tight text-center">Suggest Place</span>
                   </button>
                   <button
                     onClick={openLostItems}
@@ -980,6 +989,14 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
       {userProfile?.id && (
         <PassengerWallet userId={userProfile.id} isOpen={showWallet} onClose={() => setShowWallet(false)} />
       )}
+
+      {/* Suggest a Place */}
+      <SuggestPlace
+        userId={userProfile?.id}
+        userType="passenger"
+        visible={showSuggestPlace}
+        onClose={() => setShowSuggestPlace(false)}
+      />
     </>
   );
 };
