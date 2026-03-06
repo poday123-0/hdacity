@@ -79,14 +79,14 @@ const AdminBilling = () => {
   const toggleFeeFree = async (driverId: string, currentFee: number) => {
     const newFee = currentFee === 0 ? 500 : 0;
     await supabase.from("profiles").update({ monthly_fee: newFee } as any).eq("id", driverId);
-    toast({ title: newFee === 0 ? "Driver set to fee-free" : "Monthly fee restored" });
+    toast({ title: newFee === 0 ? "Driver set to free" : "Monthly fee restored" });
     fetchDrivers();
   };
 
   const setFreeUntil = async () => {
     if (!freeUntilDriver || !freeUntilDate) return;
     await supabase.from("profiles").update({ fee_free_until: freeUntilDate } as any).eq("id", freeUntilDriver);
-    toast({ title: "Fee-free period set", description: `Free until ${freeUntilDate}` });
+    toast({ title: "Free period set", description: `Free until ${freeUntilDate}` });
     setFreeUntilDriver(null);
     setFreeUntilDate("");
     fetchDrivers();
@@ -94,7 +94,7 @@ const AdminBilling = () => {
 
   const clearFreeUntil = async (driverId: string) => {
     await supabase.from("profiles").update({ fee_free_until: null } as any).eq("id", driverId);
-    toast({ title: "Fee-free period removed" });
+    toast({ title: "Free period removed" });
     fetchDrivers();
   };
 
@@ -112,13 +112,17 @@ const AdminBilling = () => {
   };
 
   const applyBulkFeeFree = async () => {
-    if (!bulkFilterId || !bulkFreeDate) return;
+    if ((!bulkFilterId && bulkFilterType !== "company") || !bulkFreeDate) return;
     setBulkApplying(true);
 
     let targetDriverIds: string[] = [];
 
     if (bulkFilterType === "company") {
-      targetDriverIds = drivers.filter(d => d.company_id === bulkFilterId).map(d => d.id);
+      if (bulkFilterId === "__all__") {
+        targetDriverIds = drivers.map(d => d.id);
+      } else if (bulkFilterId) {
+        targetDriverIds = drivers.filter(d => d.company_id === bulkFilterId).map(d => d.id);
+      }
     } else {
       // Filter by vehicle type - find drivers whose vehicles match
       const matchingDriverIds = vehicles.filter(v => v.vehicle_type_id === bulkFilterId).map(v => v.driver_id).filter(Boolean);
@@ -137,7 +141,7 @@ const AdminBilling = () => {
       await supabase.from("profiles").update({ fee_free_until: bulkFreeDate } as any).in("id", batch);
     }
 
-    toast({ title: "Bulk fee-free applied", description: `${targetDriverIds.length} driver(s) set free until ${bulkFreeDate}` });
+    toast({ title: "Bulk free period applied", description: `${targetDriverIds.length} driver(s) set free until ${bulkFreeDate}` });
     setBulkApplying(false);
     setShowBulkModal(false);
     setBulkFilterId("");
@@ -205,6 +209,7 @@ const AdminBilling = () => {
 
   // Count for bulk preview
   const getBulkCount = () => {
+    if (bulkFilterType === "company" && bulkFilterId === "__all__") return drivers.length;
     if (!bulkFilterId) return 0;
     if (bulkFilterType === "company") {
       return drivers.filter(d => d.company_id === bulkFilterId).length;
@@ -301,7 +306,7 @@ const AdminBilling = () => {
           <p className="text-2xl font-bold text-foreground mt-0.5">{payingDriversCount}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Fee-Free</p>
+          <p className="text-xs text-muted-foreground">Free</p>
           <p className="text-2xl font-bold text-primary mt-0.5">{freeDriversCount}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
@@ -339,7 +344,7 @@ const AdminBilling = () => {
             </select>
 
             <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
-              <Users className="w-4 h-4" /> Bulk Fee-Free
+              <Users className="w-4 h-4" /> Bulk Free
             </button>
           </div>
 
@@ -496,7 +501,7 @@ const AdminBilling = () => {
         <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setFreeUntilDriver(null)}>
           <div className="bg-card border border-border rounded-xl p-5 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">Set Fee-Free Period</h3>
+              <h3 className="font-semibold text-foreground">Set Free Period</h3>
               <button onClick={() => setFreeUntilDriver(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
             <p className="text-sm text-muted-foreground">Driver: <span className="font-medium text-foreground">{drivers.find(d => d.id === freeUntilDriver)?.first_name} {drivers.find(d => d.id === freeUntilDriver)?.last_name}</span></p>
@@ -504,7 +509,7 @@ const AdminBilling = () => {
               <label className="text-xs font-medium text-muted-foreground">Free until date</label>
               <input type="date" value={freeUntilDate} onChange={(e) => setFreeUntilDate(e.target.value)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
-            <button onClick={setFreeUntil} disabled={!freeUntilDate} className="w-full bg-primary text-primary-foreground py-2 rounded-lg text-sm font-semibold disabled:opacity-50">Set Fee-Free Period</button>
+            <button onClick={setFreeUntil} disabled={!freeUntilDate} className="w-full bg-primary text-primary-foreground py-2 rounded-lg text-sm font-semibold disabled:opacity-50">Set Free Period</button>
           </div>
         </div>
       )}
@@ -514,11 +519,11 @@ const AdminBilling = () => {
         <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBulkModal(false)}>
           <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md space-y-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-foreground flex items-center gap-2"><Users className="w-5 h-5 text-primary" /> Bulk Fee-Free Period</h3>
+              <h3 className="font-bold text-foreground flex items-center gap-2"><Users className="w-5 h-5 text-primary" /> Bulk Free Period</h3>
               <button onClick={() => setShowBulkModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
 
-            <p className="text-sm text-muted-foreground">Set a fee-free period for multiple drivers at once by selecting a company or vehicle type.</p>
+            <p className="text-sm text-muted-foreground">Set a free period for multiple drivers at once by selecting a company or vehicle type.</p>
 
             {/* Filter type toggle */}
             <div className="flex gap-2">
@@ -538,7 +543,7 @@ const AdminBilling = () => {
               <select value={bulkFilterId} onChange={e => setBulkFilterId(e.target.value)} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="">— Select —</option>
                 {bulkFilterType === "company"
-                  ? companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                  ? <><option value="__all__">All Companies</option>{companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</>
                   : vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name} ({vt.base_fare} MVR)</option>)
                 }
               </select>
@@ -559,7 +564,7 @@ const AdminBilling = () => {
               <input type="date" value={bulkFreeDate} onChange={(e) => setBulkFreeDate(e.target.value)} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
 
-            <button onClick={applyBulkFeeFree} disabled={!bulkFilterId || !bulkFreeDate || bulkApplying || getBulkCount() === 0} className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+            <button onClick={applyBulkFeeFree} disabled={(!bulkFilterId && bulkFilterType !== "company") || !bulkFreeDate || bulkApplying || getBulkCount() === 0} className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
               {bulkApplying ? (
                 <><Clock className="w-4 h-4 animate-spin" /> Applying...</>
               ) : (
