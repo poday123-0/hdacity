@@ -64,7 +64,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         supabase.from("driver_locations").select("driver_id, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
         supabase.from("system_settings").select("key, value").in("key", ["max_passenger_boost", "boost_step_amount"]),
-        supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id"),
+        supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id").eq("status", "approved"),
       ]);
       setVehicleTypes(vtRes.data || []);
       setFareZones(fzRes.data || []);

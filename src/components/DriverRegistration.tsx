@@ -174,7 +174,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       const rideTypes = selectedRideTypeIds.length > 0 ? selectedRideTypeIds : (vehicleTypeId ? [vehicleTypeId] : []);
       if (rideTypes.length > 0 && createdVehicleId) {
         await supabase.from("driver_vehicle_types").insert(
-          rideTypes.map(vtId => ({ driver_id: profile.id, vehicle_type_id: vtId, vehicle_id: createdVehicleId } as any))
+          rideTypes.map(vtId => ({ driver_id: profile.id, vehicle_type_id: vtId, vehicle_id: createdVehicleId, status: "pending" } as any))
         );
       }
 
