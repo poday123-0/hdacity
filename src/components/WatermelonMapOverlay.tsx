@@ -152,15 +152,8 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
       for (const item of items) {
         if (cancelled) return;
 
-        // Check cache first
-        let snapped = snappedCacheRef.current.get(item.id);
-        if (snapped === undefined) {
-          snapped = await snapToNearestRoad(item.lat, item.lng);
-          snappedCacheRef.current.set(item.id, snapped);
-        }
-
-        // Skip items that are in water
-        if (!snapped) continue;
+        // Use the exact coordinates from the database — admin already positioned them
+        const snapped = { lat: item.lat, lng: item.lng };
 
         const el = document.createElement("div");
         el.className = "promo-item-marker";
