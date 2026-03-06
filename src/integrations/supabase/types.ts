@@ -315,6 +315,7 @@ export type Database = {
           created_at: string
           driver_id: string
           id: string
+          status: string
           vehicle_id: string | null
           vehicle_type_id: string
         }
@@ -322,6 +323,7 @@ export type Database = {
           created_at?: string
           driver_id: string
           id?: string
+          status?: string
           vehicle_id?: string | null
           vehicle_type_id: string
         }
@@ -329,6 +331,7 @@ export type Database = {
           created_at?: string
           driver_id?: string
           id?: string
+          status?: string
           vehicle_id?: string | null
           vehicle_type_id?: string
         }

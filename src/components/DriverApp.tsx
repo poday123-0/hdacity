@@ -1437,6 +1437,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         driver_id: userProfile.id,
         vehicle_type_id: newVehicle.vehicle_type_id,
         vehicle_id: data.id,
+        status: "pending",
       } as any);
     }
     // Flag for admin review
