@@ -152,6 +152,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       if (profileErr) throw profileErr;
 
       // Create vehicle
+      let createdVehicleId: string | null = null;
       if (plateNumber.trim()) {
         const { data: vehicleData } = await supabase.from("vehicles").insert({
           driver_id: profile.id,
@@ -166,13 +167,14 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           insurance_url: vehicleInsuranceUrl,
           image_url: vehicleImageUrl,
         } as any).select().single();
+        createdVehicleId = vehicleData?.id || null;
       }
 
-      // Save eligible ride types
+      // Save eligible ride types (linked to the vehicle)
       const rideTypes = selectedRideTypeIds.length > 0 ? selectedRideTypeIds : (vehicleTypeId ? [vehicleTypeId] : []);
-      if (rideTypes.length > 0) {
+      if (rideTypes.length > 0 && createdVehicleId) {
         await supabase.from("driver_vehicle_types").insert(
-          rideTypes.map(vtId => ({ driver_id: profile.id, vehicle_type_id: vtId }))
+          rideTypes.map(vtId => ({ driver_id: profile.id, vehicle_type_id: vtId, vehicle_id: createdVehicleId } as any))
         );
       }
 
