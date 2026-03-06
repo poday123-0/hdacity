@@ -73,10 +73,11 @@ import NotificationPermissionPrompt from "@/components/NotificationPermissionPro
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { stopAllSounds, playTrackedSound } from "@/lib/sound-manager";
+import RideTypesTab from "@/components/RideTypesTab";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
-type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
+type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "ride_types" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
@@ -3005,6 +3006,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "info", label: "Info", icon: User },
                 { key: "documents", label: "Docs", icon: IdCard },
                 { key: "vehicles", label: "Vehicles", icon: Car },
+                { key: "ride_types", label: "Ride Types", icon: Car },
                 { key: "banks", label: "Banks", icon: Landmark },
                 { key: "favara", label: "Favara", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
@@ -3504,6 +3506,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
                   </div>
               }
+
+                {profileTab === "ride_types" && <RideTypesTab userId={userProfile?.id} vehicleTypes={vehicleTypes} />}
 
                 {profileTab === "sounds" &&
               <div className="space-y-3">
