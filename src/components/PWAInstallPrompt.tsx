@@ -39,9 +39,12 @@ const getBrowserInstructions = (browser: string) => {
 const PWAInstallPrompt = () => {
   const { canInstall, isIOS, browser, promptInstall, hasNativePrompt } = usePWAInstall();
   const [dismissed, setDismissed] = useState(() => {
+    // Permanently dismissed if user installed or explicitly dismissed
+    if (localStorage.getItem("hda_pwa_installed") === "1") return true;
     const d = localStorage.getItem(DISMISS_KEY);
     if (!d) return false;
-    return Date.now() - parseInt(d) < 3 * 24 * 60 * 60 * 1000;
+    // Permanent dismiss — no expiry
+    return true;
   });
   const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
   const [appName, setAppName] = useState("HDA TAXI");
