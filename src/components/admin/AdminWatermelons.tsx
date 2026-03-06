@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Sparkles, Upload, Shuffle, Image, MapPin, Check, X } from "lucide-react";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 
 interface ServiceLocation {
   id: string;
@@ -48,6 +49,55 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 function isTooClose(lat: number, lng: number, existingItems: { lat: number; lng: number }[]): boolean {
   return existingItems.some(item => haversineDistance(lat, lng, item.lat, item.lng) < MIN_DISTANCE_METERS);
 }
+/** Visual map component for dragging a marker to a new position */
+const MoveOnMap = ({ lat, lng, onConfirm, onCancel }: { lat: number; lng: number; onConfirm: (lat: number, lng: number) => void; onCancel: () => void }) => {
+  const { isLoaded } = useGoogleMaps();
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInst = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const posRef = useRef({ lat, lng });
+
+  useEffect(() => {
+    if (!isLoaded || !mapRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    const map = new g.maps.Map(mapRef.current, {
+      center: { lat, lng }, zoom: 17, mapId: "hda_move_map",
+      disableDefaultUI: true, zoomControl: true,
+    });
+    mapInst.current = map;
+
+    const el = document.createElement("div");
+    el.innerHTML = `<div style="font-size:28px;cursor:grab;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🍉</div>`;
+    const marker = new g.maps.marker.AdvancedMarkerElement({
+      map, position: { lat, lng }, content: el, gmpDraggable: true,
+    });
+    markerRef.current = marker;
+
+    marker.addListener("dragend", () => {
+      const p = marker.position;
+      posRef.current = { lat: p.lat, lng: p.lng };
+    });
+
+    return () => { marker.map = null; };
+  }, [isLoaded, lat, lng]);
+
+  return (
+    <div className="border border-primary/30 rounded-xl overflow-hidden bg-primary/5">
+      <div ref={mapRef} style={{ width: "100%", height: 200 }} />
+      <div className="flex items-center justify-between px-3 py-2">
+        <p className="text-[10px] text-muted-foreground">Drag the 🍉 to the new position</p>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
+          <Button size="sm" className="h-7 text-xs gap-1" onClick={() => onConfirm(posRef.current.lat, posRef.current.lng)}>
+            <Check className="w-3 h-3" /> Confirm
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Snap a lat/lng to the nearest road using Google Maps Geocoder.
@@ -541,22 +591,17 @@ const AdminWatermelons = () => {
                 )}
               </div>
               {editingItemId === m.id && (
-                <div className="border border-primary/30 rounded-xl p-3 bg-primary/5 flex items-end gap-2">
-                  <div className="flex-1">
-                    <Label className="text-[10px]">Latitude</Label>
-                    <Input type="number" step="0.000001" value={editLat} onChange={e => setEditLat(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                  <div className="flex-1">
-                    <Label className="text-[10px]">Longitude</Label>
-                    <Input type="number" step="0.000001" value={editLng} onChange={e => setEditLng(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                  <Button size="sm" className="h-8 gap-1" onClick={() => handleMoveItem(m.id)}>
-                    <Check className="w-3 h-3" /> Move
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingItemId(null)}>
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
+                <MoveOnMap
+                  lat={m.lat}
+                  lng={m.lng}
+                  onConfirm={async (lat, lng) => {
+                    await supabase.from("promo_watermelons").update({ lat, lng }).eq("id", m.id);
+                    toast({ title: "📍 Item moved!" });
+                    setEditingItemId(null);
+                    fetchItems();
+                  }}
+                  onCancel={() => setEditingItemId(null)}
+                />
               )}
             </div>
           ))}
