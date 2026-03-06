@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2 } from "lucide-react";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
@@ -46,6 +46,11 @@ const AdminDrivers = () => {
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
   const [driverRideTypes, setDriverRideTypes] = useState<Record<string, string[]>>({});
+  const [showBulkAssign, setShowBulkAssign] = useState<"company" | "center" | "vehicle" | null>(null);
+  const [bulkCompanyId, setBulkCompanyId] = useState("");
+  const [bulkCenterStart, setBulkCenterStart] = useState("");
+  const [bulkVehicleSearch, setBulkVehicleSearch] = useState("");
+  const [bulkVehicleSelected, setBulkVehicleSelected] = useState<Set<string>>(new Set());
 
   const fetchAll = async () => {
     setLoading(true);
@@ -197,6 +202,43 @@ const AdminDrivers = () => {
     const { error } = await supabase.from("profiles").delete().in("id", ids);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: `${ids.length} driver(s) deleted` }); setSelected(new Set()); fetchAll(); }
+  };
+
+  const bulkAssignCompany = async () => {
+    if (selected.size === 0 || !bulkCompanyId) return;
+    const ids = Array.from(selected);
+    const company = companies.find(c => c.id === bulkCompanyId);
+    const { error } = await supabase.from("profiles").update({ company_id: bulkCompanyId, company_name: company?.name || "" }).in("id", ids);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: `Company assigned to ${ids.length} driver(s)` }); setShowBulkAssign(null); setBulkCompanyId(""); fetchAll(); }
+  };
+
+  const bulkAssignCenter = async () => {
+    if (bulkVehicleSelected.size === 0 || !bulkCenterStart) return;
+    const startCode = parseInt(bulkCenterStart);
+    if (isNaN(startCode)) { toast({ title: "Invalid start code", variant: "destructive" }); return; }
+    const vehicleIds = Array.from(bulkVehicleSelected);
+    let code = startCode;
+    let assigned = 0;
+    for (const vId of vehicleIds) {
+      const codeStr = String(code);
+      // Check if code is already used
+      const { data: existing } = await supabase.from("vehicles").select("id").eq("center_code", codeStr).neq("id", vId).maybeSingle();
+      if (existing) { code++; continue; }
+      const { error } = await supabase.from("vehicles").update({ center_code: codeStr }).eq("id", vId);
+      if (!error) assigned++;
+      code++;
+    }
+    toast({ title: `Center codes assigned to ${assigned} vehicle(s)` });
+    setShowBulkAssign(null); setBulkCenterStart(""); setBulkVehicleSelected(new Set()); fetchAll();
+  };
+
+  const bulkAssignVehicleType = async (vtId: string) => {
+    if (bulkVehicleSelected.size === 0) return;
+    const vehicleIds = Array.from(bulkVehicleSelected);
+    const { error } = await supabase.from("vehicles").update({ vehicle_type_id: vtId }).in("id", vehicleIds);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: `Vehicle type assigned to ${vehicleIds.length} vehicle(s)` }); setShowBulkAssign(null); setBulkVehicleSelected(new Set()); fetchAll(); }
   };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
@@ -490,7 +532,104 @@ const AdminDrivers = () => {
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/* Bulk Assign Company Modal */}
+      {showBulkAssign === "company" && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBulkAssign(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-foreground">Assign Company to {selected.size} Driver(s)</h3>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Company</label>
+              <select value={bulkCompanyId} onChange={(e) => setBulkCompanyId(e.target.value)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">Select company</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowBulkAssign(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
+              <button onClick={bulkAssignCompany} disabled={!bulkCompanyId} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground disabled:opacity-50">Assign</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Assign Vehicles (Center Code & Vehicle Type) Modal */}
+      {showBulkAssign === "vehicle" && (() => {
+        const selectedDriverIds = Array.from(selected);
+        const relevantVehicles = allVehicles.filter(v => selectedDriverIds.includes(v.driver_id));
+        const q = bulkVehicleSearch.toLowerCase();
+        const filteredVehicles = q ? relevantVehicles.filter(v =>
+          v.plate_number?.toLowerCase().includes(q) || v.make?.toLowerCase().includes(q) || v.model?.toLowerCase().includes(q) || v.center_code?.toLowerCase().includes(q)
+        ) : relevantVehicles;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBulkAssign(null)}>
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-2xl space-y-4 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-bold text-foreground">Bulk Vehicle Assignment — {relevantVehicles.length} vehicles from {selected.size} driver(s)</h3>
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input value={bulkVehicleSearch} onChange={(e) => setBulkVehicleSearch(e.target.value)} placeholder="Search by plate number, make, model..." className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+
+              {/* Vehicle list */}
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <button onClick={() => {
+                    if (bulkVehicleSelected.size === filteredVehicles.length) setBulkVehicleSelected(new Set());
+                    else setBulkVehicleSelected(new Set(filteredVehicles.map(v => v.id)));
+                  }} className="text-xs font-semibold text-primary hover:underline">
+                    {bulkVehicleSelected.size === filteredVehicles.length && filteredVehicles.length > 0 ? "Deselect All" : `Select All (${filteredVehicles.length})`}
+                  </button>
+                  {bulkVehicleSelected.size > 0 && <span className="text-xs text-muted-foreground">{bulkVehicleSelected.size} selected</span>}
+                </div>
+                {filteredVehicles.map((v) => {
+                  const driver = drivers.find(d => d.id === v.driver_id);
+                  const vType = vehicleTypes.find(vt => vt.id === v.vehicle_type_id);
+                  const isChecked = bulkVehicleSelected.has(v.id);
+                  return (
+                    <button key={v.id} onClick={() => setBulkVehicleSelected(prev => { const next = new Set(prev); next.has(v.id) ? next.delete(v.id) : next.add(v.id); return next; })}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors ${isChecked ? "bg-primary/10 border border-primary/30" : "bg-surface border border-border hover:border-primary/20"}`}>
+                      {isChecked ? <CheckSquare className="w-4 h-4 text-primary shrink-0" /> : <Square className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">{v.plate_number}</p>
+                        <p className="text-[10px] text-muted-foreground">{v.make} {v.model} · {vType?.name || "No type"} · {driver ? `${driver.first_name} ${driver.last_name}` : "Unassigned"}{v.center_code ? ` · #${v.center_code}` : ""}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {filteredVehicles.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No vehicles found</p>}
+              </div>
+
+              {/* Actions */}
+              {bulkVehicleSelected.size > 0 && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Assign Center Codes (start from)</label>
+                      <div className="flex gap-2 mt-1">
+                        <input value={bulkCenterStart} onChange={(e) => setBulkCenterStart(e.target.value)} placeholder="e.g. 100" className="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <button onClick={bulkAssignCenter} disabled={!bulkCenterStart} className="px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50">Assign</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Assign Vehicle Type</label>
+                      <select onChange={(e) => { if (e.target.value) bulkAssignVehicleType(e.target.value); }} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" defaultValue="">
+                        <option value="" disabled>Select type to assign</option>
+                        {vehicleTypes.map((vt) => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowBulkAssign(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">Drivers & Vehicles</h1>
@@ -743,7 +882,7 @@ const AdminDrivers = () => {
 
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3">
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3 flex-wrap">
           <span className="text-sm font-semibold text-foreground">{selected.size} selected</span>
           <div className="flex-1" />
           <button onClick={() => bulkSetStatus("Active")} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition-colors">
@@ -751,6 +890,12 @@ const AdminDrivers = () => {
           </button>
           <button onClick={() => bulkSetStatus("Inactive")} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground rounded-xl text-xs font-semibold hover:bg-muted/80 transition-colors">
             <UserX className="w-3.5 h-3.5" /> Deactivate
+          </button>
+          <button onClick={() => { setShowBulkAssign("company"); setBulkCompanyId(""); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/50 text-accent-foreground rounded-xl text-xs font-semibold hover:bg-accent transition-colors">
+            <Building2 className="w-3.5 h-3.5" /> Assign Company
+          </button>
+          <button onClick={() => { setShowBulkAssign("vehicle"); setBulkVehicleSearch(""); setBulkVehicleSelected(new Set()); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/50 text-accent-foreground rounded-xl text-xs font-semibold hover:bg-accent transition-colors">
+            <Car className="w-3.5 h-3.5" /> Assign Vehicles
           </button>
           <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-semibold hover:bg-destructive/20 transition-colors">
             <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -1081,8 +1226,5 @@ const AdminDrivers = () => {
     </div>
   );
 };
-
-// Need React import for React.Fragment
-import React from "react";
 
 export default AdminDrivers;
