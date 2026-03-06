@@ -1429,6 +1429,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setVehicleInfo({ make: data.make, model: data.model, plate_number: data.plate_number, color: data.color, vehicle_type_id: data.vehicle_type_id || "" });
       try {localStorage.setItem("hda_last_vehicle_id", data.id);} catch {}
     }
+    // Auto-add the vehicle's primary type as a ride type for this vehicle
+    if (data.id && newVehicle.vehicle_type_id) {
+      await supabase.from("driver_vehicle_types").insert({
+        driver_id: userProfile.id,
+        vehicle_type_id: newVehicle.vehicle_type_id,
+        vehicle_id: data.id,
+      } as any);
+    }
     // Flag for admin review
     await supabase.from("profiles").update({ status: "Pending Review" }).eq("id", userProfile.id);
     setProfileStatus("Pending Review");
@@ -3512,7 +3520,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
               }
 
-                {profileTab === "ride_types" && <RideTypesTab userId={userProfile?.id} vehicleTypes={vehicleTypes} />}
+                {profileTab === "ride_types" && <RideTypesTab userId={userProfile?.id} vehicleTypes={vehicleTypes} vehicles={driverVehicles} />}
 
                 {profileTab === "sounds" &&
               <div className="space-y-3">
