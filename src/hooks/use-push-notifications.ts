@@ -110,12 +110,14 @@ export const usePushNotifications = (
           playFallbackBeep(freq, notifType === "trip_requested" ? 0.3 : 0.15);
         }
 
-        // Show browser notification (silent since we play our own sound)
+        // Show browser notification
+        // If app is hidden/minimized, let OS/browser play its default sound for reliability.
         if ("Notification" in window && Notification.permission === "granted") {
+          const shouldBeSilent = !document.hidden;
           new Notification(msgTitle, {
             body: msgBody,
             icon: "/pwa-192x192.png",
-            silent: true, // Always silent — we handle sound ourselves
+            silent: shouldBeSilent,
           });
         }
       });
