@@ -362,7 +362,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       }
 
       // Resolve actual place name in background
-      reverseGeocodeLocation(latitude, longitude).then((result) => {
+      reverseGeocodeLocation(latitude, longitude, { skipAdminLocations: true }).then((result) => {
         setPickup(prev => prev?.lat === latitude && prev?.lng === longitude ? {
           ...prev,
           name: result.name,
