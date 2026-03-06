@@ -936,6 +936,18 @@ const Index = () => {
         onNotificationPress={() => setShowPassengerNotifs(true)}
         onDriverMode={hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
         onRegisterDriver={!hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
+        onProfileUpdate={(updated) => {
+          setUserProfile(updated);
+          // Sync to localStorage session
+          try {
+            const raw = localStorage.getItem(SESSION_KEY);
+            if (raw) {
+              const session = JSON.parse(raw);
+              session.profile = updated;
+              localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            }
+          } catch {}
+        }}
       />
 
       {/* Passenger SOS - visible during active trip */}
