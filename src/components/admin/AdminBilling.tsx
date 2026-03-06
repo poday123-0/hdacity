@@ -147,14 +147,25 @@ const AdminBilling = () => {
 
   const approvePayment = async (paymentId: string) => {
     const adminProfile = JSON.parse(localStorage.getItem("hda_admin") || "{}");
+    const payment = payments.find(p => p.id === paymentId);
     await supabase.from("driver_payments").update({
       status: "approved",
       approved_at: new Date().toISOString(),
       approved_by: adminProfile.id || null,
       updated_at: new Date().toISOString(),
     } as any).eq("id", paymentId);
-    toast({ title: "Payment approved!" });
+
+    // Reactivate driver if they were on billing hold
+    if (payment?.driver_id) {
+      const { data: driverProfile } = await supabase.from("profiles").select("status").eq("id", payment.driver_id).single();
+      if (driverProfile?.status === "Billing_hold") {
+        await supabase.from("profiles").update({ status: "Active" } as any).eq("id", payment.driver_id);
+      }
+    }
+
+    toast({ title: "Payment approved!", description: "Driver has been reactivated." });
     fetchPayments();
+    fetchDrivers();
     setSelectedPayment(null);
   };
 
