@@ -95,6 +95,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   const [fareZones, setFareZones] = useState<any[]>([]);
   const [surcharges, setSurcharges] = useState<any[]>([]);
   const [serviceLocations, setServiceLocations] = useState<any[]>([]);
+  const [namedLocations, setNamedLocations] = useState<any[]>([]);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
@@ -102,14 +103,16 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   // Load fare data
   useEffect(() => {
     const load = async () => {
-      const [fzRes, scRes, slRes] = await Promise.all([
+      const [fzRes, scRes, slRes, nlRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
+        supabase.from("named_locations").select("id, name, address, lat, lng").eq("is_active", true).eq("status", "approved"),
       ]);
       setFareZones(fzRes.data || []);
       setSurcharges(scRes.data || []);
       setServiceLocations(slRes.data || []);
+      setNamedLocations(nlRes.data || []);
     };
     load();
   }, []);
@@ -274,17 +277,28 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     debounceRef.current = setTimeout(async () => {
       setOsmSearching(true);
       try {
-        // First, search admin-added service locations
+        // First, search admin-added service locations + named locations
         const q = searchQuery.toLowerCase();
-        const adminMatches: NominatimResult[] = serviceLocations
-          .filter((sl: any) => sl.name.toLowerCase().includes(q))
-          .map((sl: any) => ({
-            place_id: Date.now() + Math.random(),
-            display_name: sl.name,
-            lat: String(sl.lat),
-            lon: String(sl.lng),
-            name: sl.name,
-          }));
+        const adminMatches: NominatimResult[] = [
+          ...serviceLocations
+            .filter((sl: any) => sl.name.toLowerCase().includes(q))
+            .map((sl: any) => ({
+              place_id: Date.now() + Math.random(),
+              display_name: sl.name,
+              lat: String(sl.lat),
+              lon: String(sl.lng),
+              name: sl.name,
+            })),
+          ...namedLocations
+            .filter((nl: any) => nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q))
+            .map((nl: any) => ({
+              place_id: Date.now() + Math.random(),
+              display_name: nl.address || nl.name,
+              lat: String(nl.lat),
+              lon: String(nl.lng),
+              name: nl.name,
+            })),
+        ];
 
         // Then fetch from Nominatim
         const res = await fetch(
@@ -301,7 +315,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
       setOsmSearching(false);
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery, serviceLocations]);
+  }, [searchQuery, serviceLocations, namedLocations]);
 
   const selectLocation = (result: NominatimResult) => {
     const loc: StopLocation = {
