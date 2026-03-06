@@ -295,34 +295,10 @@ Deno.serve(async (req) => {
           },
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
-            // Include notification block so the browser GUARANTEES a visible+audible
-            // notification even when the PWA is fully closed (no client windows).
-            // The browser auto-displays this; onBackgroundMessage won't fire,
-            // but the OS default notification sound WILL play reliably.
-            notification: {
-              title: title || "Notification",
-              body: body || "",
-              icon: "/pwa-192x192.png",
-              badge: "/pwa-192x192.png",
-              tag: `${type}-${Date.now()}`,
-              renotify: true,
-              require_interaction: isUrgent,
-              silent: false,
-              vibrate: isTripRequest
-                ? [300, 100, 300, 100, 300, 100, 300, 100, 300]
-                : isSOS
-                ? [500, 100, 500, 100, 500, 100, 500]
-                : [200, 100, 200, 100, 200],
-              data: {
-                ...messageData,
-                type,
-                sound_url: soundUrl,
-                sound_category: soundCategory,
-              },
-              actions: isTripRequest
-                ? [{ action: "open", title: "Open App" }]
-                : [],
-            },
+            // Data-only for web: no webpush.notification block.
+            // This ensures only the SW's onBackgroundMessage handler fires,
+            // preventing duplicate notifications (browser auto-display + SW display).
+            // The SW will show the notification AND play the custom admin sound.
             fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
           },
         };

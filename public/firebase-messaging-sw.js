@@ -48,9 +48,6 @@ const VIBRATE_PATTERNS = {
 messaging.onBackgroundMessage((payload) => {
   console.log("[SW] Background message received:", payload);
 
-  // If the FCM payload included a webpush.notification block, the browser
-  // auto-displays a notification — we don't need to call showNotification.
-  // This handler only fires for DATA-ONLY messages (no notification block).
   const title = payload.data?.title || payload.notification?.title || "New Notification";
   const body = payload.data?.body || payload.notification?.body || "";
   const type = payload.data?.type || "default";
@@ -76,32 +73,16 @@ messaging.onBackgroundMessage((payload) => {
       : [],
   };
 
-  // Show the notification
+  // Show the notification (this is the ONLY notification — no duplicate)
   self.registration.showNotification(title, notificationOptions);
 
-  // Auto-focus the app window for important trip events (brings PWA to foreground)
-  const autoFocusTypes = ["trip_requested", "sos_alert", "trip_accepted", "driver_arrived", "trip_started", "trip_completed", "trip_cancelled"];
-  if (autoFocusTypes.includes(type)) {
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
-          client.focus().catch(() => {});
-          client.postMessage({
-            type: "TRIP_REQUEST_FOCUS",
-            notification_type: type,
-            data: payload.data || {},
-          });
-          break;
-        }
-      }
-    });
-  }
+  // Try to play custom admin sound + auto-focus via open client windows
+  self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    console.log(`[SW] Found ${clientList.length} client window(s)`);
 
-  // Try to play custom sound via open client windows
-  if (soundUrl) {
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      console.log(`[SW] Found ${clientList.length} client window(s) for sound playback`);
-      for (const client of clientList) {
+    for (const client of clientList) {
+      // Play custom sound via client
+      if (soundUrl) {
         client.postMessage({
           type: "PLAY_NOTIFICATION_SOUND",
           sound_url: soundUrl,
@@ -109,15 +90,25 @@ messaging.onBackgroundMessage((payload) => {
           sound_category: soundCategory,
         });
       }
-    });
-  }
+
+      // Auto-focus for important events
+      const autoFocusTypes = ["trip_requested", "sos_alert", "trip_accepted", "driver_arrived", "trip_started", "trip_completed", "trip_cancelled"];
+      if (autoFocusTypes.includes(type) && "focus" in client) {
+        client.focus().catch(() => {});
+        client.postMessage({
+          type: "TRIP_REQUEST_FOCUS",
+          notification_type: type,
+          data: payload.data || {},
+        });
+      }
+    }
+  });
 });
 
-// Handle notification click — works for both auto-displayed and SW-displayed notifications
+// Handle notification click — open/focus the PWA
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  // Data may be in event.notification.data (SW-created) or nested inside webpush notification data
   const data = event.notification.data || {};
   const type = data.type || "";
   let targetUrl = "/";
@@ -130,7 +121,7 @@ self.addEventListener("notificationclick", (event) => {
     targetUrl = data.trip_id ? "/driver" : "/";
   }
 
-  // Try to play custom sound when user clicks the notification (app comes to foreground)
+  // Try to play custom sound when user clicks the notification
   const soundUrl = data.sound_url;
   if (soundUrl) {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
