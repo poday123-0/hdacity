@@ -244,8 +244,11 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     return Math.max(Math.round(totalFare), Number(vt.minimum_fare));
   };
 
-  // Sort: online first, then by capacity fit
+  // Sort: "Car" always first, then online first, then by capacity fit
   const sortedTypes = [...vehicleTypes].sort((a, b) => {
+    const aIsCar = a.name.toLowerCase() === "car" ? 0 : 1;
+    const bIsCar = b.name.toLowerCase() === "car" ? 0 : 1;
+    if (aIsCar !== bIsCar) return aIsCar - bIsCar;
     const aOnline = onlineVehicleTypeIds.has(a.id) ? 0 : 1;
     const bOnline = onlineVehicleTypeIds.has(b.id) ? 0 : 1;
     if (aOnline !== bOnline) return aOnline - bOnline;
