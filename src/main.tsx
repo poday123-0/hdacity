@@ -2,14 +2,26 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Show update banner when a new SW version is detected (one-time only)
+// Show update banner when a new APP SW version is detected (one-time only)
 if ("serviceWorker" in navigator) {
   let bannerShown = false;
+  const hadControllerAtLoad = !!navigator.serviceWorker.controller;
+
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (bannerShown) return;
+
+    // Ignore controller changes during first-load SW bootstrap
+    if (!hadControllerAtLoad) return;
+
     // Only show banner if the page has been loaded for at least 5 seconds
     // (avoids triggering on initial SW registration)
     if (performance.now() < 5000) return;
+
+    const activeControllerUrl = navigator.serviceWorker.controller?.scriptURL || "";
+
+    // Ignore Firebase Messaging SW controller changes
+    if (activeControllerUrl.includes("firebase-messaging-sw.js")) return;
+
     bannerShown = true;
 
     const existing = document.getElementById("sw-update-banner");

@@ -14,6 +14,7 @@ export const usePushNotifications = (
 ) => {
   const registeredRef = useRef(false);
   const swListenerRef = useRef(false);
+  const swUpdateTimerRef = useRef<number | null>(null);
 
   const setupWeb = useCallback(async () => {
     if (!userId || registeredRef.current) return;
@@ -43,13 +44,18 @@ export const usePushNotifications = (
       let swRegistration: ServiceWorkerRegistration | undefined;
       if ("serviceWorker" in navigator) {
         try {
-          swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+          // Keep Firebase messaging SW isolated so it doesn't take over app SW scope
+          swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+            scope: "/firebase-cloud-messaging-push-scope",
+          });
           console.log("Firebase SW registered:", swRegistration.scope);
 
-          // Check for updates every 60 seconds — forces new SW to install
-          setInterval(() => {
-            swRegistration?.update().catch(() => {});
-          }, 60_000);
+          // Check for Firebase SW updates periodically (create only once)
+          if (swUpdateTimerRef.current === null) {
+            swUpdateTimerRef.current = window.setInterval(() => {
+              swRegistration?.update().catch(() => {});
+            }, 60_000);
+          }
 
           const sw = swRegistration.installing || swRegistration.waiting || swRegistration.active;
           if (sw) {
@@ -162,6 +168,39 @@ export const usePushNotifications = (
             return;
           }
 
+          // Ensure Android channels exist for reliable background sound/alerts
+          try {
+            await PushNotifications.createChannel({
+              id: "trip_requests_v2",
+              name: "Trip Requests",
+              description: "Incoming trip requests",
+              importance: 5,
+              visibility: 1,
+              sound: "default",
+              vibration: true,
+            });
+            await PushNotifications.createChannel({
+              id: "sos_alerts_v2",
+              name: "SOS Alerts",
+              description: "Emergency alerts",
+              importance: 5,
+              visibility: 1,
+              sound: "default",
+              vibration: true,
+            });
+            await PushNotifications.createChannel({
+              id: "general_v2",
+              name: "General Notifications",
+              description: "General app notifications",
+              importance: 4,
+              visibility: 1,
+              sound: "default",
+              vibration: true,
+            });
+          } catch {
+            // iOS or unsupported platform
+          }
+
           await PushNotifications.register();
 
           PushNotifications.addListener("registration", async (token) => {
@@ -215,7 +254,13 @@ export const usePushNotifications = (
         }
       }, 2000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        if (swUpdateTimerRef.current !== null) {
+          clearInterval(swUpdateTimerRef.current);
+          swUpdateTimerRef.current = null;
+        }
+      };
     }
   }, [userId, userType, setupWeb]);
 };
