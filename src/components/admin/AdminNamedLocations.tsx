@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Eye } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { reverseGeocodeLocation } from "@/lib/geocode";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 const emptyForm = { name: "", address: "", description: "", lat: "", lng: "" };
@@ -65,13 +66,26 @@ const AdminNamedLocations = () => {
 
   useEffect(() => { renderMarkers(); }, [locations, renderMarkers, isLoaded]);
 
+  const autoFetchAddress = useCallback(async (lat: number, lng: number) => {
+    try {
+      const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
+      if (result) {
+        setForm(prev => ({
+          ...prev,
+          address: prev.address || result.address || result.name || "",
+        }));
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     const g = (window as any).google;
     if (!mapInstance.current || !showForm || !g?.maps) return;
     const listener = mapInstance.current.addListener("click", (e: any) => {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
-      setForm(prev => ({ ...prev, lat: lat.toFixed(6), lng: lng.toFixed(6) }));
+      setForm(prev => ({ ...prev, lat: lat.toFixed(6), lng: lng.toFixed(6), address: "" }));
+      autoFetchAddress(lat, lng);
       if (markerRef.current) {
         markerRef.current.position = { lat, lng };
       } else {
@@ -84,12 +98,13 @@ const AdminNamedLocations = () => {
         });
         markerRef.current.addListener("dragend", () => {
           const pos = markerRef.current.position;
-          setForm(prev => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6) }));
+          setForm(prev => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), address: "" }));
+          autoFetchAddress(pos.lat, pos.lng);
         });
       }
     });
     return () => { if (listener) (window as any).google?.maps?.event?.removeListener(listener); };
-  }, [showForm]);
+  }, [showForm, autoFetchAddress]);
 
   const resetForm = () => {
     setForm(emptyForm); setEditingId(null); setShowForm(false);
