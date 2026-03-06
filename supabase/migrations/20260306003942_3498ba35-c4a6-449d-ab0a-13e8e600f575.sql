@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_types ADD COLUMN IF NOT EXISTS monthly_fee numeric NOT NULL DEFAULT 0;
