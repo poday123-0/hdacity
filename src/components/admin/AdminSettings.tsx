@@ -98,6 +98,7 @@ const AdminSettings = () => {
   const [uploadingBranding, setUploadingBranding] = useState<string | null>(null);
   const brandingInputRef = useRef<HTMLInputElement>(null);
   const [brandingUploadKey, setBrandingUploadKey] = useState("");
+  const [clearingData, setClearingData] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem("hda_settings_tab", activeSection);
@@ -673,8 +674,58 @@ const AdminSettings = () => {
     </SectionCard>
   );
 
+
+  const clearData = async (tables: string[], label: string) => {
+    if (!confirm(`⚠️ Are you sure you want to clear ALL ${label}? This cannot be undone!`)) return;
+    if (!confirm(`🚨 FINAL WARNING: This will permanently delete all ${label}. Type OK to proceed.`)) return;
+    setClearingData(label);
+    try {
+      const { data, error } = await supabase.functions.invoke("clear-data", {
+        body: { tables },
+      });
+      if (error) throw error;
+      toast({ title: `${label} cleared!`, description: JSON.stringify(data?.results || {}) });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setClearingData(null);
+  };
+
   const renderSystem = () => (
     <div className="space-y-5">
+      {/* Data Management */}
+      <SectionCard title="Data Management" description="Clear test data before going to production" icon={Trash2}>
+        <div className="space-y-3">
+          <p className="text-xs text-destructive font-medium">⚠️ These actions are irreversible. Use with extreme caution.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              { tables: ["trips"], label: "All Trips & History", desc: "Trips, messages, stops, declines, lost items" },
+              { tables: ["wallets"], label: "All Wallet Data", desc: "Transactions, withdrawals, reset balances to 0" },
+              { tables: ["sos_alerts"], label: "All SOS Alerts", desc: "Emergency alert history" },
+              { tables: ["notifications"], label: "All Notifications", desc: "System notifications" },
+              { tables: ["driver_payments"], label: "All Driver Payments", desc: "Monthly payment records" },
+              { tables: ["trips", "wallets", "sos_alerts", "notifications", "driver_payments"], label: "🔴 CLEAR EVERYTHING", desc: "All of the above at once" },
+            ].map(({ tables, label, desc }) => (
+              <button
+                key={label}
+                onClick={() => clearData(tables, label)}
+                disabled={!!clearingData}
+                className={`text-left p-3 rounded-xl border transition-all active:scale-[0.98] ${
+                  label.includes("EVERYTHING")
+                    ? "border-destructive/50 bg-destructive/10 hover:bg-destructive/20"
+                    : "border-border bg-surface hover:bg-muted/50"
+                } disabled:opacity-40`}
+              >
+                <p className={`text-xs font-bold ${label.includes("EVERYTHING") ? "text-destructive" : "text-foreground"}`}>
+                  {clearingData === label ? "Clearing..." : label}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
       {/* Map Icons */}
       <SectionCard title="Passenger Map Icon" description="Icon drivers see on the map for passengers (~60x60px PNG)" icon={User}>
         <div className="flex items-center gap-5">
