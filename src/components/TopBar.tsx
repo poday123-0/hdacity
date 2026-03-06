@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SystemLogo from "@/components/SystemLogo";
 import { UserProfile } from "@/components/AuthScreen";
@@ -59,7 +59,31 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
   const [placeSearching, setPlaceSearching] = useState(false);
   const placeSearchDebounce = useRef<ReturnType<typeof setTimeout>>();
   const [showWallet, setShowWallet] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
+  const handleSaveName = async () => {
+    if (!userProfile?.id || !editFirstName.trim() || !editLastName.trim()) return;
+    setSavingName(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ first_name: editFirstName.trim(), last_name: editLastName.trim(), updated_at: new Date().toISOString() })
+      .eq("id", userProfile.id);
+    setSavingName(false);
+    if (!error) {
+      // Update local state via the userProfile object (mutable for UI refresh)
+      if (userProfile) {
+        userProfile.first_name = editFirstName.trim();
+        userProfile.last_name = editLastName.trim();
+      }
+      setEditingName(false);
+      toast({ title: "Name updated" });
+    } else {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    }
+  };
   // Fetch saved locations
   useEffect(() => {
     if (!userProfile?.id) return;
@@ -348,9 +372,55 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     </button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-foreground truncate">
-                      {userProfile?.first_name} {userProfile?.last_name}
-                    </h3>
+                    {editingName ? (
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          value={editFirstName}
+                          onChange={(e) => setEditFirstName(e.target.value)}
+                          placeholder="First name"
+                          className="text-sm font-medium bg-muted rounded-lg px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-primary"
+                          autoFocus
+                        />
+                        <input
+                          value={editLastName}
+                          onChange={(e) => setEditLastName(e.target.value)}
+                          placeholder="Last name"
+                          className="text-sm font-medium bg-muted rounded-lg px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={handleSaveName}
+                            disabled={savingName || !editFirstName.trim() || !editLastName.trim()}
+                            className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold bg-primary text-primary-foreground rounded-lg py-1.5 disabled:opacity-50"
+                          >
+                            {savingName ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingName(false)}
+                            className="px-3 text-xs font-semibold bg-muted text-muted-foreground rounded-lg py-1.5"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-base font-bold text-foreground truncate">
+                          {userProfile?.first_name} {userProfile?.last_name}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setEditFirstName(userProfile?.first_name || "");
+                            setEditLastName(userProfile?.last_name || "");
+                            setEditingName(true);
+                          }}
+                          className="shrink-0 w-6 h-6 rounded-full bg-muted flex items-center justify-center"
+                        >
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">+960 {userProfile?.phone_number || "—"}</p>
                   </div>
                   <button onClick={() => setShowProfile(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
