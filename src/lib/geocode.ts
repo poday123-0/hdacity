@@ -69,11 +69,14 @@ export { getServiceLocations, haversineMeters, findAdminLocation };
  */
 export const reverseGeocodeLocation = async (
   lat: number,
-  lng: number
+  lng: number,
+  options?: { skipAdminLocations?: boolean }
 ): Promise<ReverseGeocodeResult> => {
-  // 1. Check admin-added locations first
-  const adminResult = await findAdminLocation(lat, lng);
-  if (adminResult) return adminResult;
+  // 1. Check admin-added locations first (unless skipped)
+  if (!options?.skipAdminLocations) {
+    const adminResult = await findAdminLocation(lat, lng);
+    if (adminResult) return adminResult;
+  }
 
   const g = (window as any).google;
 

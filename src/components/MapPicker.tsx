@@ -112,7 +112,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const result = await reverseGeocodeLocation(center.lat, center.lng);
+        const result = await reverseGeocodeLocation(center.lat, center.lng, { skipAdminLocations: true });
         setPlaceName(result.name);
         setAddress(result.address);
       } catch {
