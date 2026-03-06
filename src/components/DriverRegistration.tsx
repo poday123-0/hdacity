@@ -170,11 +170,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
         createdVehicleId = vehicleData?.id || null;
       }
 
-      // Save eligible ride types (linked to the vehicle)
-      const rideTypes = selectedRideTypeIds.length > 0 ? selectedRideTypeIds : (vehicleTypeId ? [vehicleTypeId] : []);
-      if (rideTypes.length > 0 && createdVehicleId) {
+      // Auto-assign vehicle type as ride type (pending admin approval)
+      if (vehicleTypeId && createdVehicleId) {
         await supabase.from("driver_vehicle_types").insert(
-          rideTypes.map(vtId => ({ driver_id: profile.id, vehicle_type_id: vtId, vehicle_id: createdVehicleId, status: "pending" } as any))
+          { driver_id: profile.id, vehicle_type_id: vehicleTypeId, vehicle_id: createdVehicleId, status: "pending" } as any
         );
       }
 
@@ -479,10 +478,6 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                     value={vehicleTypeId}
                     onChange={(e) => {
                       setVehicleTypeId(e.target.value);
-                      // Auto-add to ride types if not already there
-                      if (e.target.value && !selectedRideTypeIds.includes(e.target.value)) {
-                        setSelectedRideTypeIds(prev => [...prev, e.target.value]);
-                      }
                     }}
                     className={`${inputClass} appearance-none pr-10`}
                   >
@@ -495,25 +490,6 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Eligible Ride Types</label>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Select all ride types you can serve (e.g. a van driver can also take car rides)</p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {vehicleTypes.map((vt) => {
-                    const isSelected = selectedRideTypeIds.includes(vt.id);
-                    return (
-                      <button
-                        key={vt.id}
-                        type="button"
-                        onClick={() => setSelectedRideTypeIds(prev => isSelected ? prev.filter(id => id !== vt.id) : [...prev, vt.id])}
-                        className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isSelected ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}
-                      >
-                        {vt.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* Vehicle Documents */}
               <div className="space-y-3">
