@@ -219,6 +219,43 @@ Deno.serve(async (req) => {
     const failedTokens: string[] = [];
     const perTokenResults: any[] = [];
 
+    // Pre-fetch driver-specific trip_sound_id preferences for all target drivers
+    const driverUserIds = tokens
+      .filter((t: any) => t.user_type === "driver")
+      .map((t: any) => t.user_id);
+    const driverSoundPrefs: Record<string, { sound_url: string }> = {};
+    if (driverUserIds.length > 0) {
+      try {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, trip_sound_id")
+          .in("id", driverUserIds)
+          .not("trip_sound_id", "is", null);
+        if (profiles) {
+          const soundIds = profiles.map((p: any) => p.trip_sound_id).filter(Boolean);
+          if (soundIds.length > 0) {
+            const { data: sounds } = await supabase
+              .from("notification_sounds")
+              .select("id, file_url")
+              .in("id", soundIds)
+              .eq("is_active", true);
+            const soundById: Record<string, string> = {};
+            if (sounds) {
+              for (const s of sounds) soundById[s.id] = s.file_url;
+            }
+            for (const p of profiles) {
+              if (p.trip_sound_id && soundById[p.trip_sound_id]) {
+                driverSoundPrefs[p.id] = { sound_url: soundById[p.trip_sound_id] };
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load driver sound prefs:", e);
+      }
+    }
+    console.log(`Loaded ${Object.keys(driverSoundPrefs).length} driver-specific sound preference(s)`);
+
     const results = await Promise.allSettled(
       tokens.map(async (t: any) => {
         const type = data?.type || "default";
@@ -228,7 +265,9 @@ Deno.serve(async (req) => {
 
         // Resolve sound category and URL based on recipient's user type
         const soundCategory = getSoundCategory(type, t.user_type || "passenger");
-        const soundUrl = soundMap[soundCategory] || "";
+        // Driver's personal sound preference overrides the category default
+        const driverPref = driverSoundPrefs[t.user_id];
+        const soundUrl = driverPref?.sound_url || soundMap[soundCategory] || "";
 
         // Resolve native sound file name for Android/iOS
         const nativeSoundName = getNativeSoundName(soundCategory);
