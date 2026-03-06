@@ -31,18 +31,27 @@ if ("serviceWorker" in navigator) {
     banner.id = "sw-update-banner";
     banner.style.cssText = `
       position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
-      background: linear-gradient(135deg, #1e40af, #3b82f6);
-      color: white; padding: 12px 16px;
+      background: hsl(200, 55%, 55%);
+      color: white; padding: 14px 20px;
       display: flex; align-items: center; justify-content: space-between;
-      font-family: system-ui, sans-serif; font-size: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      animation: slideDown 0.3s ease-out;
+      font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(12px);
     `;
     banner.innerHTML = `
-      <span>🔄 A new version is available!</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;">🔄</div>
+        <div>
+          <div style="font-weight:600;font-size:14px;">Update Available</div>
+          <div style="font-size:12px;opacity:0.85;margin-top:1px;">A newer version of HDA is ready</div>
+        </div>
+      </div>
       <button id="sw-update-btn" style="
-        background: white; color: #1e40af; border: none; border-radius: 6px;
-        padding: 6px 16px; font-weight: 600; cursor: pointer; font-size: 13px;
+        background: white; color: hsl(200, 55%, 40%); border: none; border-radius: 10px;
+        padding: 8px 20px; font-weight: 700; cursor: pointer; font-size: 13px;
+        letter-spacing: 0.3px; transition: transform 0.15s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       ">Update Now</button>
     `;
 
