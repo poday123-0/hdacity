@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -32,8 +32,9 @@ import AdminWatermelons from "@/components/admin/AdminWatermelons";
 import SystemLogo from "@/components/SystemLogo";
 import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
+import AdminSMS from "@/components/admin/AdminSMS";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "device_tokens" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "settings";
 
 type NavGroup = {
   label: string;
@@ -88,6 +89,7 @@ const navGroups: NavGroup[] = [
       { id: "lost_items", label: "Lost Items", icon: PackageX },
       { id: "sos_history", label: "SOS Alerts", icon: Siren },
       { id: "notifications", label: "Notifications", icon: BellRing },
+      { id: "sms", label: "SMS Blast", icon: MessageSquare },
     ],
   },
   {
@@ -382,6 +384,7 @@ const Admin = () => {
           {activeTab === "sos_history" && <AdminSOSHistory />}
           {activeTab === "users" && <AdminUsers />}
           {activeTab === "notifications" && <AdminNotifications />}
+          {activeTab === "sms" && <AdminSMS />}
           {activeTab === "device_tokens" && <AdminDeviceTokens />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
