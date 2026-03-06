@@ -57,6 +57,11 @@ async function requestNotifPermission(): Promise<boolean> {
   if (!("Notification" in window)) return false;
   try {
     const result = await Notification.requestPermission();
+    if (result === "granted") {
+      // Unlock audio pool in user gesture context so sounds play when minimized
+      const { unlockAudioPool } = await import("@/lib/sound-manager");
+      unlockAudioPool();
+    }
     return result === "granted";
   } catch {
     return false;

@@ -72,7 +72,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
-import { stopAllSounds, playTrackedSound } from "@/lib/sound-manager";
+import { stopAllSounds, playTrackedSound, unlockAudioPool } from "@/lib/sound-manager";
 import RideTypesTab from "@/components/RideTypesTab";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
@@ -452,6 +452,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
       return;
     }
+
+    // Pre-unlock audio pool so notification sounds play even when PWA is minimized
+    unlockAudioPool();
 
     // Fetch driver's vehicle to get vehicle_type_id
     const startTracking = async () => {
@@ -2033,6 +2036,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     toast({ title: "Notifications Required", description: "You must enable notifications to go online and receive trip requests.", variant: "destructive" });
                     return;
                   }
+                  // Unlock audio pool after permission grant (user gesture context)
+                  unlockAudioPool();
                 } else {
                   toast({ title: "Notifications Blocked", description: "Please enable notifications in your browser settings to go online.", variant: "destructive" });
                   return;
