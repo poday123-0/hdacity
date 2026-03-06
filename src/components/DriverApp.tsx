@@ -194,6 +194,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", phone_number: "", gender: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [notifPermissionDenied, setNotifPermissionDenied] = useState(false);
+  const [billingHold, setBillingHold] = useState(false);
+  const [showBillingPayPopup, setShowBillingPayPopup] = useState(false);
+  const [billingSlipUploading, setBillingSlipUploading] = useState(false);
+  const [billingSlipUrl, setBillingSlipUrl] = useState<string | null>(null);
+  const [billingPaymentSubmitting, setBillingPaymentSubmitting] = useState(false);
+  const billingFileRef = useRef<HTMLInputElement>(null);
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
@@ -1121,6 +1127,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setTaxiPermitFrontUrl((data as any)?.taxi_permit_front_url || null);
         setTaxiPermitBackUrl((data as any)?.taxi_permit_back_url || null);
         setProfileStatus(data?.status || "Pending");
+        // Check if driver is on billing hold
+        if (data?.status === "Billing_hold") {
+          setBillingHold(true);
+          setScreen("offline");
+        } else {
+          setBillingHold(false);
+        }
 
         // Check verification issues
         const issues: string[] = [];
@@ -1996,7 +2009,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </motion.div>
           }
 
-            {profileStatus === "Active" && verificationIssues.length === 0 ?
+            {/* Billing Hold - Payment Required */}
+            {billingHold && verificationIssues.length === 0 ?
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-card rounded-2xl p-5 text-center space-y-4 border border-destructive/30 shadow-sm w-full">
+                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                  <DollarSign className="w-7 h-7 text-destructive" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold text-destructive">Payment Required</h3>
+                  <p className="text-sm text-muted-foreground">Your monthly fee is overdue. Please submit payment to continue driving.</p>
+                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{userProfile?.monthly_fee || 0} MVR</span></p>
+                </div>
+                <button
+              onClick={() => { setShowBillingPayPopup(true); setBillingSlipUrl(null); }}
+              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm active:scale-[0.97] transition-transform">
+                    Pay Now
+                  </button>
+              </motion.div> :
+
+          profileStatus === "Active" && verificationIssues.length === 0 ?
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2037,7 +2072,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 Start driving
               </motion.button> :
-          profileStatus !== "Active" && verificationIssues.length === 0 ?
+          profileStatus !== "Active" && !billingHold && verificationIssues.length === 0 ?
           <div className="bg-card rounded-xl p-4 space-y-2">
                 <div className="flex items-center gap-2 justify-center">
                   <Clock className="w-4 h-4 text-primary animate-pulse" />
@@ -3901,6 +3936,140 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 Pay {userProfile?.monthly_fee || 0} MVR
               </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      {/* Billing Payment Popup */}
+      {showBillingPayPopup && userProfile &&
+      <div className="fixed inset-0 z-[950] flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4" onClick={() => setShowBillingPayPopup(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-destructive/10 p-4 text-center">
+              <div className="w-14 h-14 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-2">
+                <DollarSign className="w-7 h-7 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Monthly Fee Payment</h3>
+              <p className="text-3xl font-black text-foreground mt-1">{userProfile.monthly_fee || 0} MVR</p>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Admin bank info */}
+              {adminBankInfo ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Transfer to this account</p>
+                  <div className="bg-surface rounded-xl divide-y divide-border">
+                    {adminBankInfo.bank_name && (
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <span className="text-xs text-muted-foreground">Bank</span>
+                        <span className="text-sm font-semibold text-foreground">{adminBankInfo.bank_name}</span>
+                      </div>
+                    )}
+                    {adminBankInfo.account_number && (
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <span className="text-xs text-muted-foreground">Account</span>
+                        <button onClick={() => { navigator.clipboard.writeText(adminBankInfo.account_number); toast({ title: "Copied!" }); }} className="text-sm font-semibold text-primary flex items-center gap-1">
+                          {adminBankInfo.account_number} <CreditCard className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    {adminBankInfo.account_name && (
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <span className="text-xs text-muted-foreground">Name</span>
+                        <span className="text-sm font-medium text-foreground">{adminBankInfo.account_name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">Contact admin for payment details</p>
+              )}
+
+              {/* Upload payment slip */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload Payment Slip</p>
+                <input
+                  ref={billingFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setBillingSlipUploading(true);
+                    try {
+                      const ext = file.name.split(".").pop() || "jpg";
+                      const path = `${userProfile.id}/billing-slip-${Date.now()}.${ext}`;
+                      const { error: uploadErr } = await supabase.storage.from("payment-slips").upload(path, file, { upsert: true });
+                      if (uploadErr) throw uploadErr;
+                      const { data: urlData } = supabase.storage.from("payment-slips").getPublicUrl(path);
+                      setBillingSlipUrl(urlData.publicUrl);
+                    } catch (err) {
+                      toast({ title: "Upload failed", variant: "destructive" });
+                    }
+                    setBillingSlipUploading(false);
+                  }}
+                />
+                {billingSlipUrl ? (
+                  <div className="relative">
+                    <img src={billingSlipUrl} alt="Payment slip" className="w-full rounded-xl border border-border max-h-48 object-contain" />
+                    <button onClick={() => setBillingSlipUrl(null)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-foreground/70 text-background flex items-center justify-center"><X className="w-3 h-3" /></button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => billingFileRef.current?.click()}
+                    disabled={billingSlipUploading}
+                    className="w-full py-4 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center gap-2 text-sm text-muted-foreground active:scale-[0.98] transition-transform">
+                    {billingSlipUploading ? (
+                      <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Uploading...</>
+                    ) : (
+                      <><Upload className="w-4 h-4" /> Take photo or upload slip</>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Submit button */}
+              <button
+                disabled={!billingSlipUrl || billingPaymentSubmitting}
+                onClick={async () => {
+                  if (!billingSlipUrl) return;
+                  setBillingPaymentSubmitting(true);
+                  const currentMonth = new Date().toISOString().slice(0, 7);
+                  const now = new Date().toISOString();
+
+                  await supabase.from("driver_payments").insert({
+                    driver_id: userProfile.id,
+                    amount: Number(userProfile.monthly_fee || 0),
+                    payment_month: currentMonth,
+                    status: "submitted",
+                    slip_url: billingSlipUrl,
+                    submitted_at: now,
+                  } as any);
+
+                  setBillingPaymentSubmitting(false);
+                  setShowBillingPayPopup(false);
+                  toast({ title: "Payment submitted!", description: "Admin will review your payment. You'll be able to go online once approved." });
+                }}
+                className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2">
+                {billingPaymentSubmitting ? (
+                  <><div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> Submitting...</>
+                ) : (
+                  "Submit Payment for Approval"
+                )}
+              </button>
+
+              {/* Pay from wallet option */}
+              {driverWalletBalance >= Number(userProfile.monthly_fee || 0) && Number(userProfile.monthly_fee || 0) > 0 && (
+                <button
+                  onClick={() => {
+                    setShowBillingPayPopup(false);
+                    setShowPayFeeModal(true);
+                  }}
+                  className="w-full py-3 rounded-xl bg-surface text-foreground font-semibold text-sm border border-border">
+                  Or pay from wallet ({driverWalletBalance.toFixed(2)} MVR)
+                </button>
+              )}
             </div>
           </div>
         </div>
