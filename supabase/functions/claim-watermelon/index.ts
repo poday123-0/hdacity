@@ -46,9 +46,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check target_user_type matches
-    if (melon.target_user_type !== user_type) {
-      return new Response(JSON.stringify({ error: `This watermelon is for ${melon.target_user_type}s only` }), {
+    // Check target_user_type matches (allow "both" to match any user type)
+    if (melon.target_user_type !== "both" && melon.target_user_type !== user_type) {
+      return new Response(JSON.stringify({ error: `This reward is for ${melon.target_user_type}s only` }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
