@@ -574,7 +574,8 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col"
+      className="fixed bottom-0 left-0 right-0 bg-card rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] z-10 flex flex-col
+                 lg:static lg:rounded-2xl lg:shadow-2xl lg:m-4 lg:max-h-[calc(100dvh-6rem)] lg:border lg:border-border/40"
       style={{ maxHeight: "min(calc(100dvh - 3.5rem), calc(100vh - 3.5rem))", touchAction: "pan-y" }}
     >
       <div className="px-4 pt-3 pb-2 space-y-2.5 overflow-y-auto flex-1 overscroll-contain min-h-0">
