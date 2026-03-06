@@ -20,7 +20,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { message, target_type, sender_id } = await req.json();
+    const { message, target_type, sender_id, phone_numbers } = await req.json();
 
     if (!message?.trim()) {
       return new Response(JSON.stringify({ error: "message is required" }), {
@@ -29,38 +29,43 @@ serve(async (req) => {
       });
     }
 
-    // Get phone numbers based on target
-    let query = supabaseAdmin.from("profiles").select("phone_number, country_code, first_name, last_name");
+    let recipients: string[] = [];
 
-    if (target_type === "passengers") {
-      query = query.eq("user_type", "Rider");
-    } else if (target_type === "drivers") {
-      query = query.ilike("user_type", "%Driver%");
-    }
-    // "all" = no filter
+    if (target_type === "custom" && Array.isArray(phone_numbers) && phone_numbers.length > 0) {
+      // Custom: use provided phone numbers directly
+      const seen = new Set<string>();
+      for (const num of phone_numbers) {
+        const phone = String(num).replace(/\D/g, "");
+        if (phone.length >= 7 && !seen.has(phone)) {
+          seen.add(phone);
+          recipients.push(phone);
+        }
+      }
+    } else {
+      // Bulk: fetch from profiles
+      let query = supabaseAdmin.from("profiles").select("phone_number, country_code");
 
-    query = query.eq("status", "Active");
+      if (target_type === "passengers") {
+        query = query.eq("user_type", "Rider");
+      } else if (target_type === "drivers") {
+        query = query.ilike("user_type", "%Driver%");
+      }
 
-    const { data: profiles, error: profileErr } = await query;
-    if (profileErr) throw new Error(profileErr.message);
-    if (!profiles || profiles.length === 0) {
-      return new Response(JSON.stringify({ error: "No recipients found", sent: 0, failed: 0 }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+      query = query.eq("status", "Active");
 
-    // Deduplicate phone numbers
-    const seen = new Set<string>();
-    const recipients: string[] = [];
-    for (const p of profiles) {
-      const phone = String(p.phone_number).replace(/\D/g, "");
-      if (!phone || phone.length < 7) continue;
-      const cc = String(p.country_code || "960").replace(/\D/g, "");
-      const full = phone.startsWith(cc) ? phone : `${cc}${phone}`;
-      if (!seen.has(full)) {
-        seen.add(full);
-        recipients.push(full);
+      const { data: profiles, error: profileErr } = await query;
+      if (profileErr) throw new Error(profileErr.message);
+
+      const seen = new Set<string>();
+      for (const p of (profiles || [])) {
+        const phone = String(p.phone_number).replace(/\D/g, "");
+        if (!phone || phone.length < 7) continue;
+        const cc = String(p.country_code || "960").replace(/\D/g, "");
+        const full = phone.startsWith(cc) ? phone : `${cc}${phone}`;
+        if (!seen.has(full)) {
+          seen.add(full);
+          recipients.push(full);
+        }
       }
     }
 
