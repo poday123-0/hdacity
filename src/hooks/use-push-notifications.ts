@@ -1,7 +1,8 @@
 import { useEffect, useCallback, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import { registerDeviceToken } from "@/lib/push-notifications";
-import { playSound, playFallbackBeep } from "@/lib/sound-utils";
+import { playFallbackBeep } from "@/lib/sound-utils";
+import { playTrackedSound } from "@/lib/sound-manager";
 
 /**
  * Hook to register push notification token for the current user.
@@ -101,7 +102,7 @@ export const usePushNotifications = (
 
         // Play admin-configured sound, fallback to beep
         if (soundUrl) {
-          playSound(soundUrl);
+          playTrackedSound(soundUrl);
         } else {
           // Use different beep tones for different event types
           const freq = notifType === "trip_requested" ? 1000 :
@@ -128,7 +129,7 @@ export const usePushNotifications = (
         navigator.serviceWorker.addEventListener("message", (event) => {
           if (event.data?.type === "PLAY_NOTIFICATION_SOUND" && event.data?.sound_url) {
             console.log("SW sound bridge: playing", event.data.sound_category);
-            playSound(event.data.sound_url);
+            playTrackedSound(event.data.sound_url);
           }
         });
       }
@@ -225,7 +226,7 @@ export const usePushNotifications = (
               console.log("Push received (foreground):", notification);
               const soundUrl = notification.data?.sound_url;
               if (soundUrl) {
-                playSound(soundUrl);
+                playTrackedSound(soundUrl);
               } else {
                 playFallbackBeep();
               }
