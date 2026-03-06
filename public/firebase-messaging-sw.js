@@ -48,6 +48,9 @@ const VIBRATE_PATTERNS = {
 messaging.onBackgroundMessage((payload) => {
   console.log("[SW] Background message received:", payload);
 
+  // If the FCM payload included a webpush.notification block, the browser
+  // auto-displays a notification — we don't need to call showNotification.
+  // This handler only fires for DATA-ONLY messages (no notification block).
   const title = payload.data?.title || payload.notification?.title || "New Notification";
   const body = payload.data?.body || payload.notification?.body || "";
   const type = payload.data?.type || "default";
@@ -64,8 +67,6 @@ messaging.onBackgroundMessage((payload) => {
     badge: "/pwa-192x192.png",
     tag: `${type}-${Date.now()}`,
     data: { ...(payload.data || {}), sound_url: soundUrl, sound_category: soundCategory },
-    // Don't set silent — let the OS play the default notification sound
-    // Our custom sound plays via the client bridge below
     silent: false,
     vibrate: vibratePattern,
     requireInteraction: isTripRequest || isSOS,
@@ -85,7 +86,6 @@ messaging.onBackgroundMessage((payload) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
           client.focus().catch(() => {});
-          // Also post a message so the app can show an in-app alert
           client.postMessage({
             type: "TRIP_REQUEST_FOCUS",
             notification_type: type,
@@ -113,19 +113,36 @@ messaging.onBackgroundMessage((payload) => {
   }
 });
 
-// Handle notification click — open/focus the app
+// Handle notification click — works for both auto-displayed and SW-displayed notifications
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
+  // Data may be in event.notification.data (SW-created) or nested inside webpush notification data
   const data = event.notification.data || {};
+  const type = data.type || "";
   let targetUrl = "/";
 
-  if (data.type === "trip_requested" || data.type === "trip_accepted") {
+  if (type === "trip_requested" || type === "trip_accepted") {
     targetUrl = "/driver";
-  } else if (data.type === "sos_alert") {
+  } else if (type === "sos_alert") {
     targetUrl = "/admin";
-  } else if (data.type === "message_received") {
+  } else if (type === "message_received") {
     targetUrl = data.trip_id ? "/driver" : "/";
+  }
+
+  // Try to play custom sound when user clicks the notification (app comes to foreground)
+  const soundUrl = data.sound_url;
+  if (soundUrl) {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        client.postMessage({
+          type: "PLAY_NOTIFICATION_SOUND",
+          sound_url: soundUrl,
+          notification_type: data.type || "default",
+          sound_category: data.sound_category || data.type || "default",
+        });
+      }
+    });
   }
 
   event.waitUntil(
