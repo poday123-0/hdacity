@@ -45,6 +45,7 @@ const AdminDrivers = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
+  const [driverRideTypes, setDriverRideTypes] = useState<Record<string, string[]>>({});
 
   const fetchAll = async () => {
     setLoading(true);
@@ -105,6 +106,16 @@ const AdminDrivers = () => {
       if (new Date(d.declined_at) >= todayStart) dMap[d.driver_id].today += 1;
     });
     setDriverDeclines(dMap);
+
+    // Fetch driver ride types
+    const { data: dvtData } = await supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id");
+    const rtMap: Record<string, string[]> = {};
+    (dvtData || []).forEach((row: any) => {
+      if (!rtMap[row.driver_id]) rtMap[row.driver_id] = [];
+      rtMap[row.driver_id].push(row.vehicle_type_id);
+    });
+    setDriverRideTypes(rtMap);
+
     setLoading(false);
   };
 
@@ -301,6 +312,17 @@ const AdminDrivers = () => {
       : await supabase.from("vehicles").insert(payload);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: editingVehicleId ? "Vehicle updated" : "Vehicle added" }); setShowVehicleForm(false); setEditingVehicleId(null); setVehicleForm(emptyVehicleForm); fetchAll(); }
+  };
+
+  const toggleDriverRideType = async (driverId: string, vtId: string) => {
+    const current = driverRideTypes[driverId] || [];
+    if (current.includes(vtId)) {
+      await supabase.from("driver_vehicle_types").delete().eq("driver_id", driverId).eq("vehicle_type_id", vtId);
+      setDriverRideTypes(prev => ({ ...prev, [driverId]: current.filter(id => id !== vtId) }));
+    } else {
+      await supabase.from("driver_vehicle_types").insert({ driver_id: driverId, vehicle_type_id: vtId });
+      setDriverRideTypes(prev => ({ ...prev, [driverId]: [...current, vtId] }));
+    }
   };
 
   const uploadVehicleDoc = async (field: string, file: File) => {
@@ -849,6 +871,21 @@ const AdminDrivers = () => {
                               <button onClick={() => openVehicleForm(d.id)} className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
                                 <Plus className="w-3.5 h-3.5" /> Add Vehicle
                               </button>
+                            </div>
+
+                            {/* Eligible Ride Types */}
+                            <div className="bg-card border border-border rounded-xl p-3">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Eligible Ride Types</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {vehicleTypes.map((vt) => {
+                                  const isActive = (driverRideTypes[d.id] || []).includes(vt.id);
+                                  return (
+                                    <button key={vt.id} onClick={() => toggleDriverRideType(d.id, vt.id)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${isActive ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}>
+                                      {vt.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
 
                             {/* Vehicle form */}

@@ -310,6 +310,42 @@ export type Database = {
           },
         ]
       }
+      driver_vehicle_types: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          vehicle_type_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          vehicle_type_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          vehicle_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicle_types_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_vehicle_types_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_contacts: {
         Row: {
           created_at: string

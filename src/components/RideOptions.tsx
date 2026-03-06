@@ -57,19 +57,28 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [vtRes, fzRes, scRes, dlRes, slRes, boostRes] = await Promise.all([
+      const [vtRes, fzRes, scRes, dlRes, slRes, boostRes, dvtRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
-        supabase.from("driver_locations").select("vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
+        supabase.from("driver_locations").select("driver_id, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
         supabase.from("system_settings").select("key, value").in("key", ["max_passenger_boost", "boost_step_amount"]),
+        supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id"),
       ]);
       setVehicleTypes(vtRes.data || []);
       setFareZones(fzRes.data || []);
       setSurcharges(scRes.data || []);
       setServiceLocations(slRes.data || []);
+      // Build set of available vehicle types: from driver_locations directly + from driver_vehicle_types for online drivers
+      const onlineDriverIds = new Set<string>((dlRes.data || []).map((d: any) => d.driver_id).filter(Boolean));
       const onlineIds = new Set<string>((dlRes.data || []).map((d: any) => d.vehicle_type_id).filter(Boolean));
+      // Add all ride types that online drivers are eligible for
+      (dvtRes.data || []).forEach((row: any) => {
+        if (onlineDriverIds.has(row.driver_id)) {
+          onlineIds.add(row.vehicle_type_id);
+        }
+      });
       setOnlineVehicleTypeIds(onlineIds);
       // Parse boost settings
       const boostSettings: Record<string, any> = {};

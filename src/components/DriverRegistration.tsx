@@ -47,6 +47,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
   const [vehicleTypeId, setVehicleTypeId] = useState("");
+  const [selectedRideTypeIds, setSelectedRideTypeIds] = useState<string[]>([]);
   const [vehicleRegUrl, setVehicleRegUrl] = useState<string | null>(null);
   const [vehicleInsuranceUrl, setVehicleInsuranceUrl] = useState<string | null>(null);
   const [vehicleImageUrl, setVehicleImageUrl] = useState<string | null>(null);
@@ -152,7 +153,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
       // Create vehicle
       if (plateNumber.trim()) {
-        await supabase.from("vehicles").insert({
+        const { data: vehicleData } = await supabase.from("vehicles").insert({
           driver_id: profile.id,
           plate_number: plateNumber.trim().toUpperCase(),
           make: make.trim() || null,
@@ -164,7 +165,15 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           registration_url: vehicleRegUrl,
           insurance_url: vehicleInsuranceUrl,
           image_url: vehicleImageUrl,
-        } as any);
+        } as any).select().single();
+      }
+
+      // Save eligible ride types
+      const rideTypes = selectedRideTypeIds.length > 0 ? selectedRideTypeIds : (vehicleTypeId ? [vehicleTypeId] : []);
+      if (rideTypes.length > 0) {
+        await supabase.from("driver_vehicle_types").insert(
+          rideTypes.map(vtId => ({ driver_id: profile.id, vehicle_type_id: vtId }))
+        );
       }
 
       // Notify admin
@@ -466,7 +475,13 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 <div className="relative mt-1">
                   <select
                     value={vehicleTypeId}
-                    onChange={(e) => setVehicleTypeId(e.target.value)}
+                    onChange={(e) => {
+                      setVehicleTypeId(e.target.value);
+                      // Auto-add to ride types if not already there
+                      if (e.target.value && !selectedRideTypeIds.includes(e.target.value)) {
+                        setSelectedRideTypeIds(prev => [...prev, e.target.value]);
+                      }
+                    }}
                     className={`${inputClass} appearance-none pr-10`}
                   >
                     <option value="">Select type</option>
@@ -475,6 +490,26 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none mt-0.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground font-medium">Eligible Ride Types</label>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Select all ride types you can serve (e.g. a van driver can also take car rides)</p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {vehicleTypes.map((vt) => {
+                    const isSelected = selectedRideTypeIds.includes(vt.id);
+                    return (
+                      <button
+                        key={vt.id}
+                        type="button"
+                        onClick={() => setSelectedRideTypeIds(prev => isSelected ? prev.filter(id => id !== vt.id) : [...prev, vt.id])}
+                        className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isSelected ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}
+                      >
+                        {vt.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
