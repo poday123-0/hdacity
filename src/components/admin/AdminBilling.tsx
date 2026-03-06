@@ -1,11 +1,13 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Upload, Clock, Image } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [freeUntilDriver, setFreeUntilDriver] = useState<string | null>(null);
@@ -16,20 +18,35 @@ const AdminBilling = () => {
   const [billingDueDay, setBillingDueDay] = useState(25);
   const [tab, setTab] = useState<"drivers" | "payments">("drivers");
 
+  // Bulk fee-free state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkFilterType, setBulkFilterType] = useState<"company" | "vehicle_type">("company");
+  const [bulkFilterId, setBulkFilterId] = useState("");
+  const [bulkFreeDate, setBulkFreeDate] = useState("");
+  const [bulkApplying, setBulkApplying] = useState(false);
+
+  // Filter state for drivers table
+  const [filterCompany, setFilterCompany] = useState("");
+  const [filterVehicleType, setFilterVehicleType] = useState("");
+
   const fetchDrivers = async () => {
     setLoading(true);
-    const [driversRes, companiesRes, settingsRes] = await Promise.all([
+    const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
       (() => {
         let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until").ilike("user_type", "%Driver%").order("first_name");
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
         return q;
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
+      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee:base_fare").eq("is_active", true).order("sort_order"),
+      supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day"]),
     ]);
     setDrivers((driversRes.data as any[]) || []);
     setCompanies((companiesRes.data as any[]) || []);
-    
+    setVehicleTypes((vehicleTypesRes.data as any[]) || []);
+    setVehicles((vehiclesRes.data as any[]) || []);
+
     settingsRes.data?.forEach((s: any) => {
       if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 25);
     });
@@ -45,6 +62,16 @@ const AdminBilling = () => {
 
   useEffect(() => { fetchDrivers(); }, [search]);
   useEffect(() => { fetchPayments(); }, [paymentFilter]);
+
+  const getDriverVehicleType = (driverId: string) => {
+    const vehicle = vehicles.find(v => v.driver_id === driverId);
+    if (!vehicle?.vehicle_type_id) return null;
+    return vehicleTypes.find(vt => vt.id === vehicle.vehicle_type_id) || null;
+  };
+
+  const getDriverVehicleTypeName = (driverId: string) => {
+    return getDriverVehicleType(driverId)?.name || "—";
+  };
 
   const toggleFeeFree = async (driverId: string, currentFee: number) => {
     const newFee = currentFee === 0 ? 500 : 0;
@@ -81,6 +108,40 @@ const AdminBilling = () => {
     toast({ title: "Billing settings saved" });
   };
 
+  const applyBulkFeeFree = async () => {
+    if (!bulkFilterId || !bulkFreeDate) return;
+    setBulkApplying(true);
+
+    let targetDriverIds: string[] = [];
+
+    if (bulkFilterType === "company") {
+      targetDriverIds = drivers.filter(d => d.company_id === bulkFilterId).map(d => d.id);
+    } else {
+      // Filter by vehicle type - find drivers whose vehicles match
+      const matchingDriverIds = vehicles.filter(v => v.vehicle_type_id === bulkFilterId).map(v => v.driver_id).filter(Boolean);
+      targetDriverIds = drivers.filter(d => matchingDriverIds.includes(d.id)).map(d => d.id);
+    }
+
+    if (targetDriverIds.length === 0) {
+      toast({ title: "No drivers found", description: "No drivers match the selected filter.", variant: "destructive" });
+      setBulkApplying(false);
+      return;
+    }
+
+    // Update in batches of 50
+    for (let i = 0; i < targetDriverIds.length; i += 50) {
+      const batch = targetDriverIds.slice(i, i + 50);
+      await supabase.from("profiles").update({ fee_free_until: bulkFreeDate } as any).in("id", batch);
+    }
+
+    toast({ title: "Bulk fee-free applied", description: `${targetDriverIds.length} driver(s) set free until ${bulkFreeDate}` });
+    setBulkApplying(false);
+    setShowBulkModal(false);
+    setBulkFilterId("");
+    setBulkFreeDate("");
+    fetchDrivers();
+  };
+
   const approvePayment = async (paymentId: string) => {
     const adminProfile = JSON.parse(localStorage.getItem("hda_admin") || "{}");
     await supabase.from("driver_payments").update({
@@ -109,6 +170,16 @@ const AdminBilling = () => {
   const isCompanyFeeFree = (d: any) => companies.find(c => c.id === d.company_id)?.fee_free || false;
   const isFreeUntilActive = (d: any) => d.fee_free_until && new Date(d.fee_free_until) > new Date();
 
+  // Apply table filters
+  const filteredDrivers = drivers.filter(d => {
+    if (filterCompany && d.company_id !== filterCompany) return false;
+    if (filterVehicleType) {
+      const driverVehicle = vehicles.find(v => v.driver_id === d.id);
+      if (!driverVehicle || driverVehicle.vehicle_type_id !== filterVehicleType) return false;
+    }
+    return true;
+  });
+
   const totalMonthlyRevenue = drivers.reduce((sum, d) => {
     if (d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return sum;
     return sum + (d.monthly_fee || 0);
@@ -117,6 +188,16 @@ const AdminBilling = () => {
   const freeDriversCount = drivers.filter(d => d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)).length;
   const payingDriversCount = drivers.length - freeDriversCount;
   const pendingPayments = payments.filter(p => p.status === "submitted").length;
+
+  // Count for bulk preview
+  const getBulkCount = () => {
+    if (!bulkFilterId) return 0;
+    if (bulkFilterType === "company") {
+      return drivers.filter(d => d.company_id === bulkFilterId).length;
+    }
+    const matchingDriverIds = vehicles.filter(v => v.vehicle_type_id === bulkFilterId).map(v => v.driver_id).filter(Boolean);
+    return drivers.filter(d => matchingDriverIds.includes(d.id)).length;
+  };
 
   return (
     <div className="space-y-6">
@@ -139,6 +220,25 @@ const AdminBilling = () => {
           💡 Admin notification phones are managed in <strong>Settings → Admin Notification Recipients</strong>
         </p>
       </div>
+
+      {/* Vehicle Type Fee Summary */}
+      {vehicleTypes.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Car className="w-4 h-4" /> Monthly Fee by Vehicle Type</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {vehicleTypes.map(vt => {
+              const vtDriverCount = vehicles.filter(v => v.vehicle_type_id === vt.id).length;
+              return (
+                <div key={vt.id} className="bg-surface rounded-lg p-3 border border-border">
+                  <p className="text-xs font-semibold text-foreground">{vt.name}</p>
+                  <p className="text-lg font-bold text-primary mt-0.5">{vt.base_fare} MVR</p>
+                  <p className="text-[10px] text-muted-foreground">{vtDriverCount} driver{vtDriverCount !== 1 ? "s" : ""}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -171,10 +271,26 @@ const AdminBilling = () => {
 
       {tab === "drivers" && (
         <>
-          {/* Search */}
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          {/* Search + Filters + Bulk Action */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search drivers..." className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+
+            <select value={filterCompany} onChange={e => setFilterCompany(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="">All Companies</option>
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+
+            <select value={filterVehicleType} onChange={e => setFilterVehicleType(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="">All Vehicle Types</option>
+              {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+            </select>
+
+            <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
+              <Users className="w-4 h-4" /> Bulk Fee-Free
+            </button>
           </div>
 
           {/* Drivers billing table */}
@@ -185,6 +301,7 @@ const AdminBilling = () => {
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Driver</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Phone</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
+                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicle Type</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
@@ -192,11 +309,11 @@ const AdminBilling = () => {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : drivers.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                ) : filteredDrivers.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
                 ) : (
-                  drivers.map((d) => {
+                  filteredDrivers.map((d) => {
                     const companyFeeFree = isCompanyFeeFree(d);
                     const temporaryFree = isFreeUntilActive(d);
                     const effectivelyFree = d.monthly_fee === 0 || companyFeeFree || temporaryFree;
@@ -209,6 +326,7 @@ const AdminBilling = () => {
                           {getCompanyName(d)}
                           {companyFeeFree && <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Fee Free</span>}
                         </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{getDriverVehicleTypeName(d.id)}</td>
                         <td className="px-4 py-3">
                           {effectivelyFree ? (
                             <span className="text-sm font-semibold text-primary">FREE</span>
@@ -323,7 +441,7 @@ const AdminBilling = () => {
         </>
       )}
 
-      {/* Free-until modal */}
+      {/* Single driver Free-until modal */}
       {freeUntilDriver && (
         <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setFreeUntilDriver(null)}>
           <div className="bg-card border border-border rounded-xl p-5 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -337,6 +455,67 @@ const AdminBilling = () => {
               <input type="date" value={freeUntilDate} onChange={(e) => setFreeUntilDate(e.target.value)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <button onClick={setFreeUntil} disabled={!freeUntilDate} className="w-full bg-primary text-primary-foreground py-2 rounded-lg text-sm font-semibold disabled:opacity-50">Set Fee-Free Period</button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Fee-Free Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBulkModal(false)}>
+          <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-foreground flex items-center gap-2"><Users className="w-5 h-5 text-primary" /> Bulk Fee-Free Period</h3>
+              <button onClick={() => setShowBulkModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+
+            <p className="text-sm text-muted-foreground">Set a fee-free period for multiple drivers at once by selecting a company or vehicle type.</p>
+
+            {/* Filter type toggle */}
+            <div className="flex gap-2">
+              <button onClick={() => { setBulkFilterType("company"); setBulkFilterId(""); }} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${bulkFilterType === "company" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground border border-border"}`}>
+                <Users className="w-4 h-4" /> By Company
+              </button>
+              <button onClick={() => { setBulkFilterType("vehicle_type"); setBulkFilterId(""); }} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${bulkFilterType === "vehicle_type" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground border border-border"}`}>
+                <Car className="w-4 h-4" /> By Vehicle Type
+              </button>
+            </div>
+
+            {/* Filter selection */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                {bulkFilterType === "company" ? "Select Company" : "Select Vehicle Type"}
+              </label>
+              <select value={bulkFilterId} onChange={e => setBulkFilterId(e.target.value)} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">— Select —</option>
+                {bulkFilterType === "company"
+                  ? companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                  : vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name} ({vt.base_fare} MVR)</option>)
+                }
+              </select>
+            </div>
+
+            {/* Preview count */}
+            {bulkFilterId && (
+              <div className="bg-surface rounded-lg px-4 py-3 border border-border">
+                <p className="text-sm text-foreground">
+                  <span className="font-bold text-primary">{getBulkCount()}</span> driver{getBulkCount() !== 1 ? "s" : ""} will be affected
+                </p>
+              </div>
+            )}
+
+            {/* Date picker */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Free until date</label>
+              <input type="date" value={bulkFreeDate} onChange={(e) => setBulkFreeDate(e.target.value)} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+
+            <button onClick={applyBulkFeeFree} disabled={!bulkFilterId || !bulkFreeDate || bulkApplying || getBulkCount() === 0} className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+              {bulkApplying ? (
+                <><Clock className="w-4 h-4 animate-spin" /> Applying...</>
+              ) : (
+                <>Apply to {getBulkCount()} Driver{getBulkCount() !== 1 ? "s" : ""}</>
+              )}
+            </button>
           </div>
         </div>
       )}
