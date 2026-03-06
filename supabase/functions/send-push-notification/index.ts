@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
 
         const fcmMessage: any = {
           token: t.token,
-          // Only include notification for native devices — web SW handles display
+          // Native devices: top-level notification for OS display
           ...(isWebDevice ? {} : {
             notification: {
               title: title || "Notification",
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
           }),
           data: {
             ...messageData,
-            // Pass title/body in data so the SW can use them
+            // Pass title/body in data so foreground handler + SW can use them
             title: title || "Notification",
             body: body || "",
           },
@@ -295,6 +295,34 @@ Deno.serve(async (req) => {
           },
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
+            // Include notification block so the browser GUARANTEES a visible+audible
+            // notification even when the PWA is fully closed (no client windows).
+            // The browser auto-displays this; onBackgroundMessage won't fire,
+            // but the OS default notification sound WILL play reliably.
+            notification: {
+              title: title || "Notification",
+              body: body || "",
+              icon: "/pwa-192x192.png",
+              badge: "/pwa-192x192.png",
+              tag: `${type}-${Date.now()}`,
+              renotify: true,
+              require_interaction: isUrgent,
+              silent: false,
+              vibrate: isTripRequest
+                ? [300, 100, 300, 100, 300, 100, 300, 100, 300]
+                : isSOS
+                ? [500, 100, 500, 100, 500, 100, 500]
+                : [200, 100, 200, 100, 200],
+              data: {
+                ...messageData,
+                type,
+                sound_url: soundUrl,
+                sound_category: soundCategory,
+              },
+              actions: isTripRequest
+                ? [{ action: "open", title: "Open App" }]
+                : [],
+            },
             fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
           },
         };
