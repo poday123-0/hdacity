@@ -1328,6 +1328,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Update status if doc was uploaded
     if (uploadTarget !== "avatar") {
       setProfileStatus("Pending Review");
+      // Notify admin about profile document update
+      try {
+        const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
+        await supabase.functions.invoke("notify-vehicle-update", {
+          body: {
+            driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+            phone_number: userProfile.phone_number,
+            plate_number: "",
+            update_type: `Profile document updated: ${docLabel}`,
+          },
+        });
+      } catch {} // Non-blocking
       toast({ title: "Uploaded!", description: "Document submitted for admin review" });
     } else {
       toast({ title: "Uploaded!", description: "Image saved successfully" });
