@@ -866,6 +866,23 @@ const Index = () => {
     setDropoff(null);
   }, []);
 
+  // Periodic check: if profile was deleted by admin, force logout
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    const checkProfileExists = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", userProfile.id)
+        .maybeSingle();
+      if (!data) {
+        handleLogout();
+      }
+    };
+    const interval = setInterval(checkProfileExists, 10000);
+    return () => clearInterval(interval);
+  }, [userProfile?.id, handleLogout]);
+
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode={initialMode} />;
   if (phase === "register") return <PassengerRegistration phoneNumber={pendingPhone} onComplete={handleRegistrationComplete} />;
