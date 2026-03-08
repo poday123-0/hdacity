@@ -388,7 +388,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           if (colorScheme) {
             map?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
           }
-          map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+          // No raster styles for vector maps
         } else {
           map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         }
