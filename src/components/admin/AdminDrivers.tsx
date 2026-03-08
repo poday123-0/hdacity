@@ -303,6 +303,7 @@ const AdminDrivers = () => {
       license_front_url: editForm.license_front_url || null, license_back_url: editForm.license_back_url || null,
       id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
       taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
+      id_card_expiry: editForm.id_card_expiry || null, license_expiry: editForm.license_expiry || null,
     } as any).eq("id", editingId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: "Driver updated!" }); setEditingId(null); fetchAll(); }
