@@ -1383,6 +1383,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Update status if doc was uploaded
     if (uploadTarget !== "avatar") {
       setProfileStatus("Pending Review");
+      setProfileRejectionReason("");
       // Notify admin about profile document update
       try {
         const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
