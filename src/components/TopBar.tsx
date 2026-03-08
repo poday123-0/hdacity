@@ -316,7 +316,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
             {onDriverMode && (
               <button
                 onClick={onDriverMode}
-                className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full pl-2 pr-3.5 py-1.5 active:scale-95 transition-transform shadow-sm"
+                className="flex items-center gap-2 bg-card border border-border rounded-full pl-2 pr-3.5 py-1.5 active:scale-95 transition-transform shadow-md"
               >
                 <SystemLogo className="w-6 h-6 object-contain rounded-full" alt="Driver" />
                 <span className="text-sm font-bold text-primary">Driver Mode</span>
