@@ -14,6 +14,7 @@ import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminDrivers from "@/components/admin/AdminDrivers";
 import AdminVehicleTypes from "@/components/admin/AdminVehicleTypes";
+import AdminVehicles from "@/components/admin/AdminVehicles";
 import AdminVehicleMakes from "@/components/admin/AdminVehicleMakes";
 import AdminFares from "@/components/admin/AdminFares";
 import AdminSettings from "@/components/admin/AdminSettings";
@@ -34,7 +35,7 @@ import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
 import AdminSMS from "@/components/admin/AdminSMS";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "settings";
 
 type NavGroup = {
   label: string;
@@ -59,6 +60,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Fleet",
     items: [
+      { id: "vehicles", label: "All Vehicles", icon: Car },
       { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
       { id: "vehicle_makes", label: "Makes & Models", icon: Car },
     ],
@@ -368,6 +370,7 @@ const Admin = () => {
           {activeTab === "dashboard" && <AdminDashboard />}
           {activeTab === "passengers" && <AdminPassengers />}
           {activeTab === "drivers" && <AdminDrivers />}
+          {activeTab === "vehicles" && <AdminVehicles />}
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
           {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
           {activeTab === "fares" && <AdminFares />}
