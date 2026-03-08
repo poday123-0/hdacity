@@ -808,7 +808,7 @@ const Index = () => {
           supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
           supabase.from("driver_favara_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
           trip.vehicle_id
-            ? supabase.from("vehicles").select("make, model, plate_number, color").eq("id", trip.vehicle_id).single()
+            ? supabase.from("vehicles").select("make, model, plate_number, color, image_url").eq("id", trip.vehicle_id).single()
             : Promise.resolve({ data: null }),
         ]);
         const p = profileRes.data;
@@ -821,6 +821,8 @@ const Index = () => {
           avatar_url: p?.avatar_url || null,
           vehicle: v ? `${v.make} ${v.model}` : "",
           plate: v?.plate_number || "",
+          vehicle_color: v?.color || "",
+          vehicle_image_url: v?.image_url || null,
           bank_accounts: banksRes.data || [],
           favara_accounts: favaraRes.data || [],
         });
