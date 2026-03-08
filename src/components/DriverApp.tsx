@@ -345,18 +345,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Periodic check: if profile was deleted by admin, force logout
   useEffect(() => {
     if (!userProfile?.id || !onLogout) return;
+
     const checkProfileExists = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", userProfile.id)
         .maybeSingle();
+
+      // Ignore transient fetch errors to avoid false auto-logout
+      if (error) return;
+
       if (!data) {
-        toast({ title: "Account Removed", description: "Your profile has been removed by admin. Please register again.", variant: "destructive" });
-        onLogout();
+        missingProfileChecksRef.current += 1;
+        if (missingProfileChecksRef.current >= 3) {
+          toast({ title: "Account Removed", description: "Your profile has been removed by admin. Please register again.", variant: "destructive" });
+          onLogout();
+        }
+        return;
       }
+
+      missingProfileChecksRef.current = 0;
     };
-    // Check immediately on mount, then every 10 seconds
+
     checkProfileExists();
     const interval = setInterval(checkProfileExists, 10000);
     return () => clearInterval(interval);
