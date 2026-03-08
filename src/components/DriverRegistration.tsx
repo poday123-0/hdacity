@@ -219,9 +219,11 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           id_card_back_url: idCardBack,
           license_front_url: licenseFront,
           license_back_url: licenseBack,
+          id_card_expiry: idCardExpiry || null,
+          license_expiry: licenseExpiry || null,
           taxi_permit_front_url: taxiPermitFront,
           taxi_permit_back_url: taxiPermitBack,
-        })
+        } as any)
         .select()
         .single();
 
