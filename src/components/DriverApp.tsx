@@ -1346,13 +1346,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
       // Notify admin about vehicle document upload
       const matchedVehicle = driverVehicles.find((v) => v.id === vehicleId);
+      const wasVehicleRejected = matchedVehicle?.vehicle_status === "rejected";
+      const docType = vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded";
       try {
         await supabase.functions.invoke("notify-vehicle-update", {
           body: {
             driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
             phone_number: userProfile.phone_number,
             plate_number: matchedVehicle?.plate_number || "",
-            update_type: vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded",
+            update_type: wasVehicleRejected ? `🔄 RESUBMISSION — ${docType}` : docType,
           },
         });
       } catch {} // Non-blocking
