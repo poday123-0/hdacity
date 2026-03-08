@@ -155,6 +155,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [minWithdrawalAmount, setMinWithdrawalAmount] = useState(100);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [upcomingScheduledTrip, setUpcomingScheduledTrip] = useState<{ id: string; scheduled_at: string; pickup_address: string; dropoff_address: string } | null>(null);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
