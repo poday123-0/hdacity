@@ -67,7 +67,7 @@ if ("serviceWorker" in navigator) {
           letter-spacing: 0.2px; transition: transform 0.15s ease;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           flex-shrink: 0;
-        ">Refresh</button>
+        ">Update Now</button>
       </div>
     `;
 
