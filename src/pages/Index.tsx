@@ -106,6 +106,8 @@ const Index = () => {
   const [scheduledAt, setScheduledAt] = useState<string | undefined>();
   const [bookingNotes, setBookingNotes] = useState<string | undefined>();
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
+  const [showScheduledConfirmation, setShowScheduledConfirmation] = useState(false);
+  const [scheduledConfirmationData, setScheduledConfirmationData] = useState<{ scheduledAt: string; pickup: string; dropoff: string } | null>(null);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [driverIconUrl, setDriverIconUrl] = useState<string | null>(null);
   const [matchedDriver, setMatchedDriver] = useState<any>(null);
