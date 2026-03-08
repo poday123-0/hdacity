@@ -960,21 +960,78 @@ const Index = () => {
   }
   if (phase === "driver-pending") {
     const pd = pendingDriverData;
+    const isRejected = pd?.profile?.status === "Rejected";
+    const profileRejectionReason = pd?.profile?.rejection_reason;
+
+    const handleReuploadDoc = async (field: string, file: File) => {
+      if (!pd?.profile?.id) return;
+      const ext = file.name.split(".").pop();
+      const path = `registration/${pd.profile.phone_number}/${field}_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("driver-documents").upload(path, file, { upsert: true });
+      if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
+      const { data: urlData } = supabase.storage.from("driver-documents").getPublicUrl(path);
+      const url = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from("profiles").update({ [field]: url } as any).eq("id", pd.profile.id);
+      toast({ title: "Document updated" });
+      // Refresh data
+      if (userProfile?.phone_number) await checkDriverProfile(userProfile.phone_number);
+    };
+
+    const handleReuploadVehicleDoc = async (vehicleId: string, field: string, file: File) => {
+      if (!pd?.profile?.id) return;
+      const ext = file.name.split(".").pop();
+      const path = `vehicle-docs/${pd.profile.id}/${field}_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+      if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
+      const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+      await supabase.from("vehicles").update({ [field]: urlData.publicUrl } as any).eq("id", vehicleId);
+      toast({ title: "Vehicle document updated" });
+      if (userProfile?.phone_number) await checkDriverProfile(userProfile.phone_number);
+    };
+
+    const handleResubmit = async () => {
+      if (!pd?.profile?.id) return;
+      await supabase.from("profiles").update({ status: "Pending Review", rejection_reason: null } as any).eq("id", pd.profile.id);
+      // Also reset rejected vehicles to pending
+      const rejectedVehicleIds = pd.vehicles.filter((v: any) => v.vehicle_status === "rejected").map((v: any) => v.id);
+      if (rejectedVehicleIds.length > 0) {
+        await supabase.from("vehicles").update({ vehicle_status: "pending", rejection_reason: null } as any).in("id", rejectedVehicleIds);
+      }
+      toast({ title: "Resubmitted!", description: "Your updated application has been sent for review." });
+      if (userProfile?.phone_number) await checkDriverProfile(userProfile.phone_number);
+    };
+
     return (
       <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-lg mx-auto">
         <div className="flex-1 overflow-y-auto px-6 py-8">
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${isRejected ? "bg-destructive/10" : "bg-primary/10"}`}>
+              {isRejected ? (
+                <X className="w-10 h-10 text-destructive" />
+              ) : (
+                <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-1">Registration Under Review</h2>
+            <h2 className="text-xl font-bold text-foreground mb-1">
+              {isRejected ? "Registration Needs Changes" : "Registration Under Review"}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Your driver registration is pending admin approval. You'll be notified once approved.
+              {isRejected
+                ? "Your registration was not approved. Please review the comments below, fix the issues, and resubmit."
+                : "Your driver registration is pending admin approval. You'll be notified once approved."}
             </p>
           </div>
+
+          {/* Rejection reason banner */}
+          {isRejected && profileRejectionReason && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 mb-4">
+              <p className="text-xs font-bold text-destructive uppercase tracking-wider mb-1">Admin Comment</p>
+              <p className="text-sm text-foreground">{profileRejectionReason}</p>
+            </div>
+          )}
 
           {/* Submitted Profile Details */}
           {pd?.profile && (
@@ -994,7 +1051,10 @@ const Index = () => {
                     <p className="text-xs text-muted-foreground">+{pd.profile.country_code} {pd.profile.phone_number}</p>
                     {pd.profile.email && <p className="text-xs text-muted-foreground">{pd.profile.email}</p>}
                   </div>
-                  <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">
+                  <span className={`ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                    isRejected ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
+                    "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                  }`}>
                     {pd.profile.status}
                   </span>
                 </div>
@@ -1006,19 +1066,21 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Submitted Documents */}
+              {/* Submitted Documents — with re-upload on rejection */}
               <div className="bg-card border border-border rounded-2xl p-4">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Submitted Documents</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                  {isRejected ? "Documents (tap to replace)" : "Submitted Documents"}
+                </p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { url: pd.profile.license_front_url, label: "License Front" },
-                    { url: pd.profile.license_back_url, label: "License Back" },
-                    { url: pd.profile.id_card_front_url, label: "ID Front" },
-                    { url: pd.profile.id_card_back_url, label: "ID Back" },
-                    { url: pd.profile.taxi_permit_front_url, label: "Permit Front" },
-                    { url: pd.profile.taxi_permit_back_url, label: "Permit Back" },
+                    { url: pd.profile.license_front_url, label: "License Front", field: "license_front_url" },
+                    { url: pd.profile.license_back_url, label: "License Back", field: "license_back_url" },
+                    { url: pd.profile.id_card_front_url, label: "ID Front", field: "id_card_front_url" },
+                    { url: pd.profile.id_card_back_url, label: "ID Back", field: "id_card_back_url" },
+                    { url: pd.profile.taxi_permit_front_url, label: "Permit Front", field: "taxi_permit_front_url" },
+                    { url: pd.profile.taxi_permit_back_url, label: "Permit Back", field: "taxi_permit_back_url" },
                   ].map((doc) => (
-                    <div key={doc.label} className="flex flex-col items-center gap-1 p-2 bg-surface rounded-xl border border-border">
+                    <label key={doc.label} className={`flex flex-col items-center gap-1 p-2 bg-surface rounded-xl border border-border ${isRejected ? "cursor-pointer hover:border-primary/50" : ""}`}>
                       {doc.url ? (
                         <img src={doc.url} alt={doc.label} className="w-full h-10 object-cover rounded-lg" />
                       ) : (
@@ -1027,7 +1089,14 @@ const Index = () => {
                         </div>
                       )}
                       <span className="text-[9px] font-medium text-muted-foreground text-center leading-tight">{doc.label}</span>
-                    </div>
+                      {isRejected && (
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleReuploadDoc(doc.field, file);
+                          e.target.value = "";
+                        }} />
+                      )}
+                    </label>
                   ))}
                 </div>
               </div>
@@ -1037,31 +1106,63 @@ const Index = () => {
                 <div className="bg-card border border-border rounded-2xl p-4">
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Submitted Vehicles</p>
                   <div className="space-y-3">
-                    {pd.vehicles.map((v: any) => (
-                      <div key={v.id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
-                        {v.image_url ? (
-                          <img src={v.image_url} alt="Vehicle" className="w-14 h-10 rounded-lg object-cover shrink-0" />
-                        ) : (
-                          <div className="w-14 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                            <Car className="w-5 h-5 text-muted-foreground/30" />
+                    {pd.vehicles.map((v: any) => {
+                      const isVehicleRejected = v.vehicle_status === "rejected";
+                      return (
+                        <div key={v.id} className="space-y-2">
+                          <div className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
+                            {v.image_url ? (
+                              <img src={v.image_url} alt="Vehicle" className="w-14 h-10 rounded-lg object-cover shrink-0" />
+                            ) : (
+                              <div className="w-14 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                <Car className="w-5 h-5 text-muted-foreground/30" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-foreground truncate">{v.plate_number}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {[v.make, v.model, v.color].filter(Boolean).join(" · ") || "No details"}
+                                {v.vehicle_types?.name && ` · ${v.vehicle_types.name}`}
+                              </p>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              v.vehicle_status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
+                              isVehicleRejected ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
+                              "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                            }`}>
+                              {v.vehicle_status}
+                            </span>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">{v.plate_number}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {[v.make, v.model, v.color].filter(Boolean).join(" · ") || "No details"}
-                            {v.vehicle_types?.name && ` · ${v.vehicle_types.name}`}
-                          </p>
+                          {/* Vehicle rejection reason */}
+                          {isVehicleRejected && v.rejection_reason && (
+                            <div className="ml-4 bg-destructive/5 border border-destructive/15 rounded-xl px-3 py-2">
+                              <p className="text-[10px] font-bold text-destructive mb-0.5">Rejection Reason</p>
+                              <p className="text-xs text-foreground">{v.rejection_reason}</p>
+                            </div>
+                          )}
+                          {/* Re-upload vehicle docs if rejected */}
+                          {isVehicleRejected && (
+                            <div className="ml-4 flex flex-wrap gap-2">
+                              {[
+                                { field: "image_url", label: "Photo" },
+                                { field: "registration_url", label: "Registration" },
+                                { field: "insurance_url", label: "Insurance" },
+                              ].map((doc) => (
+                                <label key={doc.field} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-surface border border-border text-foreground cursor-pointer hover:border-primary/50 transition-colors">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
+                                  {doc.label}
+                                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleReuploadVehicleDoc(v.id, doc.field, file);
+                                    e.target.value = "";
+                                  }} />
+                                </label>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          v.vehicle_status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
-                          v.vehicle_status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
-                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
-                        }`}>
-                          {v.vehicle_status}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1077,11 +1178,19 @@ const Index = () => {
           )}
         </div>
 
-        {/* Bottom button */}
-        <div className="px-6 pb-6 pt-3 border-t border-border">
+        {/* Bottom buttons */}
+        <div className="px-6 pb-6 pt-3 border-t border-border space-y-2">
+          {isRejected && (
+            <button
+              onClick={handleResubmit}
+              className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
+            >
+              Resubmit Application
+            </button>
+          )}
           <button
             onClick={() => { setPhase("passenger"); setAppMode("passenger"); }}
-            className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
+            className={`w-full px-6 py-3 rounded-xl text-sm font-semibold ${isRejected ? "bg-surface text-foreground border border-border" : "bg-primary text-primary-foreground"}`}
           >
             Continue as Passenger
           </button>
