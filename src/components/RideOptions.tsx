@@ -162,13 +162,13 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     return null;
   };
 
-  const calcFare = (vt: any): number => {
+  const calcFare = (vt: any): { fare: number; zoneId: string | null } => {
     // Hourly booking: show per_hour_rate as estimate (1 hour minimum)
     if (bookingType === "hourly") {
       let fare = Number(vt.per_hour_rate) || Number(vt.base_fare);
       // Apply passenger tax
       fare += fare * (Number(vt.passenger_tax_pct) / 100);
-      return Math.max(Math.round(fare), Number(vt.minimum_fare));
+      return { fare: Math.max(Math.round(fare), Number(vt.minimum_fare)), zoneId: null };
     }
 
     // Build the ordered list of waypoints: [pickup, ...stops, dropoff]
@@ -176,6 +176,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
 
     // For multi-stop trips, calculate fare per segment and sum
     let totalFare = 0;
+    let matchedZoneId: string | null = null;
 
     for (let i = 0; i < waypoints.length - 1; i++) {
       const from = waypoints[i];
@@ -186,8 +187,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       const toArea = findServiceArea(to);
 
       // Check for fixed fare zone match for this segment
+      // Allow zones with null vehicle_type_id to match any vehicle type
       const matchesZone = (fz: any) => {
-        if (fz.vehicle_type_id !== vt.id) return false;
+        if (fz.vehicle_type_id && fz.vehicle_type_id !== vt.id) return false;
         const fromNames = [from?.name, from?.id, fromArea?.name, fromArea?.id].filter(Boolean);
         const toNames = [to?.name, to?.id, toArea?.name, toArea?.id].filter(Boolean);
         return (
@@ -196,10 +198,14 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         );
       };
 
-      const zone = fareZones.find(matchesZone);
+      // Prefer zone with matching vehicle_type_id, fallback to zones with null vehicle_type_id
+      const exactZone = fareZones.find((fz: any) => fz.vehicle_type_id === vt.id && matchesZone(fz));
+      const genericZone = fareZones.find((fz: any) => !fz.vehicle_type_id && matchesZone(fz));
+      const zone = exactZone || genericZone;
 
       if (zone) {
         totalFare += Number(zone.fixed_fare);
+        if (!matchedZoneId) matchedZoneId = zone.id;
       } else {
         // Distance-based for this segment
         const segDist = segmentDistances[i] ?? (distanceKm != null ? distanceKm / Math.max(waypoints.length - 1, 1) : 0);
@@ -241,7 +247,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
 
     // Enforce minimum fare
-    return Math.max(Math.round(totalFare), Number(vt.minimum_fare));
+    return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: matchedZoneId };
   };
 
   // Sort: "Car" always first, then online first, then by capacity fit
