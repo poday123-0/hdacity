@@ -340,6 +340,13 @@ const AdminDrivers = () => {
 
   const saveVehicle = async () => {
     if (!expandedDriver || !vehicleForm.plate_number) return;
+    // Check for duplicate plate number
+    const normalizedPlate = vehicleForm.plate_number.trim().toUpperCase();
+    const { data: existingPlate } = await supabase.from("vehicles").select("id").eq("plate_number", normalizedPlate).maybeSingle();
+    if (existingPlate && existingPlate.id !== editingVehicleId) {
+      toast({ title: "Duplicate plate number", description: `Vehicle ${normalizedPlate} is already registered.`, variant: "destructive" });
+      return;
+    }
     // Validate center code against blocked list
     if (vehicleForm.center_code) {
       const driver = drivers.find(d => d.id === expandedDriver);
