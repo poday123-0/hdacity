@@ -893,7 +893,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
               <div className="flex-1 space-y-2.5">
                 {/* Pickup input */}
                 <div className="relative">
-                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all ${
+                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
                     activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-md" : "bg-surface border border-border/50"
                   }`}>
                     <div className="flex-1 min-w-0">
@@ -1027,7 +1027,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                       )}
                     </div>
                   )}
-                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all ${
+                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
                     activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-md" : "bg-surface border border-border/50"
                   }`}>
                     <div className="flex-1 min-w-0">
