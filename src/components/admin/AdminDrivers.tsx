@@ -152,7 +152,8 @@ const AdminDrivers = () => {
       const dVehicles = driverVehicles[d.id] || [];
       const plateMatch = dVehicles.some((v: any) => v.plate_number?.toLowerCase().includes(q));
       const centerMatch = dVehicles.some((v: any) => v.center_code?.toLowerCase().includes(q));
-      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch) return false;
+      const bankMatch = d.bank_account_number?.toLowerCase().includes(q) || d.bank_account_name?.toLowerCase().includes(q);
+      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch && !bankMatch) return false;
     }
     return true;
   });
@@ -930,6 +931,7 @@ const AdminDrivers = () => {
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Company</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Rating</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicles</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Bank</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
@@ -937,9 +939,9 @@ const AdminDrivers = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="px-4 py-12 text-center"><Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /></td></tr>
+              <tr><td colSpan={10} className="px-4 py-12 text-center"><Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /></td></tr>
             ) : filteredDrivers.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
+              <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
             ) : (
               filteredDrivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
@@ -983,6 +985,22 @@ const AdminDrivers = () => {
                           {pendingVCount > 0 && <span className="w-4 h-4 rounded-full bg-yellow-500 text-white text-[9px] font-bold flex items-center justify-center">{pendingVCount}</span>}
                           {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
+                        {vehicles.length > 0 && (
+                          <div className="mt-1 space-y-0.5">
+                            {vehicles.map((v: any) => (
+                              <p key={v.id} className="text-[10px] text-muted-foreground font-mono">{v.plate_number}</p>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {d.bank_name || d.bank_account_number ? (
+                          <div className="space-y-0.5">
+                            {d.bank_name && <p className="text-[10px] font-semibold text-foreground">{d.bank_name}</p>}
+                            {d.bank_account_number && <p className="text-[10px] text-muted-foreground font-mono">{d.bank_account_number}</p>}
+                            {d.bank_account_name && <p className="text-[10px] text-muted-foreground">{d.bank_account_name}</p>}
+                          </div>
+                        ) : <span className="text-[10px] text-muted-foreground">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -1020,7 +1038,7 @@ const AdminDrivers = () => {
                     {/* Expanded vehicles */}
                     {isExpanded && (
                       <tr key={`${d.id}-vehicles`} className="border-b border-border">
-                        <td colSpan={9} className="px-4 py-4 bg-surface/30">
+                        <td colSpan={10} className="px-4 py-4 bg-surface/30">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
