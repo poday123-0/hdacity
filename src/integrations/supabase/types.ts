@@ -866,6 +866,7 @@ export type Database = {
           license_front_url: string | null
           monthly_fee: number
           phone_number: string
+          rejection_reason: string | null
           status: string
           taxi_permit_back_url: string | null
           taxi_permit_front_url: string | null
@@ -897,6 +898,7 @@ export type Database = {
           license_front_url?: string | null
           monthly_fee?: number
           phone_number: string
+          rejection_reason?: string | null
           status?: string
           taxi_permit_back_url?: string | null
           taxi_permit_front_url?: string | null
@@ -928,6 +930,7 @@ export type Database = {
           license_front_url?: string | null
           monthly_fee?: number
           phone_number?: string
+          rejection_reason?: string | null
           status?: string
           taxi_permit_back_url?: string | null
           taxi_permit_front_url?: string | null
