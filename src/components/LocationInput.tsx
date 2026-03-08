@@ -956,7 +956,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                           className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
                         />
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <div className="flex items-center justify-end gap-1.5 shrink-0 ml-2 w-[92px]">
                         <button onClick={() => removeStop(idx)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center active:scale-90">
                           <X className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
