@@ -1364,9 +1364,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
 
-    // Document uploads (not avatar) flag profile for review
+    // Document uploads (not avatar) flag profile for review and clear rejection
     if (uploadTarget !== "avatar") {
       (updateField as any).status = "Pending Review";
+      (updateField as any).rejection_reason = null;
     }
 
     await supabase.from("profiles").update(updateField).eq("id", userProfile.id);
