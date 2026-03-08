@@ -880,10 +880,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
               <div className="flex-1 space-y-2.5">
                 {/* Pickup input */}
                 <div className="relative">
-                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
+                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all ${
                     activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-md" : "bg-surface border border-border/50"
                   }`}>
-                    <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Pickup</p>
                       <input
                         ref={pickupRef}
@@ -897,7 +897,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 truncate"
                       />
                       {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">{pickup.address}</p>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{pickup.address}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -1014,10 +1014,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                       )}
                     </div>
                   )}
-                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
+                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all ${
                     activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-md" : "bg-surface border border-border/50"
                   }`}>
-                    <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Destination</p>
                        <input
                         ref={dropoffRef}
@@ -1028,10 +1028,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         value={dropoffQuery}
                         onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
                         onFocus={() => { setActiveField("dropoff"); setTimeout(() => dropoffRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 truncate"
                       />
                       {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">{dropoff.address}</p>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{dropoff.address}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
