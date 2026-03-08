@@ -130,9 +130,15 @@ export const usePushNotifications = (
         navigator.serviceWorker.addEventListener("message", (event) => {
           if (event.data?.type === "PLAY_NOTIFICATION_SOUND" && event.data?.sound_url) {
             const notifType = event.data.notification_type || event.data.sound_category || "";
-            // Skip trip_requested — DriverApp.handleNewTrip already plays looping sound via realtime
+            // For trip_requested: only play via SW bridge when page is hidden/minimized
+            // (when visible, DriverApp.handleNewTrip handles it via realtime)
             if (notifType === "trip_requested") {
-              console.log("SW sound bridge: skipping trip_requested (handled by realtime)");
+              if (!document.hidden) {
+                console.log("SW sound bridge: skipping trip_requested (page visible, realtime handles it)");
+                return;
+              }
+              console.log("SW sound bridge: playing trip_requested (page hidden/minimized)");
+              playTrackedSound(event.data.sound_url, true);
               return;
             }
             const shouldLoop = notifType === "sos_alert";
