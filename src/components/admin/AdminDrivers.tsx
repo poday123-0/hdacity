@@ -6,7 +6,7 @@ import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
 
-type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review";
+type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review" | "Rejected";
 
 const AdminDrivers = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -133,6 +133,7 @@ const AdminDrivers = () => {
 
   // Computed stats
   const pendingDrivers = drivers.filter(d => d.status === "Pending" || d.status === "Pending Review");
+  const rejectedDrivers = drivers.filter(d => d.status === "Rejected");
   const pendingVehicles = allVehicles.filter(v => v.vehicle_status === "pending");
   const rejectedVehicles = allVehicles.filter(v => v.vehicle_status === "rejected");
   const incompleteDocDrivers = drivers.filter(d => {
@@ -142,7 +143,9 @@ const AdminDrivers = () => {
 
   // Filtered drivers
   const filteredDrivers = drivers.filter(d => {
-    if (statusFilter !== "all" && d.status !== statusFilter) return false;
+    if (statusFilter === "Pending" && d.status !== "Pending" && d.status !== "Pending Review") return false;
+    else if (statusFilter === "Rejected" && d.status !== "Rejected") return false;
+    else if (statusFilter !== "all" && statusFilter !== "Pending" && statusFilter !== "Rejected" && d.status !== statusFilter) return false;
     if (companyFilter && d.company_id !== companyFilter) return false;
     if (docFilter === "complete" && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4) return false;
     if (docFilter === "incomplete" && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length >= 4) return false;
@@ -712,11 +715,12 @@ const AdminDrivers = () => {
 
       {/* ── Statistics Grid ── */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {[
             { label: "Active", value: drivers.filter(d => d.status === "Active").length, icon: UserCheck, color: "text-green-600", bg: "bg-green-500/10", filter: "Active" as StatusFilter },
             { label: "Inactive", value: drivers.filter(d => d.status === "Inactive").length, icon: UserX, color: "text-muted-foreground", bg: "bg-muted/50", filter: "Inactive" as StatusFilter },
             { label: "Pending", value: pendingDrivers.length, icon: Clock, color: "text-yellow-600", bg: "bg-yellow-500/10", filter: "Pending" as StatusFilter },
+            { label: "Rejected", value: rejectedDrivers.length, icon: XCircle, color: "text-red-600", bg: "bg-red-500/10", filter: "Rejected" as StatusFilter },
             { label: "Vehicles", value: allVehicles.filter(v => v.vehicle_status === "approved").length, icon: Car, color: "text-blue-600", bg: "bg-blue-500/10", filter: null },
             { label: "Pending Vehicles", value: pendingVehicles.length, icon: Car, color: "text-orange-600", bg: "bg-orange-500/10", filter: null },
             { label: "Incomplete Docs", value: incompleteDocDrivers.length, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", filter: null },

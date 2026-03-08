@@ -60,7 +60,8 @@ import {
   Upload,
   AlertTriangle,
   Bell as BellIcon,
-  Trophy } from
+  Trophy,
+  XCircle } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
@@ -188,6 +189,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
+  const [profileRejectionReason, setProfileRejectionReason] = useState<string>("");
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
@@ -1157,7 +1159,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
 
       if (userProfile?.id) {
-        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status").eq("id", userProfile.id).single();
+        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason").eq("id", userProfile.id).single();
         const radius = data?.trip_radius_km ?? defaultRadius;
         setTripRadius(radius);
         tripRadiusRef.current = radius;
@@ -1169,6 +1171,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setTaxiPermitFrontUrl((data as any)?.taxi_permit_front_url || null);
         setTaxiPermitBackUrl((data as any)?.taxi_permit_back_url || null);
         setProfileStatus(data?.status || "Pending");
+        setProfileRejectionReason((data as any)?.rejection_reason || "");
         // Check if driver is on billing hold
         if (data?.status === "Billing_hold") {
           setBillingHold(true);
@@ -1343,13 +1346,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
       // Notify admin about vehicle document upload
       const matchedVehicle = driverVehicles.find((v) => v.id === vehicleId);
+      const wasVehicleRejected = matchedVehicle?.vehicle_status === "rejected";
+      const docType = vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded";
       try {
         await supabase.functions.invoke("notify-vehicle-update", {
           body: {
             driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
             phone_number: userProfile.phone_number,
             plate_number: matchedVehicle?.plate_number || "",
-            update_type: vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded",
+            update_type: wasVehicleRejected ? `🔄 RESUBMISSION — ${docType}` : docType,
           },
         });
       } catch {} // Non-blocking
@@ -1380,12 +1385,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // Notify admin about profile document update
       try {
         const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
+        const wasRejected = profileStatus === "Rejected";
         await supabase.functions.invoke("notify-vehicle-update", {
           body: {
             driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
             phone_number: userProfile.phone_number,
             plate_number: "",
-            update_type: `Profile document updated: ${docLabel}`,
+            update_type: wasRejected ? `🔄 RESUBMISSION — Profile document updated: ${docLabel}` : `Profile document updated: ${docLabel}`,
           },
         });
       } catch {} // Non-blocking
@@ -2198,6 +2204,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 Start driving
               </motion.button> :
+          profileStatus === "Rejected" && verificationIssues.length === 0 ?
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-card rounded-2xl p-5 text-center space-y-4 border border-destructive/30 shadow-sm w-full">
+                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                  <XCircle className="w-7 h-7 text-destructive" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold text-destructive">Profile Rejected</h3>
+                  {profileRejectionReason && <p className="text-sm text-muted-foreground">{profileRejectionReason}</p>}
+                  <p className="text-xs text-muted-foreground">Please update your documents and resubmit for approval.</p>
+                </div>
+                <button
+              onClick={() => { setShowProfile(true); setProfileTab("documents"); }}
+              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm active:scale-[0.97] transition-transform">
+                    Update Documents
+                  </button>
+              </motion.div> :
           profileStatus !== "Active" && !billingHold && verificationIssues.length === 0 ?
           <div className="bg-card rounded-xl p-4 space-y-2">
                 <div className="flex items-center gap-2 justify-center">
@@ -3179,6 +3205,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {/* Tab Content */}
                 {profileTab === "info" &&
               <div className="space-y-3">
+                    {profileStatus === "Rejected" &&
+                <div className="bg-destructive/10 text-destructive rounded-xl px-4 py-2.5 text-xs font-medium flex items-start gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">Profile Rejected</p>
+                          {profileRejectionReason && <p className="mt-0.5">{profileRejectionReason}</p>}
+                          <p className="mt-0.5 opacity-80">Please update your documents and resubmit.</p>
+                        </div>
+                      </div>
+                }
                     {profileStatus === "Pending Review" &&
                 <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5" />
@@ -3292,6 +3328,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 {profileTab === "documents" &&
               <div className="space-y-3">
+                    {profileStatus === "Rejected" &&
+                <div className="bg-destructive/10 text-destructive rounded-xl px-4 py-2.5 text-xs font-medium flex items-start gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">Documents Rejected</p>
+                          {profileRejectionReason && <p className="mt-0.5">{profileRejectionReason}</p>}
+                          <p className="mt-0.5 opacity-80">Please re-upload your documents below.</p>
+                        </div>
+                      </div>
+                }
                     {profileStatus === "Pending Review" &&
                 <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5" />
