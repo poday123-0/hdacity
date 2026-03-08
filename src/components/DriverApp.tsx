@@ -431,6 +431,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (data && data.length > 0) {
         const trip = data[0] as any;
+
+        // IMPORTANT: accepted scheduled rides must only open via manual "Start Scheduled Ride"
+        if (trip.booking_type === "scheduled" && trip.status === "accepted") {
+          return;
+        }
+
         setCurrentTrip(trip);
 
         // Determine trip phase from status
@@ -871,6 +877,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Handle direct-assigned dispatch trips (already accepted)
   const handleDirectAssignedTrip = async (trip: TripRequest) => {
     if (currentTrip) return;
+    // Scheduled rides must only be started manually from the scheduled banner
+    if (trip.booking_type === "scheduled") return;
 
     // Vibrate to alert driver
     try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
@@ -930,7 +938,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }
       // Handle direct-assigned dispatch trips (inserted as "accepted" with driver_id)
-      if (trip.status === "accepted" && trip.driver_id === userProfile.id) {
+      if (trip.status === "accepted" && trip.driver_id === userProfile.id && trip.booking_type !== "scheduled") {
         if (trip.id !== lastSeenTripRef.current) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
@@ -981,12 +989,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }
 
-      // Poll for direct-assigned dispatch trips
+      // Poll for direct-assigned dispatch trips (exclude scheduled trips)
       const { data: assignedTrips } = await supabase.
       from("trips").
       select("*").
       eq("status", "accepted").
       eq("driver_id", userProfile.id).
+      neq("booking_type", "scheduled").
       gte("created_at", fiveMinAgo).
       order("created_at", { ascending: false }).
       limit(1);
