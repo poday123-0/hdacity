@@ -45,7 +45,7 @@ const AdminDrivers = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
-  const [driverRideTypes, setDriverRideTypes] = useState<Record<string, { vtId: string; status: string }[]>>({});
+  const [vehicleRideTypes, setVehicleRideTypes] = useState<Record<string, { vtId: string; status: string }[]>>({});
   const [showBulkAssign, setShowBulkAssign] = useState<"company" | "center" | "vehicle" | null>(null);
   const [bulkCompanyId, setBulkCompanyId] = useState("");
   const [bulkCenterStart, setBulkCenterStart] = useState("");
