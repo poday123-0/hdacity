@@ -207,6 +207,7 @@ const Index = () => {
       ]);
       setPendingDriverData({ profile: data, vehicles: vehiclesRes.data || [], vehicleTypes: vtRes.data || [] });
       setHasDriverProfile(true);
+      setHasApprovedDriverVehicle(false);
       setDriverProfile(null);
       return null;
     }
