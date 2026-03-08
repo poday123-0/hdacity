@@ -19,7 +19,7 @@ interface InstallProps {
 const Install = ({ defaultTab }: InstallProps) => {
   const navigate = useNavigate();
   useTheme();
-  const { canInstall, isIOS, isInstalled, promptInstall, browser, hasNativePrompt } = usePWAInstall();
+  const { canInstall, isIOS, isInstalled, promptInstall, browser, hasNativePrompt, promptEventResolved } = usePWAInstall();
   const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
   const { appName } = useBranding();
 
