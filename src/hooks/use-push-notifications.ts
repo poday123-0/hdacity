@@ -100,8 +100,8 @@ export const usePushNotifications = (
         const soundUrl = payload.data?.sound_url;
         const notifType = payload.data?.type || "default";
 
-        // Skip sound for trip_requested — DriverApp.handleNewTrip already plays looping sound
-        const driverHandledTypes = ["trip_requested"];
+        // Skip sound for types already handled by DriverApp's own realtime listeners
+        const driverHandledTypes = ["trip_requested", "message_received"];
         if (!driverHandledTypes.includes(notifType)) {
           if (soundUrl) {
             playTrackedSound(soundUrl);
