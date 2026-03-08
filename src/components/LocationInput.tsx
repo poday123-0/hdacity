@@ -765,10 +765,16 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                     {(() => {
                       const today = new Date();
                       const dates = [];
+                      const toLocalIso = (dt: Date) => {
+                        const y = dt.getFullYear();
+                        const m = String(dt.getMonth() + 1).padStart(2, '0');
+                        const d = String(dt.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                      };
                       for (let i = 0; i < 5; i++) {
                         const d = new Date(today);
                         d.setDate(today.getDate() + i);
-                        const iso = d.toISOString().split("T")[0];
+                        const iso = toLocalIso(d);
                         const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en", { weekday: "short" });
                         const dateNum = d.getDate();
                         const month = d.toLocaleDateString("en", { month: "short" });
@@ -796,7 +802,8 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                     onClick={() => {
                       const input = document.createElement("input");
                       input.type = "date";
-                      input.min = new Date().toISOString().split("T")[0];
+                       const now = new Date();
+                       input.min = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
                       input.value = scheduledDate;
                       input.style.position = "fixed";
                       input.style.opacity = "0";
