@@ -12,6 +12,7 @@ interface Competition {
   start_date: string;
   end_date: string;
   status: string;
+  vehicle_type_id: string | null;
 }
 
 interface Entry {
