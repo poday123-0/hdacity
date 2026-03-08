@@ -252,12 +252,27 @@ const AdminFares = () => {
 
       {/* ─── Route-based fares ─── */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-lg font-semibold text-foreground">Route-Based Fares</h3>
-          <button onClick={() => { showZoneForm ? resetZoneForm() : setShowZoneForm(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-            {showZoneForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {showZoneForm ? "Cancel" : "Add Route"}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a href="/sample-route-fares.csv" download className="flex items-center gap-2 bg-surface border border-border text-foreground px-3 py-2 rounded-xl text-sm font-semibold hover:bg-muted transition-colors">
+              <Download className="w-4 h-4" />
+              Sample CSV
+            </a>
+            <input type="file" accept=".csv" ref={csvFileRef} onChange={handleCsvImport} className="hidden" />
+            <button
+              onClick={() => csvFileRef.current?.click()}
+              disabled={importingCsv}
+              className="flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+            >
+              {importingCsv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importingCsv ? "Importing..." : "Import CSV"}
+            </button>
+            <button onClick={() => { showZoneForm ? resetZoneForm() : setShowZoneForm(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+              {showZoneForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showZoneForm ? "Cancel" : "Add Route"}
+            </button>
+          </div>
         </div>
 
         {showZoneForm && (
