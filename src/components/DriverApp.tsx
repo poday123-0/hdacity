@@ -936,8 +936,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       table: "trips"
     }, async (payload) => {
       const trip = payload.new as any;
-      // Handle broadcast trips (requested/scheduled)
-      if (trip.status === "requested" || trip.status === "scheduled") {
+      // Handle broadcast trips (requested only — scheduled trips appear in banner, not as popups)
+      if (trip.status === "requested") {
         if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
           lastSeenTripRef.current = trip.id;
