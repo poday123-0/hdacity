@@ -621,9 +621,14 @@ const Index = () => {
     setPhase("passenger");
   }, [checkDriverProfile]);
 
-  const handleDriverRegistrationComplete = useCallback(() => {
+  const handleDriverRegistrationComplete = useCallback(async () => {
+    // Load the pending driver data so the pending screen shows details
+    const phone = pendingPhone || userProfile?.phone_number || "";
+    if (phone) {
+      await checkDriverProfile(phone);
+    }
     setPhase("driver-pending");
-  }, []);
+  }, [pendingPhone, userProfile, checkDriverProfile]);
 
   const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[], bType?: BookingType, schedAt?: string, bNotes?: string) => {
     setPickup(p);
