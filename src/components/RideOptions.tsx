@@ -330,7 +330,8 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           <div className="flex gap-2 overflow-x-auto pt-2 pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
             {sortedTypes.map((vt, index) => {
               const Icon = iconMap[vt.icon] || Car;
-              const fare = calcFare(vt);
+              const fareResult = calcFare(vt);
+              const fare = fareResult.fare;
               const isSelected = selected === vt.id;
               const isOnline = onlineVehicleTypeIds.has(vt.id);
               const fits = vt.capacity >= passengerCount;
