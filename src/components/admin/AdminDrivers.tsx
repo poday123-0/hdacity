@@ -1048,29 +1048,6 @@ const AdminDrivers = () => {
                               </button>
                             </div>
 
-                            {/* Eligible Ride Types */}
-                            <div className="bg-card border border-border rounded-xl p-3">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Eligible Ride Types</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {vehicleTypes.map((vt) => {
-                                  const entry = (driverRideTypes[d.id] || []).find(e => e.vtId === vt.id);
-                                  const isApproved = entry?.status === "approved";
-                                  const isPending = entry?.status === "pending";
-                                  return (
-                                    <div key={vt.id} className="flex items-center gap-0.5">
-                                      <button onClick={() => toggleDriverRideType(d.id, vt.id)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${isApproved ? "bg-primary text-primary-foreground" : isPending ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}>
-                                        {vt.name}{isPending ? " ⏳" : ""}
-                                      </button>
-                                      {isPending && (
-                                        <button onClick={() => approveDriverRideType(d.id, vt.id)} className="px-1.5 py-1.5 rounded-lg bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold hover:bg-green-500/30 transition-colors" title="Approve">
-                                          <Check className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
 
                             {/* Vehicle form */}
                             {showVehicleForm && expandedDriver === d.id && (
