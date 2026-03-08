@@ -1480,9 +1480,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   const addVehicle = async () => {
     if (!userProfile?.id || !newVehicle.plate_number || !newVehicle.vehicle_type_id) return;
+    // Check for duplicate plate number
+    const normalizedPlate = newVehicle.plate_number.trim().toUpperCase();
+    const { data: existing } = await supabase.from("vehicles").select("id").eq("plate_number", normalizedPlate).maybeSingle();
+    if (existing) {
+      toast({ title: "Duplicate plate number", description: `Vehicle ${normalizedPlate} is already registered.`, variant: "destructive" });
+      return;
+    }
     const { data, error } = await supabase.from("vehicles").insert({
       driver_id: userProfile.id,
-      plate_number: newVehicle.plate_number,
+      plate_number: normalizedPlate,
       make: newVehicle.make,
       model: newVehicle.model,
       color: newVehicle.color,
@@ -1533,8 +1540,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   const saveEditVehicle = async () => {
     if (!editingVehicleId || !editVehicle.plate_number || !editVehicle.vehicle_type_id) return;
+    const normalizedPlate = editVehicle.plate_number.trim().toUpperCase();
+    const { data: existingPlate } = await supabase.from("vehicles").select("id").eq("plate_number", normalizedPlate).maybeSingle();
+    if (existingPlate && existingPlate.id !== editingVehicleId) {
+      toast({ title: "Duplicate plate number", description: `Vehicle ${normalizedPlate} is already registered.`, variant: "destructive" });
+      return;
+    }
     const { error } = await supabase.from("vehicles").update({
-      plate_number: editVehicle.plate_number,
+      plate_number: normalizedPlate,
       make: editVehicle.make,
       model: editVehicle.model,
       color: editVehicle.color,
