@@ -380,6 +380,7 @@ const Admin = () => {
           {activeTab === "wallets" && <AdminWallets />}
           {activeTab === "topup_cards" && <AdminTopupCards />}
           {activeTab === "watermelons" && <AdminWatermelons />}
+          {activeTab === "competitions" && <AdminCompetitions />}
           {activeTab === "banks" && <AdminBanks />}
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}
