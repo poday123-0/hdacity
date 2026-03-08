@@ -1022,16 +1022,18 @@ const AdminDrivers = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          {d.status !== "Active" && docCount === 4 ? (
-                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-xs font-bold text-primary-foreground bg-green-600 px-3 py-1.5 rounded-xl hover:bg-green-700 transition-colors">Approve</button>
-                          ) : d.status === "Active" ? (
-                            <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-medium text-destructive hover:underline">Deactivate</button>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">Docs {docCount}/4</span>
-                          )}
-                          <button onClick={() => openEdit(d)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => deleteDriver(d.id)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <div className="flex items-center gap-1.5 flex-nowrap">
+                          <div className="min-w-[72px]">
+                            {d.status !== "Active" && docCount === 4 ? (
+                              <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-bold text-primary-foreground bg-green-600 px-2.5 py-1.5 rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap">Approve</button>
+                            ) : d.status === "Active" ? (
+                              <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-medium text-destructive hover:underline whitespace-nowrap">Deactivate</button>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">Docs {docCount}/4</span>
+                            )}
+                          </div>
+                          <button onClick={() => openEdit(d)} className="w-7 h-7 shrink-0 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => deleteDriver(d.id)} className="w-7 h-7 shrink-0 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
