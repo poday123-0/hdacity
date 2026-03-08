@@ -2113,20 +2113,42 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-card rounded-2xl p-5 text-center space-y-4 border border-destructive/30 shadow-sm w-full">
-                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-                  <XCircle className="w-7 h-7 text-destructive" />
+            className="relative bg-card rounded-2xl overflow-hidden shadow-lg w-full border border-destructive/20">
+                {/* Animated top gradient bar */}
+                <div className="h-1.5 bg-gradient-to-r from-destructive via-destructive/70 to-destructive animate-pulse" />
+                <div className="p-5 space-y-4">
+                  <div className="flex items-start gap-4">
+                    <motion.div 
+                      animate={{ scale: [1, 1.1, 1] }} 
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center shrink-0">
+                      <XCircle className="w-7 h-7 text-destructive" />
+                    </motion.div>
+                    <div className="space-y-1 flex-1">
+                      <h3 className="text-base font-extrabold text-destructive">Profile Rejected</h3>
+                      {profileRejectionReason && (
+                        <div className="bg-destructive/5 rounded-lg px-3 py-2 mt-1.5">
+                          <p className="text-xs text-destructive/90 font-medium leading-relaxed">"{profileRejectionReason}"</p>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">Update your info or documents and resubmit for review.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setShowProfile(true); setProfileTab("info"); }}
+                      className="flex-1 flex items-center justify-center gap-2 bg-muted text-foreground font-bold py-3 rounded-xl text-sm active:scale-[0.97] transition-transform">
+                      <Pencil className="w-4 h-4" />
+                      Edit Info
+                    </button>
+                    <button
+                      onClick={() => { setShowProfile(true); setProfileTab("documents"); }}
+                      className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm active:scale-[0.97] transition-transform">
+                      <Upload className="w-4 h-4" />
+                      Update Docs
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-lg font-bold text-destructive">Profile Rejected</h3>
-                  {profileRejectionReason && <p className="text-sm text-muted-foreground">{profileRejectionReason}</p>}
-                  <p className="text-xs text-muted-foreground">Please update your documents and resubmit for approval.</p>
-                </div>
-                <button
-              onClick={() => { setShowProfile(true); setProfileTab("documents"); }}
-              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm active:scale-[0.97] transition-transform">
-                    Update Documents
-                  </button>
               </motion.div>
           }
 
