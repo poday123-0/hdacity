@@ -287,7 +287,7 @@ const AdminCompetitions = () => {
   };
 
   const handleAwardPrizes = async (comp: Competition) => {
-    if (!confirm("Award prizes to top drivers? This will credit wallets and/or set fee-free periods.")) return;
+    if (!confirm("Award prizes to top drivers? This will credit wallets and/or set free periods.")) return;
     setLoading(true);
     try {
       const { data: compPrizes } = await supabase.from("competition_prizes").select("*").eq("competition_id", comp.id).order("tier_rank");

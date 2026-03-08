@@ -128,7 +128,7 @@ const AdminCompanies = () => {
             <div className="col-span-2">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.fee_free} onChange={(e) => setForm({ ...form, fee_free: e.target.checked })} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
-                <span className="text-sm font-medium text-foreground">Fee Free (no monthly fee for drivers in this company)</span>
+                <span className="text-sm font-medium text-foreground">Free (no monthly fee for drivers in this company)</span>
               </label>
             </div>
           </div>
