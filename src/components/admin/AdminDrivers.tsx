@@ -6,7 +6,7 @@ import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
 
-type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review";
+type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review" | "Rejected";
 
 const AdminDrivers = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
