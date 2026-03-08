@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -34,8 +34,9 @@ import SystemLogo from "@/components/SystemLogo";
 import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
 import AdminSMS from "@/components/admin/AdminSMS";
+import AdminCompetitions from "@/components/admin/AdminCompetitions";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "settings";
 
 type NavGroup = {
   label: string;
@@ -80,6 +81,7 @@ const navGroups: NavGroup[] = [
     label: "Promotions",
     items: [
       { id: "watermelons", label: "🍉 Ramadan Promos", icon: Cherry },
+      { id: "competitions", label: "🏆 Competitions", icon: Trophy },
     ],
   },
   {
@@ -378,6 +380,7 @@ const Admin = () => {
           {activeTab === "wallets" && <AdminWallets />}
           {activeTab === "topup_cards" && <AdminTopupCards />}
           {activeTab === "watermelons" && <AdminWatermelons />}
+          {activeTab === "competitions" && <AdminCompetitions />}
           {activeTab === "banks" && <AdminBanks />}
           {activeTab === "companies" && <AdminCompanies />}
           {activeTab === "locations" && <AdminLocations />}

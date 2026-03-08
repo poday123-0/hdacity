@@ -59,13 +59,15 @@ import {
   Gauge,
   Upload,
   AlertTriangle,
-  Bell as BellIcon } from
+  Bell as BellIcon,
+  Trophy } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
+import DriverLeaderboard from "./DriverLeaderboard";
 
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -151,6 +153,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [withdrawNotes, setWithdrawNotes] = useState("");
   const [minWithdrawalAmount, setMinWithdrawalAmount] = useState(100);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -2245,12 +2248,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </>
                     }
                     </div>
-                    <button
-                    onClick={() => setShowEarningsHistory(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary/10 active:scale-95 transition-transform shrink-0 ml-3">
-                      <DollarSign className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-[10px] sm:text-xs font-semibold text-primary">History</span>
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                      <button
+                        onClick={() => setShowLeaderboard(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-yellow-500/10 active:scale-95 transition-transform">
+                        <Trophy className="w-3.5 h-3.5 text-yellow-600" />
+                      </button>
+                      <button
+                        onClick={() => setShowEarningsHistory(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary/10 active:scale-95 transition-transform">
+                        <DollarSign className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-[10px] sm:text-xs font-semibold text-primary">History</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Radius + Vehicle row */}
@@ -4134,6 +4144,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
         </div>
       }
+
+      {/* Driver Leaderboard */}
+      <AnimatePresence>
+        {showLeaderboard && userProfile?.id && (
+          <DriverLeaderboard driverId={userProfile.id} onClose={() => setShowLeaderboard(false)} />
+        )}
+      </AnimatePresence>
     </div>);
 
 };
