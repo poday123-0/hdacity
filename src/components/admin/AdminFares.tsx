@@ -1,10 +1,56 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2 } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Download, Loader2 } from "lucide-react";
 
 const emptyZoneForm = { from_area: "", to_area: "", vehicle_type_id: "", fixed_fare: "" };
 const emptySurchargeForm = { name: "", surcharge_type: "time_based", amount: "", start_time: "", end_time: "", luggage_threshold: "3" };
+
+/** Parse a CSV line handling quoted fields */
+const parseCSVLine = (line: string, delimiter = ","): string[] => {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === delimiter) { result.push(current.trim()); current = ""; }
+      else { current += ch; }
+    }
+  }
+  result.push(current.trim());
+  return result;
+};
+
+/** Detect CSV delimiter */
+const detectDelimiter = (header: string): string => {
+  const counts = { ",": 0, ";": 0, "\t": 0 };
+  for (const ch of header) { if (ch in counts) counts[ch as keyof typeof counts]++; }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+};
+
+/** Build column map from headers */
+const buildColumnMap = (headers: string[]): Record<string, number> => {
+  const map: Record<string, number> = {};
+  const aliases: Record<string, string[]> = {
+    from_area: ["from_area", "from", "origin", "pickup", "from area"],
+    to_area: ["to_area", "to", "destination", "dropoff", "to area"],
+    vehicle_type: ["vehicle_type", "vehicle type", "type", "vehicle"],
+    fixed_fare: ["fixed_fare", "fare", "price", "amount", "fixed fare"],
+  };
+  headers.forEach((h, i) => {
+    const lower = h.toLowerCase().replace(/['"]/g, "").trim();
+    for (const [key, names] of Object.entries(aliases)) {
+      if (names.includes(lower)) { map[key] = i; break; }
+    }
+  });
+  return map;
+};
 
 const AdminFares = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
