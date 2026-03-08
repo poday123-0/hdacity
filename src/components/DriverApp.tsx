@@ -2247,12 +2247,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </>
                     }
                     </div>
-                    <button
-                    onClick={() => setShowEarningsHistory(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary/10 active:scale-95 transition-transform shrink-0 ml-3">
-                      <DollarSign className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-[10px] sm:text-xs font-semibold text-primary">History</span>
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                      <button
+                        onClick={() => setShowLeaderboard(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-yellow-500/10 active:scale-95 transition-transform">
+                        <Trophy className="w-3.5 h-3.5 text-yellow-600" />
+                      </button>
+                      <button
+                        onClick={() => setShowEarningsHistory(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary/10 active:scale-95 transition-transform">
+                        <DollarSign className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-[10px] sm:text-xs font-semibold text-primary">History</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Radius + Vehicle row */}
