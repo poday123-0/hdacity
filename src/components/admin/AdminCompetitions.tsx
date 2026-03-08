@@ -14,9 +14,15 @@ interface Competition {
   start_date: string;
   end_date: string;
   service_location_id: string | null;
+  vehicle_type_id: string | null;
   is_active: boolean;
   status: string;
   created_at: string;
+}
+
+interface VehicleType {
+  id: string;
+  name: string;
 }
 
 interface Prize {
