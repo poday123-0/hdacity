@@ -299,7 +299,10 @@ const Index = () => {
         setDropoff({ id: "restored-dropoff", name: activeTrip.dropoff_address || "Dropoff", address: activeTrip.dropoff_address || "", lat: Number(activeTrip.dropoff_lat), lng: Number(activeTrip.dropoff_lng) });
       }
 
-      if (activeTrip.status === "requested" || activeTrip.status === "scheduled") {
+      if (activeTrip.status === "scheduled") {
+        // Scheduled rides are handled in the background - don't show searching UI
+        setPassengerScreen("home");
+      } else if (activeTrip.status === "requested") {
         setPassengerScreen("searching");
       } else if (["accepted", "arrived", "in_progress"].includes(activeTrip.status)) {
         // Fetch driver info
