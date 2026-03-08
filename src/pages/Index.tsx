@@ -3,7 +3,7 @@ import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import type { BookingType } from "@/components/LocationInput";
 import { AnimatePresence, motion } from "framer-motion";
-import { Car } from "lucide-react";
+import { Car, User, X } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
 import WatermelonMapOverlay from "@/components/WatermelonMapOverlay";
 import SplashScreen from "@/components/SplashScreen";
@@ -87,6 +87,7 @@ const Index = () => {
     try { return localStorage.getItem("hda_pending_phone") || ""; } catch { return ""; }
   });
   const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
+  const [pendingDriverData, setPendingDriverData] = useState<{ profile: any; vehicles: any[]; vehicleTypes: any[] } | null>(null);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [passengerMapInstance, setPassengerMapInstance] = useState<google.maps.Map | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
@@ -177,7 +178,7 @@ const Index = () => {
       };
       setDriverProfile(dp);
       setHasDriverProfile(true);
-      // Sync to session so it persists
+      setPendingDriverData(null);
       try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (raw) {
@@ -189,6 +190,19 @@ const Index = () => {
       } catch {}
       return dp;
     }
+    // Check for pending/pending review driver profile
+    if (data && (data.status === "Pending" || data.status === "Pending Review")) {
+      // Fetch their vehicles and vehicle types for display
+      const [vehiclesRes, vtRes] = await Promise.all([
+        supabase.from("vehicles").select("*, vehicle_types(name)").eq("driver_id", data.id).order("created_at", { ascending: false }),
+        supabase.from("vehicle_types").select("id, name").eq("is_active", true),
+      ]);
+      setPendingDriverData({ profile: data, vehicles: vehiclesRes.data || [], vehicleTypes: vtRes.data || [] });
+      setHasDriverProfile(false);
+      setDriverProfile(null);
+      return null;
+    }
+    setPendingDriverData(null);
     setHasDriverProfile(false);
     setDriverProfile(null);
     return null;
@@ -202,9 +216,8 @@ const Index = () => {
   }, [userProfile?.phone_number, phase, checkDriverProfile]);
 
   // Switch between modes
-  const handleSwitchMode = useCallback((mode: "passenger" | "driver") => {
+  const handleSwitchMode = useCallback(async (mode: "passenger" | "driver") => {
     setAppMode(mode);
-    // Also sync the session so on next load the mode + driver profile are available
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
@@ -217,13 +230,28 @@ const Index = () => {
     if (mode === "driver" && driverProfile) {
       setPhase("driver");
     } else if (mode === "driver" && !driverProfile) {
-      // User wants driver mode but has no driver profile — show driver registration
+      // Check if there's a pending driver profile before showing registration
+      if (userProfile?.phone_number) {
+        const { data: pendingCheck } = await supabase
+          .from("profiles")
+          .select("id, status")
+          .eq("phone_number", userProfile.phone_number)
+          .eq("user_type", "Driver")
+          .in("status", ["Pending", "Pending Review"])
+          .maybeSingle();
+        if (pendingCheck) {
+          // Trigger full data load
+          await checkDriverProfile(userProfile.phone_number);
+          setPhase("driver-pending");
+          return;
+        }
+      }
       setPendingPhone(userProfile?.phone_number || "");
       setPhase("driver-register");
     } else {
       setPhase("passenger");
     }
-  }, [driverProfile, userProfile]);
+  }, [driverProfile, userProfile, checkDriverProfile]);
 
   // Restore ongoing trip on app load
   useEffect(() => {
@@ -593,9 +621,14 @@ const Index = () => {
     setPhase("passenger");
   }, [checkDriverProfile]);
 
-  const handleDriverRegistrationComplete = useCallback(() => {
+  const handleDriverRegistrationComplete = useCallback(async () => {
+    // Load the pending driver data so the pending screen shows details
+    const phone = pendingPhone || userProfile?.phone_number || "";
+    if (phone) {
+      await checkDriverProfile(phone);
+    }
     setPhase("driver-pending");
-  }, []);
+  }, [pendingPhone, userProfile, checkDriverProfile]);
 
   const handleLocationSearch = useCallback((p: SelectedLocation, d: SelectedLocation, passengers: number, luggage: number, stops?: StopLocation[], bType?: BookingType, schedAt?: string, bNotes?: string) => {
     setPickup(p);
@@ -927,26 +960,138 @@ const Index = () => {
     );
   }
   if (phase === "driver-pending") {
+    const pd = pendingDriverData;
     return (
-      <div className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center max-w-lg mx-auto px-8 text-center">
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-          <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-lg mx-auto">
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-1">Registration Under Review</h2>
+            <p className="text-sm text-muted-foreground">
+              Your driver registration is pending admin approval. You'll be notified once approved.
+            </p>
+          </div>
+
+          {/* Submitted Profile Details */}
+          {pd?.profile && (
+            <div className="space-y-4">
+              {/* Profile Info */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  {pd.profile.avatar_url ? (
+                    <img src={pd.profile.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-border" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{pd.profile.first_name} {pd.profile.last_name}</p>
+                    <p className="text-xs text-muted-foreground">+{pd.profile.country_code} {pd.profile.phone_number}</p>
+                    {pd.profile.email && <p className="text-xs text-muted-foreground">{pd.profile.email}</p>}
+                  </div>
+                  <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">
+                    {pd.profile.status}
+                  </span>
+                </div>
+                {pd.profile.company_name && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Car className="w-3.5 h-3.5" />
+                    <span>Company: {pd.profile.company_name}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Submitted Documents */}
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Submitted Documents</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { url: pd.profile.license_front_url, label: "License Front" },
+                    { url: pd.profile.license_back_url, label: "License Back" },
+                    { url: pd.profile.id_card_front_url, label: "ID Front" },
+                    { url: pd.profile.id_card_back_url, label: "ID Back" },
+                    { url: pd.profile.taxi_permit_front_url, label: "Permit Front" },
+                    { url: pd.profile.taxi_permit_back_url, label: "Permit Back" },
+                  ].map((doc) => (
+                    <div key={doc.label} className="flex flex-col items-center gap-1 p-2 bg-surface rounded-xl border border-border">
+                      {doc.url ? (
+                        <img src={doc.url} alt={doc.label} className="w-full h-10 object-cover rounded-lg" />
+                      ) : (
+                        <div className="w-full h-10 rounded-lg bg-muted flex items-center justify-center">
+                          <X className="w-3.5 h-3.5 text-muted-foreground/30" />
+                        </div>
+                      )}
+                      <span className="text-[9px] font-medium text-muted-foreground text-center leading-tight">{doc.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submitted Vehicles */}
+              {pd.vehicles.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl p-4">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Submitted Vehicles</p>
+                  <div className="space-y-3">
+                    {pd.vehicles.map((v: any) => (
+                      <div key={v.id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
+                        {v.image_url ? (
+                          <img src={v.image_url} alt="Vehicle" className="w-14 h-10 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className="w-14 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                            <Car className="w-5 h-5 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">{v.plate_number}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {[v.make, v.model, v.color].filter(Boolean).join(" · ") || "No details"}
+                            {v.vehicle_types?.name && ` · ${v.vehicle_types.name}`}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          v.vehicle_status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
+                          v.vehicle_status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
+                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                        }`}>
+                          {v.vehicle_status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!pd?.profile && (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Your registration has been submitted and is awaiting admin approval.
+              </p>
+            </div>
+          )}
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Registration Under Review</h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          Your driver registration has been submitted and is awaiting admin approval. You'll be able to switch to driver mode once approved.
-        </p>
-        <button
-          onClick={() => { setPhase("passenger"); setAppMode("passenger"); }}
-          className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
-        >
-          Continue as Passenger
-        </button>
+
+        {/* Bottom button */}
+        <div className="px-6 pb-6 pt-3 border-t border-border">
+          <button
+            onClick={() => { setPhase("passenger"); setAppMode("passenger"); }}
+            className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
+          >
+            Continue as Passenger
+          </button>
+        </div>
       </div>
     );
   }
+
+
 
   // DRIVER MODE
   if (phase === "driver" && driverProfile) {
