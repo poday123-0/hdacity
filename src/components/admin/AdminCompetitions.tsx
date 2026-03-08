@@ -553,7 +553,7 @@ const AdminCompetitions = () => {
                           <p className="text-sm font-bold text-foreground">{p.tier_name}</p>
                           <p className="text-xs text-muted-foreground">
                             {p.prize_type === "wallet_credit" && `${p.wallet_amount} MVR`}
-                            {p.prize_type === "fee_free" && `${p.fee_free_months}mo fee-free`}
+                            {p.prize_type === "fee_free" && `${p.fee_free_months}mo free`}
                             {p.prize_type === "badge" && p.badge_label}
                             {p.prize_type === "custom" && p.custom_description}
                           </p>
