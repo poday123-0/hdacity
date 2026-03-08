@@ -23,6 +23,7 @@ export function usePWAInstall() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [browser, setBrowser] = useState<BrowserType>("other");
+  const [promptEventResolved, setPromptEventResolved] = useState(false);
 
   useEffect(() => {
     // Detect installed state — multiple methods for cross-browser support
@@ -35,8 +36,6 @@ export function usePWAInstall() {
 
     // If installed via our prompt previously
     if (!isStandalone && localStorage.getItem("hda_pwa_installed") === "1") {
-      // Don't trust localStorage alone — user may have uninstalled
-      // Only mark installed if also in standalone mode
       localStorage.removeItem("hda_pwa_installed");
     }
 
@@ -49,9 +48,16 @@ export function usePWAInstall() {
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setPromptEventResolved(true);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
+
+    // Give browsers time to fire beforeinstallprompt before showing manual fallback
+    // Chrome/Edge typically fire it within ~1s of page load
+    const timer = setTimeout(() => {
+      setPromptEventResolved(true);
+    }, 2500);
 
     const onInstalled = () => {
       localStorage.setItem("hda_pwa_installed", "1");
@@ -71,6 +77,7 @@ export function usePWAInstall() {
     mql.addEventListener?.("change", onDisplayChange);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", onInstalled);
       mql.removeEventListener?.("change", onDisplayChange);
@@ -95,5 +102,5 @@ export function usePWAInstall() {
   // hasNativePrompt: true when the browser supports beforeinstallprompt
   const hasNativePrompt = !!deferredPrompt;
 
-  return { canInstall, isInstalled, isIOS, browser, promptInstall, deferredPrompt, hasNativePrompt };
+  return { canInstall, isInstalled, isIOS, browser, promptInstall, deferredPrompt, hasNativePrompt, promptEventResolved };
 }
