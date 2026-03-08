@@ -1565,11 +1565,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     toast({ title: "Vehicle removed", description: "Pending admin approval" });
   };
 
-  const selectVehicle = (v: any) => {
+  const selectVehicle = async (v: any) => {
     setSelectedVehicleId(v.id);
     try {localStorage.setItem("hda_last_vehicle_id", v.id);} catch {}
     setVehicleInfo({ make: v.make || "", model: v.model || "", plate_number: v.plate_number, color: v.color || "", vehicle_type_id: v.vehicle_type_id || "" });
-    toast({ title: "Vehicle selected", description: `${v.make} ${v.model} — ${v.plate_number}. Trip requests will match this vehicle type.` });
+    activeVehicleTypeIdRef.current = v.vehicle_type_id || null;
+    // Update driver_locations so the backend also reflects the current vehicle
+    if (screen === "online" && userProfile?.id) {
+      await supabase.from("driver_locations").update({
+        vehicle_id: v.id,
+        vehicle_type_id: v.vehicle_type_id || null,
+        updated_at: new Date().toISOString(),
+      }).eq("driver_id", userProfile.id);
+    }
+    toast({ title: "Vehicle selected", description: `${v.make} ${v.model} — ${v.plate_number}. You will only receive ${vehicleTypes.find(vt => vt.id === v.vehicle_type_id)?.name || "matching"} ride requests.` });
   };
 
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
