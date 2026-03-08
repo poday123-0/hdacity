@@ -112,15 +112,23 @@ export const usePushNotifications = (
           }
         }
 
-        // Show browser notification
-        // If app is hidden/minimized, let OS/browser play its default sound for reliability.
+        // Show drop-down browser notification (clickable to open app)
         if ("Notification" in window && Notification.permission === "granted") {
-          const shouldBeSilent = !document.hidden;
-          new Notification(msgTitle, {
+          // For trip requests: always show with sound so the driver sees the drop-down
+          const isCritical = ["trip_requested", "sos_alert"].includes(notifType);
+          const shouldBeSilent = isCritical ? false : !document.hidden;
+          const notif = new Notification(msgTitle, {
             body: msgBody,
             icon: "/pwa-192x192.png",
+            tag: isCritical ? `${notifType}-${Date.now()}` : notifType,
+            requireInteraction: isCritical,
             silent: shouldBeSilent,
           });
+          // Click to focus/open the app
+          notif.onclick = () => {
+            window.focus();
+            notif.close();
+          };
         }
       });
 
