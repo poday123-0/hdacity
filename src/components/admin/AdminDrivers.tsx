@@ -572,6 +572,29 @@ const AdminDrivers = () => {
         </div>
       )}
 
+      {/* Reject driver modal */}
+      {rejectDriverId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => { setRejectDriverId(null); setRejectReason(""); }}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-foreground">Reject Driver</h3>
+            <p className="text-xs text-muted-foreground">Provide a reason so the driver knows what to correct and resubmit.</p>
+            <div className="space-y-2">
+              {["Incomplete or missing documents", "Blurry or unreadable documents", "ID card information doesn't match", "License expired or invalid", "Profile information incorrect"].map((r) => (
+                <button key={r} onClick={() => setRejectReason(r)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors ${rejectReason === r ? "bg-primary/10 text-primary font-semibold border border-primary/30" : "bg-surface text-foreground hover:bg-surface/80 border border-border"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Or type a custom reason..." className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" rows={2} />
+            <div className="flex gap-3">
+              <button onClick={() => { setRejectDriverId(null); setRejectReason(""); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
+              <button onClick={() => rejectDriver(rejectDriverId, rejectReason)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground">Reject Driver</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Assign Company Modal */}
       {showBulkAssign === "company" && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBulkAssign(null)}>
