@@ -1920,13 +1920,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
 
           {/* Right: Bell + On/Off toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!currentTrip &&
             <button
               onClick={() => setShowNotifications(true)}
-              className="relative w-9 h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30">
+              className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center active:scale-95 transition-transform border border-border/30">
 
-              <BellIcon className={`w-4.5 h-4.5 text-foreground ${unreadNotifCount > 0 ? "animate-[wiggle_0.5s_ease-in-out]" : ""}`} />
+              <BellIcon className={`w-4 h-4 text-foreground ${unreadNotifCount > 0 ? "animate-[wiggle_0.5s_ease-in-out]" : ""}`} />
               {unreadNotifCount > 0 &&
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-[0_0_8px_hsl(var(--destructive)/0.6)]">
                   {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
@@ -1939,7 +1939,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               onClick={() => {
                 setScreen("offline");
               }}
-              className="relative w-14 h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
+              className="relative w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
               title="Go Offline">
               <motion.div
                 className="absolute inset-0 rounded-full bg-primary"
@@ -1947,8 +1947,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 style={{ boxShadow: "0 0 16px hsl(var(--primary) / 0.5)" }} />
               <motion.div
-                className="relative z-10 w-6 h-6 rounded-full bg-primary-foreground shadow-md"
-                animate={{ x: 24 }}
+                className="relative z-10 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary-foreground shadow-md"
+                animate={{ x: 20 }}
                 transition={{ type: "spring", stiffness: 500, damping: 30 }} />
             </button>
             }
