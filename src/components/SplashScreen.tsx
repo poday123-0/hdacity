@@ -58,7 +58,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           transition={{ delay: 1, duration: 0.5 }}
           className="text-primary-foreground/70 text-sm mt-2 font-medium"
         >
-          Your ride, our priority
+          On Time · Every Time
         </motion.p>
       </motion.div>
 
