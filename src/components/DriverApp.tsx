@@ -122,7 +122,6 @@ interface DriverAppProps {
 const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
   const navigate = useNavigate();
   useTheme(); // Initialize theme
-  usePushNotifications(userProfile?.id, "driver");
   const driverScreenKey = userProfile?.id ? `hda_driver_screen_${userProfile.id}` : "hda_driver_screen";
   const [screen, setScreen] = useState<DriverScreen>(() => {
     try {
