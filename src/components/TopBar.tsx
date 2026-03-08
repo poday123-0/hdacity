@@ -303,6 +303,24 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
     setShowContactForm(true);
   };
 
+  const fetchBookings = async () => {
+    if (!userProfile?.id) return;
+    setLoadingBookings(true);
+    const { data } = await supabase
+      .from("trips")
+      .select("id, pickup_address, dropoff_address, scheduled_at, status, booking_type, estimated_fare, driver_id, vehicle_type_id")
+      .eq("passenger_id", userProfile.id)
+      .eq("booking_type", "scheduled")
+      .in("status", ["scheduled", "accepted"])
+      .order("scheduled_at", { ascending: true });
+    setScheduledTrips(data || []);
+    setLoadingBookings(false);
+  };
+
+  useEffect(() => {
+    if (showBookings) fetchBookings();
+  }, [showBookings, userProfile?.id]);
+
   return (
     <>
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
