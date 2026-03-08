@@ -955,85 +955,82 @@ const AdminDrivers = () => {
                 return (
                   <React.Fragment key={d.id}>
                     <tr className={`border-b border-border hover:bg-surface/30 transition-colors ${selected.has(d.id) ? "bg-primary/5" : ""}`}>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         <button onClick={() => toggleSelect(d.id)} className="text-muted-foreground hover:text-foreground">
                           {selected.has(d.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                         </button>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-primary">{d.first_name?.[0]}{d.last_name?.[0]}</span>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-bold text-primary">{d.first_name?.[0]}{d.last_name?.[0]}</span>
                           </div>
-                          <span className="text-sm font-semibold text-foreground">{d.first_name} {d.last_name}</span>
+                          <span className="text-sm font-semibold text-foreground truncate">{d.first_name} {d.last_name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{companyName}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">+960 {d.phone_number}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground truncate">{companyName}</td>
+                      <td className="px-3 py-2.5">
                         {driverRatings[d.id] ? (
                           <div className="flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                            <span className="text-sm font-semibold text-foreground">{driverRatings[d.id].avg}</span>
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-xs font-semibold text-foreground">{driverRatings[d.id].avg}</span>
                             <span className="text-[10px] text-muted-foreground">({driverRatings[d.id].count})</span>
                           </div>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                        ) : <span className="text-[10px] text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-4 py-3">
-                        <button onClick={() => setExpandedDriver(isExpanded ? null : d.id)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                      <td className="px-3 py-2.5">
+                        <button onClick={() => setExpandedDriver(isExpanded ? null : d.id)} className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                           <Car className="w-3.5 h-3.5" />
                           {vehicles.length}
                           {pendingVCount > 0 && <span className="w-4 h-4 rounded-full bg-yellow-500 text-white text-[9px] font-bold flex items-center justify-center">{pendingVCount}</span>}
                           {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                         {vehicles.length > 0 && (
-                          <div className="mt-1 space-y-0.5">
-                            {vehicles.map((v: any) => (
-                              <p key={v.id} className="text-[10px] text-muted-foreground font-mono">{v.plate_number}</p>
+                          <div className="mt-0.5 space-y-0">
+                            {vehicles.slice(0, 2).map((v: any) => (
+                              <p key={v.id} className="text-[10px] text-muted-foreground font-mono truncate">{v.plate_number}</p>
                             ))}
+                            {vehicles.length > 2 && <p className="text-[9px] text-muted-foreground">+{vehicles.length - 2} more</p>}
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         {d.bank_name || d.bank_account_number ? (
-                          <div className="space-y-0.5">
-                            {d.bank_name && <p className="text-[10px] font-semibold text-foreground">{d.bank_name}</p>}
-                            {d.bank_account_number && <p className="text-[10px] text-muted-foreground font-mono">{d.bank_account_number}</p>}
-                            {d.bank_account_name && <p className="text-[10px] text-muted-foreground">{d.bank_account_name}</p>}
+                          <div className="space-y-0">
+                            {d.bank_name && <p className="text-[10px] font-semibold text-foreground truncate">{d.bank_name}</p>}
+                            {d.bank_account_number && <p className="text-[10px] text-muted-foreground font-mono truncate">{d.bank_account_number}</p>}
                           </div>
                         ) : <span className="text-[10px] text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
-                            {docCount}/4
-                          </span>
-                          {permitCount > 0 && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">+Permit</span>}
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${docCount === 4 ? "bg-green-100 text-green-700" : docCount > 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                          {docCount}/4
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      <td className="px-3 py-2.5">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
                           d.status === "Active" ? "bg-green-100 text-green-700" :
                           d.status === "Pending Review" ? "bg-orange-100 text-orange-700" :
                           d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
                         }`}>
                           {d.status === "Active" ? <ShieldCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {d.status}
+                          {d.status === "Pending Review" ? "Pending" : d.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 flex-nowrap">
-                          <div className="min-w-[72px]">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1 flex-nowrap">
+                          <div className="min-w-[64px]">
                             {d.status !== "Active" && docCount === 4 ? (
-                              <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-bold text-primary-foreground bg-green-600 px-2.5 py-1.5 rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap">Approve</button>
+                              <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-bold text-primary-foreground bg-green-600 px-2 py-1 rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap">Approve</button>
                             ) : d.status === "Active" ? (
-                              <button onClick={() => toggleStatus(d.id, d.status)} className="text-[11px] font-medium text-destructive hover:underline whitespace-nowrap">Deactivate</button>
+                              <button onClick={() => toggleStatus(d.id, d.status)} className="text-[10px] font-medium text-destructive hover:underline whitespace-nowrap">Deactivate</button>
                             ) : (
                               <span className="text-[10px] text-muted-foreground whitespace-nowrap">Docs {docCount}/4</span>
                             )}
                           </div>
-                          <button onClick={() => openEdit(d)} className="w-7 h-7 shrink-0 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => deleteDriver(d.id)} className="w-7 h-7 shrink-0 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openEdit(d)} className="w-6 h-6 shrink-0 rounded-md bg-surface flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => deleteDriver(d.id)} className="w-6 h-6 shrink-0 rounded-md bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </td>
                     </tr>
