@@ -177,12 +177,29 @@ const Index = () => {
       };
       setDriverProfile(dp);
       setHasDriverProfile(true);
+      // Sync to session so it persists
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (raw) {
+          const session = JSON.parse(raw);
+          session.isDriver = true;
+          session.driverProfile = dp;
+          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        }
+      } catch {}
       return dp;
     }
     setHasDriverProfile(false);
     setDriverProfile(null);
     return null;
   }, []);
+
+  // Re-check driver profile on mount if we have a session but driver info may be stale
+  useEffect(() => {
+    if (userProfile?.phone_number && phase !== "splash" && phase !== "onboarding" && phase !== "auth") {
+      checkDriverProfile(userProfile.phone_number);
+    }
+  }, [userProfile?.phone_number, phase, checkDriverProfile]);
 
   // Switch between modes
   const handleSwitchMode = useCallback((mode: "passenger" | "driver") => {
