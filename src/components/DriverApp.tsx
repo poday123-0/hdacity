@@ -233,6 +233,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverLat, setDriverLat] = useState<number | null>(null);
   const [driverLng, setDriverLng] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
     if (sessionKickedRef.current) return;
@@ -374,6 +375,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setNotifPermissionDenied(false);
     }
   }, [screen]);
+
+  // Load driver's eligible vehicle type IDs (from driver_vehicle_types + own vehicles)
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    const load = async () => {
+      const [dvtRes, vehRes] = await Promise.all([
+        supabase.from("driver_vehicle_types").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("status", "approved"),
+        supabase.from("vehicles").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("is_active", true),
+      ]);
+      const ids = new Set<string>();
+      (dvtRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+      (vehRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+      eligibleVehicleTypeIdsRef.current = ids;
+    };
+    load();
+  }, [userProfile?.id]);
 
   useEffect(() => {
     try {localStorage.setItem(driverScreenKey, screen);} catch {}
@@ -718,6 +735,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleNewTrip = async (trip: TripRequest) => {
     // Block new trips if driver already has an active trip
     if (currentTrip) return;
+
+    // Skip trips that don't match driver's eligible vehicle types
+    if (trip.vehicle_type_id && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
+      console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} not in driver's eligible types — skipping`);
+      return;
+    }
 
     // Skip trips outside driver's radius (fail-open if no GPS)
     if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {

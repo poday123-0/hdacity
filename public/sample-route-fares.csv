@@ -1,0 +1,13 @@
+from_area,to_area,vehicle_type,fixed_fare
+Male',Hulhumale',Car,70
+Male',Hulhumale',Van,100
+Hulhumale',Male',Car,70
+Hulhumale',Male',Van,100
+Male',Airport,Car,50
+Male',Airport,Van,80
+Airport,Male',Car,50
+Airport,Male',Van,80
+Hulhumale',Airport,Car,40
+Hulhumale',Airport,Van,60
+Airport,Hulhumale',Car,40
+Airport,Hulhumale',Van,60
