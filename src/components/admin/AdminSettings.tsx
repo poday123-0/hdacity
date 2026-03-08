@@ -286,6 +286,7 @@ const AdminSettings = () => {
         if (brandingUploadKey === "system_logo_url") setSystemLogoUrl(url);
         if (brandingUploadKey === "system_share_image_url") setShareImageUrl(url);
         if (brandingUploadKey === "system_favicon_url") setFaviconUrl(url);
+        if (brandingUploadKey.startsWith("onboarding_slide_")) setSettings((s: any) => ({ ...s, [brandingUploadKey]: url }));
         invalidateBranding(); setUploadingBranding(null); toast({ title: "Branding updated!" }); e.target.value = "";
       }} />
 
