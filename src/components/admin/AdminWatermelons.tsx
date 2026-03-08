@@ -380,7 +380,7 @@ const AdminWatermelons = () => {
 
   const promoLabel = (m: PromoItem) => {
     if (m.promo_type === "wallet_amount") return `${m.amount} MVR`;
-    if (m.promo_type === "fee_free") return `${m.fee_free_months}mo Fee-Free`;
+    if (m.promo_type === "fee_free") return `${m.fee_free_months}mo Free`;
     if (m.promo_type === "free_trip") return `${m.free_trips} Free Trip${m.free_trips > 1 ? "s" : ""}`;
     return m.promo_type;
   };
