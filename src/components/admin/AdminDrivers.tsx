@@ -358,24 +358,24 @@ const AdminDrivers = () => {
     else { toast({ title: editingVehicleId ? "Vehicle updated" : "Vehicle added" }); setShowVehicleForm(false); setEditingVehicleId(null); setVehicleForm(emptyVehicleForm); fetchAll(); }
   };
 
-  const toggleDriverRideType = async (driverId: string, vtId: string) => {
-    const current = driverRideTypes[driverId] || [];
+  const toggleVehicleRideType = async (driverId: string, vehicleId: string, vtId: string) => {
+    const current = vehicleRideTypes[vehicleId] || [];
     const existing = current.find(e => e.vtId === vtId);
     if (existing) {
-      await supabase.from("driver_vehicle_types").delete().eq("driver_id", driverId).eq("vehicle_type_id", vtId);
-      setDriverRideTypes(prev => ({ ...prev, [driverId]: current.filter(e => e.vtId !== vtId) }));
+      await supabase.from("driver_vehicle_types").delete().eq("driver_id", driverId).eq("vehicle_type_id", vtId).eq("vehicle_id", vehicleId);
+      setVehicleRideTypes(prev => ({ ...prev, [vehicleId]: current.filter(e => e.vtId !== vtId) }));
     } else {
       // Admin adds as approved directly
-      await supabase.from("driver_vehicle_types").insert({ driver_id: driverId, vehicle_type_id: vtId, status: "approved" } as any);
-      setDriverRideTypes(prev => ({ ...prev, [driverId]: [...current, { vtId, status: "approved" }] }));
+      await supabase.from("driver_vehicle_types").insert({ driver_id: driverId, vehicle_type_id: vtId, vehicle_id: vehicleId, status: "approved" } as any);
+      setVehicleRideTypes(prev => ({ ...prev, [vehicleId]: [...current, { vtId, status: "approved" }] }));
     }
   };
 
-  const approveDriverRideType = async (driverId: string, vtId: string) => {
-    await supabase.from("driver_vehicle_types").update({ status: "approved" } as any).eq("driver_id", driverId).eq("vehicle_type_id", vtId);
-    setDriverRideTypes(prev => ({
+  const approveVehicleRideType = async (driverId: string, vehicleId: string, vtId: string) => {
+    await supabase.from("driver_vehicle_types").update({ status: "approved" } as any).eq("driver_id", driverId).eq("vehicle_type_id", vtId).eq("vehicle_id", vehicleId);
+    setVehicleRideTypes(prev => ({
       ...prev,
-      [driverId]: (prev[driverId] || []).map(e => e.vtId === vtId ? { ...e, status: "approved" } : e),
+      [vehicleId]: (prev[vehicleId] || []).map(e => e.vtId === vtId ? { ...e, status: "approved" } : e),
     }));
     toast({ title: "Ride type approved" });
   };
