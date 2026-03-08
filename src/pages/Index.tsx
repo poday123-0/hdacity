@@ -756,10 +756,13 @@ const Index = () => {
 
         toast({
           title: "📅 Ride Scheduled!",
-          description: `Your ride has been scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}. Drivers are being notified now.`,
+          description: `Your ride has been scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}. Drivers are being notified. Check "My Bookings" in your profile menu.`,
         });
-        // Go to searching screen so passenger can see when a driver accepts
-        setPassengerScreen("searching");
+        // Go back to home — passenger checks bookings from menu
+        setCurrentTripId(null);
+        setPassengerScreen("home");
+        setBookingType("now");
+        setScheduledAt(undefined);
         return;
       }
 

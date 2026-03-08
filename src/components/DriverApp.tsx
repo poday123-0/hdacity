@@ -2834,6 +2834,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 } else {
                   // Scheduled trip accepted — driver goes back to online, stays available
                   toast({ title: "📅 Scheduled Ride Accepted!", description: `You'll be notified 10 minutes before pickup at ${currentTrip.scheduled_at ? new Date(currentTrip.scheduled_at).toLocaleString() : "the scheduled time"}.` });
+                  // Notify passenger via push
+                  if (currentTrip.passenger_id) {
+                    notifyTripAccepted(currentTrip.passenger_id, `${userProfile.first_name} ${userProfile.last_name}`, currentTrip.id);
+                  }
+                  // Send SMS to passenger
+                  if (currentTrip.passenger_id) {
+                    try {
+                      const { data: pProfile } = await supabase.from("profiles").select("phone_number, country_code, first_name").eq("id", currentTrip.passenger_id).single();
+                      if (pProfile?.phone_number) {
+                        const phone = `${pProfile.country_code || "960"}${pProfile.phone_number}`;
+                        supabase.functions.invoke("send-scheduled-sms", {
+                          body: {
+                            phone,
+                            driver_name: `${userProfile.first_name} ${userProfile.last_name}`,
+                            pickup: currentTrip.pickup_address,
+                            dropoff: currentTrip.dropoff_address,
+                            scheduled_at: currentTrip.scheduled_at,
+                          },
+                        }).catch(e => console.warn("Scheduled SMS failed:", e));
+                      }
+                    } catch (e) { console.warn("Failed to send scheduled SMS:", e); }
+                  }
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);
