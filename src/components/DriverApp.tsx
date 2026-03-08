@@ -220,6 +220,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const missingProfileChecksRef = useRef(0);
   const [driverSpeed, setDriverSpeed] = useState(0);
   const [navStepData, setNavStepData] = useState<{instruction: string;distance: string;maneuver?: string;eta: string;totalDistance: string;nextInstruction?: string;nextManeuver?: string;nextDistance?: string;} | null>(null);
+  const [driverNavSettings, setDriverNavSettings] = useState<NavSettings>(loadNavSettings);
   const [mapHeading, setMapHeading] = useState(0);
   const resetNorthRef = useRef<(() => void) | null>(null);
   const locationWatchRef = useRef<number | null>(null);
