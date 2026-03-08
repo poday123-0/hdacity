@@ -1148,6 +1148,39 @@ const Index = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Admin Push Update Banner */}
+      <AnimatePresence>
+        {showUpdateBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -80 }}
+            transition={{ type: "spring", damping: 22, stiffness: 260 }}
+            className="fixed top-0 left-0 right-0 z-[99998] pt-[env(safe-area-inset-top,0px)]"
+          >
+            <div className="mx-3 mt-3 bg-card/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">Update Available</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">A new version is ready. Refresh to get the latest.</p>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl active:scale-95 transition-transform shrink-0 shadow-sm"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
