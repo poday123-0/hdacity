@@ -29,7 +29,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPanel from "@/components/DriverNotifications";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 
-type AppPhase = "splash" | "auth" | "register" | "driver-register" | "driver-pending" | "passenger" | "driver";
+type AppPhase = "splash" | "onboarding" | "auth" | "register" | "driver-register" | "driver-pending" | "passenger" | "driver";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
 
 interface SelectedLocation {
