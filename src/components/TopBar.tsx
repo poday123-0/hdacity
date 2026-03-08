@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download, Save } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download, Save, CalendarClock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SystemLogo from "@/components/SystemLogo";
 import { UserProfile } from "@/components/AuthScreen";
@@ -62,6 +62,9 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
   const placeSearchDebounce = useRef<ReturnType<typeof setTimeout>>();
   const [showWallet, setShowWallet] = useState(false);
   const [showSuggestPlace, setShowSuggestPlace] = useState(false);
+  const [showBookings, setShowBookings] = useState(false);
+  const [scheduledTrips, setScheduledTrips] = useState<any[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
@@ -300,6 +303,24 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
     setShowContactForm(true);
   };
 
+  const fetchBookings = async () => {
+    if (!userProfile?.id) return;
+    setLoadingBookings(true);
+    const { data } = await supabase
+      .from("trips")
+      .select("id, pickup_address, dropoff_address, scheduled_at, status, booking_type, estimated_fare, driver_id, vehicle_type_id")
+      .eq("passenger_id", userProfile.id)
+      .eq("booking_type", "scheduled")
+      .in("status", ["scheduled", "accepted"])
+      .order("scheduled_at", { ascending: true });
+    setScheduledTrips(data || []);
+    setLoadingBookings(false);
+  };
+
+  useEffect(() => {
+    if (showBookings) fetchBookings();
+  }, [showBookings, userProfile?.id]);
+
   return (
     <>
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)] bg-gradient-to-b from-background/80 via-background/40 to-transparent">
@@ -470,6 +491,13 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     <span className="text-[10px] font-semibold text-foreground">History</span>
                   </button>
                   <button
+                    onClick={() => { setShowProfile(false); setShowBookings(true); }}
+                    className="flex flex-col items-center gap-1.5 bg-primary/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform relative"
+                  >
+                    <CalendarClock className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground">Bookings</span>
+                  </button>
+                  <button
                     onClick={() => { setShowProfile(false); setShowContacts(true); }}
                     className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
@@ -567,6 +595,78 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
       <AnimatePresence>
         {showHistory && (
           <RideHistory userId={userProfile?.id} onClose={() => setShowHistory(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* My Bookings */}
+      <AnimatePresence>
+        {showBookings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
+            onClick={() => setShowBookings(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="w-full max-w-lg bg-card rounded-t-3xl shadow-2xl max-h-[75vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-border">
+                <h2 className="text-base font-bold text-foreground">📅 My Bookings</h2>
+                <button onClick={() => setShowBookings(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {loadingBookings ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : scheduledTrips.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground text-sm">
+                    No scheduled bookings
+                  </div>
+                ) : (
+                  scheduledTrips.map((trip) => (
+                    <div key={trip.id} className="bg-muted/50 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${trip.status === "accepted" ? "bg-green-500/20 text-green-600" : "bg-primary/20 text-primary"}`}>
+                          {trip.status === "accepted" ? "✅ Driver Assigned" : "⏳ Waiting for Driver"}
+                        </span>
+                        <span className="text-xs font-bold text-foreground">{trip.estimated_fare} MVR</span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-foreground"><span className="text-green-500">●</span> {trip.pickup_address}</p>
+                        <p className="text-xs text-foreground"><span className="text-destructive">●</span> {trip.dropoff_address}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">
+                          🕐 {trip.scheduled_at ? new Date(trip.scheduled_at).toLocaleString() : "—"}
+                        </span>
+                        {trip.status === "scheduled" && (
+                          <button
+                            onClick={async () => {
+                              await supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", trip.id);
+                              fetchBookings();
+                              toast({ title: "Booking cancelled" });
+                            }}
+                            className="text-[10px] text-destructive font-semibold"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
