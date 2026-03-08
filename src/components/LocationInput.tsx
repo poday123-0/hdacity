@@ -840,7 +840,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         })()}
                       </p>
                       {scheduledTooSoon && (
-                        <p className="text-[10px] text-destructive mt-0.5">Must be at least 30 minutes from now</p>
+                        <p className="text-[10px] text-destructive mt-0.5">Must be at least {minScheduleLeadMin} minutes from now</p>
                       )}
                     </div>
                   </div>
