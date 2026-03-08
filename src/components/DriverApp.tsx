@@ -4144,6 +4144,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
         </div>
       }
+
+      {/* Driver Leaderboard */}
+      <AnimatePresence>
+        {showLeaderboard && userProfile?.id && (
+          <DriverLeaderboard driverId={userProfile.id} onClose={() => setShowLeaderboard(false)} />
+        )}
+      </AnimatePresence>
     </div>);
 
 };
