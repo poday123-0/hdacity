@@ -10,6 +10,15 @@ export const registerDeviceToken = async (
   userType: "driver" | "passenger" | "admin" | "dispatcher",
   deviceType: "web" | "android" | "ios" = "web"
 ) => {
+  const now = new Date().toISOString();
+
+  // Ensure the same device token is active for only one account at a time
+  await supabase
+    .from("device_tokens")
+    .update({ is_active: false, updated_at: now })
+    .eq("token", token)
+    .neq("user_id", userId);
+
   const { error } = await supabase
     .from("device_tokens")
     .upsert(
@@ -19,7 +28,7 @@ export const registerDeviceToken = async (
         user_type: userType,
         device_type: deviceType,
         is_active: true,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       },
       { onConflict: "user_id,token" }
     );

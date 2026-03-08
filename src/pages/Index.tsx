@@ -79,7 +79,9 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [driverProfile, setDriverProfile] = useState<UserProfile | null>(savedSession?.driverProfile || null);
   const [hasDriverProfile, setHasDriverProfile] = useState(savedSession?.isDriver || false);
-  usePushNotifications(userProfile?.id, appMode === "driver" ? "driver" : "passenger");
+  const pushUserId = phase === "driver" ? driverProfile?.id : userProfile?.id;
+  const pushUserType = phase === "driver" ? "driver" : "passenger";
+  usePushNotifications(pushUserId, pushUserType);
   const [pendingPhone, setPendingPhone] = useState(() => {
     try { return localStorage.getItem("hda_pending_phone") || ""; } catch { return ""; }
   });
@@ -105,6 +107,7 @@ const Index = () => {
   const [showPassengerCancelConfirm, setShowPassengerCancelConfirm] = useState(false);
   const [showCancelledByDriverPopup, setShowCancelledByDriverPopup] = useState(false);
   const [cancelledByDriverReason, setCancelledByDriverReason] = useState("");
+  const missingProfileChecksRef = useRef(0);
 
   // Passenger font size
   const [passengerTextSize, setPassengerTextSize] = useState<number>(() => {
@@ -869,16 +872,30 @@ const Index = () => {
   // Periodic check: if profile was deleted by admin, force logout
   useEffect(() => {
     if (!userProfile?.id) return;
+
     const checkProfileExists = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", userProfile.id)
         .maybeSingle();
+
+      // Ignore transient errors (network/timeout) to prevent false auto-logout
+      if (error) return;
+
       if (!data) {
-        handleLogout();
+        missingProfileChecksRef.current += 1;
+        if (missingProfileChecksRef.current >= 3) {
+          toast({ title: "Account Removed", description: "Your account is no longer available.", variant: "destructive" });
+          handleLogout();
+        }
+        return;
       }
+
+      missingProfileChecksRef.current = 0;
     };
+
+    checkProfileExists();
     const interval = setInterval(checkProfileExists, 10000);
     return () => clearInterval(interval);
   }, [userProfile?.id, handleLogout]);

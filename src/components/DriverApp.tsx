@@ -66,7 +66,7 @@ import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
-import { usePushNotifications } from "@/hooks/use-push-notifications";
+
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
@@ -122,7 +122,6 @@ interface DriverAppProps {
 const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProps) => {
   const navigate = useNavigate();
   useTheme(); // Initialize theme
-  usePushNotifications(userProfile?.id, "driver");
   const driverScreenKey = userProfile?.id ? `hda_driver_screen_${userProfile.id}` : "hda_driver_screen";
   const [screen, setScreen] = useState<DriverScreen>(() => {
     try {
@@ -218,6 +217,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const recenterRef = useRef<(() => void) | null>(null);
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
+  const missingProfileChecksRef = useRef(0);
   const [driverSpeed, setDriverSpeed] = useState(0);
   const [navStepData, setNavStepData] = useState<{instruction: string;distance: string;maneuver?: string;eta: string;totalDistance: string;nextInstruction?: string;nextManeuver?: string;nextDistance?: string;} | null>(null);
   const [driverNavSettings, setDriverNavSettings] = useState<NavSettings>(loadNavSettings);
@@ -346,18 +346,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Periodic check: if profile was deleted by admin, force logout
   useEffect(() => {
     if (!userProfile?.id || !onLogout) return;
+
     const checkProfileExists = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", userProfile.id)
         .maybeSingle();
+
+      // Ignore transient fetch errors to avoid false auto-logout
+      if (error) return;
+
       if (!data) {
-        toast({ title: "Account Removed", description: "Your profile has been removed by admin. Please register again.", variant: "destructive" });
-        onLogout();
+        missingProfileChecksRef.current += 1;
+        if (missingProfileChecksRef.current >= 3) {
+          toast({ title: "Account Removed", description: "Your profile has been removed by admin. Please register again.", variant: "destructive" });
+          onLogout();
+        }
+        return;
       }
+
+      missingProfileChecksRef.current = 0;
     };
-    // Check immediately on mount, then every 10 seconds
+
     checkProfileExists();
     const interval = setInterval(checkProfileExists, 10000);
     return () => clearInterval(interval);
