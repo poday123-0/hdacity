@@ -882,6 +882,7 @@ const Index = () => {
   // Profile existence check removed — users should only logout manually
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
+  if (phase === "onboarding") return <OnboardingScreens onComplete={() => setPhase("auth")} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode={initialMode} />;
   if (phase === "register") return <PassengerRegistration phoneNumber={pendingPhone} onComplete={handleRegistrationComplete} />;
   if (phase === "driver-register") {
