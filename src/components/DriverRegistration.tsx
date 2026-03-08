@@ -99,14 +99,14 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     try {
       const d: RegDraft = {
         step, firstName, lastName, email, gender, selectedCompanyId,
-        avatarUrl, idCardFront, idCardBack, licenseFront, licenseBack,
+        avatarUrl, idCardFront, idCardBack, idCardExpiry, licenseFront, licenseBack, licenseExpiry,
         taxiPermitFront, taxiPermitBack, plateNumber, make, model, color,
         vehicleTypeId, selectedRideTypeIds, vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
     } catch {}
   }, [step, firstName, lastName, email, gender, selectedCompanyId, avatarUrl,
-    idCardFront, idCardBack, licenseFront, licenseBack, taxiPermitFront, taxiPermitBack,
+    idCardFront, idCardBack, idCardExpiry, licenseFront, licenseBack, licenseExpiry, taxiPermitFront, taxiPermitBack,
     plateNumber, make, model, color, vehicleTypeId, selectedRideTypeIds,
     vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl]);
 
