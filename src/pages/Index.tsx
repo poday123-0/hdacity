@@ -213,6 +213,7 @@ const Index = () => {
     }
     setPendingDriverData(null);
     setHasDriverProfile(false);
+    setHasApprovedDriverVehicle(false);
     setDriverProfile(null);
     return null;
   }, []);
