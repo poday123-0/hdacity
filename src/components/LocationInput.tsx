@@ -802,7 +802,8 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                     onClick={() => {
                       const input = document.createElement("input");
                       input.type = "date";
-                      input.min = new Date().toISOString().split("T")[0];
+                       const now = new Date();
+                       input.min = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
                       input.value = scheduledDate;
                       input.style.position = "fixed";
                       input.style.opacity = "0";
