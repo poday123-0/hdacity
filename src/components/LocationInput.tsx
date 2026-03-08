@@ -1065,6 +1065,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
             </div>
