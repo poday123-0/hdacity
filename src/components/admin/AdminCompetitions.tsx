@@ -85,6 +85,7 @@ const AdminCompetitions = () => {
     start_date: "",
     end_date: "",
     service_location_id: "",
+    vehicle_type_id: "",
   });
 
   // Prize form
