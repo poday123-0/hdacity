@@ -273,7 +273,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   }, [sortedTypes.length, selected, onlineVehicleTypeIds.size]);
 
   const selectedType = vehicleTypes.find((v) => v.id === selected);
-  const selectedFare = selectedType ? calcFare(selectedType) : 0;
+  const selectedResult = selectedType ? calcFare(selectedType) : { fare: 0, zoneId: null };
+  const selectedFare = typeof selectedResult === 'number' ? selectedResult : selectedResult.fare;
+  const selectedZoneId = typeof selectedResult === 'number' ? null : selectedResult.zoneId;
   const selectedIsOnline = selectedType ? onlineVehicleTypeIds.has(selectedType.id) : false;
 
   return (
