@@ -3203,6 +3203,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {/* Tab Content */}
                 {profileTab === "info" &&
               <div className="space-y-3">
+                    {profileStatus === "Rejected" &&
+                <div className="bg-destructive/10 text-destructive rounded-xl px-4 py-2.5 text-xs font-medium flex items-start gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">Profile Rejected</p>
+                          {profileRejectionReason && <p className="mt-0.5">{profileRejectionReason}</p>}
+                          <p className="mt-0.5 opacity-80">Please update your documents and resubmit.</p>
+                        </div>
+                      </div>
+                }
                     {profileStatus === "Pending Review" &&
                 <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5" />
