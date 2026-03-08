@@ -3,7 +3,7 @@ import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import type { BookingType } from "@/components/LocationInput";
 import { AnimatePresence, motion } from "framer-motion";
-import { Car } from "lucide-react";
+import { Car, User, X } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
 import WatermelonMapOverlay from "@/components/WatermelonMapOverlay";
 import SplashScreen from "@/components/SplashScreen";
