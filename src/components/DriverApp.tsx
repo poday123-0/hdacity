@@ -1579,6 +1579,58 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     disabled: false
   });
 
+  // Helper: update competition leaderboard entries after trip completion
+  const updateCompetitionEntries = async (driverId: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { data: activeComps } = await supabase
+        .from("competitions")
+        .select("id, start_date, end_date")
+        .eq("is_active", true)
+        .eq("status", "active")
+        .lte("start_date", now)
+        .gte("end_date", now);
+
+      if (!activeComps || activeComps.length === 0) return;
+
+      for (const comp of activeComps) {
+        // Count driver's completed trips in this competition period
+        const { count } = await supabase
+          .from("trips")
+          .select("id", { count: "exact", head: true })
+          .eq("driver_id", driverId)
+          .eq("status", "completed")
+          .gte("completed_at", comp.start_date)
+          .lte("completed_at", comp.end_date);
+
+        const tripCount = count || 0;
+
+        // Check if entry exists
+        const { data: existing } = await supabase
+          .from("competition_entries")
+          .select("id, trip_count")
+          .eq("competition_id", comp.id)
+          .eq("driver_id", driverId)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from("competition_entries").update({
+            trip_count: tripCount,
+            updated_at: now,
+          } as any).eq("id", existing.id);
+        } else {
+          await supabase.from("competition_entries").insert({
+            competition_id: comp.id,
+            driver_id: driverId,
+            trip_count: tripCount,
+          } as any);
+        }
+      }
+    } catch (err) {
+      console.error("Competition entry update failed:", err);
+    }
+  };
+
   // Helper: apply trip cashback rewards to both passenger and driver wallets
   const applyTripCashback = async (tripId: string, fare: number, passengerId?: string | null) => {
     try {
