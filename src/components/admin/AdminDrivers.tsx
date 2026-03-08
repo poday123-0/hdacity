@@ -930,6 +930,7 @@ const AdminDrivers = () => {
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Company</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Rating</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicles</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Bank</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
