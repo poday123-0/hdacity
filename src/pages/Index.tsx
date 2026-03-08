@@ -572,10 +572,11 @@ const Index = () => {
     setPassengerScreen("ride-options");
   }, []);
 
-  const handleSelectVehicle = useCallback((vehicleType: any, fare: number, bonus: number = 0) => {
+  const handleSelectVehicle = useCallback((vehicleType: any, fare: number, bonus: number = 0, zoneId?: string | null) => {
     setSelectedVehicleType(vehicleType);
     setEstimatedFare(fare);
     setPassengerBonus(bonus);
+    setFareZoneId(zoneId || null);
     setPassengerScreen("confirmation");
   }, []);
 
