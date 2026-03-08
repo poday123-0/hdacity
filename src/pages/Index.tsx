@@ -1077,10 +1077,8 @@ const Index = () => {
       </div>
     );
   }
-        </button>
-      </div>
-    );
-  }
+
+
 
   // DRIVER MODE
   if (phase === "driver" && driverProfile) {
