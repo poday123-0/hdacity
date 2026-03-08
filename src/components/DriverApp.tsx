@@ -2346,22 +2346,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                    </div>
 
                   {/* Radius + Vehicle row */}
-                  <div className="flex gap-2.5">
+                  <div className="flex gap-2">
                     {/* Radius */}
-                    <div className="bg-surface rounded-2xl px-3 py-2.5 flex items-center gap-2 shrink-0">
-                      <Radar className="w-4 h-4 text-primary shrink-0" />
+                    <div className="bg-surface rounded-2xl px-2 sm:px-3 py-2.5 flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      <Radar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
                       <div className="flex items-center gap-0.5">
                         <button
                         onClick={() => updateRadius(Math.max(0.1, +(tripRadius - (tripRadius <= 1 ? 0.1 : 1)).toFixed(1)))}
-                        className="w-7 h-7 rounded-lg bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
+                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
                           <span className="text-xs font-bold leading-none">−</span>
                         </button>
-                        <span className="text-xs font-bold text-foreground tabular-nums w-10 text-center">
+                        <span className="text-[11px] sm:text-xs font-bold text-foreground tabular-nums w-8 sm:w-10 text-center">
                           {tripRadius < 1 ? `${(tripRadius * 1000).toFixed(0)}m` : `${tripRadius}km`}
                         </span>
                         <button
                         onClick={() => updateRadius(Math.min(50, +(tripRadius + (tripRadius < 1 ? 0.1 : 1)).toFixed(1)))}
-                        className="w-7 h-7 rounded-lg bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
+                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-card flex items-center justify-center text-muted-foreground active:scale-90 transition-transform">
                           <span className="text-xs font-bold leading-none">+</span>
                         </button>
                       </div>
@@ -2371,19 +2371,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {vehicleInfo && (() => {
                     const vTypeImg = vehicleInfo.vehicle_type_id ? vehicleTypes.find((t) => t.id === vehicleInfo.vehicle_type_id)?.image_url : null;
                     return (
-                      <div className="bg-surface rounded-2xl px-3 py-2.5 flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-8 h-8 flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="bg-surface rounded-2xl px-2 sm:px-3 py-2.5 flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0 overflow-hidden">
                             {vTypeImg ?
                           <img src={vTypeImg} alt="Vehicle" className="w-full h-full object-contain" /> :
                           <Car className="w-4 h-4 text-primary" />
                           }
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
-                            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{vehicleInfo.plate_number}{vehicleInfo.color ? ` • ${vehicleInfo.color}` : ""}</p>
+                            <p className="text-[11px] sm:text-sm font-semibold text-foreground truncate">{vehicleInfo.make} {vehicleInfo.model}</p>
+                            <p className="text-[9px] sm:text-xs text-muted-foreground truncate">{vehicleInfo.plate_number}{vehicleInfo.color ? ` • ${vehicleInfo.color}` : ""}</p>
                           </div>
                           {driverVehicles.length > 1 &&
-                        <button onClick={() => {setShowProfile(true);setProfileTab("vehicles");}} className="text-[10px] sm:text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-lg shrink-0 active:scale-95 transition-transform">
+                        <button onClick={() => {setShowProfile(true);setProfileTab("vehicles");}} className="text-[9px] sm:text-xs font-semibold text-primary bg-primary/10 px-1.5 sm:px-2 py-1 rounded-lg shrink-0 active:scale-95 transition-transform">
                               Switch
                             </button>
                         }
