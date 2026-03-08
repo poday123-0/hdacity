@@ -895,7 +895,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                 <div className="w-2.5 h-2.5 rounded-sm bg-foreground" />
               </div>
 
-              <div className="flex-1 space-y-2.5">
+              <div className="flex-1 min-w-0 overflow-hidden space-y-2.5">
                 {/* Pickup input */}
                 <div className="relative">
                   <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
