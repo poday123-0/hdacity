@@ -254,8 +254,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         }
       }
       if (sc.surcharge_type === "time_based" && sc.start_time && sc.end_time) {
-        const now = new Date();
-        const nowMin = now.getHours() * 60 + now.getMinutes();
+        // For scheduled rides, check the scheduled time instead of current time
+        const checkTime = (bookingType === "scheduled" && scheduledAt) ? new Date(scheduledAt) : new Date();
+        const nowMin = checkTime.getHours() * 60 + checkTime.getMinutes();
         const [sh, sm] = sc.start_time.split(":").map(Number);
         const [eh, em] = sc.end_time.split(":").map(Number);
         const startMin = sh * 60 + sm;
