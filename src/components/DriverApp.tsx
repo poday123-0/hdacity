@@ -431,6 +431,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (data && data.length > 0) {
         const trip = data[0] as any;
+
+        // IMPORTANT: accepted scheduled rides must only open via manual "Start Scheduled Ride"
+        if (trip.booking_type === "scheduled" && trip.status === "accepted") {
+          return;
+        }
+
         setCurrentTrip(trip);
 
         // Determine trip phase from status
