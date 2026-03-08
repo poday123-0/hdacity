@@ -947,22 +947,136 @@ const Index = () => {
     );
   }
   if (phase === "driver-pending") {
+    const pd = pendingDriverData;
     return (
-      <div className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center max-w-lg mx-auto px-8 text-center">
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-          <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div className="fixed inset-0 z-40 bg-background flex flex-col max-w-lg mx-auto">
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-1">Registration Under Review</h2>
+            <p className="text-sm text-muted-foreground">
+              Your driver registration is pending admin approval. You'll be notified once approved.
+            </p>
+          </div>
+
+          {/* Submitted Profile Details */}
+          {pd?.profile && (
+            <div className="space-y-4">
+              {/* Profile Info */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  {pd.profile.avatar_url ? (
+                    <img src={pd.profile.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-border" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{pd.profile.first_name} {pd.profile.last_name}</p>
+                    <p className="text-xs text-muted-foreground">+{pd.profile.country_code} {pd.profile.phone_number}</p>
+                    {pd.profile.email && <p className="text-xs text-muted-foreground">{pd.profile.email}</p>}
+                  </div>
+                  <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">
+                    {pd.profile.status}
+                  </span>
+                </div>
+                {pd.profile.company_name && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Car className="w-3.5 h-3.5" />
+                    <span>Company: {pd.profile.company_name}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Submitted Documents */}
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Submitted Documents</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { url: pd.profile.license_front_url, label: "License Front" },
+                    { url: pd.profile.license_back_url, label: "License Back" },
+                    { url: pd.profile.id_card_front_url, label: "ID Front" },
+                    { url: pd.profile.id_card_back_url, label: "ID Back" },
+                    { url: pd.profile.taxi_permit_front_url, label: "Permit Front" },
+                    { url: pd.profile.taxi_permit_back_url, label: "Permit Back" },
+                  ].map((doc) => (
+                    <div key={doc.label} className="flex flex-col items-center gap-1 p-2 bg-surface rounded-xl border border-border">
+                      {doc.url ? (
+                        <img src={doc.url} alt={doc.label} className="w-full h-10 object-cover rounded-lg" />
+                      ) : (
+                        <div className="w-full h-10 rounded-lg bg-muted flex items-center justify-center">
+                          <X className="w-3.5 h-3.5 text-muted-foreground/30" />
+                        </div>
+                      )}
+                      <span className="text-[9px] font-medium text-muted-foreground text-center leading-tight">{doc.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submitted Vehicles */}
+              {pd.vehicles.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl p-4">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Submitted Vehicles</p>
+                  <div className="space-y-3">
+                    {pd.vehicles.map((v: any) => (
+                      <div key={v.id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
+                        {v.image_url ? (
+                          <img src={v.image_url} alt="Vehicle" className="w-14 h-10 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className="w-14 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                            <Car className="w-5 h-5 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">{v.plate_number}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {[v.make, v.model, v.color].filter(Boolean).join(" · ") || "No details"}
+                            {v.vehicle_types?.name && ` · ${v.vehicle_types.name}`}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          v.vehicle_status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
+                          v.vehicle_status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
+                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                        }`}>
+                          {v.vehicle_status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!pd?.profile && (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Your registration has been submitted and is awaiting admin approval.
+              </p>
+            </div>
+          )}
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Registration Under Review</h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          Your driver registration has been submitted and is awaiting admin approval. You'll be able to switch to driver mode once approved.
-        </p>
-        <button
-          onClick={() => { setPhase("passenger"); setAppMode("passenger"); }}
-          className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
-        >
-          Continue as Passenger
+
+        {/* Bottom button */}
+        <div className="px-6 pb-6 pt-3 border-t border-border">
+          <button
+            onClick={() => { setPhase("passenger"); setAppMode("passenger"); }}
+            className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
+          >
+            Continue as Passenger
+          </button>
+        </div>
+      </div>
+    );
+  }
         </button>
       </div>
     );
