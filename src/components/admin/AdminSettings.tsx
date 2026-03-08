@@ -274,7 +274,7 @@ const AdminSettings = () => {
 
   const renderBranding = () => (
     <div className="space-y-5">
-      <input ref={brandingInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+      <input ref={brandingInputRef} type="file" accept="image/*,.gif,.webp,.apng" className="hidden" onChange={async (e) => {
         const file = e.target.files?.[0]; if (!file || !brandingUploadKey) return;
         setUploadingBranding(brandingUploadKey);
         const path = `branding/${brandingUploadKey}_${Date.now()}.${file.name.split(".").pop()}`;
