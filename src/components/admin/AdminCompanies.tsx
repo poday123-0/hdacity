@@ -128,7 +128,7 @@ const AdminCompanies = () => {
             <div className="col-span-2">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.fee_free} onChange={(e) => setForm({ ...form, fee_free: e.target.checked })} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
-                <span className="text-sm font-medium text-foreground">Fee Free (no monthly fee for drivers in this company)</span>
+                <span className="text-sm font-medium text-foreground">Free (no monthly fee for drivers in this company)</span>
               </label>
             </div>
           </div>
@@ -150,7 +150,7 @@ const AdminCompanies = () => {
               <p className="font-medium text-foreground truncate">{c.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 {c.fee_free ? (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Fee Free</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Free</span>
                 ) : c.monthly_fee > 0 ? (
                   <span className="text-xs text-muted-foreground">{c.monthly_fee} MVR/mo</span>
                 ) : null}

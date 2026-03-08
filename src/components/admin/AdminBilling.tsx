@@ -379,7 +379,7 @@ const AdminBilling = () => {
                         <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {getCompanyName(d)}
-                          {companyFeeFree && <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Fee Free</span>}
+                          {companyFeeFree && <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Free</span>}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">{getDriverVehicleTypeName(d.id)}</td>
                         <td className="px-4 py-3">
@@ -514,7 +514,7 @@ const AdminBilling = () => {
         </div>
       )}
 
-      {/* Bulk Fee-Free Modal */}
+      {/* Bulk Free Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBulkModal(false)}>
           <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md space-y-5" onClick={(e) => e.stopPropagation()}>

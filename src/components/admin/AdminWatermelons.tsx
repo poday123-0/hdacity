@@ -380,7 +380,7 @@ const AdminWatermelons = () => {
 
   const promoLabel = (m: PromoItem) => {
     if (m.promo_type === "wallet_amount") return `${m.amount} MVR`;
-    if (m.promo_type === "fee_free") return `${m.fee_free_months}mo Fee-Free`;
+    if (m.promo_type === "fee_free") return `${m.fee_free_months}mo Free`;
     if (m.promo_type === "free_trip") return `${m.free_trips} Free Trip${m.free_trips > 1 ? "s" : ""}`;
     return m.promo_type;
   };
@@ -473,7 +473,7 @@ const AdminWatermelons = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="wallet_amount">💰 Wallet Amount</SelectItem>
-                  <SelectItem value="fee_free">🎫 Center Fee-Free</SelectItem>
+                  <SelectItem value="fee_free">🎫 Free</SelectItem>
                   <SelectItem value="free_trip">🚗 Free Trip</SelectItem>
                 </SelectContent>
               </Select>
@@ -486,7 +486,7 @@ const AdminWatermelons = () => {
             )}
             {promoType === "fee_free" && (
               <div>
-                <Label>Fee-Free Months</Label>
+                <Label>Free Months</Label>
                 <Input type="number" min="1" max="12" value={feeMonths} onChange={e => setFeeMonths(e.target.value)} />
               </div>
             )}

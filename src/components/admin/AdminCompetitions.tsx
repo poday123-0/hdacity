@@ -287,7 +287,7 @@ const AdminCompetitions = () => {
   };
 
   const handleAwardPrizes = async (comp: Competition) => {
-    if (!confirm("Award prizes to top drivers? This will credit wallets and/or set fee-free periods.")) return;
+    if (!confirm("Award prizes to top drivers? This will credit wallets and/or set free periods.")) return;
     setLoading(true);
     try {
       const { data: compPrizes } = await supabase.from("competition_prizes").select("*").eq("competition_id", comp.id).order("tier_rank");
@@ -443,7 +443,7 @@ const AdminCompetitions = () => {
                     className="px-2 py-1.5 bg-background rounded-lg text-xs border border-border/30 text-foreground"
                   >
                     <option value="wallet_credit">Wallet Credit</option>
-                    <option value="fee_free">Fee-Free</option>
+                    <option value="fee_free">Free</option>
                     <option value="badge">Badge Only</option>
                     <option value="custom">Custom Prize</option>
                   </select>
@@ -463,7 +463,7 @@ const AdminCompetitions = () => {
                   )}
                   {prize.prize_type === "fee_free" && (
                     <div>
-                      <label className="text-[10px] text-muted-foreground">Fee-Free Months</label>
+                      <label className="text-[10px] text-muted-foreground">Free Months</label>
                       <input type="number" value={prize.fee_free_months} onChange={e => setPrizeRows(prev => prev.map((p, i) => i === idx ? { ...p, fee_free_months: Number(e.target.value) } : p))} className="w-full px-2 py-1.5 bg-background rounded-lg text-sm border border-border/30 text-foreground" />
                     </div>
                   )}
@@ -553,7 +553,7 @@ const AdminCompetitions = () => {
                           <p className="text-sm font-bold text-foreground">{p.tier_name}</p>
                           <p className="text-xs text-muted-foreground">
                             {p.prize_type === "wallet_credit" && `${p.wallet_amount} MVR`}
-                            {p.prize_type === "fee_free" && `${p.fee_free_months}mo fee-free`}
+                            {p.prize_type === "fee_free" && `${p.fee_free_months}mo free`}
                             {p.prize_type === "badge" && p.badge_label}
                             {p.prize_type === "custom" && p.custom_description}
                           </p>
