@@ -152,7 +152,8 @@ const AdminDrivers = () => {
       const dVehicles = driverVehicles[d.id] || [];
       const plateMatch = dVehicles.some((v: any) => v.plate_number?.toLowerCase().includes(q));
       const centerMatch = dVehicles.some((v: any) => v.center_code?.toLowerCase().includes(q));
-      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch) return false;
+      const bankMatch = d.bank_account_number?.toLowerCase().includes(q) || d.bank_account_name?.toLowerCase().includes(q);
+      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch && !bankMatch) return false;
     }
     return true;
   });
