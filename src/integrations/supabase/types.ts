@@ -191,6 +191,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          vehicle_type_id: string | null
         }
         Insert: {
           created_at?: string
@@ -206,6 +207,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          vehicle_type_id?: string | null
         }
         Update: {
           created_at?: string
@@ -221,6 +223,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          vehicle_type_id?: string | null
         }
         Relationships: [
           {
@@ -228,6 +231,13 @@ export type Database = {
             columns: ["service_location_id"]
             isOneToOne: false
             referencedRelation: "service_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitions_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
             referencedColumns: ["id"]
           },
         ]

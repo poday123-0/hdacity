@@ -1,0 +1,1 @@
+ALTER TABLE public.competitions ADD COLUMN vehicle_type_id UUID REFERENCES public.vehicle_types(id) ON DELETE SET NULL DEFAULT NULL;
