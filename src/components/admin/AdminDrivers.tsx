@@ -455,6 +455,7 @@ const AdminDrivers = () => {
             body: {
               driver_name: `${driver.first_name} ${driver.last_name}`,
               phone_number: driver.phone_number,
+              country_code: driver.country_code,
               plate_number: vehicle.plate_number,
               update_type: "rejected",
               rejection_reason: reason || "Documents not acceptable",
