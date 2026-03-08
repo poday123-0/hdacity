@@ -71,6 +71,167 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_entries: {
+        Row: {
+          competition_id: string
+          created_at: string
+          driver_id: string
+          id: string
+          prize_awarded: boolean
+          prize_id: string | null
+          rank: number | null
+          trip_count: number
+          updated_at: string
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string
+          driver_id: string
+          id?: string
+          prize_awarded?: boolean
+          prize_id?: string | null
+          rank?: number | null
+          trip_count?: number
+          updated_at?: string
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string
+          driver_id?: string
+          id?: string
+          prize_awarded?: boolean
+          prize_id?: string | null
+          rank?: number | null
+          trip_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_entries_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_entries_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_entries_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "competition_prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_prizes: {
+        Row: {
+          badge_label: string | null
+          competition_id: string
+          created_at: string
+          custom_description: string | null
+          fee_free_months: number
+          id: string
+          prize_type: string
+          tier_name: string
+          tier_rank: number
+          wallet_amount: number
+        }
+        Insert: {
+          badge_label?: string | null
+          competition_id: string
+          created_at?: string
+          custom_description?: string | null
+          fee_free_months?: number
+          id?: string
+          prize_type?: string
+          tier_name?: string
+          tier_rank?: number
+          wallet_amount?: number
+        }
+        Update: {
+          badge_label?: string | null
+          competition_id?: string
+          created_at?: string
+          custom_description?: string | null
+          fee_free_months?: number
+          id?: string
+          prize_type?: string
+          tier_name?: string
+          tier_rank?: number
+          wallet_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_prizes_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          metric: string
+          period_type: string
+          service_location_id: string | null
+          start_date: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          metric?: string
+          period_type?: string
+          service_location_id?: string | null
+          start_date: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          metric?: string
+          period_type?: string
+          service_location_id?: string | null
+          start_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitions_service_location_id_fkey"
+            columns: ["service_location_id"]
+            isOneToOne: false
+            referencedRelation: "service_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_tokens: {
         Row: {
           created_at: string
