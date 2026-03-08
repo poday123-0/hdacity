@@ -369,6 +369,7 @@ const Admin = () => {
           {activeTab === "dashboard" && <AdminDashboard />}
           {activeTab === "passengers" && <AdminPassengers />}
           {activeTab === "drivers" && <AdminDrivers />}
+          {activeTab === "vehicles" && <AdminVehicles />}
           {activeTab === "vehicle_types" && <AdminVehicleTypes />}
           {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
           {activeTab === "fares" && <AdminFares />}
