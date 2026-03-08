@@ -465,6 +465,23 @@ const AdminDrivers = () => {
     fetchAll();
   };
 
+  const rejectDriver = async (id: string, reason: string) => {
+    const driver = drivers.find(d => d.id === id);
+    await supabase.from("profiles").update({ status: "Rejected", rejection_reason: reason || "Your application was not approved" } as any).eq("id", id);
+    toast({ title: "Driver rejected", description: reason });
+    if (driver) {
+      try {
+        const msg = `Hi ${driver.first_name}, your driver registration was not approved. Reason: ${reason || "Your application was not approved"}. Please update your details and resubmit. - HDA Taxi`;
+        await supabase.functions.invoke("notify-vehicle-update", {
+          body: { phone_number: driver.phone_number, country_code: driver.country_code, update_type: "driver_status", message: msg, notify_driver: true },
+        });
+      } catch (e) { console.error("SMS notify failed", e); }
+    }
+    setRejectDriverId(null);
+    setRejectReason("");
+    fetchAll();
+  };
+
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
