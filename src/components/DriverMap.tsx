@@ -305,16 +305,15 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       gestureHandling: "greedy",
     };
     // Vector map (enables two-finger rotation, tilt, heading)
+    // IMPORTANT: Do NOT apply raster `styles` when using a vector mapId —
+    // they conflict with vector rendering and can hide roads/features.
     if (mapId) {
       mapOptions.mapId = mapId;
       const colorScheme = g.maps?.ColorScheme;
       if (colorScheme) {
         mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
       }
-      // Also apply raster styles as fallback for dark mode
-      if (!colorScheme && isDark) {
-        mapOptions.styles = darkMapStyle;
-      }
+      // No raster styles for vector maps — they cause missing roads
     } else {
       mapOptions.styles = isDark ? darkMapStyle : lightNavStyle;
     }
