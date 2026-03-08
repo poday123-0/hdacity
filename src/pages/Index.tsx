@@ -1280,7 +1280,7 @@ const Index = () => {
         userProfile={userProfile} 
         onNotificationPress={() => setShowPassengerNotifs(true)}
         onDriverMode={hasApprovedDriverVehicle ? () => handleSwitchMode("driver") : undefined}
-        onRegisterDriver={!hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
+        onRegisterDriver={!hasApprovedDriverVehicle ? () => handleSwitchMode("driver") : undefined}
         onProfileUpdate={(updated) => {
           setUserProfile(updated);
           // Sync to localStorage session
