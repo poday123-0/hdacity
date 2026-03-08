@@ -30,6 +30,8 @@ interface DriverInfo {
   plate?: string;
   phone?: string;
   avatar_url?: string | null;
+  vehicle_color?: string;
+  vehicle_image_url?: string | null;
   bank_accounts?: BankAccountInfo[];
   favara_accounts?: FavaraAccountInfo[];
 }
