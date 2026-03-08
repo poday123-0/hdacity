@@ -376,6 +376,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
   }, [screen]);
 
+  // Load driver's eligible vehicle type IDs (from driver_vehicle_types + own vehicles)
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    const load = async () => {
+      const [dvtRes, vehRes] = await Promise.all([
+        supabase.from("driver_vehicle_types").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("status", "approved"),
+        supabase.from("vehicles").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("is_active", true),
+      ]);
+      const ids = new Set<string>();
+      (dvtRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+      (vehRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+      eligibleVehicleTypeIdsRef.current = ids;
+    };
+    load();
+  }, [userProfile?.id]);
+
   useEffect(() => {
     try {localStorage.setItem(driverScreenKey, screen);} catch {}
   }, [screen, driverScreenKey]);
