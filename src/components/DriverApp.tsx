@@ -754,8 +754,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   const handleNewTrip = async (trip: TripRequest) => {
-    // Block new trips if driver already has an active trip
+    // Block new trips if driver already has an active (non-scheduled) trip
     if (currentTrip) return;
+
+    // Block if driver has a scheduled trip within 15 minutes
+    if (userProfile?.id) {
+      const fifteenMinFromNow = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      const { data: upcomingScheduled } = await supabase
+        .from("trips")
+        .select("id, scheduled_at")
+        .eq("driver_id", userProfile.id)
+        .eq("status", "accepted")
+        .eq("booking_type", "scheduled")
+        .lte("scheduled_at", fifteenMinFromNow)
+        .limit(1);
+      if (upcomingScheduled && upcomingScheduled.length > 0) {
+        // Don't show new trips — driver should be heading to scheduled pickup
+        console.log(`[SCHEDULED LOCKOUT] Driver has scheduled trip ${upcomingScheduled[0].id} within 15min — blocking new trip`);
+        return;
+      }
+    }
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
