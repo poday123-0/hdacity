@@ -80,6 +80,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [driverProfile, setDriverProfile] = useState<UserProfile | null>(savedSession?.driverProfile || null);
   const [hasDriverProfile, setHasDriverProfile] = useState(savedSession?.isDriver || false);
+  const [hasApprovedDriverVehicle, setHasApprovedDriverVehicle] = useState(false);
   const pushUserId = phase === "driver" ? driverProfile?.id : userProfile?.id;
   const pushUserType = phase === "driver" ? "driver" : "passenger";
   usePushNotifications(pushUserId, pushUserType);
@@ -179,6 +180,14 @@ const Index = () => {
       setDriverProfile(dp);
       setHasDriverProfile(true);
       setPendingDriverData(null);
+      // Check if driver has at least one approved vehicle
+      const { data: approvedVehicles } = await supabase
+        .from("vehicles")
+        .select("id")
+        .eq("driver_id", data.id)
+        .eq("vehicle_status", "approved")
+        .limit(1);
+      setHasApprovedDriverVehicle(!!(approvedVehicles && approvedVehicles.length > 0));
       try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (raw) {
@@ -198,11 +207,13 @@ const Index = () => {
       ]);
       setPendingDriverData({ profile: data, vehicles: vehiclesRes.data || [], vehicleTypes: vtRes.data || [] });
       setHasDriverProfile(true);
+      setHasApprovedDriverVehicle(false);
       setDriverProfile(null);
       return null;
     }
     setPendingDriverData(null);
     setHasDriverProfile(false);
+    setHasApprovedDriverVehicle(false);
     setDriverProfile(null);
     return null;
   }, []);
@@ -1268,7 +1279,7 @@ const Index = () => {
         userName={userProfile?.first_name} 
         userProfile={userProfile} 
         onNotificationPress={() => setShowPassengerNotifs(true)}
-        onDriverMode={hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
+        onDriverMode={hasApprovedDriverVehicle ? () => handleSwitchMode("driver") : undefined}
         onRegisterDriver={!hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
         onProfileUpdate={(updated) => {
           setUserProfile(updated);

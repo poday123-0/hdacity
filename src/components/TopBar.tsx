@@ -312,7 +312,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
           </button>
 
           <div className="flex items-center gap-2">
-            {!onDriverMode && <SystemLogo className="w-8 h-8 object-contain" alt="HDA Taxi" />}
+            {!onDriverMode && <SystemLogo className="w-10 h-10 object-contain" alt="HDA Taxi" />}
             {onDriverMode && (
               <button
                 onClick={onDriverMode}
