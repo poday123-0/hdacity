@@ -999,12 +999,12 @@ const Index = () => {
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} onMapReady={setPassengerMapInstance} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
-        {userProfile?.id && passengerScreen === "driver-matching" && (
+        {userProfile?.id && passengerMapInstance && ["home", "ride-options", "confirmation", "searching", "driver-matching"].includes(passengerScreen) && (
           <WatermelonMapOverlay
             userType="passenger"
             userId={userProfile.id}
-            userLat={null}
-            userLng={null}
+            userLat={pickup?.lat ?? null}
+            userLng={pickup?.lng ?? null}
             mapInstance={passengerMapInstance}
           />
         )}
