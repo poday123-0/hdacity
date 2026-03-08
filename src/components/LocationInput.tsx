@@ -85,6 +85,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [serviceAreas, setServiceAreas] = useState<ServiceAreaPolygon[]>([]);
   const [featureScheduled, setFeatureScheduled] = useState(true);
   const [featureHourly, setFeatureHourly] = useState(true);
+  const [minScheduleLeadMin, setMinScheduleLeadMin] = useState(30);
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [suggestName, setSuggestName] = useState("");
   const [suggestAddress, setSuggestAddress] = useState("");
