@@ -758,11 +758,13 @@ const Index = () => {
           console.warn("Push notification failed:", pushErr);
         }
 
-        toast({
-          title: "📅 Ride Scheduled!",
-          description: `Your ride has been scheduled for ${scheduledAt ? new Date(scheduledAt).toLocaleString() : "later"}. Drivers are being notified. Check "My Bookings" in your profile menu.`,
+        // Show nice scheduled confirmation dialog
+        setScheduledConfirmationData({
+          scheduledAt: scheduledAt || new Date().toISOString(),
+          pickup: pickup.name,
+          dropoff: dropoff.name,
         });
-        // Go back to home — passenger checks bookings from menu
+        setShowScheduledConfirmation(true);
         setCurrentTripId(null);
         setPassengerScreen("home");
         setBookingType("now");
