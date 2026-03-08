@@ -350,8 +350,18 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 <span>{rating}</span>
                 {vehicle && <><span>•</span><span className="truncate">{vehicle}</span></>}
               </div>
-              {plate && <p className="text-xs text-muted-foreground mt-0.5">{plate}</p>}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {plate && <span className="text-sm font-bold text-foreground">{plate}</span>}
+                {vehicleColor && (
+                  <span className="text-xs text-muted-foreground">• {vehicleColor}</span>
+                )}
+              </div>
             </div>
+            {vehicleImageUrl && (
+              <div className="shrink-0 w-20 h-14 rounded-xl bg-surface overflow-hidden border border-border/40">
+                <img src={vehicleImageUrl} alt="Vehicle" className="w-full h-full object-cover" />
+              </div>
+            )}
           </div>
 
           {/* Enhanced Status Card */}
