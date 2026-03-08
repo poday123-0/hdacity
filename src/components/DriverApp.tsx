@@ -2916,6 +2916,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 setConfirmedPaymentMethod("wallet");
                 setDriverTripPhase("heading_to_pickup");
                 supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_completed").eq("is_default", true).eq("is_active", true).single().then(({ data: s }) => { if (s?.file_url) playSound(s.file_url); });
+                updateCompetitionEntries(userProfile.id);
                 setScreen("complete");
               } else {
                 // Auto-complete with passenger's selected payment method (no driver confirmation needed)
