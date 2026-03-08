@@ -938,9 +938,9 @@ const AdminDrivers = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="px-4 py-12 text-center"><Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /></td></tr>
+              <tr><td colSpan={10} className="px-4 py-12 text-center"><Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /></td></tr>
             ) : filteredDrivers.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
+              <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
             ) : (
               filteredDrivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
