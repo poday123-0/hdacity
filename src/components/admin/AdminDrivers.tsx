@@ -45,7 +45,7 @@ const AdminDrivers = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
-  const [driverRideTypes, setDriverRideTypes] = useState<Record<string, { vtId: string; status: string }[]>>({});
+  const [vehicleRideTypes, setVehicleRideTypes] = useState<Record<string, { vtId: string; status: string }[]>>({});
   const [showBulkAssign, setShowBulkAssign] = useState<"company" | "center" | "vehicle" | null>(null);
   const [bulkCompanyId, setBulkCompanyId] = useState("");
   const [bulkCenterStart, setBulkCenterStart] = useState("");
@@ -112,14 +112,15 @@ const AdminDrivers = () => {
     });
     setDriverDeclines(dMap);
 
-    // Fetch driver ride types
-    const { data: dvtData } = await supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id, status");
+    // Fetch driver ride types (per vehicle)
+    const { data: dvtData } = await supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id, vehicle_id, status");
     const rtMap: Record<string, { vtId: string; status: string }[]> = {};
     (dvtData || []).forEach((row: any) => {
-      if (!rtMap[row.driver_id]) rtMap[row.driver_id] = [];
-      rtMap[row.driver_id].push({ vtId: row.vehicle_type_id, status: row.status || "approved" });
+      const key = row.vehicle_id || `driver_${row.driver_id}`;
+      if (!rtMap[key]) rtMap[key] = [];
+      rtMap[key].push({ vtId: row.vehicle_type_id, status: row.status || "approved" });
     });
-    setDriverRideTypes(rtMap);
+    setVehicleRideTypes(rtMap);
 
     setLoading(false);
   };
@@ -357,24 +358,24 @@ const AdminDrivers = () => {
     else { toast({ title: editingVehicleId ? "Vehicle updated" : "Vehicle added" }); setShowVehicleForm(false); setEditingVehicleId(null); setVehicleForm(emptyVehicleForm); fetchAll(); }
   };
 
-  const toggleDriverRideType = async (driverId: string, vtId: string) => {
-    const current = driverRideTypes[driverId] || [];
+  const toggleVehicleRideType = async (driverId: string, vehicleId: string, vtId: string) => {
+    const current = vehicleRideTypes[vehicleId] || [];
     const existing = current.find(e => e.vtId === vtId);
     if (existing) {
-      await supabase.from("driver_vehicle_types").delete().eq("driver_id", driverId).eq("vehicle_type_id", vtId);
-      setDriverRideTypes(prev => ({ ...prev, [driverId]: current.filter(e => e.vtId !== vtId) }));
+      await supabase.from("driver_vehicle_types").delete().eq("driver_id", driverId).eq("vehicle_type_id", vtId).eq("vehicle_id", vehicleId);
+      setVehicleRideTypes(prev => ({ ...prev, [vehicleId]: current.filter(e => e.vtId !== vtId) }));
     } else {
       // Admin adds as approved directly
-      await supabase.from("driver_vehicle_types").insert({ driver_id: driverId, vehicle_type_id: vtId, status: "approved" } as any);
-      setDriverRideTypes(prev => ({ ...prev, [driverId]: [...current, { vtId, status: "approved" }] }));
+      await supabase.from("driver_vehicle_types").insert({ driver_id: driverId, vehicle_type_id: vtId, vehicle_id: vehicleId, status: "approved" } as any);
+      setVehicleRideTypes(prev => ({ ...prev, [vehicleId]: [...current, { vtId, status: "approved" }] }));
     }
   };
 
-  const approveDriverRideType = async (driverId: string, vtId: string) => {
-    await supabase.from("driver_vehicle_types").update({ status: "approved" } as any).eq("driver_id", driverId).eq("vehicle_type_id", vtId);
-    setDriverRideTypes(prev => ({
+  const approveVehicleRideType = async (driverId: string, vehicleId: string, vtId: string) => {
+    await supabase.from("driver_vehicle_types").update({ status: "approved" } as any).eq("driver_id", driverId).eq("vehicle_type_id", vtId).eq("vehicle_id", vehicleId);
+    setVehicleRideTypes(prev => ({
       ...prev,
-      [driverId]: (prev[driverId] || []).map(e => e.vtId === vtId ? { ...e, status: "approved" } : e),
+      [vehicleId]: (prev[vehicleId] || []).map(e => e.vtId === vtId ? { ...e, status: "approved" } : e),
     }));
     toast({ title: "Ride type approved" });
   };
@@ -1047,29 +1048,6 @@ const AdminDrivers = () => {
                               </button>
                             </div>
 
-                            {/* Eligible Ride Types */}
-                            <div className="bg-card border border-border rounded-xl p-3">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Eligible Ride Types</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {vehicleTypes.map((vt) => {
-                                  const entry = (driverRideTypes[d.id] || []).find(e => e.vtId === vt.id);
-                                  const isApproved = entry?.status === "approved";
-                                  const isPending = entry?.status === "pending";
-                                  return (
-                                    <div key={vt.id} className="flex items-center gap-0.5">
-                                      <button onClick={() => toggleDriverRideType(d.id, vt.id)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${isApproved ? "bg-primary text-primary-foreground" : isPending ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}>
-                                        {vt.name}{isPending ? " ⏳" : ""}
-                                      </button>
-                                      {isPending && (
-                                        <button onClick={() => approveDriverRideType(d.id, vt.id)} className="px-1.5 py-1.5 rounded-lg bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold hover:bg-green-500/30 transition-colors" title="Approve">
-                                          <Check className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
 
                             {/* Vehicle form */}
                             {showVehicleForm && expandedDriver === d.id && (
@@ -1217,6 +1195,30 @@ const AdminDrivers = () => {
                                           ) : (
                                             <span key={doc.label} className="text-[10px] text-muted-foreground/50 px-2 py-1">No {doc.label}</span>
                                           ))}
+                                        </div>
+
+                                        {/* Eligible Ride Types for this vehicle */}
+                                        <div className="mt-2 pt-2 border-t border-border/50">
+                                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Eligible Ride Types</p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {vehicleTypes.map((vt) => {
+                                              const entry = (vehicleRideTypes[v.id] || []).find((e: any) => e.vtId === vt.id);
+                                              const isApproved = entry?.status === "approved";
+                                              const isPending = entry?.status === "pending";
+                                              return (
+                                                <div key={vt.id} className="flex items-center gap-0.5">
+                                                  <button onClick={() => toggleVehicleRideType(d.id, v.id, vt.id)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${isApproved ? "bg-primary text-primary-foreground" : isPending ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}>
+                                                    {vt.name}{isPending ? " ⏳" : ""}
+                                                  </button>
+                                                  {isPending && (
+                                                    <button onClick={() => approveVehicleRideType(d.id, v.id, vt.id)} className="px-1 py-1 rounded-lg bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold hover:bg-green-500/30 transition-colors" title="Approve">
+                                                      <Check className="w-3 h-3" />
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
                                         </div>
                                       </div>
 

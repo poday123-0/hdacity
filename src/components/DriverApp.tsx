@@ -380,21 +380,35 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
   }, [screen]);
 
-  // Load driver's eligible vehicle type IDs (from driver_vehicle_types + own vehicles)
+  // Load eligible vehicle type IDs for the selected vehicle
   useEffect(() => {
     if (!userProfile?.id) return;
     const load = async () => {
-      const [dvtRes, vehRes] = await Promise.all([
-        supabase.from("driver_vehicle_types").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("status", "approved"),
-        supabase.from("vehicles").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("is_active", true),
-      ]);
       const ids = new Set<string>();
-      (dvtRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
-      (vehRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+      // If a vehicle is selected, get its specific ride types
+      if (selectedVehicleId) {
+        const { data: dvtData } = await supabase.from("driver_vehicle_types")
+          .select("vehicle_type_id")
+          .eq("driver_id", userProfile.id)
+          .eq("vehicle_id", selectedVehicleId)
+          .eq("status", "approved");
+        (dvtData || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+        // Also include the vehicle's own type
+        const { data: veh } = await supabase.from("vehicles").select("vehicle_type_id").eq("id", selectedVehicleId).single();
+        if (veh?.vehicle_type_id) ids.add(veh.vehicle_type_id);
+      } else {
+        // Fallback: all driver's approved types
+        const [dvtRes, vehRes] = await Promise.all([
+          supabase.from("driver_vehicle_types").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("status", "approved"),
+          supabase.from("vehicles").select("vehicle_type_id").eq("driver_id", userProfile.id).eq("is_active", true),
+        ]);
+        (dvtRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+        (vehRes.data || []).forEach((r: any) => { if (r.vehicle_type_id) ids.add(r.vehicle_type_id); });
+      }
       eligibleVehicleTypeIdsRef.current = ids;
     };
     load();
-  }, [userProfile?.id]);
+  }, [userProfile?.id, selectedVehicleId]);
 
   useEffect(() => {
     try {localStorage.setItem(driverScreenKey, screen);} catch {}
