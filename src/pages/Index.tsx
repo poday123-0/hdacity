@@ -7,6 +7,7 @@ import { Car } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
 import WatermelonMapOverlay from "@/components/WatermelonMapOverlay";
 import SplashScreen from "@/components/SplashScreen";
+import OnboardingScreens, { ONBOARDING_KEY } from "@/components/OnboardingScreens";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
 import PassengerRegistration from "@/components/PassengerRegistration";
 import DriverRegistration from "@/components/DriverRegistration";
@@ -28,7 +29,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPanel from "@/components/DriverNotifications";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 
-type AppPhase = "splash" | "auth" | "register" | "driver-register" | "driver-pending" | "passenger" | "driver";
+type AppPhase = "splash" | "onboarding" | "auth" | "register" | "driver-register" | "driver-pending" | "passenger" | "driver";
 type PassengerScreen = "home" | "ride-options" | "confirmation" | "searching" | "driver-matching" | "feedback";
 
 interface SelectedLocation {
@@ -517,6 +518,12 @@ const Index = () => {
   }, [currentTripId, passengerScreen, tripStatus]);
 
   const handleSplashComplete = useCallback(() => {
+    // Check if onboarding was already seen
+    const onboardingSeen = (() => { try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; } })();
+    if (!onboardingSeen && !savedSession) {
+      setPhase("onboarding");
+      return;
+    }
     if (savedSession) {
       if (appMode === "driver" && savedSession.driverProfile) setPhase("driver");
       else setPhase("passenger");
@@ -875,6 +882,7 @@ const Index = () => {
   // Profile existence check removed — users should only logout manually
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
+  if (phase === "onboarding") return <OnboardingScreens onComplete={() => setPhase("auth")} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode={initialMode} />;
   if (phase === "register") return <PassengerRegistration phoneNumber={pendingPhone} onComplete={handleRegistrationComplete} />;
   if (phase === "driver-register") {

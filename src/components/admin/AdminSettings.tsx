@@ -286,6 +286,7 @@ const AdminSettings = () => {
         if (brandingUploadKey === "system_logo_url") setSystemLogoUrl(url);
         if (brandingUploadKey === "system_share_image_url") setShareImageUrl(url);
         if (brandingUploadKey === "system_favicon_url") setFaviconUrl(url);
+        if (brandingUploadKey.startsWith("onboarding_slide_")) setSettings((s: any) => ({ ...s, [brandingUploadKey]: url }));
         invalidateBranding(); setUploadingBranding(null); toast({ title: "Branding updated!" }); e.target.value = "";
       }} />
 
@@ -330,6 +331,34 @@ const AdminSettings = () => {
               <Upload className="w-3.5 h-3.5" /> {uploadingBranding === "system_favicon_url" ? "Uploading..." : "Upload"}
             </button>
           </div>
+        </div>
+      </SectionCard>
+
+      {/* Onboarding Slides */}
+      <SectionCard title="Onboarding Slides" description="Welcome screens shown to first-time users (upload up to 4 images)" icon={Smartphone}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => {
+            const key = `onboarding_slide_${i}`;
+            const url = settings[key] && typeof settings[key] === "string" ? settings[key] : null;
+            return (
+              <div key={i} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/30 border border-border/50">
+                <div className="w-full aspect-[9/16] rounded-lg bg-background border-2 border-border flex items-center justify-center overflow-hidden">
+                  {url ? <img src={url} alt={`Slide ${i}`} className="w-full h-full object-cover" /> : <Image className="w-6 h-6 text-muted-foreground" />}
+                </div>
+                <p className="text-[10px] font-semibold text-foreground">Slide {i}</p>
+                <div className="flex gap-1.5">
+                  <button onClick={() => { setBrandingUploadKey(key); setTimeout(() => brandingInputRef.current?.click(), 50); }} disabled={uploadingBranding === key} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+                    <Upload className="w-3 h-3" /> {uploadingBranding === key ? "..." : "Upload"}
+                  </button>
+                  {url && (
+                    <button onClick={async () => { await updateSetting(key, ""); setSettings((s: any) => ({ ...s, [key]: "" })); toast({ title: `Slide ${i} removed` }); }} className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all active:scale-95">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </SectionCard>
 
