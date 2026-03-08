@@ -85,6 +85,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const [serviceAreas, setServiceAreas] = useState<ServiceAreaPolygon[]>([]);
   const [featureScheduled, setFeatureScheduled] = useState(true);
   const [featureHourly, setFeatureHourly] = useState(true);
+  const [minScheduleLeadMin, setMinScheduleLeadMin] = useState(30);
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [suggestName, setSuggestName] = useState("");
   const [suggestAddress, setSuggestAddress] = useState("");
@@ -118,7 +119,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
         supabase
           .from("system_settings")
           .select("key, value")
-          .in("key", ["feature_scheduled_rides", "feature_hourly_booking"]),
+          .in("key", ["feature_scheduled_rides", "feature_hourly_booking", "min_scheduled_lead_minutes"]),
       ]);
       const data = locRes.data;
       const namedData = namedRes.data || [];
@@ -133,6 +134,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       settingsRes.data?.forEach((s: any) => {
         if (s.key === "feature_scheduled_rides") setFeatureScheduled(s.value === true || s.value === "true");
         if (s.key === "feature_hourly_booking") setFeatureHourly(s.value === true || s.value === "true");
+        if (s.key === "min_scheduled_lead_minutes") {
+          const v = typeof s.value === "number" ? s.value : parseInt(String(s.value));
+          if (!isNaN(v) && v > 0) setMinScheduleLeadMin(v);
+        }
       });
       setLoading(false);
     };
@@ -572,11 +577,11 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const validStops = stops.filter((s): s is ServiceLocation => s !== null);
   const scheduledAtIso = scheduledDate && scheduledTime ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString() : undefined;
 
-  // Validate scheduled time is at least 30 minutes from now
+  // Validate scheduled time is at least N minutes from now (admin-configurable)
   const scheduledTooSoon = (() => {
     if (bookingType !== "scheduled" || !scheduledDate || !scheduledTime) return false;
     const scheduled = new Date(`${scheduledDate}T${scheduledTime}`);
-    const minTime = new Date(Date.now() + 30 * 60 * 1000);
+    const minTime = new Date(Date.now() + minScheduleLeadMin * 60 * 1000);
     return scheduled < minTime;
   })();
 
@@ -835,7 +840,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         })()}
                       </p>
                       {scheduledTooSoon && (
-                        <p className="text-[10px] text-destructive mt-0.5">Must be at least 30 minutes from now</p>
+                        <p className="text-[10px] text-destructive mt-0.5">Must be at least {minScheduleLeadMin} minutes from now</p>
                       )}
                     </div>
                   </div>
@@ -1095,7 +1100,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             onClick={() => {
               if (!canConfirm) return;
               if (scheduledTooSoon) {
-                toast({ title: "Too soon", description: "Scheduled pickup must be at least 30 minutes from now.", variant: "destructive" });
+                toast({ title: "Too soon", description: `Scheduled pickup must be at least ${minScheduleLeadMin} minutes from now.`, variant: "destructive" });
                 return;
               }
               const dummyDropoff = bookingType === "hourly" && !dropoff ? { ...pickup!, name: pickup!.name + " (Hourly)" } : dropoff!;
@@ -1109,7 +1114,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
               : bookingType === "scheduled" && (!scheduledDate || !scheduledTime)
                 ? "Set date & time"
                 : scheduledTooSoon
-                  ? "Must be 30+ min from now"
+                  ? `Must be ${minScheduleLeadMin}+ min from now`
                   : bookingType === "scheduled"
                     ? "Schedule ride"
                     : bookingType === "hourly"
