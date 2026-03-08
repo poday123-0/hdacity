@@ -24,8 +24,10 @@ interface RegDraft {
   avatarUrl: string | null;
   idCardFront: string | null;
   idCardBack: string | null;
+  idCardExpiry: string;
   licenseFront: string | null;
   licenseBack: string | null;
+  licenseExpiry: string;
   taxiPermitFront: string | null;
   taxiPermitBack: string | null;
   plateNumber: string;
@@ -67,8 +69,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   // Documents
   const [idCardFront, setIdCardFront] = useState<string | null>(draft.idCardFront || null);
   const [idCardBack, setIdCardBack] = useState<string | null>(draft.idCardBack || null);
+  const [idCardExpiry, setIdCardExpiry] = useState(draft.idCardExpiry || "");
   const [licenseFront, setLicenseFront] = useState<string | null>(draft.licenseFront || null);
   const [licenseBack, setLicenseBack] = useState<string | null>(draft.licenseBack || null);
+  const [licenseExpiry, setLicenseExpiry] = useState(draft.licenseExpiry || "");
   const [taxiPermitFront, setTaxiPermitFront] = useState<string | null>(draft.taxiPermitFront || null);
   const [taxiPermitBack, setTaxiPermitBack] = useState<string | null>(draft.taxiPermitBack || null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(draft.avatarUrl || null);
@@ -95,14 +99,14 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     try {
       const d: RegDraft = {
         step, firstName, lastName, email, gender, selectedCompanyId,
-        avatarUrl, idCardFront, idCardBack, licenseFront, licenseBack,
+        avatarUrl, idCardFront, idCardBack, idCardExpiry, licenseFront, licenseBack, licenseExpiry,
         taxiPermitFront, taxiPermitBack, plateNumber, make, model, color,
         vehicleTypeId, selectedRideTypeIds, vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
     } catch {}
   }, [step, firstName, lastName, email, gender, selectedCompanyId, avatarUrl,
-    idCardFront, idCardBack, licenseFront, licenseBack, taxiPermitFront, taxiPermitBack,
+    idCardFront, idCardBack, idCardExpiry, licenseFront, licenseBack, licenseExpiry, taxiPermitFront, taxiPermitBack,
     plateNumber, make, model, color, vehicleTypeId, selectedRideTypeIds,
     vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl]);
 
@@ -215,9 +219,11 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
           id_card_back_url: idCardBack,
           license_front_url: licenseFront,
           license_back_url: licenseBack,
+          id_card_expiry: idCardExpiry || null,
+          license_expiry: licenseExpiry || null,
           taxi_permit_front_url: taxiPermitFront,
           taxi_permit_back_url: taxiPermitBack,
-        })
+        } as any)
         .select()
         .single();
 
@@ -494,6 +500,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                   <DocUploadCard label="Front" url={idCardFront} target="id_front" />
                   <DocUploadCard label="Back" url={idCardBack} target="id_back" />
                 </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">ID Card Expiry Date</label>
+                  <input type="date" value={idCardExpiry} onChange={(e) => setIdCardExpiry(e.target.value)} className={inputClass} />
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -501,6 +511,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 <div className="grid grid-cols-2 gap-3">
                   <DocUploadCard label="Front" url={licenseFront} target="license_front" />
                   <DocUploadCard label="Back" url={licenseBack} target="license_back" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">License Expiry Date</label>
+                  <input type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} className={inputClass} />
                 </div>
               </div>
 

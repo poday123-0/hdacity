@@ -25,6 +25,7 @@ const AdminDrivers = () => {
     company_id: "", monthly_fee: "", bank_id: "", bank_account_number: "", bank_account_name: "",
     license_front_url: "", license_back_url: "", id_card_front_url: "", id_card_back_url: "",
     taxi_permit_front_url: "", taxi_permit_back_url: "",
+    id_card_expiry: "", license_expiry: "",
   });
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
@@ -267,6 +268,7 @@ const AdminDrivers = () => {
       license_front_url: d.license_front_url || "", license_back_url: d.license_back_url || "",
       id_card_front_url: d.id_card_front_url || "", id_card_back_url: d.id_card_back_url || "",
       taxi_permit_front_url: d.taxi_permit_front_url || "", taxi_permit_back_url: d.taxi_permit_back_url || "",
+      id_card_expiry: d.id_card_expiry || "", license_expiry: d.license_expiry || "",
     });
     setEditingId(d.id);
     // Fetch driver's added bank & favara accounts
@@ -301,6 +303,7 @@ const AdminDrivers = () => {
       license_front_url: editForm.license_front_url || null, license_back_url: editForm.license_back_url || null,
       id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
       taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
+      id_card_expiry: editForm.id_card_expiry || null, license_expiry: editForm.license_expiry || null,
     } as any).eq("id", editingId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: "Driver updated!" }); setEditingId(null); fetchAll(); }
@@ -827,6 +830,21 @@ const AdminDrivers = () => {
                           </span>
                         ))}
                       </div>
+                      {/* Expiry dates */}
+                      {(driver.id_card_expiry || driver.license_expiry) && (
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {driver.id_card_expiry && (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${new Date(driver.id_card_expiry) < new Date() ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : "bg-accent/50 text-foreground"}`}>
+                              ID Expiry: {driver.id_card_expiry}
+                            </span>
+                          )}
+                          {driver.license_expiry && (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${new Date(driver.license_expiry) < new Date() ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : "bg-accent/50 text-foreground"}`}>
+                              License Expiry: {driver.license_expiry}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1033,6 +1051,11 @@ const AdminDrivers = () => {
             <DocUpload field="license_back_url" label="License Back" />
             <DocUpload field="id_card_front_url" label="ID Card Front" />
             <DocUpload field="id_card_back_url" label="ID Card Back" />
+          </div>
+          <h4 className="text-sm font-semibold text-foreground pt-2">Document Expiry Dates</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="text-xs font-medium text-muted-foreground">ID Card Expiry</label><input type="date" value={editForm.id_card_expiry} onChange={(e) => setEditForm({ ...editForm, id_card_expiry: e.target.value })} className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">License Expiry</label><input type="date" value={editForm.license_expiry} onChange={(e) => setEditForm({ ...editForm, license_expiry: e.target.value })} className={inputCls} /></div>
           </div>
           <h4 className="text-sm font-semibold text-foreground pt-2">Taxi Permit <span className="text-xs font-normal text-muted-foreground">(optional)</span></h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

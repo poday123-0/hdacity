@@ -859,10 +859,12 @@ export type Database = {
           gender: string | null
           id: string
           id_card_back_url: string | null
+          id_card_expiry: string | null
           id_card_front_url: string | null
           last_name: string
           legacy_id: number | null
           license_back_url: string | null
+          license_expiry: string | null
           license_front_url: string | null
           monthly_fee: number
           phone_number: string
@@ -891,10 +893,12 @@ export type Database = {
           gender?: string | null
           id?: string
           id_card_back_url?: string | null
+          id_card_expiry?: string | null
           id_card_front_url?: string | null
           last_name?: string
           legacy_id?: number | null
           license_back_url?: string | null
+          license_expiry?: string | null
           license_front_url?: string | null
           monthly_fee?: number
           phone_number: string
@@ -923,10 +927,12 @@ export type Database = {
           gender?: string | null
           id?: string
           id_card_back_url?: string | null
+          id_card_expiry?: string | null
           id_card_front_url?: string | null
           last_name?: string
           legacy_id?: number | null
           license_back_url?: string | null
+          license_expiry?: string | null
           license_front_url?: string | null
           monthly_fee?: number
           phone_number?: string
