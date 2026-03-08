@@ -443,7 +443,7 @@ const AdminCompetitions = () => {
                     className="px-2 py-1.5 bg-background rounded-lg text-xs border border-border/30 text-foreground"
                   >
                     <option value="wallet_credit">Wallet Credit</option>
-                    <option value="fee_free">Fee-Free</option>
+                    <option value="fee_free">Free</option>
                     <option value="badge">Badge Only</option>
                     <option value="custom">Custom Prize</option>
                   </select>
