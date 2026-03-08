@@ -7,6 +7,7 @@ import { Car } from "lucide-react";
 import MaldivesMap from "@/components/MaldivesMap";
 import WatermelonMapOverlay from "@/components/WatermelonMapOverlay";
 import SplashScreen from "@/components/SplashScreen";
+import OnboardingScreens, { ONBOARDING_KEY } from "@/components/OnboardingScreens";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
 import PassengerRegistration from "@/components/PassengerRegistration";
 import DriverRegistration from "@/components/DriverRegistration";
