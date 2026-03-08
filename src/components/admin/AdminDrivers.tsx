@@ -268,6 +268,7 @@ const AdminDrivers = () => {
       license_front_url: d.license_front_url || "", license_back_url: d.license_back_url || "",
       id_card_front_url: d.id_card_front_url || "", id_card_back_url: d.id_card_back_url || "",
       taxi_permit_front_url: d.taxi_permit_front_url || "", taxi_permit_back_url: d.taxi_permit_back_url || "",
+      id_card_expiry: d.id_card_expiry || "", license_expiry: d.license_expiry || "",
     });
     setEditingId(d.id);
     // Fetch driver's added bank & favara accounts
