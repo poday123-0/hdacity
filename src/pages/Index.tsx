@@ -197,7 +197,7 @@ const Index = () => {
         supabase.from("vehicle_types").select("id, name").eq("is_active", true),
       ]);
       setPendingDriverData({ profile: data, vehicles: vehiclesRes.data || [], vehicleTypes: vtRes.data || [] });
-      setHasDriverProfile(false);
+      setHasDriverProfile(true);
       setDriverProfile(null);
       return null;
     }
