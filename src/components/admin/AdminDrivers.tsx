@@ -881,7 +881,7 @@ const AdminDrivers = () => {
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Status</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {(["all", "Active", "Inactive", "Pending", "Pending Review"] as StatusFilter[]).map((s) => {
+                  {(["all", "Active", "Inactive", "Pending", "Pending Review", "Rejected"] as StatusFilter[]).map((s) => {
                     const count = s === "all" ? drivers.length : drivers.filter(d => d.status === s).length;
                     return (
                       <button key={s} onClick={() => setStatusFilter(s)}
