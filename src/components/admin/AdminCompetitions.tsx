@@ -463,7 +463,7 @@ const AdminCompetitions = () => {
                   )}
                   {prize.prize_type === "fee_free" && (
                     <div>
-                      <label className="text-[10px] text-muted-foreground">Fee-Free Months</label>
+                      <label className="text-[10px] text-muted-foreground">Free Months</label>
                       <input type="number" value={prize.fee_free_months} onChange={e => setPrizeRows(prev => prev.map((p, i) => i === idx ? { ...p, fee_free_months: Number(e.target.value) } : p))} className="w-full px-2 py-1.5 bg-background rounded-lg text-sm border border-border/30 text-foreground" />
                     </div>
                   )}
