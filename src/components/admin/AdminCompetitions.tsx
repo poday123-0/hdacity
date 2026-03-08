@@ -68,6 +68,7 @@ const TIER_ICONS: Record<number, string> = {
 const AdminCompetitions = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
