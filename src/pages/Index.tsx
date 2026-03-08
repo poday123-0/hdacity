@@ -1508,6 +1508,93 @@ const Index = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Scheduled Ride Confirmation Dialog */}
+      <Dialog open={showScheduledConfirmation} onOpenChange={setShowScheduledConfirmation}>
+        <DialogContent className="max-w-sm mx-auto rounded-2xl p-0 overflow-hidden border-0 shadow-2xl">
+          <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+              className="mx-auto w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center mb-4"
+            >
+              <CheckCircle2 className="w-9 h-9 text-primary" />
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-xl font-bold text-foreground mb-1"
+            >
+              Ride Scheduled!
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-sm text-muted-foreground"
+            >
+              Your ride has been confirmed
+            </motion.p>
+          </div>
+
+          <div className="px-6 pb-2 space-y-3">
+            {scheduledConfirmationData && (
+              <>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                  <CalendarCheck className="w-5 h-5 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Scheduled for</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {new Date(scheduledConfirmationData.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">
+                      {new Date(scheduledConfirmationData.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50">
+                  <div className="flex flex-col items-center gap-1 pt-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-green-500/20" />
+                    <div className="w-px h-6 bg-border" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-500/20" />
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pickup</p>
+                      <p className="text-sm font-medium text-foreground truncate">{scheduledConfirmationData.pickup}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Drop-off</p>
+                      <p className="text-sm font-medium text-foreground truncate">{scheduledConfirmationData.dropoff}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                    <strong>How it works:</strong> Drivers are notified now and can accept your ride early. When your scheduled time arrives, an available driver will be dispatched automatically.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="px-6 pb-6 pt-2">
+            <Button
+              onClick={() => setShowScheduledConfirmation(false)}
+              className="w-full rounded-xl h-12 text-base font-semibold"
+            >
+              Got it!
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
