@@ -918,24 +918,24 @@ const AdminDrivers = () => {
       )}
 
       {/* ── Drivers List ── */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-surface/50">
-              <th className="px-4 py-3 w-10">
+      <div className="bg-card border border-border rounded-2xl overflow-x-auto">
+        <table className="w-full min-w-[900px] table-fixed">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-border bg-surface/80 backdrop-blur-sm">
+              <th className="px-3 py-3 w-10">
                 <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
                   {selected.size === filteredDrivers.length && filteredDrivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                 </button>
               </th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Driver</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Contact</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Company</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Rating</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicles</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Bank</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
-              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[160px]">Driver</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[130px]">Contact</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[110px]">Company</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[70px]">Rating</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[100px]">Vehicles</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[90px]">Bank</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[60px]">Docs</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[100px]">Status</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[140px]">Actions</th>
             </tr>
           </thead>
           <tbody>
