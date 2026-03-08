@@ -877,6 +877,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Handle direct-assigned dispatch trips (already accepted)
   const handleDirectAssignedTrip = async (trip: TripRequest) => {
     if (currentTrip) return;
+    // Scheduled rides must only be started manually from the scheduled banner
+    if (trip.booking_type === "scheduled") return;
 
     // Vibrate to alert driver
     try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
