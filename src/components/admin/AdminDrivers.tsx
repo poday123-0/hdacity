@@ -25,6 +25,7 @@ const AdminDrivers = () => {
     company_id: "", monthly_fee: "", bank_id: "", bank_account_number: "", bank_account_name: "",
     license_front_url: "", license_back_url: "", id_card_front_url: "", id_card_back_url: "",
     taxi_permit_front_url: "", taxi_permit_back_url: "",
+    id_card_expiry: "", license_expiry: "",
   });
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
