@@ -148,7 +148,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   // Resolve which service area a location belongs to
   const findServiceArea = (loc: LocationData | null | undefined) => {
     if (!loc) return null;
-    const direct = serviceLocations.find((sl: any) => sl.name === loc.name || sl.id === loc.id);
+    const direct = serviceLocations.find((sl: any) => 
+      sl.name?.toLowerCase().trim() === loc.name?.toLowerCase().trim() || sl.id === loc.id
+    );
     if (direct) return direct;
     if (loc.lat && loc.lng && serviceLocations.length > 0) {
       let best: any = null;
