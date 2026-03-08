@@ -148,6 +148,67 @@ const AdminFares = () => {
     else { toast({ title: "Surcharge deleted" }); fetchAll(); }
   };
 
+  // --- CSV Import for Route-Based Fares ---
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingCsv(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row");
+      
+      const delimiter = detectDelimiter(lines[0]);
+      const headers = parseCSVLine(lines[0], delimiter);
+      const colMap = buildColumnMap(headers);
+      
+      if (colMap.from_area === undefined || colMap.to_area === undefined || colMap.fixed_fare === undefined) {
+        throw new Error("CSV must have columns: from_area (or origin), to_area (or destination), fixed_fare (or fare). Found: " + headers.join(", "));
+      }
+
+      const vtLookup: Record<string, string> = {};
+      vehicleTypes.forEach(vt => { vtLookup[vt.name.toLowerCase()] = vt.id; });
+
+      const rows: Array<{ name: string; from_area: string; to_area: string; vehicle_type_id: string | null; fixed_fare: number }> = [];
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i], delimiter);
+        const from = cols[colMap.from_area]?.replace(/^['"]|['"]$/g, "").trim();
+        const to = cols[colMap.to_area]?.replace(/^['"]|['"]$/g, "").trim();
+        const fareStr = cols[colMap.fixed_fare]?.replace(/[^0-9.,]/g, "");
+        const fare = parseFloat(fareStr?.replace(",", ".") || "0");
+        
+        if (!from || !to) { errors.push(`Row ${i + 1}: Missing from/to area`); continue; }
+        if (!fare || fare <= 0) { errors.push(`Row ${i + 1}: Invalid fare`); continue; }
+
+        let vtId: string | null = null;
+        if (colMap.vehicle_type !== undefined) {
+          const vtName = cols[colMap.vehicle_type]?.trim().toLowerCase();
+          if (vtName && vtName !== "" && vtName !== "all") {
+            vtId = vtLookup[vtName] || null;
+            if (!vtId) { errors.push(`Row ${i + 1}: Unknown vehicle type "${cols[colMap.vehicle_type]}"`); continue; }
+          }
+        }
+
+        rows.push({ name: `${from} to ${to}`, from_area: from, to_area: to, vehicle_type_id: vtId, fixed_fare: Math.round(fare) });
+      }
+
+      if (rows.length === 0) throw new Error("No valid rows found.\n" + errors.join("\n"));
+
+      const { error } = await supabase.from("fare_zones").insert(rows);
+      if (error) throw error;
+
+      toast({ title: `Imported ${rows.length} route fares`, description: errors.length > 0 ? `${errors.length} rows skipped` : undefined });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportingCsv(false);
+      if (csvFileRef.current) csvFileRef.current.value = "";
+    }
+  };
+
   const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
   const thCls = "text-left text-xs font-semibold text-muted-foreground px-4 py-3";
 
