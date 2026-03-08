@@ -59,6 +59,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Fleet",
     items: [
+      { id: "vehicles", label: "All Vehicles", icon: Car },
       { id: "vehicle_types", label: "Vehicle Types", icon: Layers },
       { id: "vehicle_makes", label: "Makes & Models", icon: Car },
     ],
