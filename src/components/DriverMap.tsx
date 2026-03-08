@@ -406,7 +406,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     if (isNavigating) {
       map.setTilt(0);
-      // Reset follow mode when entering navigation
       setFollowDriver(true);
       userInteractingRef.current = false;
       setUserPannedAway(false);
@@ -420,8 +419,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (mapId) {
         const colorScheme = (window as any).google?.maps?.ColorScheme;
         if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+        // No raster styles for vector maps
+      } else {
+        map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
       }
-      map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
     } else {
       map.setTilt(0);
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
@@ -434,8 +435,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (mapId) {
         const colorScheme = (window as any).google?.maps?.ColorScheme;
         if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+        // No raster styles for vector maps
+      } else {
+        map.setOptions({ styles: isDark ? darkMapStyle : [] });
       }
-      map.setOptions({ styles: isDark ? darkMapStyle : [] });
     }
   }, [isNavigating, mapId]);
 

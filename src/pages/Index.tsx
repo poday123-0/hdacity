@@ -869,36 +869,7 @@ const Index = () => {
     setDropoff(null);
   }, []);
 
-  // Periodic check: if profile was deleted by admin, force logout
-  useEffect(() => {
-    if (!userProfile?.id) return;
-
-    const checkProfileExists = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userProfile.id)
-        .maybeSingle();
-
-      // Ignore transient errors (network/timeout) to prevent false auto-logout
-      if (error) return;
-
-      if (!data) {
-        missingProfileChecksRef.current += 1;
-        if (missingProfileChecksRef.current >= 3) {
-          toast({ title: "Account Removed", description: "Your account is no longer available.", variant: "destructive" });
-          handleLogout();
-        }
-        return;
-      }
-
-      missingProfileChecksRef.current = 0;
-    };
-
-    checkProfileExists();
-    const interval = setInterval(checkProfileExists, 10000);
-    return () => clearInterval(interval);
-  }, [userProfile?.id, handleLogout]);
+  // Profile existence check removed — users should only logout manually
 
   if (phase === "splash") return <SplashScreen onComplete={handleSplashComplete} />;
   if (phase === "auth") return <AuthScreen onLogin={handleLogin} mode={initialMode} />;
