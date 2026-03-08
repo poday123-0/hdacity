@@ -1100,7 +1100,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             onClick={() => {
               if (!canConfirm) return;
               if (scheduledTooSoon) {
-                toast({ title: "Too soon", description: "Scheduled pickup must be at least 30 minutes from now.", variant: "destructive" });
+                toast({ title: "Too soon", description: `Scheduled pickup must be at least ${minScheduleLeadMin} minutes from now.`, variant: "destructive" });
                 return;
               }
               const dummyDropoff = bookingType === "hourly" && !dropoff ? { ...pickup!, name: pickup!.name + " (Hourly)" } : dropoff!;
