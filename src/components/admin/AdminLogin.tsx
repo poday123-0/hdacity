@@ -81,9 +81,9 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             <Shield className="w-6 h-6 text-primary" />
           </div>
           <div className="flex items-center justify-center gap-1.5">
-            <SystemLogo className="w-6 h-6 object-contain" alt="HDA" />
+            <SystemLogo className="w-6 h-6 object-contain" alt="Admin" />
             <h1 className="text-lg font-extrabold text-foreground">
-              HDA <span className="text-primary">ADMIN</span>
+              <span className="text-primary">ADMIN</span>
             </h1>
           </div>
           <p className="text-[11px] text-muted-foreground">Login with your admin phone number</p>

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import SystemLogo from "@/components/SystemLogo";
+import { useBranding } from "@/hooks/use-branding";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -8,6 +9,8 @@ interface SplashScreenProps {
 
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [phase, setPhase] = useState<"logo" | "exit">("logo");
+  const { appName } = useBranding();
+  const displayName = appName || "HDA APP";
 
   useEffect(() => {
     const timer = setTimeout(() => setPhase("exit"), 1200);
@@ -36,7 +39,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
         className="mb-6"
       >
         <div className="w-28 h-28 rounded-3xl bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm p-3">
-            <SystemLogo className="w-full h-full object-contain" alt="HDA Taxi" />
+            <SystemLogo className="w-full h-full object-contain" alt={displayName} />
           </div>
       </motion.div>
 
@@ -47,7 +50,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
         className="text-center"
       >
         <h1 className="text-4xl font-extrabold text-primary-foreground tracking-tight">
-          HDA <span className="opacity-80">TAXI</span>
+          {displayName}
         </h1>
         <motion.p
           initial={{ opacity: 0 }}
