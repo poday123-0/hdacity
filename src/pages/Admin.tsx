@@ -14,6 +14,7 @@ import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminDrivers from "@/components/admin/AdminDrivers";
 import AdminVehicleTypes from "@/components/admin/AdminVehicleTypes";
+import AdminVehicles from "@/components/admin/AdminVehicles";
 import AdminVehicleMakes from "@/components/admin/AdminVehicleMakes";
 import AdminFares from "@/components/admin/AdminFares";
 import AdminSettings from "@/components/admin/AdminSettings";
