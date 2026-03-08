@@ -233,6 +233,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverLat, setDriverLat] = useState<number | null>(null);
   const [driverLng, setDriverLng] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
     if (sessionKickedRef.current) return;
