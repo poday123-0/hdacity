@@ -166,7 +166,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 15, stiffness: 200 }}
-              className="w-20 h-20 rounded-[1.25rem] bg-primary-foreground/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-lg shadow-black/10 ring-1 ring-primary-foreground/20">
+              className="w-28 h-28 rounded-[1.5rem] bg-primary-foreground/20 backdrop-blur-md flex items-center justify-center p-3 shadow-lg shadow-black/10 ring-1 ring-primary-foreground/20">
               
               <SystemLogo className="w-full h-full object-contain drop-shadow-sm" alt="HDA" />
             </motion.div>
