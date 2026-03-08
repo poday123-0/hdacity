@@ -598,6 +598,78 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
         )}
       </AnimatePresence>
 
+      {/* My Bookings */}
+      <AnimatePresence>
+        {showBookings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
+            onClick={() => setShowBookings(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="w-full max-w-lg bg-card rounded-t-3xl shadow-2xl max-h-[75vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-border">
+                <h2 className="text-base font-bold text-foreground">📅 My Bookings</h2>
+                <button onClick={() => setShowBookings(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {loadingBookings ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : scheduledTrips.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground text-sm">
+                    No scheduled bookings
+                  </div>
+                ) : (
+                  scheduledTrips.map((trip) => (
+                    <div key={trip.id} className="bg-muted/50 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${trip.status === "accepted" ? "bg-green-500/20 text-green-600" : "bg-primary/20 text-primary"}`}>
+                          {trip.status === "accepted" ? "✅ Driver Assigned" : "⏳ Waiting for Driver"}
+                        </span>
+                        <span className="text-xs font-bold text-foreground">{trip.estimated_fare} MVR</span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-foreground"><span className="text-green-500">●</span> {trip.pickup_address}</p>
+                        <p className="text-xs text-foreground"><span className="text-destructive">●</span> {trip.dropoff_address}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">
+                          🕐 {trip.scheduled_at ? new Date(trip.scheduled_at).toLocaleString() : "—"}
+                        </span>
+                        {trip.status === "scheduled" && (
+                          <button
+                            onClick={async () => {
+                              await supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", trip.id);
+                              fetchBookings();
+                              toast({ title: "Booking cancelled" });
+                            }}
+                            className="text-[10px] text-destructive font-semibold"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Lost Item Report - Trip Picker */}
       <AnimatePresence>
         {showLostItem && !selectedLostTripId && (
