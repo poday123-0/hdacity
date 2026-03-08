@@ -180,6 +180,14 @@ const Index = () => {
       setDriverProfile(dp);
       setHasDriverProfile(true);
       setPendingDriverData(null);
+      // Check if driver has at least one approved vehicle
+      const { data: approvedVehicles } = await supabase
+        .from("vehicles")
+        .select("id")
+        .eq("driver_id", data.id)
+        .eq("vehicle_status", "approved")
+        .limit(1);
+      setHasApprovedDriverVehicle(!!(approvedVehicles && approvedVehicles.length > 0));
       try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (raw) {
