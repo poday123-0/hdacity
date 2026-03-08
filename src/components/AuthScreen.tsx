@@ -32,7 +32,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
   const [error, setError] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
-  const [legalContent, setLegalContent] = useState<{ privacy: string; terms: string }>({ privacy: "", terms: "" });
+  const [legalContent, setLegalContent] = useState<{privacy: string;terms: string;}>({ privacy: "", terms: "" });
   const { appName } = useBranding();
 
   useEffect(() => {
@@ -50,19 +50,19 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     if (step !== "otp") return;
     const ac = new AbortController();
     if ("OTPCredential" in window) {
-      navigator.credentials
-        .get({ otp: { transport: ["sms"] }, signal: ac.signal } as any)
-        .then((otpCredential: any) => {
-          if (otpCredential?.code) {
-            const digits = otpCredential.code.split("");
-            setOtp(digits);
-            digits.forEach((d: string, i: number) => {
-              if (otpRefs.current[i]) otpRefs.current[i]!.value = d;
-            });
-            setTimeout(() => handleVerify(otpCredential.code), 300);
-          }
-        })
-        .catch(() => {});
+      navigator.credentials.
+      get({ otp: { transport: ["sms"] }, signal: ac.signal } as any).
+      then((otpCredential: any) => {
+        if (otpCredential?.code) {
+          const digits = otpCredential.code.split("");
+          setOtp(digits);
+          digits.forEach((d: string, i: number) => {
+            if (otpRefs.current[i]) otpRefs.current[i]!.value = d;
+          });
+          setTimeout(() => handleVerify(otpCredential.code), 300);
+        }
+      }).
+      catch(() => {});
     }
     return () => ac.abort();
   }, [step]);
@@ -153,21 +153,21 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-20 -right-20 w-56 h-56 rounded-full border border-primary-foreground/10"
-          />
+            className="absolute -top-20 -right-20 w-56 h-56 rounded-full border border-primary-foreground/10" />
+          
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ duration: 45, repeat: Infinity, ease: "linear" }}
-            className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full border border-primary-foreground/10"
-          />
+            className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full border border-primary-foreground/10" />
+          
 
           <div className="relative flex flex-col items-center py-10 sm:py-14 px-6">
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 15, stiffness: 200 }}
-              className="w-20 h-20 rounded-[1.25rem] bg-primary-foreground/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-lg shadow-black/10 ring-1 ring-primary-foreground/20"
-            >
+              className="w-20 h-20 rounded-[1.25rem] bg-primary-foreground/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-lg shadow-black/10 ring-1 ring-primary-foreground/20">
+              
               <SystemLogo className="w-full h-full object-contain drop-shadow-sm" alt="HDA" />
             </motion.div>
 
@@ -175,10 +175,10 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="mt-4 text-center"
-            >
+              className="mt-4 text-center">
+              
               <h1 className="text-2xl font-extrabold text-primary-foreground tracking-tight">
-                {appName || "HDA"} <span className="font-semibold opacity-70">{mode === "driver" ? "Driver" : "Taxi"}</span>
+                {appName || "HDA"} 
               </h1>
               <div className="flex items-center justify-center gap-1.5 mt-1.5">
                 <Sparkles className="w-3 h-3 text-primary-foreground/50" />
@@ -203,27 +203,27 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
       <div className="flex-1 flex flex-col justify-between max-w-md mx-auto w-full relative z-10">
         <div className="flex-1 flex flex-col justify-center px-6">
           <AnimatePresence mode="wait">
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-destructive/10 border border-destructive/20 text-destructive text-xs px-4 py-3 rounded-2xl mb-4 font-medium flex items-center gap-2"
-              >
+            {error &&
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-destructive/10 border border-destructive/20 text-destructive text-xs px-4 py-3 rounded-2xl mb-4 font-medium flex items-center gap-2">
+              
                 <div className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
                 {error}
               </motion.div>
-            )}
+            }
 
-            {step === "phone" ? (
-              <motion.div
-                key="phone"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ type: "spring", damping: 20, stiffness: 200 }}
-                className="space-y-5"
-              >
+            {step === "phone" ?
+            <motion.div
+              key="phone"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ type: "spring", damping: 20, stiffness: 200 }}
+              className="space-y-5">
+              
                 <div>
                   <h2 className="text-xl font-bold text-foreground">
                     {mode === "driver" ? "Driver Login" : "Welcome back"}
@@ -243,38 +243,38 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                       <div className="w-px h-5 bg-border" />
                     </div>
                     <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                      placeholder="7XX XXXX"
-                      className="w-full pl-[7.5rem] pr-4 py-4 bg-surface rounded-2xl text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background text-base font-medium transition-all border border-border/50 shadow-sm"
-                      autoFocus
-                      disabled={loading}
-                    />
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                    placeholder="7XX XXXX"
+                    className="w-full pl-[7.5rem] pr-4 py-4 bg-surface rounded-2xl text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background text-base font-medium transition-all border border-border/50 shadow-sm"
+                    autoFocus
+                    disabled={loading} />
+                  
                   </div>
 
                   <motion.button
-                    onClick={handlePhoneSubmit}
-                    disabled={phone.length < 7 || loading}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full bg-gradient-to-r from-primary to-primary-dark text-primary-foreground font-semibold py-4 rounded-2xl text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>Continue <ArrowRight className="w-4 h-4" /></>
-                    )}
+                  onClick={handlePhoneSubmit}
+                  disabled={phone.length < 7 || loading}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-gradient-to-r from-primary to-primary-dark text-primary-foreground font-semibold py-4 rounded-2xl text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30">
+                  
+                    {loading ?
+                  <Loader2 className="w-5 h-5 animate-spin" /> :
+
+                  <>Continue <ArrowRight className="w-4 h-4" /></>
+                  }
                   </motion.button>
                 </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="otp"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", damping: 20, stiffness: 200 }}
-                className="space-y-5"
-              >
+              </motion.div> :
+
+            <motion.div
+              key="otp"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", damping: 20, stiffness: 200 }}
+              className="space-y-5">
+              
                 <div>
                   <h2 className="text-xl font-bold text-foreground">Verify your number</h2>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -283,55 +283,55 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                 </div>
 
                 <div className="flex gap-2.5 justify-center py-2">
-                  {otp.map((digit, i) => (
-                    <motion.input
-                      key={i}
-                      ref={(el) => { otpRefs.current[i] = el; }}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete={i === 0 ? "one-time-code" : "off"}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      maxLength={1}
-                      className={`w-12 h-14 text-center text-xl font-bold rounded-2xl text-foreground focus:outline-none transition-all border shadow-sm ${
-                        digit
-                          ? "bg-primary/10 border-primary/30 ring-2 ring-primary/20"
-                          : "bg-surface border-border/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/30"
-                      }`}
-                      autoFocus={i === 0}
-                      disabled={loading}
-                    />
-                  ))}
+                  {otp.map((digit, i) =>
+                <motion.input
+                  key={i}
+                  ref={(el) => {otpRefs.current[i] = el;}}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete={i === 0 ? "one-time-code" : "off"}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  maxLength={1}
+                  className={`w-12 h-14 text-center text-xl font-bold rounded-2xl text-foreground focus:outline-none transition-all border shadow-sm ${
+                  digit ?
+                  "bg-primary/10 border-primary/30 ring-2 ring-primary/20" :
+                  "bg-surface border-border/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/30"}`
+                  }
+                  autoFocus={i === 0}
+                  disabled={loading} />
+
+                )}
                 </div>
 
-                {loading && (
-                  <div className="flex justify-center">
+                {loading &&
+              <div className="flex justify-center">
                     <Loader2 className="w-5 h-5 animate-spin text-primary" />
                   </div>
-                )}
+              }
 
                 <div className="flex items-center justify-center gap-4 pt-1">
                   <button
-                    onClick={handleResend}
-                    disabled={loading}
-                    className="text-xs text-primary font-semibold py-2 px-4 rounded-xl hover:bg-primary/10 active:scale-95 transition-all disabled:opacity-40"
-                  >
+                  onClick={handleResend}
+                  disabled={loading}
+                  className="text-xs text-primary font-semibold py-2 px-4 rounded-xl hover:bg-primary/10 active:scale-95 transition-all disabled:opacity-40">
+                  
                     Resend code
                   </button>
                   <span className="w-1 h-1 rounded-full bg-border" />
                   <button
-                    onClick={() => { setStep("phone"); setError(""); setOtp(["", "", "", "", "", ""]); }}
-                    className="text-xs text-muted-foreground font-medium py-2 px-3 rounded-xl hover:bg-muted active:scale-95 transition-all"
-                  >
+                  onClick={() => {setStep("phone");setError("");setOtp(["", "", "", "", "", ""]);}}
+                  className="text-xs text-muted-foreground font-medium py-2 px-3 rounded-xl hover:bg-muted active:scale-95 transition-all">
+                  
                     Change number
                   </button>
                 </div>
               </motion.div>
-            )}
+            }
           </AnimatePresence>
         </div>
 
@@ -347,22 +347,22 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
 
       {/* Legal Modal */}
       <AnimatePresence>
-        {legalModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={() => setLegalModal(null)}
-          >
+        {legalModal &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[999] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setLegalModal(null)}>
+          
             <motion.div
-              initial={{ y: 60, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
+            initial={{ y: 60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 60, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}>
+            
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -384,10 +384,10 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
               </div>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  );
+    </div>);
+
 };
 
 export default AuthScreen;
