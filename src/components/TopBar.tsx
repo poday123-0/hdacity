@@ -491,6 +491,13 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     <span className="text-[10px] font-semibold text-foreground">History</span>
                   </button>
                   <button
+                    onClick={() => { setShowProfile(false); setShowBookings(true); }}
+                    className="flex flex-col items-center gap-1.5 bg-primary/10 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform relative"
+                  >
+                    <CalendarClock className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground">Bookings</span>
+                  </button>
+                  <button
                     onClick={() => { setShowProfile(false); setShowContacts(true); }}
                     className="flex flex-col items-center gap-1.5 bg-muted/50 rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                   >
