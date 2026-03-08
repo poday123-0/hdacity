@@ -936,7 +936,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }
       // Handle direct-assigned dispatch trips (inserted as "accepted" with driver_id)
-      if (trip.status === "accepted" && trip.driver_id === userProfile.id) {
+      if (trip.status === "accepted" && trip.driver_id === userProfile.id && trip.booking_type !== "scheduled") {
         if (trip.id !== lastSeenTripRef.current) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
