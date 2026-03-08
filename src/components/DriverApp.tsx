@@ -1157,7 +1157,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
 
       if (userProfile?.id) {
-        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status").eq("id", userProfile.id).single();
+        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason").eq("id", userProfile.id).single();
         const radius = data?.trip_radius_km ?? defaultRadius;
         setTripRadius(radius);
         tripRadiusRef.current = radius;
