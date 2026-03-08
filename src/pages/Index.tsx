@@ -79,7 +79,9 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [driverProfile, setDriverProfile] = useState<UserProfile | null>(savedSession?.driverProfile || null);
   const [hasDriverProfile, setHasDriverProfile] = useState(savedSession?.isDriver || false);
-  usePushNotifications(userProfile?.id, appMode === "driver" ? "driver" : "passenger");
+  const pushUserId = phase === "driver" ? driverProfile?.id : userProfile?.id;
+  const pushUserType = phase === "driver" ? "driver" : "passenger";
+  usePushNotifications(pushUserId, pushUserType);
   const [pendingPhone, setPendingPhone] = useState(() => {
     try { return localStorage.getItem("hda_pending_phone") || ""; } catch { return ""; }
   });
