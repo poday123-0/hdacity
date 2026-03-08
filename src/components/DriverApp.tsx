@@ -2456,6 +2456,34 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                      </div>
                    </div>
 
+                  {/* Upcoming Scheduled Trip Banner */}
+                  {upcomingScheduledTrip && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-2xl px-3 py-2.5 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                        <Clock className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Scheduled Ride</p>
+                        <p className="text-xs font-semibold text-foreground truncate">{upcomingScheduledTrip.pickup_address}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {new Date(upcomingScheduledTrip.scheduled_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          {(() => {
+                            const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
+                            if (mins <= 0) return " · Now";
+                            if (mins < 60) return ` · in ${mins}min`;
+                            return ` · in ${Math.floor(mins/60)}h ${mins%60}m`;
+                          })()}
+                        </p>
+                      </div>
+                      {(() => {
+                        const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
+                        return mins <= 15 ? (
+                          <span className="text-[9px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full animate-pulse shrink-0">Get Ready</span>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+
                   {/* Radius + Vehicle row */}
                   <div className="flex gap-2">
                     {/* Radius */}
