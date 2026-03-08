@@ -238,14 +238,19 @@ const AdminCompetitions = () => {
   const handleRefreshLeaderboard = async (comp: Competition) => {
     setLoading(true);
     try {
-      // Count completed trips for each driver in the date range, optionally filtered by service location
+      // Count completed trips for each driver in the date range, optionally filtered by vehicle type
       let query = supabase
         .from("trips")
-        .select("driver_id")
+        .select("driver_id, vehicle_type_id")
         .eq("status", "completed")
         .gte("completed_at", comp.start_date)
         .lte("completed_at", comp.end_date)
         .not("driver_id", "is", null);
+
+      // Filter by vehicle type if competition is scoped to one
+      if (comp.vehicle_type_id) {
+        query = query.eq("vehicle_type_id", comp.vehicle_type_id);
+      }
 
       const { data: trips } = await query;
       if (!trips) { setLoading(false); return; }
