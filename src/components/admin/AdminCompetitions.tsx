@@ -14,9 +14,15 @@ interface Competition {
   start_date: string;
   end_date: string;
   service_location_id: string | null;
+  vehicle_type_id: string | null;
   is_active: boolean;
   status: string;
   created_at: string;
+}
+
+interface VehicleType {
+  id: string;
+  name: string;
 }
 
 interface Prize {
@@ -62,6 +68,7 @@ const TIER_ICONS: Record<number, string> = {
 const AdminCompetitions = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -78,6 +85,7 @@ const AdminCompetitions = () => {
     start_date: "",
     end_date: "",
     service_location_id: "",
+    vehicle_type_id: "",
   });
 
   // Prize form
@@ -100,12 +108,14 @@ const AdminCompetitions = () => {
   }, []);
 
   const fetchAll = async () => {
-    const [compRes, locRes] = await Promise.all([
+    const [compRes, locRes, vtRes] = await Promise.all([
       supabase.from("competitions").select("*").order("created_at", { ascending: false }),
       supabase.from("service_locations").select("id, name").eq("is_active", true).order("name"),
+      supabase.from("vehicle_types").select("id, name").eq("is_active", true).order("sort_order"),
     ]);
     setCompetitions((compRes.data as Competition[]) || []);
     setServiceLocations((locRes.data as ServiceLocation[]) || []);
+    setVehicleTypes((vtRes.data as VehicleType[]) || []);
   };
 
   const fetchCompetitionDetails = async (compId: string) => {
@@ -136,7 +146,7 @@ const AdminCompetitions = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "" });
+    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "" });
     setPrizeRows([
       { tier_rank: 1, tier_name: "Gold", prize_type: "wallet_credit", wallet_amount: 500, fee_free_months: 0, badge_label: "🥇 Champion", custom_description: "" },
       { tier_rank: 2, tier_name: "Silver", prize_type: "wallet_credit", wallet_amount: 300, fee_free_months: 0, badge_label: "🥈 Runner-up", custom_description: "" },
@@ -161,6 +171,7 @@ const AdminCompetitions = () => {
         start_date: new Date(form.start_date).toISOString(),
         end_date: new Date(form.end_date).toISOString(),
         service_location_id: form.service_location_id || null,
+        vehicle_type_id: form.vehicle_type_id || null,
       };
 
       let compId = editingId;
@@ -198,6 +209,7 @@ const AdminCompetitions = () => {
       start_date: comp.start_date.slice(0, 16),
       end_date: comp.end_date.slice(0, 16),
       service_location_id: comp.service_location_id || "",
+      vehicle_type_id: (comp as any).vehicle_type_id || "",
     });
     setEditingId(comp.id);
     // Load prizes
@@ -226,14 +238,19 @@ const AdminCompetitions = () => {
   const handleRefreshLeaderboard = async (comp: Competition) => {
     setLoading(true);
     try {
-      // Count completed trips for each driver in the date range, optionally filtered by service location
+      // Count completed trips for each driver in the date range, optionally filtered by vehicle type
       let query = supabase
         .from("trips")
-        .select("driver_id")
+        .select("driver_id, vehicle_type_id")
         .eq("status", "completed")
         .gte("completed_at", comp.start_date)
         .lte("completed_at", comp.end_date)
         .not("driver_id", "is", null);
+
+      // Filter by vehicle type if competition is scoped to one
+      if (comp.vehicle_type_id) {
+        query = query.eq("vehicle_type_id", comp.vehicle_type_id);
+      }
 
       const { data: trips } = await query;
       if (!trips) { setLoading(false); return; }
@@ -375,6 +392,15 @@ const AdminCompetitions = () => {
               </select>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground">Vehicle Type (optional)</label>
+              <select value={form.vehicle_type_id} onChange={e => setForm(f => ({ ...f, vehicle_type_id: e.target.value }))} className={inputCls}>
+                <option value="">All Vehicle Types</option>
+                {vehicleTypes.map(vt => (
+                  <option key={vt.id} value={vt.id}>{vt.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground">Start Date *</label>
               <input type="datetime-local" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} className={inputCls} />
             </div>
@@ -487,6 +513,7 @@ const AdminCompetitions = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(comp.start_date), "MMM d")} — {format(new Date(comp.end_date), "MMM d, yyyy")} · {comp.period_type}
+                  {comp.vehicle_type_id && ` · ${vehicleTypes.find(vt => vt.id === comp.vehicle_type_id)?.name || "Vehicle Type"}`}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
