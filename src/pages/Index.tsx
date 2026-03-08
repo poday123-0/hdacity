@@ -232,18 +232,26 @@ const Index = () => {
     } else if (mode === "driver" && !driverProfile) {
       // Check if there's a pending driver profile before showing registration
       if (userProfile?.phone_number) {
-        await checkDriverProfile(userProfile.phone_number);
+        const { data: pendingCheck } = await supabase
+          .from("profiles")
+          .select("id, status")
+          .eq("phone_number", userProfile.phone_number)
+          .eq("user_type", "Driver")
+          .in("status", ["Pending", "Pending Review"])
+          .maybeSingle();
+        if (pendingCheck) {
+          // Trigger full data load
+          await checkDriverProfile(userProfile.phone_number);
+          setPhase("driver-pending");
+          return;
+        }
       }
-      if (pendingDriverData) {
-        setPhase("driver-pending");
-      } else {
-        setPendingPhone(userProfile?.phone_number || "");
-        setPhase("driver-register");
-      }
+      setPendingPhone(userProfile?.phone_number || "");
+      setPhase("driver-register");
     } else {
       setPhase("passenger");
     }
-  }, [driverProfile, userProfile, pendingDriverData, checkDriverProfile]);
+  }, [driverProfile, userProfile, checkDriverProfile]);
 
   // Restore ongoing trip on app load
   useEffect(() => {
