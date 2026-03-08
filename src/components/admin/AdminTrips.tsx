@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { notifyTripRequested } from "@/lib/push-notifications";
+import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send } from "lucide-react";
 
 const statusOptions = [
   { value: "all", label: "All", color: "bg-surface text-foreground" },
