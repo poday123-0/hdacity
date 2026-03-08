@@ -823,16 +823,21 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
                 {/* Selected summary */}
                 {scheduledDate && scheduledTime && (
-                  <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2">
-                    <Calendar className="w-4 h-4 text-primary shrink-0" />
-                    <p className="text-xs font-semibold text-foreground">
-                      {(() => {
-                        const d = new Date(scheduledDate + "T" + scheduledTime);
-                        return d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }) +
-                          " at " +
-                          d.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true });
-                      })()}
-                    </p>
+                  <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${scheduledTooSoon ? "bg-destructive/10" : "bg-primary/10"}`}>
+                    <Calendar className={`w-4 h-4 shrink-0 ${scheduledTooSoon ? "text-destructive" : "text-primary"}`} />
+                    <div>
+                      <p className={`text-xs font-semibold ${scheduledTooSoon ? "text-destructive" : "text-foreground"}`}>
+                        {(() => {
+                          const d = new Date(scheduledDate + "T" + scheduledTime);
+                          return d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }) +
+                            " at " +
+                            d.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true });
+                        })()}
+                      </p>
+                      {scheduledTooSoon && (
+                        <p className="text-[10px] text-destructive mt-0.5">Must be at least 30 minutes from now</p>
+                      )}
+                    </div>
                   </div>
                 )}
 
