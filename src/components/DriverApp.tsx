@@ -1383,12 +1383,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // Notify admin about profile document update
       try {
         const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
+        const wasRejected = profileStatus === "Rejected";
         await supabase.functions.invoke("notify-vehicle-update", {
           body: {
             driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
             phone_number: userProfile.phone_number,
             plate_number: "",
-            update_type: `Profile document updated: ${docLabel}`,
+            update_type: wasRejected ? `🔄 RESUBMISSION — Profile document updated: ${docLabel}` : `Profile document updated: ${docLabel}`,
           },
         });
       } catch {} // Non-blocking
