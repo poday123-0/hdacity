@@ -187,6 +187,16 @@ const Index = () => {
   // Switch between modes
   const handleSwitchMode = useCallback((mode: "passenger" | "driver") => {
     setAppMode(mode);
+    // Also sync the session so on next load the mode + driver profile are available
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const session = JSON.parse(raw);
+        session.isDriver = !!driverProfile;
+        session.driverProfile = driverProfile || undefined;
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      }
+    } catch {}
     if (mode === "driver" && driverProfile) {
       setPhase("driver");
     } else if (mode === "driver" && !driverProfile) {
