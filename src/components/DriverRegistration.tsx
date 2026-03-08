@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { User, Phone, Loader2, UserPlus, Camera, Car, Building2, Upload, ChevronDown } from "lucide-react";
+import { User, Phone, Loader2, UserPlus, Camera, Car, Building2, Upload, ChevronDown, Clock } from "lucide-react";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -12,28 +12,66 @@ interface DriverRegistrationProps {
   onBack: () => void;
 }
 
+const STORAGE_KEY = "hda_driver_reg_draft";
+
+interface RegDraft {
+  step: "profile" | "documents" | "vehicle";
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  selectedCompanyId: string;
+  avatarUrl: string | null;
+  idCardFront: string | null;
+  idCardBack: string | null;
+  licenseFront: string | null;
+  licenseBack: string | null;
+  taxiPermitFront: string | null;
+  taxiPermitBack: string | null;
+  plateNumber: string;
+  make: string;
+  model: string;
+  color: string;
+  vehicleTypeId: string;
+  selectedRideTypeIds: string[];
+  vehicleRegUrl: string | null;
+  vehicleInsuranceUrl: string | null;
+  vehicleImageUrl: string | null;
+}
+
 const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrationProps) => {
-  const [step, setStep] = useState<"profile" | "documents" | "vehicle">("profile");
+  // Load saved draft
+  const loadDraft = (): Partial<RegDraft> => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  };
+
+  const draft = loadDraft();
+
+  const [step, setStep] = useState<"profile" | "documents" | "vehicle">(draft.step || "profile");
   const [saving, setSaving] = useState(false);
 
   // Profile fields
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [gender, setGender] = useState("1");
+  const [firstName, setFirstName] = useState(draft.firstName || "");
+  const [lastName, setLastName] = useState(draft.lastName || "");
+  const [email, setEmail] = useState(draft.email || "");
+  const [gender, setGender] = useState(draft.gender || "1");
 
   // Company
   const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [selectedCompanyId, setSelectedCompanyId] = useState(draft.selectedCompanyId || "");
 
   // Documents
-  const [idCardFront, setIdCardFront] = useState<string | null>(null);
-  const [idCardBack, setIdCardBack] = useState<string | null>(null);
-  const [licenseFront, setLicenseFront] = useState<string | null>(null);
-  const [licenseBack, setLicenseBack] = useState<string | null>(null);
-  const [taxiPermitFront, setTaxiPermitFront] = useState<string | null>(null);
-  const [taxiPermitBack, setTaxiPermitBack] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [idCardFront, setIdCardFront] = useState<string | null>(draft.idCardFront || null);
+  const [idCardBack, setIdCardBack] = useState<string | null>(draft.idCardBack || null);
+  const [licenseFront, setLicenseFront] = useState<string | null>(draft.licenseFront || null);
+  const [licenseBack, setLicenseBack] = useState<string | null>(draft.licenseBack || null);
+  const [taxiPermitFront, setTaxiPermitFront] = useState<string | null>(draft.taxiPermitFront || null);
+  const [taxiPermitBack, setTaxiPermitBack] = useState<string | null>(draft.taxiPermitBack || null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(draft.avatarUrl || null);
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -42,15 +80,33 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
   // Vehicle fields
   const [vehicleTypes, setVehicleTypes] = useState<Array<{ id: string; name: string }>>([]);
-  const [plateNumber, setPlateNumber] = useState("");
-  const [make, setMake] = useState("");
-  const [model, setModel] = useState("");
-  const [color, setColor] = useState("");
-  const [vehicleTypeId, setVehicleTypeId] = useState("");
-  const [selectedRideTypeIds, setSelectedRideTypeIds] = useState<string[]>([]);
-  const [vehicleRegUrl, setVehicleRegUrl] = useState<string | null>(null);
-  const [vehicleInsuranceUrl, setVehicleInsuranceUrl] = useState<string | null>(null);
-  const [vehicleImageUrl, setVehicleImageUrl] = useState<string | null>(null);
+  const [plateNumber, setPlateNumber] = useState(draft.plateNumber || "");
+  const [make, setMake] = useState(draft.make || "");
+  const [model, setModel] = useState(draft.model || "");
+  const [color, setColor] = useState(draft.color || "");
+  const [vehicleTypeId, setVehicleTypeId] = useState(draft.vehicleTypeId || "");
+  const [selectedRideTypeIds, setSelectedRideTypeIds] = useState<string[]>(draft.selectedRideTypeIds || []);
+  const [vehicleRegUrl, setVehicleRegUrl] = useState<string | null>(draft.vehicleRegUrl || null);
+  const [vehicleInsuranceUrl, setVehicleInsuranceUrl] = useState<string | null>(draft.vehicleInsuranceUrl || null);
+  const [vehicleImageUrl, setVehicleImageUrl] = useState<string | null>(draft.vehicleImageUrl || null);
+
+  // Save draft to localStorage on every change
+  const saveDraft = useCallback(() => {
+    try {
+      const d: RegDraft = {
+        step, firstName, lastName, email, gender, selectedCompanyId,
+        avatarUrl, idCardFront, idCardBack, licenseFront, licenseBack,
+        taxiPermitFront, taxiPermitBack, plateNumber, make, model, color,
+        vehicleTypeId, selectedRideTypeIds, vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+    } catch {}
+  }, [step, firstName, lastName, email, gender, selectedCompanyId, avatarUrl,
+    idCardFront, idCardBack, licenseFront, licenseBack, taxiPermitFront, taxiPermitBack,
+    plateNumber, make, model, color, vehicleTypeId, selectedRideTypeIds,
+    vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl]);
+
+  useEffect(() => { saveDraft(); }, [saveDraft]);
 
   useEffect(() => {
     const load = async () => {
@@ -63,6 +119,13 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     };
     load();
   }, []);
+
+  // Auto-include the primary vehicle type in ride types
+  useEffect(() => {
+    if (vehicleTypeId && !selectedRideTypeIds.includes(vehicleTypeId)) {
+      setSelectedRideTypeIds(prev => [...prev, vehicleTypeId]);
+    }
+  }, [vehicleTypeId]);
 
   const handleFileUpload = async (file: File, target: string) => {
     setUploading(target);
@@ -109,6 +172,12 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     setTimeout(() => cameraInputRef.current?.click(), 50);
   };
 
+  const toggleRideType = (id: string) => {
+    setSelectedRideTypeIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const handleSubmit = async () => {
     if (!firstName.trim()) {
       toast({ title: "First name is required", variant: "destructive" });
@@ -118,10 +187,13 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       toast({ title: "Vehicle plate number is required", variant: "destructive" });
       return;
     }
+    if (selectedRideTypeIds.length === 0) {
+      toast({ title: "Select at least one ride type", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
-      // Find company name
       const companyName = companies.find(c => c.id === selectedCompanyId)?.name || "";
 
       // Create driver profile with Pending status
@@ -170,11 +242,15 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
         createdVehicleId = vehicleData?.id || null;
       }
 
-      // Auto-assign vehicle type as ride type (pending admin approval)
-      if (vehicleTypeId && createdVehicleId) {
-        await supabase.from("driver_vehicle_types").insert(
-          { driver_id: profile.id, vehicle_type_id: vehicleTypeId, vehicle_id: createdVehicleId, status: "pending" } as any
-        );
+      // Insert all selected ride types as pending
+      if (createdVehicleId && selectedRideTypeIds.length > 0) {
+        const rows = selectedRideTypeIds.map(vtId => ({
+          driver_id: profile.id,
+          vehicle_type_id: vtId,
+          vehicle_id: createdVehicleId!,
+          status: "pending",
+        }));
+        await supabase.from("driver_vehicle_types").insert(rows as any);
       }
 
       // Notify admin
@@ -186,7 +262,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
             company_name: companyName,
           },
         });
-      } catch {} // Non-blocking
+      } catch {}
+
+      // Clear draft on success
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
 
       toast({
         title: "Registration submitted!",
@@ -472,13 +551,11 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground font-medium">Vehicle Type</label>
+                <label className="text-xs text-muted-foreground font-medium">Primary Vehicle Type</label>
                 <div className="relative mt-1">
                   <select
                     value={vehicleTypeId}
-                    onChange={(e) => {
-                      setVehicleTypeId(e.target.value);
-                    }}
+                    onChange={(e) => setVehicleTypeId(e.target.value)}
                     className={`${inputClass} appearance-none pr-10`}
                   >
                     <option value="">Select type</option>
@@ -490,6 +567,38 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 </div>
               </div>
 
+              {/* Ride Types Selection */}
+              <div>
+                <label className="text-xs text-muted-foreground font-medium">Ride Types for this Vehicle *</label>
+                <p className="text-[10px] text-muted-foreground mt-0.5 mb-2">Select all ride categories this vehicle can serve. Admin will review and approve.</p>
+                <div className="flex flex-wrap gap-2">
+                  {vehicleTypes.map((vt) => {
+                    const isSelected = selectedRideTypeIds.includes(vt.id);
+                    const isPrimary = vt.id === vehicleTypeId;
+                    return (
+                      <button
+                        key={vt.id}
+                        onClick={() => toggleRideType(vt.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-surface text-muted-foreground border border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <Car className="w-3 h-3" />
+                        {vt.name}
+                        {isPrimary && <span className="text-[9px] opacity-70">(primary)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedRideTypeIds.length > 0 && (
+                  <p className="text-[10px] text-primary mt-1.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {selectedRideTypeIds.length} type{selectedRideTypeIds.length > 1 ? "s" : ""} selected — pending admin approval after registration
+                  </p>
+                )}
+              </div>
 
               {/* Vehicle Documents */}
               <div className="space-y-3">
@@ -503,7 +612,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
               <button
                 onClick={handleSubmit}
-                disabled={saving || !firstName.trim() || !plateNumber.trim()}
+                disabled={saving || !firstName.trim() || !plateNumber.trim() || selectedRideTypeIds.length === 0}
                 className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {saving ? (
