@@ -393,7 +393,12 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
                 <p className="font-bold text-xs text-foreground">{selectedType.name}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{selectedType.description || `${selectedType.capacity} seats`}</p>
               </div>
-              <p className="text-base font-bold text-primary shrink-0">{selectedFare + passengerBonus} <span className="text-[10px] font-semibold text-muted-foreground">{bookingType === "hourly" ? "MVR/hr" : "MVR"}</span></p>
+              <div>
+                <p className="text-base font-bold text-primary shrink-0">{selectedFare + passengerBonus} <span className="text-[10px] font-semibold text-muted-foreground">{bookingType === "hourly" ? "MVR/hr" : "MVR"}</span></p>
+                {bookingType === "scheduled" && Number(selectedType.pre_booking_fee) > 0 && (
+                  <p className="text-[9px] text-muted-foreground text-right">incl. {selectedType.pre_booking_fee} MVR booking fee</p>
+                )}
+              </div>
             </div>
 
             {/* Fare Boost / Tip adjuster */}

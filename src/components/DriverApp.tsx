@@ -155,6 +155,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [minWithdrawalAmount, setMinWithdrawalAmount] = useState(100);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [upcomingScheduledTrip, setUpcomingScheduledTrip] = useState<{ id: string; scheduled_at: string; pickup_address: string; dropoff_address: string } | null>(null);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -754,8 +755,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   const handleNewTrip = async (trip: TripRequest) => {
-    // Block new trips if driver already has an active trip
+    // Block new trips if driver already has an active (non-scheduled) trip
     if (currentTrip) return;
+
+    // Block if driver has a scheduled trip within 15 minutes
+    if (userProfile?.id) {
+      const fifteenMinFromNow = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      const { data: upcomingScheduled } = await supabase
+        .from("trips")
+        .select("id, scheduled_at")
+        .eq("driver_id", userProfile.id)
+        .eq("status", "accepted")
+        .eq("booking_type", "scheduled")
+        .lte("scheduled_at", fifteenMinFromNow)
+        .limit(1);
+      if (upcomingScheduled && upcomingScheduled.length > 0) {
+        // Don't show new trips — driver should be heading to scheduled pickup
+        console.log(`[SCHEDULED LOCKOUT] Driver has scheduled trip ${upcomingScheduled[0].id} within 15min — blocking new trip`);
+        return;
+      }
+    }
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
@@ -1003,7 +1022,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
-  // Handle trip cancellation/taken cleanup
+  // Poll for upcoming scheduled trips to show reminder banner
+  useEffect(() => {
+    if (screen !== "online" || !userProfile?.id) {
+      setUpcomingScheduledTrip(null);
+      return;
+    }
+    const checkScheduled = async () => {
+      const { data } = await supabase
+        .from("trips")
+        .select("id, scheduled_at, pickup_address, dropoff_address")
+        .eq("driver_id", userProfile.id)
+        .eq("status", "accepted")
+        .eq("booking_type", "scheduled")
+        .order("scheduled_at", { ascending: true })
+        .limit(1);
+      if (data && data.length > 0) {
+        setUpcomingScheduledTrip(data[0] as any);
+      } else {
+        setUpcomingScheduledTrip(null);
+      }
+    };
+    checkScheduled();
+    const interval = setInterval(checkScheduled, 30000);
+    return () => clearInterval(interval);
+  }, [screen, userProfile?.id]);
+
+
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Trip accepted by ANOTHER driver while we're on ride-request screen
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
@@ -2410,6 +2455,34 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                        </button>
                      </div>
                    </div>
+
+                  {/* Upcoming Scheduled Trip Banner */}
+                  {upcomingScheduledTrip && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-2xl px-3 py-2.5 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                        <Clock className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Scheduled Ride</p>
+                        <p className="text-xs font-semibold text-foreground truncate">{upcomingScheduledTrip.pickup_address}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {new Date(upcomingScheduledTrip.scheduled_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          {(() => {
+                            const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
+                            if (mins <= 0) return " · Now";
+                            if (mins < 60) return ` · in ${mins}min`;
+                            return ` · in ${Math.floor(mins/60)}h ${mins%60}m`;
+                          })()}
+                        </p>
+                      </div>
+                      {(() => {
+                        const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
+                        return mins <= 15 ? (
+                          <span className="text-[9px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full animate-pulse shrink-0">Get Ready</span>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
 
                   {/* Radius + Vehicle row */}
                   <div className="flex gap-2">

@@ -572,6 +572,14 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const validStops = stops.filter((s): s is ServiceLocation => s !== null);
   const scheduledAtIso = scheduledDate && scheduledTime ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString() : undefined;
 
+  // Validate scheduled time is at least 30 minutes from now
+  const scheduledTooSoon = (() => {
+    if (bookingType !== "scheduled" || !scheduledDate || !scheduledTime) return false;
+    const scheduled = new Date(`${scheduledDate}T${scheduledTime}`);
+    const minTime = new Date(Date.now() + 30 * 60 * 1000);
+    return scheduled < minTime;
+  })();
+
 
   const renderSearchResults = (fieldKey: string) => {
     if (activeField !== fieldKey) return null;
@@ -815,16 +823,21 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
 
                 {/* Selected summary */}
                 {scheduledDate && scheduledTime && (
-                  <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2">
-                    <Calendar className="w-4 h-4 text-primary shrink-0" />
-                    <p className="text-xs font-semibold text-foreground">
-                      {(() => {
-                        const d = new Date(scheduledDate + "T" + scheduledTime);
-                        return d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }) +
-                          " at " +
-                          d.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true });
-                      })()}
-                    </p>
+                  <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${scheduledTooSoon ? "bg-destructive/10" : "bg-primary/10"}`}>
+                    <Calendar className={`w-4 h-4 shrink-0 ${scheduledTooSoon ? "text-destructive" : "text-primary"}`} />
+                    <div>
+                      <p className={`text-xs font-semibold ${scheduledTooSoon ? "text-destructive" : "text-foreground"}`}>
+                        {(() => {
+                          const d = new Date(scheduledDate + "T" + scheduledTime);
+                          return d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }) +
+                            " at " +
+                            d.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true });
+                        })()}
+                      </p>
+                      {scheduledTooSoon && (
+                        <p className="text-[10px] text-destructive mt-0.5">Must be at least 30 minutes from now</p>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1081,23 +1094,29 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
           <button
             onClick={() => {
               if (!canConfirm) return;
+              if (scheduledTooSoon) {
+                toast({ title: "Too soon", description: "Scheduled pickup must be at least 30 minutes from now.", variant: "destructive" });
+                return;
+              }
               const dummyDropoff = bookingType === "hourly" && !dropoff ? { ...pickup!, name: pickup!.name + " (Hourly)" } : dropoff!;
               onSearch(pickup!, dummyDropoff, passengerCount, luggageCount, validStops, bookingType, scheduledAtIso, bookingNotes || undefined);
             }}
-            disabled={!canConfirm || (bookingType === "scheduled" && (!scheduledDate || !scheduledTime))}
+            disabled={!canConfirm || (bookingType === "scheduled" && (!scheduledDate || !scheduledTime || scheduledTooSoon))}
             className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
           >
             {!canConfirm
               ? (bookingType === "hourly" ? "Select pickup location" : "Select pickup & destination")
               : bookingType === "scheduled" && (!scheduledDate || !scheduledTime)
                 ? "Set date & time"
-                : bookingType === "scheduled"
-                  ? "Schedule ride"
-                  : bookingType === "hourly"
-                    ? "Find hourly ride"
-                    : validStops.length > 0
-                      ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})`
-                      : "Find a ride"}
+                : scheduledTooSoon
+                  ? "Must be 30+ min from now"
+                  : bookingType === "scheduled"
+                    ? "Schedule ride"
+                    : bookingType === "hourly"
+                      ? "Find hourly ride"
+                      : validStops.length > 0
+                        ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})`
+                        : "Find a ride"}
           </button>
         </div>
       )}

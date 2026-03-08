@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { notifyTripRequested } from "@/lib/push-notifications";
+import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send } from "lucide-react";
 
 const statusOptions = [
   { value: "all", label: "All", color: "bg-surface text-foreground" },
@@ -234,9 +236,38 @@ const AdminTrips = () => {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => viewMessages(t.id)} className="w-8 h-8 rounded-xl bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
-                        <MessageSquare className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {/* Send to drivers for scheduled trips without a driver */}
+                        {t.booking_type === "scheduled" && t.status === "scheduled" && !t.driver_id && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              // Re-broadcast to all online drivers
+                              const { data: onlineDrivers } = await supabase
+                                .from("driver_locations")
+                                .select("driver_id")
+                                .eq("is_online", true);
+                              if (onlineDrivers && onlineDrivers.length > 0) {
+                                const driverIds = onlineDrivers.map((d: any) => d.driver_id);
+                                await notifyTripRequested(driverIds, t.id, t.pickup_address);
+                                // Also change status to requested so drivers see it as a normal trip
+                                await supabase.from("trips").update({ status: "requested" }).eq("id", t.id);
+                                toast({ title: "Sent to drivers", description: `Notified ${driverIds.length} online driver(s)` });
+                                fetchTrips();
+                              } else {
+                                toast({ title: "No drivers online", description: "No drivers are currently online to receive this trip.", variant: "destructive" });
+                              }
+                            }}
+                            className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
+                            title="Send to online drivers"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => viewMessages(t.id)} className="w-8 h-8 rounded-xl bg-surface flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
