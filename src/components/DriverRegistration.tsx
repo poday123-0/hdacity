@@ -69,8 +69,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   // Documents
   const [idCardFront, setIdCardFront] = useState<string | null>(draft.idCardFront || null);
   const [idCardBack, setIdCardBack] = useState<string | null>(draft.idCardBack || null);
+  const [idCardExpiry, setIdCardExpiry] = useState(draft.idCardExpiry || "");
   const [licenseFront, setLicenseFront] = useState<string | null>(draft.licenseFront || null);
   const [licenseBack, setLicenseBack] = useState<string | null>(draft.licenseBack || null);
+  const [licenseExpiry, setLicenseExpiry] = useState(draft.licenseExpiry || "");
   const [taxiPermitFront, setTaxiPermitFront] = useState<string | null>(draft.taxiPermitFront || null);
   const [taxiPermitBack, setTaxiPermitBack] = useState<string | null>(draft.taxiPermitBack || null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(draft.avatarUrl || null);
