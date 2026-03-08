@@ -1089,23 +1089,29 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
           <button
             onClick={() => {
               if (!canConfirm) return;
+              if (scheduledTooSoon) {
+                toast({ title: "Too soon", description: "Scheduled pickup must be at least 30 minutes from now.", variant: "destructive" });
+                return;
+              }
               const dummyDropoff = bookingType === "hourly" && !dropoff ? { ...pickup!, name: pickup!.name + " (Hourly)" } : dropoff!;
               onSearch(pickup!, dummyDropoff, passengerCount, luggageCount, validStops, bookingType, scheduledAtIso, bookingNotes || undefined);
             }}
-            disabled={!canConfirm || (bookingType === "scheduled" && (!scheduledDate || !scheduledTime))}
+            disabled={!canConfirm || (bookingType === "scheduled" && (!scheduledDate || !scheduledTime || scheduledTooSoon))}
             className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 shadow-[0_4px_12px_rgba(var(--primary),0.2)]"
           >
             {!canConfirm
               ? (bookingType === "hourly" ? "Select pickup location" : "Select pickup & destination")
               : bookingType === "scheduled" && (!scheduledDate || !scheduledTime)
                 ? "Set date & time"
-                : bookingType === "scheduled"
-                  ? "Schedule ride"
-                  : bookingType === "hourly"
-                    ? "Find hourly ride"
-                    : validStops.length > 0
-                      ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})`
-                      : "Find a ride"}
+                : scheduledTooSoon
+                  ? "Must be 30+ min from now"
+                  : bookingType === "scheduled"
+                    ? "Schedule ride"
+                    : bookingType === "hourly"
+                      ? "Find hourly ride"
+                      : validStops.length > 0
+                        ? `Find a ride (${validStops.length} ${validStops.length === 1 ? "stop" : "stops"})`
+                        : "Find a ride"}
           </button>
         </div>
       )}
