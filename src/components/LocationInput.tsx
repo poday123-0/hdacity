@@ -1044,7 +1044,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         className="w-full min-w-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
                       />
                       {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{dropoff.address}</p>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 w-full">{dropoff.address}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
