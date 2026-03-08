@@ -715,7 +715,7 @@ const AdminDrivers = () => {
 
       {/* ── Statistics Grid ── */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {[
             { label: "Active", value: drivers.filter(d => d.status === "Active").length, icon: UserCheck, color: "text-green-600", bg: "bg-green-500/10", filter: "Active" as StatusFilter },
             { label: "Inactive", value: drivers.filter(d => d.status === "Inactive").length, icon: UserX, color: "text-muted-foreground", bg: "bg-muted/50", filter: "Inactive" as StatusFilter },
