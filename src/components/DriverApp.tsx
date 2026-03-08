@@ -3309,14 +3309,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           phone_number: editForm.phone_number.trim(),
                           email: editForm.email.trim() || null,
                           gender: editForm.gender,
-                          status: "Pending Review"
-                        }).eq("id", userProfile.id);
+                          status: "Pending Review",
+                          rejection_reason: null
+                        } as any).eq("id", userProfile.id);
                         setSavingProfile(false);
                         if (error) {
                           toast({ title: "Error", description: error.message, variant: "destructive" });
                         } else {
                           toast({ title: "Profile updated", description: "Awaiting admin approval" });
                           setProfileStatus("Pending Review");
+                          setProfileRejectionReason("");
                           setEditingProfile(false);
                         }
                       }}
