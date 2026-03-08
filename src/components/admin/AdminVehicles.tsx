@@ -416,7 +416,7 @@ const AdminVehicles = () => {
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-extrabold text-foreground">Vehicles</h2>
+          <h1 className="text-2xl font-extrabold text-foreground">All Vehicles</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} of {vehicles.length} vehicles</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -426,10 +426,10 @@ const AdminVehicles = () => {
             </button>
           )}
           <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCsvImport(f); e.target.value = ""; }} />
-          <button onClick={downloadSampleCsv} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted">
+          <button onClick={downloadSampleCsv} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted transition-colors">
             <Download className="w-3.5 h-3.5" /> Sample
           </button>
-          <button onClick={() => csvInputRef.current?.click()} disabled={importing} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted">
+          <button onClick={() => csvInputRef.current?.click()} disabled={importing} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted transition-colors">
             <Upload className="w-3.5 h-3.5" /> {importing ? "Importing..." : "Import CSV"}
           </button>
           <button onClick={() => { showForm ? resetForm() : setShowForm(true); }} className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-semibold">
@@ -441,25 +441,29 @@ const AdminVehicles = () => {
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Vehicle" : "New Vehicle"}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {formFields.map((f) => (
               <div key={f.key}>
                 <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
-                <input value={(form as any)[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} placeholder={f.placeholder} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                <input value={(form as any)[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} placeholder={f.placeholder} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
             ))}
             <div>
+              <label className="text-xs font-medium text-muted-foreground">Center Code</label>
+              <input value={form.center_code} onChange={(e) => setForm({ ...form, center_code: e.target.value.replace(/\D/g, "") })} placeholder="e.g. 1, 2, 3..." className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground">Vehicle Type</label>
-              <select value={form.vehicle_type_id} onChange={(e) => setForm({ ...form, vehicle_type_id: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+              <select value={form.vehicle_type_id} onChange={(e) => setForm({ ...form, vehicle_type_id: e.target.value })} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="">Select type</option>
                 {vehicleTypes.map((vt) => (<option key={vt.id} value={vt.id}>{vt.name}</option>))}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Assign Driver</label>
-              <select value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+              <select value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="">Unassigned</option>
                 {drivers.map((d) => (<option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>))}
               </select>
@@ -489,128 +493,165 @@ const AdminVehicles = () => {
               ))}
             </div>
           </div>
-          <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">{editingId ? "Update Vehicle" : "Save Vehicle"}</button>
+          <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl text-sm font-semibold">{editingId ? "Update Vehicle" : "Save Vehicle"}</button>
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by plate, make, model, driver, or center code..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+      {/* Search + Filters */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by plate, make, model, driver, or center code..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {statusChips.map((s) => (
+            <button key={s.value} onClick={() => setStatusFilter(s.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                statusFilter === s.value ? `${s.color} ring-2 ring-primary/30 shadow-sm` : "bg-surface text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}>
+              {s.label}
+              {s.value !== "all" && <span className="ml-1.5 text-[10px] opacity-70">({vehicles.filter(v => v.vehicle_status === s.value).length})</span>}
+            </button>
+          ))}
+          <span className="text-muted-foreground text-[10px] mx-1">|</span>
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-1.5 bg-surface border border-border rounded-full text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">All Types</option>
+            {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {statusChips.map((s) => (
-          <button key={s.value} onClick={() => setStatusFilter(s.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              statusFilter === s.value ? `${s.color} ring-2 ring-primary/30 shadow-sm` : "bg-surface text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}>
-            {s.label}
-            {s.value !== "all" && <span className="ml-1.5 text-[10px] opacity-70">({vehicles.filter(v => v.vehicle_status === s.value).length})</span>}
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3 flex-wrap">
+          <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition-colors">
+            <Building2 className="w-3.5 h-3.5" /> Assign Company & Code
           </button>
-        ))}
-        <span className="text-muted-foreground text-[10px] mx-1">|</span>
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-1.5 bg-surface border border-border rounded-full text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-          <option value="">All Types</option>
-          {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
-        </select>
-      </div>
+          <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">Clear</button>
+        </div>
+      )}
 
-      {/* Table */}
+      {/* Vehicle Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-3 py-3 w-10">
-                  <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-primary">
-                    {selectedIds.size === filtered.length && filtered.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
-                  </button>
-                </th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Plate</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicle</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Type</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Driver</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Code</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
-                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center">
-                  <Car className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No vehicles found</p>
-                </td></tr>
-              ) : (
-                filtered.map((v) => (
-                  <tr key={v.id} className={`hover:bg-muted/20 transition-colors ${selectedIds.has(v.id) ? "bg-primary/5" : ""}`}>
-                    <td className="px-3 py-3">
-                      <button onClick={() => toggleSelect(v.id)} className="text-muted-foreground hover:text-primary">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border bg-surface/50">
+              <th className="px-4 py-3 w-10">
+                <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                  {selectedIds.size === filtered.length && filtered.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                </button>
+              </th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicle</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Type</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Driver</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Code</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Company</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
+              <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={9} className="px-4 py-12 text-center"><Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /></td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={9} className="px-4 py-12 text-center">
+                <Car className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No vehicles found</p>
+              </td></tr>
+            ) : (
+              filtered.map((v) => {
+                const driverName = v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}` : null;
+                const driverInitials = v.profiles ? `${v.profiles.first_name?.[0] || ""}${v.profiles.last_name?.[0] || ""}` : null;
+                const companyName = v.profiles?.company_name || companies.find(c => c.id === v.profiles?.company_id)?.name || "—";
+                const docCount = [v.registration_url, v.insurance_url, v.image_url].filter(Boolean).length;
+
+                return (
+                  <tr key={v.id} className={`border-b border-border hover:bg-surface/30 transition-colors ${selectedIds.has(v.id) ? "bg-primary/5" : ""}`}>
+                    <td className="px-4 py-3">
+                      <button onClick={() => toggleSelect(v.id)} className="text-muted-foreground hover:text-foreground">
                         {selectedIds.has(v.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-foreground">{v.plate_number}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{v.make} {v.model} {v.color}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{v.vehicle_types?.name || "—"}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}` : "Unassigned"}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-8 rounded-xl bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                          {v.image_url ? (
+                            <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewDoc(v.image_url)} />
+                          ) : (
+                            <Car className="w-4 h-4 text-muted-foreground/40" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{v.plate_number}</p>
+                          <p className="text-[10px] text-muted-foreground">{[v.make, v.model, v.color].filter(Boolean).join(" · ") || "—"}</p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{v.center_code || "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/50 text-accent-foreground">{v.vehicle_types?.name || "—"}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {driverName ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-[9px] font-bold text-primary">{driverInitials}</span>
+                          </div>
+                          <span className="text-sm text-foreground">{driverName}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {v.center_code ? (
+                        <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-surface border border-border text-foreground">{v.center_code}</span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{companyName}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        {v.registration_url && <button onClick={() => setPreviewDoc(v.registration_url)} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 rounded-md hover:opacity-80 font-semibold">Reg</button>}
+                        {v.insurance_url && <button onClick={() => setPreviewDoc(v.insurance_url)} className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 rounded-md hover:opacity-80 font-semibold">Ins</button>}
+                        {v.image_url && <button onClick={() => setPreviewDoc(v.image_url)} className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 rounded-md hover:opacity-80 font-semibold">Img</button>}
+                        {docCount === 0 && <span className="text-[10px] text-muted-foreground">0/3</span>}
+                        {docCount > 0 && docCount < 3 && <span className="text-[10px] text-muted-foreground ml-0.5">{docCount}/3</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full ${
+                        v.vehicle_status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
+                        v.vehicle_status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
+                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                      }`}>
+                        {v.vehicle_status === "approved" ? <ShieldCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                        {v.vehicle_status === "approved" ? "Approved" : v.vehicle_status === "rejected" ? "Rejected" : "Pending"}
+                      </span>
+                      {v.vehicle_status === "rejected" && v.rejection_reason && (
+                        <p className="text-[9px] text-muted-foreground italic mt-0.5 max-w-[120px] truncate" title={v.rejection_reason}>{v.rejection_reason}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        {v.registration_url && <button onClick={() => setPreviewDoc(v.registration_url)} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md hover:opacity-80 dark:bg-blue-500/10 dark:text-blue-400 font-semibold">Reg</button>}
-                        {v.insurance_url && <button onClick={() => setPreviewDoc(v.insurance_url)} className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded-md hover:opacity-80 dark:bg-green-500/10 dark:text-green-400 font-semibold">Ins</button>}
-                        {v.image_url && <button onClick={() => setPreviewDoc(v.image_url)} className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded-md hover:opacity-80 dark:bg-purple-500/10 dark:text-purple-400 font-semibold">Img</button>}
-                        {!v.registration_url && !v.insurance_url && !v.image_url && <span className="text-xs text-muted-foreground">—</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block w-fit ${v.is_active ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"}`}>
-                          {v.is_active ? "Active" : "Inactive"}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block w-fit ${
-                          v.vehicle_status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
-                          v.vehicle_status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
-                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
-                        }`}>
-                          {v.vehicle_status === "approved" ? "✅ Approved" : v.vehicle_status === "rejected" ? "❌ Rejected" : "⏳ Pending"}
-                        </span>
-                        {v.vehicle_status === "rejected" && v.rejection_reason && (
-                          <span className="text-[10px] text-muted-foreground italic max-w-[150px] truncate block" title={v.rejection_reason}>{v.rejection_reason}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
                         {(v.vehicle_status === "pending" || v.vehicle_status === "rejected") && (
-                          <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 text-[10px] font-bold text-green-600 hover:underline">
-                            <Check className="w-3 h-3" /> Approve
-                          </button>
+                          <button onClick={() => approveVehicle(v.id)} className="text-[11px] font-bold text-primary-foreground bg-green-600 px-2.5 py-1.5 rounded-xl hover:bg-green-700 transition-colors">Approve</button>
                         )}
-                        {(v.vehicle_status === "pending" || v.vehicle_status === "rejected") && (
-                          <button onClick={() => { setRejectingId(v.id); setRejectReason(""); }} className="flex items-center gap-1 text-[10px] font-bold text-destructive hover:underline">
-                            <XCircle className="w-3 h-3" /> Reject
-                          </button>
+                        {v.vehicle_status === "pending" && (
+                          <button onClick={() => { setRejectingId(v.id); setRejectReason(""); }} className="text-[11px] font-medium text-destructive hover:underline">Reject</button>
                         )}
-                        <button onClick={() => toggleActive(v.id, v.is_active)} className="text-[10px] font-medium text-primary hover:underline">
-                          {v.is_active ? "Deactivate" : "Activate"}
-                        </button>
-                        <button onClick={() => openEdit(v)} className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary"><Pencil className="w-3 h-3" /></button>
-                        <button onClick={() => handleDelete(v.id)} className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => openEdit(v)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(v.id)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
