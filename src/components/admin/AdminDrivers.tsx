@@ -258,7 +258,7 @@ const AdminDrivers = () => {
     fetchAll();
   };
 
-  const openEdit = (d: any) => {
+  const openEdit = async (d: any) => {
     setEditForm({
       first_name: d.first_name || "", last_name: d.last_name || "", email: d.email || "",
       phone_number: d.phone_number || "", company_id: d.company_id || "", monthly_fee: d.monthly_fee?.toString() || "0",
@@ -268,6 +268,13 @@ const AdminDrivers = () => {
       taxi_permit_front_url: d.taxi_permit_front_url || "", taxi_permit_back_url: d.taxi_permit_back_url || "",
     });
     setEditingId(d.id);
+    // Fetch driver's added bank & favara accounts
+    const [bankRes, favaraRes] = await Promise.all([
+      supabase.from("driver_bank_accounts").select("*").eq("driver_id", d.id).eq("is_active", true).order("is_primary", { ascending: false }),
+      supabase.from("driver_favara_accounts").select("*").eq("driver_id", d.id).eq("is_active", true).order("is_primary", { ascending: false }),
+    ]);
+    setDriverBankAccounts(bankRes.data || []);
+    setDriverFavaraAccounts(favaraRes.data || []);
   };
 
   const uploadDoc = async (field: string, file: File) => {
