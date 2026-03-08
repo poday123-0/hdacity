@@ -96,6 +96,7 @@ const Index = () => {
   const [selectedVehicleType, setSelectedVehicleType] = useState<any>(null);
   const [estimatedFare, setEstimatedFare] = useState(0);
   const [passengerBonus, setPassengerBonus] = useState(0);
+  const [fareZoneId, setFareZoneId] = useState<string | null>(null);
   const [bookingType, setBookingType] = useState<BookingType>("now");
   const [scheduledAt, setScheduledAt] = useState<string | undefined>();
   const [bookingNotes, setBookingNotes] = useState<string | undefined>();
