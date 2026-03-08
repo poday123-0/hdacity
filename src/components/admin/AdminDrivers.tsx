@@ -173,8 +173,8 @@ const AdminDrivers = () => {
   const sendDriverStatusSms = async (phone: string, countryCode: string, newStatus: string, name: string) => {
     try {
       const msg = newStatus === "Active"
-        ? `Hi ${name}, your driver profile has been approved! You can now go online and accept trips. - HDA Taxi`
-        : `Hi ${name}, your driver profile has been deactivated. Please contact support for more information. - HDA Taxi`;
+        ? `Hi ${name}, congratulations! Your driver profile has been approved. You can now log in, go online and start accepting trips. - HDA Taxi`
+        : `Hi ${name}, your driver profile has been deactivated. Please open the app or contact support for more details. - HDA Taxi`;
       await supabase.functions.invoke("notify-vehicle-update", {
         body: { phone_number: phone, country_code: countryCode, update_type: "driver_status", message: msg, notify_driver: true },
       });
