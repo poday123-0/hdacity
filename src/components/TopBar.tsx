@@ -311,8 +311,17 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
             <Menu className="w-5 h-5 text-foreground" />
           </button>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <SystemLogo className="w-8 h-8 object-contain" alt="HDA Taxi" />
+            {onDriverMode && (
+              <button
+                onClick={onDriverMode}
+                className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+              >
+                <Car className="w-4 h-4 text-primary" />
+                <span className="text-xs font-semibold text-primary">Driver</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
