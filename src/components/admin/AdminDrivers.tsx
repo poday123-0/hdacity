@@ -720,6 +720,7 @@ const AdminDrivers = () => {
             { label: "Active", value: drivers.filter(d => d.status === "Active").length, icon: UserCheck, color: "text-green-600", bg: "bg-green-500/10", filter: "Active" as StatusFilter },
             { label: "Inactive", value: drivers.filter(d => d.status === "Inactive").length, icon: UserX, color: "text-muted-foreground", bg: "bg-muted/50", filter: "Inactive" as StatusFilter },
             { label: "Pending", value: pendingDrivers.length, icon: Clock, color: "text-yellow-600", bg: "bg-yellow-500/10", filter: "Pending" as StatusFilter },
+            { label: "Rejected", value: rejectedDrivers.length, icon: XCircle, color: "text-red-600", bg: "bg-red-500/10", filter: "Rejected" as StatusFilter },
             { label: "Vehicles", value: allVehicles.filter(v => v.vehicle_status === "approved").length, icon: Car, color: "text-blue-600", bg: "bg-blue-500/10", filter: null },
             { label: "Pending Vehicles", value: pendingVehicles.length, icon: Car, color: "text-orange-600", bg: "bg-orange-500/10", filter: null },
             { label: "Incomplete Docs", value: incompleteDocDrivers.length, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", filter: null },
