@@ -1022,7 +1022,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
-  // Handle trip cancellation/taken cleanup
+  // Poll for upcoming scheduled trips to show reminder banner
+  useEffect(() => {
+    if (screen !== "online" || !userProfile?.id) {
+      setUpcomingScheduledTrip(null);
+      return;
+    }
+    const checkScheduled = async () => {
+      const { data } = await supabase
+        .from("trips")
+        .select("id, scheduled_at, pickup_address, dropoff_address")
+        .eq("driver_id", userProfile.id)
+        .eq("status", "accepted")
+        .eq("booking_type", "scheduled")
+        .order("scheduled_at", { ascending: true })
+        .limit(1);
+      if (data && data.length > 0) {
+        setUpcomingScheduledTrip(data[0] as any);
+      } else {
+        setUpcomingScheduledTrip(null);
+      }
+    };
+    checkScheduled();
+    const interval = setInterval(checkScheduled, 30000);
+    return () => clearInterval(interval);
+  }, [screen, userProfile?.id]);
+
+
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Trip accepted by ANOTHER driver while we're on ride-request screen
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
