@@ -382,7 +382,9 @@ const Index = () => {
     return () => { supabase.removeChannel(channel); };
   }, [fetchOnlineDrivers]);
 
-  // Listen for admin force-refresh signal via realtime (handle each trigger only once per device)
+  // Listen for admin force-refresh signal via realtime — show banner instead of instant reload
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+
   useEffect(() => {
     const channel = supabase
       .channel("force-refresh-listener")
@@ -408,14 +410,13 @@ const Index = () => {
             if (lastHandled === triggeredAt) return;
             localStorage.setItem(handledKey, triggeredAt);
           } else {
-            // Fallback guard if timestamp is missing
             const now = Date.now();
             const last = Number(localStorage.getItem(handledKey) || "0");
             if (now - last < 15000) return;
             localStorage.setItem(handledKey, String(now));
           }
 
-          window.location.reload();
+          setShowUpdateBanner(true);
         } catch {}
       })
       .subscribe();
