@@ -133,6 +133,7 @@ const AdminDrivers = () => {
 
   // Computed stats
   const pendingDrivers = drivers.filter(d => d.status === "Pending" || d.status === "Pending Review");
+  const rejectedDrivers = drivers.filter(d => d.status === "Rejected");
   const pendingVehicles = allVehicles.filter(v => v.vehicle_status === "pending");
   const rejectedVehicles = allVehicles.filter(v => v.vehicle_status === "rejected");
   const incompleteDocDrivers = drivers.filter(d => {
