@@ -1196,6 +1196,30 @@ const AdminDrivers = () => {
                                             <span key={doc.label} className="text-[10px] text-muted-foreground/50 px-2 py-1">No {doc.label}</span>
                                           ))}
                                         </div>
+
+                                        {/* Eligible Ride Types for this vehicle */}
+                                        <div className="mt-2 pt-2 border-t border-border/50">
+                                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Eligible Ride Types</p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {vehicleTypes.map((vt) => {
+                                              const entry = (vehicleRideTypes[v.id] || []).find((e: any) => e.vtId === vt.id);
+                                              const isApproved = entry?.status === "approved";
+                                              const isPending = entry?.status === "pending";
+                                              return (
+                                                <div key={vt.id} className="flex items-center gap-0.5">
+                                                  <button onClick={() => toggleVehicleRideType(d.id, v.id, vt.id)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${isApproved ? "bg-primary text-primary-foreground" : isPending ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}>
+                                                    {vt.name}{isPending ? " ⏳" : ""}
+                                                  </button>
+                                                  {isPending && (
+                                                    <button onClick={() => approveVehicleRideType(d.id, v.id, vt.id)} className="px-1 py-1 rounded-lg bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold hover:bg-green-500/30 transition-colors" title="Approve">
+                                                      <Check className="w-3 h-3" />
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
                                       </div>
 
                                       {/* Vehicle actions */}
