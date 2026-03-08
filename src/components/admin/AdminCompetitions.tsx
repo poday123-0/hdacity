@@ -108,12 +108,14 @@ const AdminCompetitions = () => {
   }, []);
 
   const fetchAll = async () => {
-    const [compRes, locRes] = await Promise.all([
+    const [compRes, locRes, vtRes] = await Promise.all([
       supabase.from("competitions").select("*").order("created_at", { ascending: false }),
       supabase.from("service_locations").select("id, name").eq("is_active", true).order("name"),
+      supabase.from("vehicle_types").select("id, name").eq("is_active", true).order("sort_order"),
     ]);
     setCompetitions((compRes.data as Competition[]) || []);
     setServiceLocations((locRes.data as ServiceLocation[]) || []);
+    setVehicleTypes((vtRes.data as VehicleType[]) || []);
   };
 
   const fetchCompetitionDetails = async (compId: string) => {
