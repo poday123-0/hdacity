@@ -1037,7 +1037,7 @@ const AdminDrivers = () => {
                     {/* Expanded vehicles */}
                     {isExpanded && (
                       <tr key={`${d.id}-vehicles`} className="border-b border-border">
-                        <td colSpan={9} className="px-4 py-4 bg-surface/30">
+                        <td colSpan={10} className="px-4 py-4 bg-surface/30">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
