@@ -196,15 +196,19 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
       const fromArea = findServiceArea(from.lat, from.lng);
       const toArea = findServiceArea(to.lat, to.lng);
 
-      const zone = fareZones.find((fz: any) => {
-        if (fz.vehicle_type_id !== vt.id) return false;
+      const matchesZone = (fz: any) => {
+        if (fz.vehicle_type_id && fz.vehicle_type_id !== vt.id) return false;
         const fromNames = [from.address, fromArea?.name, fromArea?.id].filter(Boolean);
         const toNames = [to.address, toArea?.name, toArea?.id].filter(Boolean);
         return (
           (fromNames.includes(fz.from_area) && toNames.includes(fz.to_area)) ||
           (toNames.includes(fz.from_area) && fromNames.includes(fz.to_area))
         );
-      });
+      };
+      // Prefer zone with matching vehicle_type_id, fallback to generic (null) zones
+      const exactZone = fareZones.find((fz: any) => fz.vehicle_type_id === vt.id && matchesZone(fz));
+      const genericZone = fareZones.find((fz: any) => !fz.vehicle_type_id && matchesZone(fz));
+      const zone = exactZone || genericZone;
 
       if (zone) {
         totalFare += Number(zone.fixed_fare);
