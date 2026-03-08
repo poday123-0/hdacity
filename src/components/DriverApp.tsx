@@ -2105,8 +2105,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </p>
             </div>
 
+            {/* Rejected profile banner */}
+            {profileStatus === "Rejected" &&
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-card rounded-2xl p-5 text-center space-y-4 border border-destructive/30 shadow-sm w-full">
+                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                  <XCircle className="w-7 h-7 text-destructive" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold text-destructive">Profile Rejected</h3>
+                  {profileRejectionReason && <p className="text-sm text-muted-foreground">{profileRejectionReason}</p>}
+                  <p className="text-xs text-muted-foreground">Please update your documents and resubmit for approval.</p>
+                </div>
+                <button
+              onClick={() => { setShowProfile(true); setProfileTab("documents"); }}
+              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm active:scale-[0.97] transition-transform">
+                    Update Documents
+                  </button>
+              </motion.div>
+          }
+
             {/* Verification checklist */}
-            {verificationIssues.length > 0 &&
+            {profileStatus !== "Rejected" && verificationIssues.length > 0 &&
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
