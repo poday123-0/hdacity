@@ -3233,14 +3233,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {profileTab === "info" &&
               <div className="space-y-3">
                     {profileStatus === "Rejected" &&
-                <div className="bg-destructive/10 text-destructive rounded-xl px-4 py-2.5 text-xs font-medium flex items-start gap-2">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-bold">Profile Rejected</p>
-                          {profileRejectionReason && <p className="mt-0.5">{profileRejectionReason}</p>}
-                          <p className="mt-0.5 opacity-80">Please update your documents and resubmit.</p>
+                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                  className="relative overflow-hidden rounded-xl border border-destructive/20">
+                        <div className="h-1 bg-gradient-to-r from-destructive via-destructive/60 to-destructive/30" />
+                        <div className="bg-destructive/5 px-4 py-3 flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                            <XCircle className="w-4 h-4 text-destructive" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-destructive">Profile Rejected</p>
+                            {profileRejectionReason && (
+                              <p className="text-[11px] text-destructive/80 mt-0.5 italic">"{profileRejectionReason}"</p>
+                            )}
+                            <p className="text-[11px] text-muted-foreground mt-1">Update your info below and save to resubmit.</p>
+                          </div>
                         </div>
-                      </div>
+                      </motion.div>
                 }
                     {profileStatus === "Pending Review" &&
                 <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
