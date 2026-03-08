@@ -1037,6 +1037,11 @@ const AdminDrivers = () => {
             <DocUpload field="id_card_front_url" label="ID Card Front" />
             <DocUpload field="id_card_back_url" label="ID Card Back" />
           </div>
+          <h4 className="text-sm font-semibold text-foreground pt-2">Document Expiry Dates</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="text-xs font-medium text-muted-foreground">ID Card Expiry</label><input type="date" value={editForm.id_card_expiry} onChange={(e) => setEditForm({ ...editForm, id_card_expiry: e.target.value })} className={inputCls} /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">License Expiry</label><input type="date" value={editForm.license_expiry} onChange={(e) => setEditForm({ ...editForm, license_expiry: e.target.value })} className={inputCls} /></div>
+          </div>
           <h4 className="text-sm font-semibold text-foreground pt-2">Taxi Permit <span className="text-xs font-normal text-muted-foreground">(optional)</span></h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <DocUpload field="taxi_permit_front_url" label="Permit Front" />
