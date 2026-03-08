@@ -134,6 +134,10 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       settingsRes.data?.forEach((s: any) => {
         if (s.key === "feature_scheduled_rides") setFeatureScheduled(s.value === true || s.value === "true");
         if (s.key === "feature_hourly_booking") setFeatureHourly(s.value === true || s.value === "true");
+        if (s.key === "min_scheduled_lead_minutes") {
+          const v = typeof s.value === "number" ? s.value : parseInt(String(s.value));
+          if (!isNaN(v) && v > 0) setMinScheduleLeadMin(v);
+        }
       });
       setLoading(false);
     };
