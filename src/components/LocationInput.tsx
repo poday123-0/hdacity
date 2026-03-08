@@ -907,13 +907,13 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         value={pickupQuery}
                         onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
                         onFocus={() => { setActiveField("pickup"); setTimeout(() => pickupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 truncate"
+                        className="w-full min-w-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
                       />
                       {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{pickup.address}</p>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 w-full">{pickup.address}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <div className="flex items-center justify-end gap-1.5 shrink-0 ml-2 w-[92px]">
                       {pickup && activeField !== "pickup" && (
                         <button onClick={() => clearField("pickup")} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center active:scale-90">
                           <X className="w-3.5 h-3.5 text-muted-foreground" />
@@ -1041,13 +1041,13 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         value={dropoffQuery}
                         onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
                         onFocus={() => { setActiveField("dropoff"); setTimeout(() => dropoffRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 truncate"
+                        className="w-full min-w-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
                       />
                       {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{dropoff.address}</p>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 w-full">{dropoff.address}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <div className="flex items-center justify-end gap-1.5 shrink-0 ml-2 w-[92px]">
                       {dropoff && activeField !== "dropoff" && (
                         <button onClick={() => clearField("dropoff")} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center active:scale-90">
                           <X className="w-3.5 h-3.5 text-muted-foreground" />
