@@ -500,6 +500,10 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                   <DocUploadCard label="Front" url={idCardFront} target="id_front" />
                   <DocUploadCard label="Back" url={idCardBack} target="id_back" />
                 </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">ID Card Expiry Date</label>
+                  <input type="date" value={idCardExpiry} onChange={(e) => setIdCardExpiry(e.target.value)} className={inputClass} />
+                </div>
               </div>
 
               <div className="space-y-3">
