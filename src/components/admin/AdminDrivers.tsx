@@ -830,6 +830,21 @@ const AdminDrivers = () => {
                           </span>
                         ))}
                       </div>
+                      {/* Expiry dates */}
+                      {(driver.id_card_expiry || driver.license_expiry) && (
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {driver.id_card_expiry && (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${new Date(driver.id_card_expiry) < new Date() ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : "bg-accent/50 text-foreground"}`}>
+                              ID Expiry: {driver.id_card_expiry}
+                            </span>
+                          )}
+                          {driver.license_expiry && (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${new Date(driver.license_expiry) < new Date() ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : "bg-accent/50 text-foreground"}`}>
+                              License Expiry: {driver.license_expiry}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
