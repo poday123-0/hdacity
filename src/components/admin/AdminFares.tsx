@@ -64,6 +64,8 @@ const AdminFares = () => {
   const [showSurchargeForm, setShowSurchargeForm] = useState(false);
   const [editingSurchargeId, setEditingSurchargeId] = useState<string | null>(null);
   const [surchargeForm, setSurchargeForm] = useState(emptySurchargeForm);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const csvFileRef = useRef<HTMLInputElement>(null);
 
   const fetchAll = async () => {
     setLoading(true);
