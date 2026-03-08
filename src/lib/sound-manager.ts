@@ -4,6 +4,9 @@
  *
  * Also maintains a pre-unlocked Audio element pool so sounds can play
  * even when the PWA is minimized / backgrounded (bypasses autoplay restrictions).
+ *
+ * Uses a silent audio heartbeat to prevent the browser from suspending
+ * the audio context when the page is hidden/minimized.
  */
 
 const activeSounds: Set<HTMLAudioElement> = new Set();
@@ -11,11 +14,64 @@ const activeSounds: Set<HTMLAudioElement> = new Set();
 // Pool of pre-unlocked Audio elements created during user gestures.
 // Browsers allow these to play even when the page is hidden/minimized.
 const unlockedPool: HTMLAudioElement[] = [];
-const POOL_SIZE = 6; // Increased pool for reliability
+const POOL_SIZE = 8;
+
+// Silent heartbeat to keep audio context alive when minimized
+let heartbeatAudio: HTMLAudioElement | null = null;
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+// Tiny silent WAV (minimal valid WAV file)
+const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+
+/**
+ * Start a silent audio heartbeat that keeps the browser's audio pipeline
+ * active even when the PWA is minimized. This prevents the browser from
+ * suspending Audio elements when the page is hidden.
+ */
+const startHeartbeat = () => {
+  if (heartbeatInterval) return;
+  
+  // Create a looping silent audio element
+  try {
+    heartbeatAudio = new Audio(SILENT_WAV);
+    heartbeatAudio.loop = true;
+    heartbeatAudio.volume = 0.01; // near-silent but not 0 (some browsers optimize away volume=0)
+    heartbeatAudio.play().catch(() => {});
+  } catch {}
+
+  // Periodically nudge the audio to keep it alive
+  heartbeatInterval = setInterval(() => {
+    if (heartbeatAudio) {
+      try {
+        if (heartbeatAudio.paused) {
+          heartbeatAudio.play().catch(() => {});
+        }
+      } catch {}
+    }
+    // Also top up the pool periodically
+    topUpPool();
+  }, 10_000);
+};
+
+/** Top up the pool without requiring a user gesture (best-effort). */
+const topUpPool = () => {
+  const needed = POOL_SIZE - unlockedPool.length;
+  for (let i = 0; i < needed; i++) {
+    try {
+      const a = new Audio();
+      a.preload = "auto";
+      a.src = SILENT_WAV;
+      const p = a.play();
+      if (p) p.then(() => a.pause()).catch(() => {});
+      unlockedPool.push(a);
+    } catch {}
+  }
+};
 
 /**
  * Call this inside a user-gesture handler (click, tap, etc.) to
  * pre-unlock Audio elements for later background playback.
+ * Also starts the silent heartbeat to keep audio alive when minimized.
  * Safe to call multiple times — it only tops up the pool.
  */
 export const unlockAudioPool = () => {
@@ -24,8 +80,7 @@ export const unlockAudioPool = () => {
     try {
       const a = new Audio();
       a.preload = "auto";
-      // Unlock by playing a tiny silent WAV data URI then pausing
-      a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      a.src = SILENT_WAV;
       const playPromise = a.play();
       if (playPromise) {
         playPromise.then(() => a.pause()).catch(() => {});
@@ -33,6 +88,8 @@ export const unlockAudioPool = () => {
       unlockedPool.push(a);
     } catch {}
   }
+  // Start heartbeat on first user gesture
+  startHeartbeat();
 };
 
 /** Get a pre-unlocked element from the pool (or create a new one as fallback). */
@@ -50,8 +107,7 @@ const replenish = () => {
     try {
       const a = new Audio();
       a.preload = "auto";
-      // Use silent WAV for replenish too
-      a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      a.src = SILENT_WAV;
       const p = a.play();
       if (p) p.then(() => a.pause()).catch(() => {});
       unlockedPool.push(a);
