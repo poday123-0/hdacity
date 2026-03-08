@@ -2470,9 +2470,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           ) : null;
                         })()}
                       </div>
-                      {/* Start Ride button — always available for accepted scheduled trips */}
+                      {/* Start Ride button — requires manual confirmation */}
                       <button
                         onClick={async () => {
+                          // Confirmation dialog
+                          const confirmed = window.confirm(
+                            `Start scheduled ride?\n\n📍 ${upcomingScheduledTrip.pickup_address}\n→ ${upcomingScheduledTrip.dropoff_address}\n🕐 ${new Date(upcomingScheduledTrip.scheduled_at).toLocaleString()}\n\nThis will begin navigation to pickup.`
+                          );
+                          if (!confirmed) return;
+
                           // Load the full trip and go to navigating
                           const { data: fullTrip } = await supabase
                             .from("trips")
