@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
@@ -19,6 +19,7 @@ const AdminVehicles = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -35,6 +36,13 @@ const AdminVehicles = () => {
   const [typeFilter, setTypeFilter] = useState("");
   const [importing, setImporting] = useState(false);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkCompanyId, setBulkCompanyId] = useState("");
+  const [bulkCenterCodeStart, setBulkCenterCodeStart] = useState("");
+  const [bulkApplying, setBulkApplying] = useState(false);
+
   const handleDocUpload = async (file: File, target: string) => {
     setUploading(target);
     const ext = file.name.split(".").pop();
@@ -48,14 +56,16 @@ const AdminVehicles = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [v, vt, d] = await Promise.all([
-      supabase.from("vehicles").select("*, vehicle_types(name), profiles!vehicles_driver_id_fkey(first_name, last_name)").order("created_at", { ascending: false }),
+    const [v, vt, d, c] = await Promise.all([
+      supabase.from("vehicles").select("*, vehicle_types(name), profiles!vehicles_driver_id_fkey(first_name, last_name, company_id, company_name)").order("created_at", { ascending: false }),
       supabase.from("vehicle_types").select("*").eq("is_active", true),
-      supabase.from("profiles").select("id, first_name, last_name").ilike("user_type", "%Driver%"),
+      supabase.from("profiles").select("id, first_name, last_name, phone_number, country_code").ilike("user_type", "%Driver%"),
+      supabase.from("companies").select("*").eq("is_active", true).order("name"),
     ]);
     setVehicles(v.data || []);
     setVehicleTypes(vt.data || []);
     setDrivers(d.data || []);
+    setCompanies(c.data || []);
     setLoading(false);
   };
 
@@ -77,7 +87,6 @@ const AdminVehicles = () => {
 
   const handleSubmit = async () => {
     if (!form.plate_number) return;
-    // Check center code uniqueness
     if (form.center_code) {
       const { data: existingCode } = await supabase.from("vehicles").select("id, plate_number").eq("center_code", form.center_code).maybeSingle();
       if (existingCode && existingCode.id !== editingId) {
@@ -187,7 +196,6 @@ const AdminVehicles = () => {
   const approveVehicle = async (id: string) => {
     await supabase.from("vehicles").update({ vehicle_status: "approved", rejection_reason: null } as any).eq("id", id);
     toast({ title: "Vehicle approved ✅" });
-    // Notify driver via SMS
     const vehicle = vehicles.find(v => v.id === id);
     if (vehicle?.driver_id) {
       const driver = drivers.find(d => d.id === vehicle.driver_id);
@@ -212,7 +220,6 @@ const AdminVehicles = () => {
   const rejectVehicle = async (id: string, reason: string) => {
     await supabase.from("vehicles").update({ vehicle_status: "rejected", rejection_reason: reason || "Documents not acceptable" } as any).eq("id", id);
     toast({ title: "Vehicle rejected", description: reason || "Documents not acceptable" });
-    // Notify driver via SMS
     const vehicle = vehicles.find(v => v.id === id);
     if (vehicle?.driver_id) {
       const driver = drivers.find(d => d.id === vehicle.driver_id);
@@ -237,6 +244,71 @@ const AdminVehicles = () => {
     fetchAll();
   };
 
+  // Bulk selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(v => v.id)));
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedIds.size === 0) return;
+    if (!bulkCompanyId && !bulkCenterCodeStart) {
+      toast({ title: "Select at least one field to update", variant: "destructive" });
+      return;
+    }
+
+    setBulkApplying(true);
+    const ids = Array.from(selectedIds);
+    const selectedCompany = companies.find(c => c.id === bulkCompanyId);
+    let centerCode = bulkCenterCodeStart ? parseInt(bulkCenterCodeStart) : null;
+    let updated = 0;
+    let errors = 0;
+
+    for (const id of ids) {
+      const payload: any = {};
+      if (bulkCompanyId && selectedCompany) {
+        // Update the driver's company on their profile
+        const vehicle = vehicles.find(v => v.id === id);
+        if (vehicle?.driver_id) {
+          await supabase.from("profiles").update({
+            company_id: bulkCompanyId,
+            company_name: selectedCompany.name,
+          }).eq("id", vehicle.driver_id);
+        }
+      }
+      if (centerCode !== null) {
+        payload.center_code = String(centerCode);
+        centerCode++;
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const { error } = await supabase.from("vehicles").update(payload).eq("id", id);
+        if (error) errors++; else updated++;
+      } else {
+        updated++;
+      }
+    }
+
+    setBulkApplying(false);
+    setShowBulkModal(false);
+    setSelectedIds(new Set());
+    setBulkCompanyId("");
+    setBulkCenterCodeStart("");
+    toast({ title: "Bulk update complete", description: `${updated} vehicles updated${errors > 0 ? `, ${errors} failed` : ""}` });
+    fetchAll();
+  };
+
   const formFields = [
     { key: "plate_number", label: "Plate Number", placeholder: "P-1234" },
     { key: "make", label: "Make", placeholder: "Toyota" },
@@ -248,7 +320,7 @@ const AdminVehicles = () => {
   // Filter vehicles
   const filtered = vehicles.filter(v => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || v.plate_number?.toLowerCase().includes(q) || v.make?.toLowerCase().includes(q) || v.model?.toLowerCase().includes(q) || (v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}`.toLowerCase().includes(q) : false);
+    const matchesSearch = !q || v.plate_number?.toLowerCase().includes(q) || v.make?.toLowerCase().includes(q) || v.model?.toLowerCase().includes(q) || (v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}`.toLowerCase().includes(q) : false) || v.center_code?.toLowerCase().includes(q);
     const matchesStatus = statusFilter === "all" || v.vehicle_status === statusFilter;
     const matchesType = !typeFilter || v.vehicle_type_id === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
@@ -289,13 +361,70 @@ const AdminVehicles = () => {
         </div>
       )}
 
+      {/* Bulk update modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBulkModal(false)}>
+          <div className="bg-card rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl border border-border" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Bulk Update</h3>
+                <p className="text-sm text-muted-foreground">{selectedIds.size} vehicle{selectedIds.size !== 1 ? "s" : ""} selected</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Set Company (updates driver's profile)</label>
+                <select value={bulkCompanyId} onChange={(e) => setBulkCompanyId(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">— Don't change —</option>
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Set Center Code (auto-increment from start)</label>
+                <input
+                  type="number"
+                  value={bulkCenterCodeStart}
+                  onChange={(e) => setBulkCenterCodeStart(e.target.value)}
+                  placeholder="e.g. 100 → assigns 100, 101, 102..."
+                  className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {bulkCenterCodeStart && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Will assign codes {bulkCenterCodeStart} through {parseInt(bulkCenterCodeStart) + selectedIds.size - 1}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setShowBulkModal(false)} className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
+              <button onClick={handleBulkUpdate} disabled={bulkApplying || (!bulkCompanyId && !bulkCenterCodeStart)}
+                className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground disabled:opacity-50">
+                {bulkApplying ? "Applying..." : "Apply Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-2xl font-extrabold text-foreground">Vehicles</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} of {vehicles.length} vehicles</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {selectedIds.size > 0 && (
+            <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-semibold">
+              <Building2 className="w-3.5 h-3.5" /> Bulk Update ({selectedIds.size})
+            </button>
+          )}
           <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCsvImport(f); e.target.value = ""; }} />
           <button onClick={downloadSampleCsv} className="flex items-center gap-1.5 bg-surface text-foreground border border-border px-3 py-2 rounded-xl text-xs font-semibold hover:bg-muted">
             <Download className="w-3.5 h-3.5" /> Sample
@@ -367,7 +496,7 @@ const AdminVehicles = () => {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by plate, make, model, or driver..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by plate, make, model, driver, or center code..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
       </div>
 
       {/* Filter chips */}
@@ -394,10 +523,16 @@ const AdminVehicles = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/30">
+                <th className="px-3 py-3 w-10">
+                  <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-primary">
+                    {selectedIds.size === filtered.length && filtered.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                  </button>
+                </th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Plate</th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicle</th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Type</th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Driver</th>
+                <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Code</th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Docs</th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Status</th>
                 <th className="text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Actions</th>
@@ -405,21 +540,27 @@ const AdminVehicles = () => {
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-12 text-center">
+                <tr><td colSpan={9} className="px-4 py-12 text-center">
                   <Car className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No vehicles found</p>
                 </td></tr>
               ) : (
                 filtered.map((v) => (
-                  <tr key={v.id} className="hover:bg-muted/20 transition-colors">
+                  <tr key={v.id} className={`hover:bg-muted/20 transition-colors ${selectedIds.has(v.id) ? "bg-primary/5" : ""}`}>
+                    <td className="px-3 py-3">
+                      <button onClick={() => toggleSelect(v.id)} className="text-muted-foreground hover:text-primary">
+                        {selectedIds.has(v.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-sm font-semibold text-foreground">{v.plate_number}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{v.make} {v.model} {v.color}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{v.vehicle_types?.name || "—"}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}` : "Unassigned"}
                     </td>
+                    <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{v.center_code || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         {v.registration_url && <button onClick={() => setPreviewDoc(v.registration_url)} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md hover:opacity-80 dark:bg-blue-500/10 dark:text-blue-400 font-semibold">Reg</button>}
