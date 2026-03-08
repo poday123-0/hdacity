@@ -42,6 +42,7 @@ const AdminDrivers = () => {
   const [vehicleStatusFilter, setVehicleStatusFilter] = useState("");
   const [docFilter, setDocFilter] = useState<"all" | "complete" | "incomplete">("all");
   const [rejectVehicleId, setRejectVehicleId] = useState<string | null>(null);
+  const [rejectDriverId, setRejectDriverId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
