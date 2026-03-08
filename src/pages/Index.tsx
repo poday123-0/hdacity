@@ -216,9 +216,8 @@ const Index = () => {
   }, [userProfile?.phone_number, phase, checkDriverProfile]);
 
   // Switch between modes
-  const handleSwitchMode = useCallback((mode: "passenger" | "driver") => {
+  const handleSwitchMode = useCallback(async (mode: "passenger" | "driver") => {
     setAppMode(mode);
-    // Also sync the session so on next load the mode + driver profile are available
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
@@ -231,13 +230,20 @@ const Index = () => {
     if (mode === "driver" && driverProfile) {
       setPhase("driver");
     } else if (mode === "driver" && !driverProfile) {
-      // User wants driver mode but has no driver profile — show driver registration
-      setPendingPhone(userProfile?.phone_number || "");
-      setPhase("driver-register");
+      // Check if there's a pending driver profile before showing registration
+      if (userProfile?.phone_number) {
+        await checkDriverProfile(userProfile.phone_number);
+      }
+      if (pendingDriverData) {
+        setPhase("driver-pending");
+      } else {
+        setPendingPhone(userProfile?.phone_number || "");
+        setPhase("driver-register");
+      }
     } else {
       setPhase("passenger");
     }
-  }, [driverProfile, userProfile]);
+  }, [driverProfile, userProfile, pendingDriverData, checkDriverProfile]);
 
   // Restore ongoing trip on app load
   useEffect(() => {
