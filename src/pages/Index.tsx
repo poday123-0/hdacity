@@ -87,6 +87,7 @@ const Index = () => {
     try { return localStorage.getItem("hda_pending_phone") || ""; } catch { return ""; }
   });
   const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
+  const [pendingDriverData, setPendingDriverData] = useState<{ profile: any; vehicles: any[]; vehicleTypes: any[] } | null>(null);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [passengerMapInstance, setPassengerMapInstance] = useState<google.maps.Map | null>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
