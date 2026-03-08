@@ -1833,10 +1833,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {!currentTrip &&
             <button
               onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
-              className="flex items-center gap-1.5 bg-card/90 backdrop-blur-sm shadow-md rounded-full px-3 py-1.5 active:scale-95 transition-transform border border-border/30">
-
-                <span className="text-xs font-bold text-muted-foreground">Switch to Passenger</span>
-                <Users className="w-3.5 h-3.5 text-primary" />
+              className="flex items-center gap-2 bg-card border border-border rounded-full pl-2 pr-3.5 py-1.5 active:scale-95 transition-transform shadow-md">
+                <SystemLogo className="w-6 h-6 object-contain rounded-full" alt="Passenger" />
+                <span className="text-sm font-bold text-primary">Passenger Mode</span>
               </button>
             }
           </div>
