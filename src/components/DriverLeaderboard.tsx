@@ -71,6 +71,38 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
     fetchCompetitions();
   }, []);
 
+  // Realtime subscription for live leaderboard updates
+  useEffect(() => {
+    if (!selectedComp) return;
+
+    const channel = supabase
+      .channel(`leaderboard-${selectedComp.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'competition_entries',
+          filter: `competition_id=eq.${selectedComp.id}`,
+        },
+        () => {
+          // Re-fetch entries when any change happens
+          loadCompetition(selectedComp);
+        }
+      )
+      .subscribe();
+
+    // Also poll every 60s as fallback
+    const pollId = setInterval(() => {
+      loadCompetition(selectedComp);
+    }, 60000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollId);
+    };
+  }, [selectedComp?.id]);
+
   const fetchCompetitions = async () => {
     setLoading(true);
     const { data } = await supabase
