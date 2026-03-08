@@ -789,8 +789,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     single();
 
     if (!freshTrip) return;
-    // Skip if trip is no longer in requested/scheduled status or already taken
-    if (freshTrip.status !== "requested" && freshTrip.status !== "scheduled") return;
+    // Skip if trip is no longer in requested status or already taken
+    if (freshTrip.status !== "requested") return;
     if (freshTrip.driver_id) return;
     // Skip if trip is older than 5 minutes
     const tripAge = Date.now() - new Date(freshTrip.requested_at).getTime();
