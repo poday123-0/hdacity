@@ -13,7 +13,7 @@ interface LocationData {
 
 interface RideOptionsProps {
   onBack: () => void;
-  onConfirm: (vehicleType: any, estimatedFare: number, passengerBonus: number) => void;
+  onConfirm: (vehicleType: any, estimatedFare: number, passengerBonus: number, fareZoneId?: string | null) => void;
   pickup?: LocationData | null;
   dropoff?: LocationData | null;
   passengerCount: number;
