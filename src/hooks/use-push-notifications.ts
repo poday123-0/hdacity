@@ -100,15 +100,16 @@ export const usePushNotifications = (
         const soundUrl = payload.data?.sound_url;
         const notifType = payload.data?.type || "default";
 
-        // Play admin-configured sound, fallback to beep
-        if (soundUrl) {
-          playTrackedSound(soundUrl);
-        } else {
-          // Use different beep tones for different event types
-          const freq = notifType === "trip_requested" ? 1000 :
-                       notifType === "sos_alert" ? 1200 :
-                       notifType === "message_received" ? 800 : 880;
-          playFallbackBeep(freq, notifType === "trip_requested" ? 0.3 : 0.15);
+        // Skip sound for trip_requested — DriverApp.handleNewTrip already plays looping sound
+        const driverHandledTypes = ["trip_requested"];
+        if (!driverHandledTypes.includes(notifType)) {
+          if (soundUrl) {
+            playTrackedSound(soundUrl);
+          } else {
+            const freq = notifType === "sos_alert" ? 1200 :
+                         notifType === "message_received" ? 800 : 880;
+            playFallbackBeep(freq, 0.15);
+          }
         }
 
         // Show browser notification
