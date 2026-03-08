@@ -953,7 +953,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                             if (activeField !== `stop-${idx}`) setActiveField(`stop-${idx}`);
                           }}
                           onFocus={() => setActiveField(`stop-${idx}`)}
-                          className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5"
+                          className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
                         />
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
