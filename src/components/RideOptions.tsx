@@ -62,7 +62,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("driver_locations").select("driver_id, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
-        supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
+        supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true),
         supabase.from("system_settings").select("key, value").in("key", ["max_passenger_boost", "boost_step_amount"]),
         supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id").eq("status", "approved"),
       ]);
@@ -145,13 +145,36 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       });
   }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, stops]);
 
+  // Point-in-polygon (ray casting algorithm)
+  const pointInPolygon = (lat: number, lng: number, polygon: { lat: number; lng: number }[]): boolean => {
+    if (!polygon || polygon.length < 3) return false;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat, yi = polygon[i].lng;
+      const xj = polygon[j].lat, yj = polygon[j].lng;
+      if ((yi > lng) !== (yj > lng) && lat < ((xj - xi) * (lng - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  };
+
   // Resolve which service area a location belongs to
   const findServiceArea = (loc: LocationData | null | undefined) => {
     if (!loc) return null;
+    // 1. Direct name match
     const direct = serviceLocations.find((sl: any) => 
       sl.name?.toLowerCase().trim() === loc.name?.toLowerCase().trim() || sl.id === loc.id
     );
     if (direct) return direct;
+    // 2. Point-in-polygon match using drawn boundaries
+    if (loc.lat && loc.lng) {
+      const polyMatch = serviceLocations.find((sl: any) => 
+        sl.polygon && pointInPolygon(loc.lat!, loc.lng!, sl.polygon)
+      );
+      if (polyMatch) return polyMatch;
+    }
+    // 3. Fallback to nearest center point
     if (loc.lat && loc.lng && serviceLocations.length > 0) {
       let best: any = null;
       let bestDist = Infinity;
