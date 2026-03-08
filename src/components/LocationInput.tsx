@@ -1041,7 +1041,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                         value={dropoffQuery}
                         onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
                         onFocus={() => { setActiveField("dropoff"); setTimeout(() => dropoffRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 truncate"
+                        className="w-full min-w-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
                       />
                       {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
                         <p className="text-[11px] text-muted-foreground truncate mt-0.5 max-w-[65vw]">{dropoff.address}</p>
