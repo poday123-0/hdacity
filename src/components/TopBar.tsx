@@ -316,10 +316,10 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
             {onDriverMode && (
               <button
                 onClick={onDriverMode}
-                className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+                className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full pl-2 pr-3.5 py-1.5 active:scale-95 transition-transform shadow-sm"
               >
-                <Car className="w-4 h-4 text-primary" />
-                <span className="text-xs font-semibold text-primary">Driver</span>
+                <SystemLogo className="w-6 h-6 object-contain rounded-full" alt="Driver" />
+                <span className="text-sm font-bold text-primary">Driver Mode</span>
               </button>
             )}
           </div>
