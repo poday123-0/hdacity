@@ -696,42 +696,96 @@ const AdminDrivers = () => {
             <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{pendingVehicles.length}</span>
           </div>
           <div className="divide-y divide-border">
-            {pendingVehicles.map((v) => (
-              <div key={v.id} className="px-4 py-3 flex items-center gap-4">
-                <div className="w-14 h-10 rounded-lg bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
-                  {v.image_url ? (
-                    <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
-                  ) : (
-                    <Car className="w-5 h-5 text-muted-foreground/30" />
+            {pendingVehicles.map((v) => {
+              const driver = drivers.find(d => d.id === v.driver_id);
+              const isPendingDriver = driver && (driver.status === "Pending" || driver.status === "Pending Review");
+              return (
+                <div key={v.id} className="px-4 py-3 space-y-3">
+                  {/* Vehicle row */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-10 rounded-lg bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                      {v.image_url ? (
+                        <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
+                      ) : (
+                        <Car className="w-5 h-5 text-muted-foreground/30" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{v.plate_number} — {v.make} {v.model}</p>
+                      <p className="text-[11px] text-muted-foreground">{v.color} · {v.vehicle_types?.name || "No type"} · Driver: {getDriverName(v.driver_id)}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                      {[
+                        { url: v.image_url, label: "Photo", bg: "bg-purple-50 dark:bg-purple-500/10", border: "border-purple-100 dark:border-purple-500/20", text: "text-purple-600", hoverBg: "hover:bg-purple-100 dark:hover:bg-purple-500/20" },
+                        { url: v.registration_url, label: "Registration", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", text: "text-blue-600", hoverBg: "hover:bg-blue-100 dark:hover:bg-blue-500/20" },
+                        { url: v.insurance_url, label: "Insurance", bg: "bg-green-50 dark:bg-green-500/10", border: "border-green-100 dark:border-green-500/20", text: "text-green-600", hoverBg: "hover:bg-green-100 dark:hover:bg-green-500/20" },
+                      ].map((doc) => doc.url ? (
+                        <button key={doc.label} onClick={() => setPreviewImg(doc.url)} className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-colors ${doc.bg} ${doc.border} ${doc.text} ${doc.hoverBg} border`} title={doc.label}>
+                          <Eye className="w-3 h-3" /> {doc.label}
+                        </button>
+                      ) : (
+                        <span key={doc.label} className="text-[10px] text-muted-foreground/40 px-2 py-1">No {doc.label}</span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-colors">
+                        <Check className="w-3.5 h-3.5" /> Approve
+                      </button>
+                      <button onClick={() => { setRejectVehicleId(v.id); setRejectReason(""); }} className="flex items-center gap-1 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-bold hover:bg-destructive/20 transition-colors">
+                        <XCircle className="w-3.5 h-3.5" /> Reject
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Driver info section for new registrations */}
+                  {driver && (
+                    <div className="ml-[4.5rem] bg-surface/50 border border-border rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          {driver.avatar_url ? (
+                            <img src={driver.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          ) : (
+                            <UserCheck className="w-4 h-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</p>
+                          <p className="text-[10px] text-muted-foreground">+{driver.country_code} {driver.phone_number} · {driver.email || "No email"}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPendingDriver ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" : driver.status === "Active" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                          {driver.status}
+                        </span>
+                        {isPendingDriver && (
+                          <button onClick={() => toggleStatus(driver.id, driver.status)} className="flex items-center gap-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-colors">
+                            <ShieldCheck className="w-3 h-3" /> Approve Driver
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Driver documents */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { url: driver.license_front_url, label: "License Front" },
+                          { url: driver.license_back_url, label: "License Back" },
+                          { url: driver.id_card_front_url, label: "ID Front" },
+                          { url: driver.id_card_back_url, label: "ID Back" },
+                          { url: driver.taxi_permit_front_url, label: "Permit Front" },
+                          { url: driver.taxi_permit_back_url, label: "Permit Back" },
+                        ].map((doc) => doc.url ? (
+                          <button key={doc.label} onClick={() => setPreviewImg(doc.url)} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors bg-accent/50 border border-border text-foreground hover:bg-accent">
+                            <Eye className="w-3 h-3" /> {doc.label}
+                          </button>
+                        ) : (
+                          <span key={doc.label} className="text-[10px] text-muted-foreground/40 px-2 py-1 border border-dashed border-border rounded-lg">
+                            No {doc.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">{v.plate_number} — {v.make} {v.model}</p>
-                  <p className="text-[11px] text-muted-foreground">{v.color} · {v.vehicle_types?.name || "No type"} · Driver: {getDriverName(v.driver_id)}</p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                  {[
-                    { url: v.image_url, label: "Photo", bg: "bg-purple-50", border: "border-purple-100", text: "text-purple-600", hoverBg: "hover:bg-purple-100" },
-                    { url: v.registration_url, label: "Registration", bg: "bg-blue-50", border: "border-blue-100", text: "text-blue-600", hoverBg: "hover:bg-blue-100" },
-                    { url: v.insurance_url, label: "Insurance", bg: "bg-green-50", border: "border-green-100", text: "text-green-600", hoverBg: "hover:bg-green-100" },
-                  ].map((doc) => doc.url ? (
-                    <button key={doc.label} onClick={() => setPreviewImg(doc.url)} className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-colors ${doc.bg} ${doc.border} ${doc.text} ${doc.hoverBg} border`} title={doc.label}>
-                      <Eye className="w-3 h-3" /> {doc.label}
-                    </button>
-                  ) : (
-                    <span key={doc.label} className="text-[10px] text-muted-foreground/40 px-2 py-1">No {doc.label}</span>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => approveVehicle(v.id)} className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-colors">
-                    <Check className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => { setRejectVehicleId(v.id); setRejectReason(""); }} className="flex items-center gap-1 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-bold hover:bg-destructive/20 transition-colors">
-                    <XCircle className="w-3.5 h-3.5" /> Reject
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
