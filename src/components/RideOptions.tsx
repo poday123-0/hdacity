@@ -442,7 +442,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         )}
 
         <button
-          onClick={() => selectedType && selectedIsOnline && onConfirm(selectedType, selectedFare, passengerBonus)}
+          onClick={() => selectedType && selectedIsOnline && onConfirm(selectedType, selectedFare, passengerBonus, selectedZoneId)}
           disabled={!selectedType || !selectedIsOnline}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
         >
