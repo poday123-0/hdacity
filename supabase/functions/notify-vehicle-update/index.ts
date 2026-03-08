@@ -124,7 +124,7 @@ serve(async (req) => {
               Authorization: `AccessKey ${MSGOWL_API_KEY}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ recipients: driverPhone.replace("+", ""), body: driverMessage }),
+            body: JSON.stringify({ recipients: driverPhone.replace("+", ""), sender_id: "HDA TAXI", body: driverMessage }),
           });
           console.log("SMS sent to driver:", driverPhone);
         } catch (e) {
