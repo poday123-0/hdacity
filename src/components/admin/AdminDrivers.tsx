@@ -1220,6 +1220,59 @@ const AdminDrivers = () => {
                       <tr key={`${d.id}-vehicles`} className="border-b border-border">
                         <td colSpan={10} className="px-4 py-4 bg-surface/30">
                           <div className="space-y-3">
+                            {/* Resubmission alert */}
+                            {d.status === "Pending Review" && (
+                              <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-xl p-3 flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center shrink-0">
+                                  <Upload className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-orange-700 dark:text-orange-400">🔄 Driver Resubmitted Documents</p>
+                                  <p className="text-[11px] text-orange-600/80 dark:text-orange-400/70 mt-0.5">This driver has updated their profile or documents after a previous rejection. Please review the changes below.</p>
+                                </div>
+                                <button onClick={() => toggleStatus(d.id, d.status)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-colors">
+                                  <Check className="w-3 h-3" /> Approve
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Profile Documents */}
+                            <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Profile Documents</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  { url: d.license_front_url, label: "License Front" },
+                                  { url: d.license_back_url, label: "License Back" },
+                                  { url: d.id_card_front_url, label: "ID Front" },
+                                  { url: d.id_card_back_url, label: "ID Back" },
+                                  { url: d.taxi_permit_front_url, label: "Permit Front" },
+                                  { url: d.taxi_permit_back_url, label: "Permit Back" },
+                                ].map((doc) => doc.url ? (
+                                  <button key={doc.label} onClick={() => setPreviewImg(doc.url)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-colors bg-primary/5 border border-primary/20 text-primary hover:bg-primary/10">
+                                    <Eye className="w-3 h-3" /> {doc.label}
+                                  </button>
+                                ) : (
+                                  <span key={doc.label} className="text-[10px] text-muted-foreground/40 px-2.5 py-1.5 border border-dashed border-border rounded-lg">
+                                    {doc.label} ✗
+                                  </span>
+                                ))}
+                              </div>
+                              {(d.id_card_expiry || d.license_expiry) && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  {d.id_card_expiry && (
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${new Date(d.id_card_expiry) < new Date() ? "bg-red-100 text-red-700" : "bg-accent/50 text-foreground"}`}>
+                                      ID Exp: {d.id_card_expiry}
+                                    </span>
+                                  )}
+                                  {d.license_expiry && (
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${new Date(d.license_expiry) < new Date() ? "bg-red-100 text-red-700" : "bg-accent/50 text-foreground"}`}>
+                                      License Exp: {d.license_expiry}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicles for {d.first_name}</p>
                               <button onClick={() => openVehicleForm(d.id)} className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
