@@ -518,6 +518,12 @@ const Index = () => {
   }, [currentTripId, passengerScreen, tripStatus]);
 
   const handleSplashComplete = useCallback(() => {
+    // Check if onboarding was already seen
+    const onboardingSeen = (() => { try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; } })();
+    if (!onboardingSeen && !savedSession) {
+      setPhase("onboarding");
+      return;
+    }
     if (savedSession) {
       if (appMode === "driver" && savedSession.driverProfile) setPhase("driver");
       else setPhase("passenger");
