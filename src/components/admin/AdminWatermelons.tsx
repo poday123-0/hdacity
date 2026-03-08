@@ -473,7 +473,7 @@ const AdminWatermelons = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="wallet_amount">💰 Wallet Amount</SelectItem>
-                  <SelectItem value="fee_free">🎫 Center Fee-Free</SelectItem>
+                  <SelectItem value="fee_free">🎫 Free</SelectItem>
                   <SelectItem value="free_trip">🚗 Free Trip</SelectItem>
                 </SelectContent>
               </Select>
