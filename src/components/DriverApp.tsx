@@ -2251,8 +2251,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <div className="flex items-center gap-1.5 shrink-0 ml-3">
                       <button
                         onClick={() => setShowLeaderboard(true)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-yellow-500/10 active:scale-95 transition-transform">
-                        <Trophy className="w-3.5 h-3.5 text-yellow-600" />
+                        className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-amber-500/10 border border-yellow-500/20 active:scale-90 transition-all shadow-sm hover:shadow-yellow-500/10">
+                        <Trophy className="w-4 h-4 text-yellow-500 drop-shadow-sm" />
+                        <span className="text-[10px] sm:text-xs font-bold text-yellow-600 dark:text-yellow-400">Rank</span>
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse border-2 border-background" />
                       </button>
                       <button
                         onClick={() => setShowEarningsHistory(true)}
