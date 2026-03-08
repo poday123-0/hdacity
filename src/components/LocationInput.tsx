@@ -734,7 +734,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
             <div className="flex gap-1 bg-surface rounded-xl p-1">
               {([
                 { key: "now" as BookingType, label: "Now", icon: Navigation, show: true },
-                { key: "scheduled" as BookingType, label: "Schedule", icon: Calendar, show: featureScheduled },
+                { key: "scheduled" as BookingType, label: "Later", icon: Calendar, show: featureScheduled },
                 { key: "hourly" as BookingType, label: "Hourly", icon: Clock, show: featureHourly },
               ]).filter(o => o.show).map(({ key, label, icon: Icon }) => (
                 <button
