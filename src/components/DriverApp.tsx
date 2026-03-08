@@ -795,8 +795,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     single();
 
     if (!freshTrip) return;
-    // Skip if trip is no longer in requested status or already taken
-    if (freshTrip.status !== "requested") return;
+    // Skip if trip is no longer requestable or already taken
+    if (!(freshTrip.status === "requested" || freshTrip.status === "scheduled")) return;
     if (freshTrip.driver_id) return;
     // Skip if trip is older than 5 minutes
     const tripAge = Date.now() - new Date(freshTrip.requested_at).getTime();
@@ -929,8 +929,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       table: "trips"
     }, async (payload) => {
       const trip = payload.new as any;
-      // Handle broadcast trips (requested only — scheduled trips appear in banner, not as popups)
-      if (trip.status === "requested") {
+      // Handle broadcast trips (requested + scheduled)
+      if (trip.status === "requested" || trip.status === "scheduled") {
         if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
           lastSeenTripRef.current = trip.id;
@@ -974,7 +974,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const { data } = await supabase.
       from("trips").
       select("*").
-      in("status", ["requested"]).
+      in("status", ["requested", "scheduled"]).
       is("driver_id", null).
       gte("requested_at", fiveMinAgo).
       order("requested_at", { ascending: false }).

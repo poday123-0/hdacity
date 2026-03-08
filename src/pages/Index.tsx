@@ -1320,7 +1320,7 @@ const Index = () => {
       <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto lg:left-0 lg:right-auto lg:w-[420px] lg:top-[4.5rem]">
         <AnimatePresence mode="wait">
           {passengerScreen === "home" && <LocationInput key="home" onSearch={handleLocationSearch} userId={userProfile?.id} />}
-          {passengerScreen === "ride-options" && (
+          {passengerScreen === "ride-options" && !showScheduledConfirmation && (
             <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} />
           )}
           {passengerScreen === "confirmation" && pickup && dropoff && selectedVehicleType && (
