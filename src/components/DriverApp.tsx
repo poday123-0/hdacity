@@ -496,6 +496,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       const vehicleId = vehicle?.id || null;
       const vehicleTypeId = vehicle?.vehicle_type_id || null;
+      activeVehicleTypeIdRef.current = vehicleTypeId;
 
       const upsertLocation = async (lat: number, lng: number) => {
         lastPosRef.current = { lat, lng };
