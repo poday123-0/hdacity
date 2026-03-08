@@ -128,8 +128,10 @@ export const usePushNotifications = (
         swListenerRef.current = true;
         navigator.serviceWorker.addEventListener("message", (event) => {
           if (event.data?.type === "PLAY_NOTIFICATION_SOUND" && event.data?.sound_url) {
-            console.log("SW sound bridge: playing", event.data.sound_category);
-            playTrackedSound(event.data.sound_url);
+            const notifType = event.data.notification_type || event.data.sound_category || "";
+            const shouldLoop = notifType === "trip_requested" || notifType === "sos_alert";
+            console.log("SW sound bridge: playing", event.data.sound_category, shouldLoop ? "(looping)" : "");
+            playTrackedSound(event.data.sound_url, shouldLoop);
           }
         });
       }
