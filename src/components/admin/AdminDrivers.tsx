@@ -886,6 +886,47 @@ const AdminDrivers = () => {
             <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><input value={editForm.bank_account_number} onChange={(e) => setEditForm({ ...editForm, bank_account_number: e.target.value })} className={inputCls} /></div>
             <div><label className="text-xs font-medium text-muted-foreground">Account Name</label><input value={editForm.bank_account_name} onChange={(e) => setEditForm({ ...editForm, bank_account_name: e.target.value })} className={inputCls} /></div>
           </div>
+          {/* Driver-added bank accounts */}
+          {driverBankAccounts.length > 0 && (
+            <>
+              <h4 className="text-sm font-semibold text-foreground pt-2 flex items-center gap-2">
+                Driver Bank Accounts
+                <span className="text-[10px] font-normal text-muted-foreground bg-surface px-2 py-0.5 rounded-full">{driverBankAccounts.length} added by driver</span>
+              </h4>
+              <div className="space-y-2">
+                {driverBankAccounts.map((ba: any) => (
+                  <div key={ba.id} className="flex items-center gap-3 bg-surface rounded-xl px-3 py-2 border border-border">
+                    {ba.is_primary && <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">PRIMARY</span>}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-foreground">{ba.bank_name}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">{ba.account_number}</p>
+                      {ba.account_name && <p className="text-[10px] text-muted-foreground">{ba.account_name}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {/* Driver-added Favara accounts */}
+          {driverFavaraAccounts.length > 0 && (
+            <>
+              <h4 className="text-sm font-semibold text-foreground pt-2 flex items-center gap-2">
+                Favara Accounts
+                <span className="text-[10px] font-normal text-muted-foreground bg-surface px-2 py-0.5 rounded-full">{driverFavaraAccounts.length} added by driver</span>
+              </h4>
+              <div className="space-y-2">
+                {driverFavaraAccounts.map((fa: any) => (
+                  <div key={fa.id} className="flex items-center gap-3 bg-surface rounded-xl px-3 py-2 border border-border">
+                    {fa.is_primary && <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">PRIMARY</span>}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-foreground">{fa.favara_name || "Favara"}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">{fa.favara_id}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           <h4 className="text-sm font-semibold text-foreground pt-2">Driver Documents</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <DocUpload field="license_front_url" label="License Front" />
