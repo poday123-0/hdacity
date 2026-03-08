@@ -984,6 +984,22 @@ const AdminDrivers = () => {
                           {pendingVCount > 0 && <span className="w-4 h-4 rounded-full bg-yellow-500 text-white text-[9px] font-bold flex items-center justify-center">{pendingVCount}</span>}
                           {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
+                        {vehicles.length > 0 && (
+                          <div className="mt-1 space-y-0.5">
+                            {vehicles.map((v: any) => (
+                              <p key={v.id} className="text-[10px] text-muted-foreground font-mono">{v.plate_number}</p>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {d.bank_name || d.bank_account_number ? (
+                          <div className="space-y-0.5">
+                            {d.bank_name && <p className="text-[10px] font-semibold text-foreground">{d.bank_name}</p>}
+                            {d.bank_account_number && <p className="text-[10px] text-muted-foreground font-mono">{d.bank_account_number}</p>}
+                            {d.bank_account_name && <p className="text-[10px] text-muted-foreground">{d.bank_account_name}</p>}
+                          </div>
+                        ) : <span className="text-[10px] text-muted-foreground">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
