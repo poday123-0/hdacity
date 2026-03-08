@@ -59,7 +59,8 @@ import {
   Gauge,
   Upload,
   AlertTriangle,
-  Bell as BellIcon } from
+  Bell as BellIcon,
+  Trophy } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
