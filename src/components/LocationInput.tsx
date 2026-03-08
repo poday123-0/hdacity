@@ -119,7 +119,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
         supabase
           .from("system_settings")
           .select("key, value")
-          .in("key", ["feature_scheduled_rides", "feature_hourly_booking"]),
+          .in("key", ["feature_scheduled_rides", "feature_hourly_booking", "min_scheduled_lead_minutes"]),
       ]);
       const data = locRes.data;
       const namedData = namedRes.data || [];
