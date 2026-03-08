@@ -1364,9 +1364,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
 
-    // Document uploads (not avatar) flag profile for review
+    // Document uploads (not avatar) flag profile for review and clear rejection
     if (uploadTarget !== "avatar") {
       (updateField as any).status = "Pending Review";
+      (updateField as any).rejection_reason = null;
     }
 
     await supabase.from("profiles").update(updateField).eq("id", userProfile.id);
@@ -1382,6 +1383,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Update status if doc was uploaded
     if (uploadTarget !== "avatar") {
       setProfileStatus("Pending Review");
+      setProfileRejectionReason("");
       // Notify admin about profile document update
       try {
         const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
@@ -2105,8 +2107,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </p>
             </div>
 
+            {/* Rejected profile banner */}
+            {profileStatus === "Rejected" &&
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-card rounded-2xl p-5 text-center space-y-4 border border-destructive/30 shadow-sm w-full">
+                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                  <XCircle className="w-7 h-7 text-destructive" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold text-destructive">Profile Rejected</h3>
+                  {profileRejectionReason && <p className="text-sm text-muted-foreground">{profileRejectionReason}</p>}
+                  <p className="text-xs text-muted-foreground">Please update your documents and resubmit for approval.</p>
+                </div>
+                <button
+              onClick={() => { setShowProfile(true); setProfileTab("documents"); }}
+              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm active:scale-[0.97] transition-transform">
+                    Update Documents
+                  </button>
+              </motion.div>
+          }
+
             {/* Verification checklist */}
-            {verificationIssues.length > 0 &&
+            {profileStatus !== "Rejected" && verificationIssues.length > 0 &&
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2204,26 +2229,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 Start driving
               </motion.button> :
-          profileStatus === "Rejected" && verificationIssues.length === 0 ?
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-card rounded-2xl p-5 text-center space-y-4 border border-destructive/30 shadow-sm w-full">
-                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-                  <XCircle className="w-7 h-7 text-destructive" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-lg font-bold text-destructive">Profile Rejected</h3>
-                  {profileRejectionReason && <p className="text-sm text-muted-foreground">{profileRejectionReason}</p>}
-                  <p className="text-xs text-muted-foreground">Please update your documents and resubmit for approval.</p>
-                </div>
-                <button
-              onClick={() => { setShowProfile(true); setProfileTab("documents"); }}
-              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm active:scale-[0.97] transition-transform">
-                    Update Documents
-                  </button>
-              </motion.div> :
           profileStatus !== "Active" && !billingHold && verificationIssues.length === 0 ?
           <div className="bg-card rounded-xl p-4 space-y-2">
                 <div className="flex items-center gap-2 justify-center">
@@ -3304,14 +3309,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           phone_number: editForm.phone_number.trim(),
                           email: editForm.email.trim() || null,
                           gender: editForm.gender,
-                          status: "Pending Review"
-                        }).eq("id", userProfile.id);
+                          status: "Pending Review",
+                          rejection_reason: null
+                        } as any).eq("id", userProfile.id);
                         setSavingProfile(false);
                         if (error) {
                           toast({ title: "Error", description: error.message, variant: "destructive" });
                         } else {
                           toast({ title: "Profile updated", description: "Awaiting admin approval" });
                           setProfileStatus("Pending Review");
+                          setProfileRejectionReason("");
                           setEditingProfile(false);
                         }
                       }}
