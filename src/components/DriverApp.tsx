@@ -2485,50 +2485,49 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           ) : null;
                         })()}
                       </div>
-                      {/* Start Ride button — available when within 15 min */}
-                      {(() => {
-                        const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
-                        return mins <= 15 ? (
-                          <button
-                            onClick={async () => {
-                              // Load the full trip and go to navigating
-                              const { data: fullTrip } = await supabase
-                                .from("trips")
-                                .select("*")
-                                .eq("id", upcomingScheduledTrip.id)
-                                .single();
-                              if (!fullTrip) {
-                                toast({ title: "Trip not found", variant: "destructive" });
-                                return;
-                              }
-                              if (fullTrip.status === "cancelled") {
-                                toast({ title: "This trip was cancelled", variant: "destructive" });
-                                setUpcomingScheduledTrip(null);
-                                return;
-                              }
-                              // If currently on another trip, block
-                              if (currentTrip) {
-                                toast({ title: "Finish your current trip first", variant: "destructive" });
-                                return;
-                              }
-                              setCurrentTrip(fullTrip as any);
-                              setDriverTripPhase("heading_to_pickup");
-                              // Fetch passenger profile
-                              if (fullTrip.passenger_id) {
-                                const { data: pp } = await supabase.from("profiles").select("*").eq("id", fullTrip.passenger_id).single();
-                                if (pp) setPassengerProfile(pp);
-                              }
-                              setUpcomingScheduledTrip(null);
-                              setScreen("navigating");
-                              fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
-                            }}
-                            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
-                          >
-                            <Navigation className="w-3.5 h-3.5" />
-                            Start Scheduled Ride
-                          </button>
-                        ) : null;
-                      })()}
+                      {/* Start Ride button — always available for accepted scheduled trips */}
+                      <button
+                        onClick={async () => {
+                          // Load the full trip and go to navigating
+                          const { data: fullTrip } = await supabase
+                            .from("trips")
+                            .select("*")
+                            .eq("id", upcomingScheduledTrip.id)
+                            .single();
+                          if (!fullTrip) {
+                            toast({ title: "Trip not found", variant: "destructive" });
+                            return;
+                          }
+                          if (fullTrip.status === "cancelled") {
+                            toast({ title: "This trip was cancelled", variant: "destructive" });
+                            setUpcomingScheduledTrip(null);
+                            return;
+                          }
+                          // If currently on another trip, block
+                          if (currentTrip) {
+                            toast({ title: "Finish your current trip first", variant: "destructive" });
+                            return;
+                          }
+                          // Mark driver as on trip
+                          await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                          setCurrentTrip(fullTrip as any);
+                          setDriverTripPhase("heading_to_pickup");
+                          // Fetch passenger profile
+                          if (fullTrip.passenger_id) {
+                            const { data: pp } = await supabase.from("profiles").select("*").eq("id", fullTrip.passenger_id).single();
+                            if (pp) setPassengerProfile(pp);
+                            // Notify passenger that driver is on the way
+                            notifyTripAccepted(fullTrip.passenger_id, `${userProfile.first_name} ${userProfile.last_name}`, fullTrip.id);
+                          }
+                          setUpcomingScheduledTrip(null);
+                          setScreen("navigating");
+                          fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        Start Scheduled Ride
+                      </button>
                     </div>
                   )}
 
