@@ -2458,27 +2458,74 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                   {/* Upcoming Scheduled Trip Banner */}
                   {upcomingScheduledTrip && (
-                    <div className="bg-primary/10 border border-primary/20 rounded-2xl px-3 py-2.5 flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                        <Clock className="w-4 h-4 text-primary" />
+                    <div className="bg-primary/10 border border-primary/20 rounded-2xl px-3 py-2.5 space-y-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                          <Clock className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Scheduled Ride</p>
+                          <p className="text-xs font-semibold text-foreground truncate">{upcomingScheduledTrip.pickup_address}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">→ {upcomingScheduledTrip.dropoff_address}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(upcomingScheduledTrip.scheduled_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            {(() => {
+                              const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
+                              if (mins <= 0) return " · Now";
+                              if (mins < 60) return ` · in ${mins}min`;
+                              return ` · in ${Math.floor(mins/60)}h ${mins%60}m`;
+                            })()}
+                          </p>
+                        </div>
+                        {(() => {
+                          const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
+                          return mins <= 15 ? (
+                            <span className="text-[9px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full animate-pulse shrink-0">Get Ready</span>
+                          ) : null;
+                        })()}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Scheduled Ride</p>
-                        <p className="text-xs font-semibold text-foreground truncate">{upcomingScheduledTrip.pickup_address}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {new Date(upcomingScheduledTrip.scheduled_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                          {(() => {
-                            const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
-                            if (mins <= 0) return " · Now";
-                            if (mins < 60) return ` · in ${mins}min`;
-                            return ` · in ${Math.floor(mins/60)}h ${mins%60}m`;
-                          })()}
-                        </p>
-                      </div>
+                      {/* Start Ride button — available when within 15 min */}
                       {(() => {
                         const mins = Math.round((new Date(upcomingScheduledTrip.scheduled_at).getTime() - Date.now()) / 60000);
                         return mins <= 15 ? (
-                          <span className="text-[9px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full animate-pulse shrink-0">Get Ready</span>
+                          <button
+                            onClick={async () => {
+                              // Load the full trip and go to navigating
+                              const { data: fullTrip } = await supabase
+                                .from("trips")
+                                .select("*")
+                                .eq("id", upcomingScheduledTrip.id)
+                                .single();
+                              if (!fullTrip) {
+                                toast({ title: "Trip not found", variant: "destructive" });
+                                return;
+                              }
+                              if (fullTrip.status === "cancelled") {
+                                toast({ title: "This trip was cancelled", variant: "destructive" });
+                                setUpcomingScheduledTrip(null);
+                                return;
+                              }
+                              // If currently on another trip, block
+                              if (currentTrip) {
+                                toast({ title: "Finish your current trip first", variant: "destructive" });
+                                return;
+                              }
+                              setCurrentTrip(fullTrip as any);
+                              setDriverTripPhase("heading_to_pickup");
+                              // Fetch passenger profile
+                              if (fullTrip.passenger_id) {
+                                const { data: pp } = await supabase.from("profiles").select("*").eq("id", fullTrip.passenger_id).single();
+                                if (pp) setPassengerProfile(pp);
+                              }
+                              setUpcomingScheduledTrip(null);
+                              setScreen("navigating");
+                              fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
+                            }}
+                            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            Start Scheduled Ride
+                          </button>
                         ) : null;
                       })()}
                     </div>
