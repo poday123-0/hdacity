@@ -148,7 +148,9 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   // Resolve which service area a location belongs to
   const findServiceArea = (loc: LocationData | null | undefined) => {
     if (!loc) return null;
-    const direct = serviceLocations.find((sl: any) => sl.name === loc.name || sl.id === loc.id);
+    const direct = serviceLocations.find((sl: any) => 
+      sl.name?.toLowerCase().trim() === loc.name?.toLowerCase().trim() || sl.id === loc.id
+    );
     if (direct) return direct;
     if (loc.lat && loc.lng && serviceLocations.length > 0) {
       let best: any = null;
@@ -190,11 +192,14 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       // Allow zones with null vehicle_type_id to match any vehicle type
       const matchesZone = (fz: any) => {
         if (fz.vehicle_type_id && fz.vehicle_type_id !== vt.id) return false;
-        const fromNames = [from?.name, from?.id, fromArea?.name, fromArea?.id].filter(Boolean);
-        const toNames = [to?.name, to?.id, toArea?.name, toArea?.id].filter(Boolean);
+        const normalize = (s: string) => s.trim().toLowerCase();
+        const fromNames = [from?.name, from?.id, fromArea?.name, fromArea?.id].filter(Boolean).map((n: string) => normalize(n));
+        const toNames = [to?.name, to?.id, toArea?.name, toArea?.id].filter(Boolean).map((n: string) => normalize(n));
+        const fzFrom = normalize(fz.from_area);
+        const fzTo = normalize(fz.to_area);
         return (
-          (fromNames.includes(fz.from_area) && toNames.includes(fz.to_area)) ||
-          (toNames.includes(fz.from_area) && fromNames.includes(fz.to_area))
+          (fromNames.includes(fzFrom) && toNames.includes(fzTo)) ||
+          (toNames.includes(fzFrom) && fromNames.includes(fzTo))
         );
       };
 
