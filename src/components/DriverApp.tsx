@@ -2077,7 +2077,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             transition={{ delay: 0.2 }}
             onClick={async () => {
               // Block going online if notification permission not granted
-              if ("Notification" in window && Notification.permission !== "granted") {
+              // Skip check in iframe/preview contexts where Notification API is restricted
+              const isInIframe = window !== window.top;
+              if (!isInIframe && "Notification" in window && Notification.permission !== "granted") {
                 if (Notification.permission === "default") {
                   const result = await Notification.requestPermission();
                   if (result !== "granted") {
