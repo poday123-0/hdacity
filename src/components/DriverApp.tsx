@@ -974,7 +974,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const { data } = await supabase.
       from("trips").
       select("*").
-      in("status", ["requested"]).
+      in("status", ["requested", "scheduled"]).
       is("driver_id", null).
       gte("requested_at", fiveMinAgo).
       order("requested_at", { ascending: false }).
