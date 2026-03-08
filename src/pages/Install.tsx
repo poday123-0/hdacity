@@ -23,6 +23,15 @@ const Install = ({ defaultTab }: InstallProps) => {
   const [appIconUrl, setAppIconUrl] = useState<string | null>(null);
   const { appName } = useBranding();
 
+  // If user opens the installed PWA and lands on /install, redirect to home
+  useEffect(() => {
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+      || (window.navigator as any).standalone === true;
+    if (isStandalone) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
   useEffect(() => {
     const loadIcon = async () => {
       const { data } = await supabase
