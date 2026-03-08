@@ -305,16 +305,15 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       gestureHandling: "greedy",
     };
     // Vector map (enables two-finger rotation, tilt, heading)
+    // IMPORTANT: Do NOT apply raster `styles` when using a vector mapId —
+    // they conflict with vector rendering and can hide roads/features.
     if (mapId) {
       mapOptions.mapId = mapId;
       const colorScheme = g.maps?.ColorScheme;
       if (colorScheme) {
         mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
       }
-      // Also apply raster styles as fallback for dark mode
-      if (!colorScheme && isDark) {
-        mapOptions.styles = darkMapStyle;
-      }
+      // No raster styles for vector maps — they cause missing roads
     } else {
       mapOptions.styles = isDark ? darkMapStyle : lightNavStyle;
     }
@@ -389,7 +388,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           if (colorScheme) {
             map?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
           }
-          map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
+          // No raster styles for vector maps
         } else {
           map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
         }
@@ -407,7 +406,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     if (isNavigating) {
       map.setTilt(0);
-      // Reset follow mode when entering navigation
       setFollowDriver(true);
       userInteractingRef.current = false;
       setUserPannedAway(false);
@@ -421,8 +419,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (mapId) {
         const colorScheme = (window as any).google?.maps?.ColorScheme;
         if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+        // No raster styles for vector maps
+      } else {
+        map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
       }
-      map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
     } else {
       map.setTilt(0);
       if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
@@ -435,8 +435,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (mapId) {
         const colorScheme = (window as any).google?.maps?.ColorScheme;
         if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+        // No raster styles for vector maps
+      } else {
+        map.setOptions({ styles: isDark ? darkMapStyle : [] });
       }
-      map.setOptions({ styles: isDark ? darkMapStyle : [] });
     }
   }, [isNavigating, mapId]);
 

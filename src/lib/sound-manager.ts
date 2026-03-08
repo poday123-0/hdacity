@@ -11,7 +11,7 @@ const activeSounds: Set<HTMLAudioElement> = new Set();
 // Pool of pre-unlocked Audio elements created during user gestures.
 // Browsers allow these to play even when the page is hidden/minimized.
 const unlockedPool: HTMLAudioElement[] = [];
-const POOL_SIZE = 4;
+const POOL_SIZE = 6; // Increased pool for reliability
 
 /**
  * Call this inside a user-gesture handler (click, tap, etc.) to
@@ -24,8 +24,12 @@ export const unlockAudioPool = () => {
     try {
       const a = new Audio();
       a.preload = "auto";
-      // Unlock by attempting play of silence
-      a.play().then(() => a.pause()).catch(() => {});
+      // Unlock by playing a tiny silent WAV data URI then pausing
+      a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      const playPromise = a.play();
+      if (playPromise) {
+        playPromise.then(() => a.pause()).catch(() => {});
+      }
       unlockedPool.push(a);
     } catch {}
   }
@@ -46,8 +50,10 @@ const replenish = () => {
     try {
       const a = new Audio();
       a.preload = "auto";
-      // Can't guarantee unlock here since no gesture, but still try
-      a.play().then(() => a.pause()).catch(() => {});
+      // Use silent WAV for replenish too
+      a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      const p = a.play();
+      if (p) p.then(() => a.pause()).catch(() => {});
       unlockedPool.push(a);
     } catch {}
   }
@@ -61,6 +67,8 @@ export const playTrackedSound = (url: string, loop = false): HTMLAudioElement | 
     audio.loop = loop;
     audio.src = url;
     audio.currentTime = 0;
+    // Force volume to max for background playback
+    audio.volume = 1.0;
     activeSounds.add(audio);
 
     const cleanup = () => {
@@ -71,9 +79,22 @@ export const playTrackedSound = (url: string, loop = false): HTMLAudioElement | 
     audio.addEventListener("error", cleanup, { once: true });
     audio.addEventListener("pause", () => activeSounds.delete(audio), { once: true });
 
-    audio.play().catch(() => {
-      activeSounds.delete(audio);
-    });
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        activeSounds.delete(audio);
+        // If play fails (autoplay blocked), try with a fresh element
+        try {
+          const fallback = new Audio(url);
+          fallback.volume = 1.0;
+          fallback.loop = loop;
+          activeSounds.add(fallback);
+          fallback.addEventListener("ended", () => activeSounds.delete(fallback), { once: true });
+          fallback.addEventListener("error", () => activeSounds.delete(fallback), { once: true });
+          fallback.play().catch(() => activeSounds.delete(fallback));
+        } catch {}
+      });
+    }
     return audio;
   } catch {
     return null;
