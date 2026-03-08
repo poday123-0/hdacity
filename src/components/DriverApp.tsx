@@ -989,12 +989,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }
 
-      // Poll for direct-assigned dispatch trips
+      // Poll for direct-assigned dispatch trips (exclude scheduled trips)
       const { data: assignedTrips } = await supabase.
       from("trips").
       select("*").
       eq("status", "accepted").
       eq("driver_id", userProfile.id).
+      neq("booking_type", "scheduled").
       gte("created_at", fiveMinAgo).
       order("created_at", { ascending: false }).
       limit(1);
