@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, ArrowRight, Loader2, X, Shield, FileText } from "lucide-react";
+import { Phone, ArrowRight, Loader2, X, Shield, FileText, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SystemLogo from "@/components/SystemLogo";
+import { useBranding } from "@/hooks/use-branding";
 
 export interface UserProfile {
   id: string;
@@ -32,6 +33,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
   const [legalContent, setLegalContent] = useState<{ privacy: string; terms: string }>({ privacy: "", terms: "" });
+  const { appName } = useBranding();
 
   useEffect(() => {
     const load = async () => {
@@ -134,44 +136,81 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-background flex flex-col">
-      {/* Compact header with gradient */}
-      <div className="relative bg-gradient-to-br from-primary to-primary-dark pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex items-center justify-center gap-3 py-6 sm:py-8">
+    <div className="fixed inset-0 z-40 bg-background flex flex-col overflow-hidden">
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-1/2 -right-1/2 w-full h-full rounded-full bg-primary/[0.04] blur-3xl" />
+        <div className="absolute -bottom-1/3 -left-1/3 w-2/3 h-2/3 rounded-full bg-primary/[0.06] blur-3xl" />
+      </div>
+
+      {/* Top hero section */}
+      <div className="relative pt-[env(safe-area-inset-top,0px)]">
+        <div className="relative overflow-hidden">
+          {/* Gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary-dark" />
+          
+          {/* Decorative circles */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 18, stiffness: 220 }}
-            className="w-12 h-12 rounded-xl bg-primary-foreground/25 backdrop-blur-sm flex items-center justify-center p-1.5 shadow-md"
-          >
-            <SystemLogo className="w-full h-full object-contain" alt="HDA" />
-          </motion.div>
+            animate={{ rotate: 360 }}
+            transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-20 -right-20 w-56 h-56 rounded-full border border-primary-foreground/10"
+          />
           <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <h1 className="text-lg font-extrabold text-primary-foreground tracking-tight leading-none">
-              HDA <span className="opacity-70 font-bold">{mode === "driver" ? "DRIVER" : "TAXI"}</span>
-            </h1>
-            <p className="text-[10px] text-primary-foreground/60 font-medium tracking-wider uppercase mt-0.5">
-              On Time · Every Time
-            </p>
-          </motion.div>
+            animate={{ rotate: -360 }}
+            transition={{ duration: 45, repeat: Infinity, ease: "linear" }}
+            className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full border border-primary-foreground/10"
+          />
+
+          <div className="relative flex flex-col items-center py-10 sm:py-14 px-6">
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", damping: 15, stiffness: 200 }}
+              className="w-20 h-20 rounded-[1.25rem] bg-primary-foreground/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-lg shadow-black/10 ring-1 ring-primary-foreground/20"
+            >
+              <SystemLogo className="w-full h-full object-contain drop-shadow-sm" alt="HDA" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mt-4 text-center"
+            >
+              <h1 className="text-2xl font-extrabold text-primary-foreground tracking-tight">
+                {appName || "HDA"} <span className="font-semibold opacity-70">{mode === "driver" ? "Driver" : "Taxi"}</span>
+              </h1>
+              <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                <Sparkles className="w-3 h-3 text-primary-foreground/50" />
+                <p className="text-[11px] text-primary-foreground/60 font-medium tracking-widest uppercase">
+                  On Time · Every Time
+                </p>
+                <Sparkles className="w-3 h-3 text-primary-foreground/50" />
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Curved bottom edge */}
+          <div className="absolute bottom-0 left-0 right-0">
+            <svg viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full" preserveAspectRatio="none">
+              <path d="M0 48h1440V0C1200 40 960 48 720 48S240 40 0 0v48z" fill="hsl(var(--background))" />
+            </svg>
+          </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col justify-between max-w-md mx-auto w-full">
+      <div className="flex-1 flex flex-col justify-between max-w-md mx-auto w-full relative z-10">
         <div className="flex-1 flex flex-col justify-center px-6">
           <AnimatePresence mode="wait">
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="bg-destructive/10 text-destructive text-xs px-3 py-2.5 rounded-xl mb-3 font-medium"
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-destructive/10 border border-destructive/20 text-destructive text-xs px-4 py-3 rounded-2xl mb-4 font-medium flex items-center gap-2"
               >
+                <div className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
                 {error}
               </motion.div>
             )}
@@ -179,68 +218,78 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
             {step === "phone" ? (
               <motion.div
                 key="phone"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                className="space-y-5"
               >
                 <div>
-                  <h2 className="text-base font-bold text-foreground">
+                  <h2 className="text-xl font-bold text-foreground">
                     {mode === "driver" ? "Driver Login" : "Welcome back"}
                   </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {mode === "driver" ? "Enter your registered phone number" : "Enter your phone number to continue"}
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {mode === "driver" ? "Enter your registered phone number" : "Enter your phone number to get started"}
                   </p>
                 </div>
 
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-muted-foreground">
-                    <Phone className="w-3.5 h-3.5" />
-                    <span className="text-xs font-semibold">+960</span>
-                    <div className="w-px h-4 bg-border" />
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-muted-foreground">
+                      <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Phone className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">+960</span>
+                      <div className="w-px h-5 bg-border" />
+                    </div>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                      placeholder="7XX XXXX"
+                      className="w-full pl-[7.5rem] pr-4 py-4 bg-surface rounded-2xl text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background text-base font-medium transition-all border border-border/50 shadow-sm"
+                      autoFocus
+                      disabled={loading}
+                    />
                   </div>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                    placeholder="7XX XXXX"
-                    className="w-full pl-[5.5rem] pr-3 py-3.5 bg-surface rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm font-medium transition-shadow"
-                    autoFocus
-                    disabled={loading}
-                  />
-                </div>
 
-                <button
-                  onClick={handlePhoneSubmit}
-                  disabled={phone.length < 7 || loading}
-                  className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-md shadow-primary/20"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>Continue <ArrowRight className="w-3.5 h-3.5" /></>
-                  )}
-                </button>
+                  <motion.button
+                    onClick={handlePhoneSubmit}
+                    disabled={phone.length < 7 || loading}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full bg-gradient-to-r from-primary to-primary-dark text-primary-foreground font-semibold py-4 rounded-2xl text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>Continue <ArrowRight className="w-4 h-4" /></>
+                    )}
+                  </motion.button>
+                </div>
               </motion.div>
             ) : (
               <motion.div
                 key="otp"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
+                transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                className="space-y-5"
               >
                 <div>
-                  <h2 className="text-base font-bold text-foreground">Verify your number</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Code sent to <span className="font-semibold text-foreground">+960 {phone}</span>
+                  <h2 className="text-xl font-bold text-foreground">Verify your number</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    We sent a 6-digit code to <span className="font-semibold text-foreground">+960 {phone}</span>
                   </p>
                 </div>
 
-                <div className="flex gap-2 justify-center py-1">
+                <div className="flex gap-2.5 justify-center py-2">
                   {otp.map((digit, i) => (
-                    <input
+                    <motion.input
                       key={i}
                       ref={(el) => { otpRefs.current[i] = el; }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
                       type="tel"
                       inputMode="numeric"
                       autoComplete={i === 0 ? "one-time-code" : "off"}
@@ -248,7 +297,11 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
                       maxLength={1}
-                      className="w-11 h-12 text-center text-lg font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                      className={`w-12 h-14 text-center text-xl font-bold rounded-2xl text-foreground focus:outline-none transition-all border shadow-sm ${
+                        digit
+                          ? "bg-primary/10 border-primary/30 ring-2 ring-primary/20"
+                          : "bg-surface border-border/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/30"
+                      }`}
                       autoFocus={i === 0}
                       disabled={loading}
                     />
@@ -261,18 +314,18 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                   </div>
                 )}
 
-                <div className="flex items-center justify-center gap-3 pt-1">
+                <div className="flex items-center justify-center gap-4 pt-1">
                   <button
                     onClick={handleResend}
                     disabled={loading}
-                    className="text-xs text-primary font-semibold py-1.5 px-3 rounded-lg active:scale-95 transition-transform disabled:opacity-40"
+                    className="text-xs text-primary font-semibold py-2 px-4 rounded-xl hover:bg-primary/10 active:scale-95 transition-all disabled:opacity-40"
                   >
                     Resend code
                   </button>
-                  <span className="text-border">·</span>
+                  <span className="w-1 h-1 rounded-full bg-border" />
                   <button
                     onClick={() => { setStep("phone"); setError(""); setOtp(["", "", "", "", "", ""]); }}
-                    className="text-xs text-muted-foreground font-medium py-1.5"
+                    className="text-xs text-muted-foreground font-medium py-2 px-3 rounded-xl hover:bg-muted active:scale-95 transition-all"
                   >
                     Change number
                   </button>
@@ -282,12 +335,12 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
           </AnimatePresence>
         </div>
 
-        <div className="px-6 pb-5 pt-3">
-          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+        <div className="px-6 pb-6 pt-3">
+          <p className="text-[10px] text-muted-foreground/70 text-center leading-relaxed">
             By continuing, you agree to our{" "}
-            <button onClick={() => setLegalModal("terms")} className="text-primary font-medium underline underline-offset-2">Terms</button>
+            <button onClick={() => setLegalModal("terms")} className="text-primary/80 font-medium underline underline-offset-2 hover:text-primary">Terms</button>
             {" "}and{" "}
-            <button onClick={() => setLegalModal("privacy")} className="text-primary font-medium underline underline-offset-2">Privacy Policy</button>
+            <button onClick={() => setLegalModal("privacy")} className="text-primary/80 font-medium underline underline-offset-2 hover:text-primary">Privacy Policy</button>
           </p>
         </div>
       </div>
@@ -307,23 +360,25 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 60, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+              className="bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <div className="flex items-center gap-2">
-                  {legalModal === "privacy" ? <Shield className="w-4 h-4 text-primary" /> : <FileText className="w-4 h-4 text-primary" />}
-                  <h3 className="text-sm font-semibold text-foreground">{legalModal === "privacy" ? "Privacy Notice" : "Terms of Service"}</h3>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                    {legalModal === "privacy" ? <Shield className="w-4 h-4 text-primary" /> : <FileText className="w-4 h-4 text-primary" />}
+                  </div>
+                  <h3 className="text-sm font-bold text-foreground">{legalModal === "privacy" ? "Privacy Notice" : "Terms of Service"}</h3>
                 </div>
-                <button onClick={() => setLegalModal(null)} className="text-muted-foreground hover:text-foreground p-1"><X className="w-4 h-4" /></button>
+                <button onClick={() => setLegalModal(null)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-xl hover:bg-muted transition-colors"><X className="w-4 h-4" /></button>
               </div>
-              <div className="px-4 py-4 overflow-y-auto flex-1">
+              <div className="px-5 py-5 overflow-y-auto flex-1">
                 <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
                   {legalModal === "privacy" ? legalContent.privacy : legalContent.terms}
                 </p>
               </div>
-              <div className="px-4 py-3 border-t border-border">
-                <button onClick={() => setLegalModal(null)} className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl text-xs">
+              <div className="px-5 py-4 border-t border-border">
+                <button onClick={() => setLegalModal(null)} className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-2xl text-xs shadow-md shadow-primary/20">
                   Close
                 </button>
               </div>
