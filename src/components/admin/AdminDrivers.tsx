@@ -471,7 +471,7 @@ const AdminDrivers = () => {
     toast({ title: "Driver rejected", description: reason });
     if (driver) {
       try {
-        const msg = `Hi ${driver.first_name}, your driver registration was not approved. Reason: ${reason || "Your application was not approved"}. Please update your details and resubmit. - HDA Taxi`;
+        const msg = `Hi ${driver.first_name}, your driver registration was not approved. Reason: ${reason || "Your application was not approved"}. Please open the app to view details and resubmit your application. - HDA Taxi`;
         await supabase.functions.invoke("notify-vehicle-update", {
           body: { phone_number: driver.phone_number, country_code: driver.country_code, update_type: "driver_status", message: msg, notify_driver: true },
         });
