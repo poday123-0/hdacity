@@ -152,6 +152,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [withdrawNotes, setWithdrawNotes] = useState("");
   const [minWithdrawalAmount, setMinWithdrawalAmount] = useState(100);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
