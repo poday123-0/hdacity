@@ -112,14 +112,15 @@ const AdminDrivers = () => {
     });
     setDriverDeclines(dMap);
 
-    // Fetch driver ride types
-    const { data: dvtData } = await supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id, status");
+    // Fetch driver ride types (per vehicle)
+    const { data: dvtData } = await supabase.from("driver_vehicle_types").select("driver_id, vehicle_type_id, vehicle_id, status");
     const rtMap: Record<string, { vtId: string; status: string }[]> = {};
     (dvtData || []).forEach((row: any) => {
-      if (!rtMap[row.driver_id]) rtMap[row.driver_id] = [];
-      rtMap[row.driver_id].push({ vtId: row.vehicle_type_id, status: row.status || "approved" });
+      const key = row.vehicle_id || `driver_${row.driver_id}`;
+      if (!rtMap[key]) rtMap[key] = [];
+      rtMap[key].push({ vtId: row.vehicle_type_id, status: row.status || "approved" });
     });
-    setDriverRideTypes(rtMap);
+    setVehicleRideTypes(rtMap);
 
     setLoading(false);
   };
