@@ -1486,13 +1486,13 @@ const Index = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground">Update Available</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">A new version is ready. Refresh to get the latest.</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">A new version is ready.</p>
                 </div>
                 <button
                   onClick={() => window.location.reload()}
                   className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl active:scale-95 transition-transform shrink-0 shadow-sm"
                 >
-                  Refresh
+                  Update Now
                 </button>
               </div>
             </div>
