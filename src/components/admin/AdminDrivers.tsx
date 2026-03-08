@@ -42,6 +42,7 @@ const AdminDrivers = () => {
   const [vehicleStatusFilter, setVehicleStatusFilter] = useState("");
   const [docFilter, setDocFilter] = useState<"all" | "complete" | "incomplete">("all");
   const [rejectVehicleId, setRejectVehicleId] = useState<string | null>(null);
+  const [rejectDriverId, setRejectDriverId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [defaultCompanyId, setDefaultCompanyId] = useState<string | null>(null);
   const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
@@ -464,6 +465,23 @@ const AdminDrivers = () => {
     fetchAll();
   };
 
+  const rejectDriver = async (id: string, reason: string) => {
+    const driver = drivers.find(d => d.id === id);
+    await supabase.from("profiles").update({ status: "Rejected", rejection_reason: reason || "Your application was not approved" } as any).eq("id", id);
+    toast({ title: "Driver rejected", description: reason });
+    if (driver) {
+      try {
+        const msg = `Hi ${driver.first_name}, your driver registration was not approved. Reason: ${reason || "Your application was not approved"}. Please update your details and resubmit. - HDA Taxi`;
+        await supabase.functions.invoke("notify-vehicle-update", {
+          body: { phone_number: driver.phone_number, country_code: driver.country_code, update_type: "driver_status", message: msg, notify_driver: true },
+        });
+      } catch (e) { console.error("SMS notify failed", e); }
+    }
+    setRejectDriverId(null);
+    setRejectReason("");
+    fetchAll();
+  };
+
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -549,6 +567,29 @@ const AdminDrivers = () => {
             <div className="flex gap-3">
               <button onClick={() => { setRejectVehicleId(null); setRejectReason(""); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
               <button onClick={() => rejectVehicle(rejectVehicleId, rejectReason)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground">Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject driver modal */}
+      {rejectDriverId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => { setRejectDriverId(null); setRejectReason(""); }}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-foreground">Reject Driver</h3>
+            <p className="text-xs text-muted-foreground">Provide a reason so the driver knows what to correct and resubmit.</p>
+            <div className="space-y-2">
+              {["Incomplete or missing documents", "Blurry or unreadable documents", "ID card information doesn't match", "License expired or invalid", "Profile information incorrect"].map((r) => (
+                <button key={r} onClick={() => setRejectReason(r)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors ${rejectReason === r ? "bg-primary/10 text-primary font-semibold border border-primary/30" : "bg-surface text-foreground hover:bg-surface/80 border border-border"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Or type a custom reason..." className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" rows={2} />
+            <div className="flex gap-3">
+              <button onClick={() => { setRejectDriverId(null); setRejectReason(""); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-surface text-foreground border border-border">Cancel</button>
+              <button onClick={() => rejectDriver(rejectDriverId, rejectReason)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground">Reject Driver</button>
             </div>
           </div>
         </div>
@@ -756,9 +797,14 @@ const AdminDrivers = () => {
                           {driver.status}
                         </span>
                         {isPendingDriver && (
-                          <button onClick={() => toggleStatus(driver.id, driver.status)} className="flex items-center gap-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-colors">
-                            <ShieldCheck className="w-3 h-3" /> Approve Driver
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => toggleStatus(driver.id, driver.status)} className="flex items-center gap-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-colors">
+                              <ShieldCheck className="w-3 h-3" /> Approve
+                            </button>
+                            <button onClick={() => { setRejectDriverId(driver.id); setRejectReason(""); }} className="flex items-center gap-1 px-2.5 py-1 bg-destructive/10 text-destructive rounded-lg text-[10px] font-bold hover:bg-destructive/20 transition-colors">
+                              <XCircle className="w-3 h-3" /> Reject
+                            </button>
+                          </div>
                         )}
                       </div>
 
