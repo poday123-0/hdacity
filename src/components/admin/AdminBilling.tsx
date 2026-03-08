@@ -514,7 +514,7 @@ const AdminBilling = () => {
         </div>
       )}
 
-      {/* Bulk Fee-Free Modal */}
+      {/* Bulk Free Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBulkModal(false)}>
           <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md space-y-5" onClick={(e) => e.stopPropagation()}>

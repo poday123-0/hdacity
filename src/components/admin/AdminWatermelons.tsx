@@ -486,7 +486,7 @@ const AdminWatermelons = () => {
             )}
             {promoType === "fee_free" && (
               <div>
-                <Label>Fee-Free Months</Label>
+                <Label>Free Months</Label>
                 <Input type="number" min="1" max="12" value={feeMonths} onChange={e => setFeeMonths(e.target.value)} />
               </div>
             )}
