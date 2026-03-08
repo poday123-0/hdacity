@@ -513,6 +513,7 @@ const AdminCompetitions = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(comp.start_date), "MMM d")} — {format(new Date(comp.end_date), "MMM d, yyyy")} · {comp.period_type}
+                  {comp.vehicle_type_id && ` · ${vehicleTypes.find(vt => vt.id === comp.vehicle_type_id)?.name || "Vehicle Type"}`}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">

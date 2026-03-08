@@ -106,14 +106,28 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
 
   const fetchCompetitions = async () => {
     setLoading(true);
+    
+    // Get driver's approved vehicle types
+    const { data: driverVTs } = await supabase
+      .from("driver_vehicle_types")
+      .select("vehicle_type_id")
+      .eq("driver_id", driverId)
+      .eq("status", "approved");
+    const myVehicleTypeIds = (driverVTs || []).map((d: any) => d.vehicle_type_id);
+
     const { data } = await supabase
       .from("competitions")
       .select("*")
       .in("status", ["active", "completed"])
       .eq("is_active", true)
       .order("start_date", { ascending: false })
-      .limit(10);
-    const comps = (data || []) as Competition[];
+      .limit(20);
+    
+    // Filter: show competitions that have no vehicle type filter OR match driver's vehicle types
+    const allComps = (data || []) as Competition[];
+    const comps = allComps.filter(c => 
+      !c.vehicle_type_id || myVehicleTypeIds.includes(c.vehicle_type_id)
+    );
     setCompetitions(comps);
 
     // Auto-select first active competition
