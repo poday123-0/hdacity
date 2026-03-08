@@ -741,8 +741,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Block new trips if driver already has an active trip
     if (currentTrip) return;
 
-    // Skip trips that don't match driver's eligible vehicle types
-    if (trip.vehicle_type_id && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
+    // Skip trips that don't match the driver's currently selected vehicle type
+    if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
+      console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} does not match active vehicle type ${activeVehicleTypeIdRef.current} — skipping`);
+      return;
+    }
+    // Fallback: if no active vehicle type set, check against all eligible types
+    if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
       console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} not in driver's eligible types — skipping`);
       return;
     }
