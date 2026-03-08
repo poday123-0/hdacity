@@ -24,8 +24,10 @@ interface RegDraft {
   avatarUrl: string | null;
   idCardFront: string | null;
   idCardBack: string | null;
+  idCardExpiry: string;
   licenseFront: string | null;
   licenseBack: string | null;
+  licenseExpiry: string;
   taxiPermitFront: string | null;
   taxiPermitBack: string | null;
   plateNumber: string;
