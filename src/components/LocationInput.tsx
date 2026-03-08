@@ -765,10 +765,16 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
                     {(() => {
                       const today = new Date();
                       const dates = [];
+                      const toLocalIso = (dt: Date) => {
+                        const y = dt.getFullYear();
+                        const m = String(dt.getMonth() + 1).padStart(2, '0');
+                        const d = String(dt.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                      };
                       for (let i = 0; i < 5; i++) {
                         const d = new Date(today);
                         d.setDate(today.getDate() + i);
-                        const iso = d.toISOString().split("T")[0];
+                        const iso = toLocalIso(d);
                         const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en", { weekday: "short" });
                         const dateNum = d.getDate();
                         const month = d.toLocaleDateString("en", { month: "short" });
