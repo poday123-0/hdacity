@@ -236,7 +236,7 @@ const Index = () => {
           .select("id, status")
           .eq("phone_number", userProfile.phone_number)
           .eq("user_type", "Driver")
-          .in("status", ["Pending", "Pending Review"])
+          .in("status", ["Pending", "Pending Review", "Rejected"])
           .maybeSingle();
         if (pendingCheck) {
           // Trigger full data load
