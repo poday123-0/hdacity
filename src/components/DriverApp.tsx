@@ -1169,6 +1169,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setTaxiPermitFrontUrl((data as any)?.taxi_permit_front_url || null);
         setTaxiPermitBackUrl((data as any)?.taxi_permit_back_url || null);
         setProfileStatus(data?.status || "Pending");
+        setProfileRejectionReason((data as any)?.rejection_reason || "");
         // Check if driver is on billing hold
         if (data?.status === "Billing_hold") {
           setBillingHold(true);
