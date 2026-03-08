@@ -1279,7 +1279,7 @@ const Index = () => {
         userName={userProfile?.first_name} 
         userProfile={userProfile} 
         onNotificationPress={() => setShowPassengerNotifs(true)}
-        onDriverMode={hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
+        onDriverMode={hasApprovedDriverVehicle ? () => handleSwitchMode("driver") : undefined}
         onRegisterDriver={!hasDriverProfile ? () => handleSwitchMode("driver") : undefined}
         onProfileUpdate={(updated) => {
           setUserProfile(updated);
