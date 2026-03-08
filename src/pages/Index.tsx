@@ -106,6 +106,7 @@ const Index = () => {
   const [tripStatus, setTripStatus] = useState<string>("accepted");
   const [showPassengerCancelConfirm, setShowPassengerCancelConfirm] = useState(false);
   const [showCancelledByDriverPopup, setShowCancelledByDriverPopup] = useState(false);
+  const [cancelledByDriverReason, setCancelledByDriverReason] = useState("");
   const missingProfileChecksRef = useRef(0);
 
   // Passenger font size
