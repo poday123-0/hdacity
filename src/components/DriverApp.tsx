@@ -66,7 +66,7 @@ import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
-import { usePushNotifications } from "@/hooks/use-push-notifications";
+
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
