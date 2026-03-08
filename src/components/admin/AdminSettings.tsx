@@ -278,7 +278,7 @@ const AdminSettings = () => {
         const file = e.target.files?.[0]; if (!file || !brandingUploadKey) return;
         setUploadingBranding(brandingUploadKey);
         const path = `branding/${brandingUploadKey}_${Date.now()}.${file.name.split(".").pop()}`;
-        const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+        const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true, contentType: file.type });
         if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); setUploadingBranding(null); return; }
         const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
         const url = `${urlData.publicUrl}?t=${Date.now()}`;
