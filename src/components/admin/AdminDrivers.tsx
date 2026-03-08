@@ -143,7 +143,9 @@ const AdminDrivers = () => {
 
   // Filtered drivers
   const filteredDrivers = drivers.filter(d => {
-    if (statusFilter !== "all" && d.status !== statusFilter) return false;
+    if (statusFilter === "Pending" && d.status !== "Pending" && d.status !== "Pending Review") return false;
+    else if (statusFilter === "Rejected" && d.status !== "Rejected") return false;
+    else if (statusFilter !== "all" && statusFilter !== "Pending" && statusFilter !== "Rejected" && d.status !== statusFilter) return false;
     if (companyFilter && d.company_id !== companyFilter) return false;
     if (docFilter === "complete" && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4) return false;
     if (docFilter === "incomplete" && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length >= 4) return false;
