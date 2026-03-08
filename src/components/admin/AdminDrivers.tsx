@@ -1188,15 +1188,24 @@ const AdminDrivers = () => {
                         </span>
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
-                          d.status === "Active" ? "bg-green-100 text-green-700" :
-                          d.status === "Pending Review" ? "bg-orange-100 text-orange-700 ring-2 ring-orange-300 animate-pulse" :
-                          d.status === "Rejected" ? "bg-red-100 text-red-700" :
-                          d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
-                        }`}>
-                          {d.status === "Active" ? <ShieldCheck className="w-3 h-3" /> : d.status === "Pending Review" ? <Upload className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {d.status === "Pending Review" ? "🔄 Resubmitted" : d.status}
-                        </span>
+                        {d.status === "Pending Review" ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
+                            </span>
+                            <span className="text-[10px] font-bold text-orange-600">Review Needed</span>
+                          </div>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
+                            d.status === "Active" ? "bg-green-100 text-green-700" :
+                            d.status === "Rejected" ? "bg-red-100 text-red-700" :
+                            d.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                          }`}>
+                            {d.status === "Active" ? <ShieldCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                            {d.status}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1 flex-nowrap">
