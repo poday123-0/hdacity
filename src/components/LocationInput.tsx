@@ -1114,7 +1114,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
               : bookingType === "scheduled" && (!scheduledDate || !scheduledTime)
                 ? "Set date & time"
                 : scheduledTooSoon
-                  ? "Must be 30+ min from now"
+                  ? `Must be ${minScheduleLeadMin}+ min from now`
                   : bookingType === "scheduled"
                     ? "Schedule ride"
                     : bookingType === "hourly"

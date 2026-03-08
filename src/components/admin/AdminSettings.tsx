@@ -437,6 +437,7 @@ const AdminSettings = () => {
             <SettingField label="Driver Accept Timeout (sec)" settingKey="driver_accept_timeout_seconds" type="number" />
             <SettingField label="Max Drivers to Try (0 = unlimited)" settingKey="max_auto_drivers" type="number" />
             <SettingField label="Default Driver Trip Radius (km)" settingKey="default_trip_radius_km" type="number" />
+            <SettingField label="Min Scheduled Lead Time (min)" settingKey="min_scheduled_lead_minutes" type="number" placeholder="30" />
           </div>
         </div>
       </SectionCard>
