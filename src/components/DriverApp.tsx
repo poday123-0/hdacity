@@ -1820,22 +1820,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
-        <div className={`flex items-center justify-between relative transition-all duration-300 ${showProfile ? "px-2 py-1" : "px-3 py-2.5"}`}>
+        <div className={`flex items-center justify-between relative transition-all duration-300 ${showProfile ? "px-2 py-1" : "px-2 py-2.5 sm:px-3"}`}>
           {/* Left: Profile */}
-          <div className="flex items-center gap-2.5">
-            <button onClick={() => setShowProfile(true)} className={`rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-all duration-300 border border-border/30 ${showProfile ? "w-8 h-8 landscape:hidden" : "w-11 h-11"}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+            <button onClick={() => setShowProfile(true)} className={`rounded-full bg-card/90 backdrop-blur-sm shadow-md flex items-center justify-center overflow-hidden active:scale-95 transition-all duration-300 border border-border/30 shrink-0 ${showProfile ? "w-8 h-8 landscape:hidden" : "w-10 h-10 sm:w-11 sm:h-11"}`}>
               {avatarUrl ?
               <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" /> :
-
               <User className="w-5 h-5 text-foreground" />
               }
             </button>
             {!currentTrip &&
             <button
               onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
-              className="flex items-center gap-2 bg-card border border-border rounded-full pl-2 pr-3.5 py-1.5 active:scale-95 transition-transform shadow-md">
-                <SystemLogo className="w-6 h-6 object-contain rounded-full" alt="Passenger" />
-                <span className="text-sm font-bold text-primary">Passenger Mode</span>
+              className="flex items-center gap-1.5 sm:gap-2 bg-card border border-border rounded-full pl-1.5 pr-2.5 sm:pl-2 sm:pr-3.5 py-1 sm:py-1.5 active:scale-95 transition-transform shadow-md min-w-0">
+                <SystemLogo className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded-full shrink-0" alt="Passenger" />
+                <span className="text-xs sm:text-sm font-bold text-primary whitespace-nowrap">Passenger</span>
               </button>
             }
           </div>
