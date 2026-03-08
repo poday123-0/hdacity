@@ -774,9 +774,14 @@ const AdminDrivers = () => {
                           {driver.status}
                         </span>
                         {isPendingDriver && (
-                          <button onClick={() => toggleStatus(driver.id, driver.status)} className="flex items-center gap-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-colors">
-                            <ShieldCheck className="w-3 h-3" /> Approve Driver
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => toggleStatus(driver.id, driver.status)} className="flex items-center gap-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-colors">
+                              <ShieldCheck className="w-3 h-3" /> Approve
+                            </button>
+                            <button onClick={() => { setRejectDriverId(driver.id); setRejectReason(""); }} className="flex items-center gap-1 px-2.5 py-1 bg-destructive/10 text-destructive rounded-lg text-[10px] font-bold hover:bg-destructive/20 transition-colors">
+                              <XCircle className="w-3 h-3" /> Reject
+                            </button>
+                          </div>
                         )}
                       </div>
 
