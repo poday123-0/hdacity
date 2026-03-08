@@ -80,6 +80,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(savedSession?.profile || null);
   const [driverProfile, setDriverProfile] = useState<UserProfile | null>(savedSession?.driverProfile || null);
   const [hasDriverProfile, setHasDriverProfile] = useState(savedSession?.isDriver || false);
+  const [hasApprovedDriverVehicle, setHasApprovedDriverVehicle] = useState(false);
   const pushUserId = phase === "driver" ? driverProfile?.id : userProfile?.id;
   const pushUserType = phase === "driver" ? "driver" : "passenger";
   usePushNotifications(pushUserId, pushUserType);
