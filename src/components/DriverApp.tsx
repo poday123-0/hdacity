@@ -758,23 +758,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Block new trips if driver already has an active (non-scheduled) trip
     if (currentTrip) return;
 
-    // Block if driver has a scheduled trip within 15 minutes
-    if (userProfile?.id) {
-      const fifteenMinFromNow = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      const { data: upcomingScheduled } = await supabase
-        .from("trips")
-        .select("id, scheduled_at")
-        .eq("driver_id", userProfile.id)
-        .eq("status", "accepted")
-        .eq("booking_type", "scheduled")
-        .lte("scheduled_at", fifteenMinFromNow)
-        .limit(1);
-      if (upcomingScheduled && upcomingScheduled.length > 0) {
-        // Don't show new trips — driver should be heading to scheduled pickup
-        console.log(`[SCHEDULED LOCKOUT] Driver has scheduled trip ${upcomingScheduled[0].id} within 15min — blocking new trip`);
-        return;
-      }
-    }
+    // Note: Scheduled trips no longer block normal trip acceptance.
+    // The driver can accept normal trips and start scheduled rides from the banner.
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
@@ -804,8 +789,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     single();
 
     if (!freshTrip) return;
-    // Skip if trip is no longer in requested/scheduled status or already taken
-    if (freshTrip.status !== "requested" && freshTrip.status !== "scheduled") return;
+    // Skip if trip is no longer in requested status or already taken
+    if (freshTrip.status !== "requested") return;
     if (freshTrip.driver_id) return;
     // Skip if trip is older than 5 minutes
     const tripAge = Date.now() - new Date(freshTrip.requested_at).getTime();
@@ -936,8 +921,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       table: "trips"
     }, async (payload) => {
       const trip = payload.new as any;
-      // Handle broadcast trips (requested/scheduled)
-      if (trip.status === "requested" || trip.status === "scheduled") {
+      // Handle broadcast trips (requested only — scheduled trips appear in banner, not as popups)
+      if (trip.status === "requested") {
         if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
           lastSeenTripRef.current = trip.id;
