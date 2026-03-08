@@ -3607,7 +3607,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       Pending
                                     </span>}
                                   {isRejected &&
-                              <span className="shrink-0 text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                              <span className="shrink-0 text-[10px] font-bold text-white bg-destructive px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                      <XCircle className="w-3 h-3" />
                                       Rejected
                                     </span>}
                                   {isSelected && !isPending && !isRejected &&
@@ -3616,10 +3617,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                     </span>}
                                 </div>
                                 {isRejected && v.rejection_reason &&
-                            <p className="text-[11px] text-destructive mt-1 flex items-start gap-1">
-                                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
-                                    <span>{v.rejection_reason} — Please re-upload your documents below.</span>
-                                  </p>
+                            <div className="mt-2 bg-destructive/5 border border-destructive/15 rounded-lg px-3 py-2">
+                                    <p className="text-[11px] text-destructive font-medium flex items-start gap-1.5">
+                                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                      <span className="italic">"{v.rejection_reason}"</span>
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1 ml-5">Re-upload documents below to resubmit.</p>
+                                  </div>
                             }
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
                               </div>
