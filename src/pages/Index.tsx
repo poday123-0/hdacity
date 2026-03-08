@@ -178,7 +178,7 @@ const Index = () => {
       };
       setDriverProfile(dp);
       setHasDriverProfile(true);
-      // Sync to session so it persists
+      setPendingDriverData(null);
       try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (raw) {
@@ -190,6 +190,19 @@ const Index = () => {
       } catch {}
       return dp;
     }
+    // Check for pending/pending review driver profile
+    if (data && (data.status === "Pending" || data.status === "Pending Review")) {
+      // Fetch their vehicles and vehicle types for display
+      const [vehiclesRes, vtRes] = await Promise.all([
+        supabase.from("vehicles").select("*, vehicle_types(name)").eq("driver_id", data.id).order("created_at", { ascending: false }),
+        supabase.from("vehicle_types").select("id, name").eq("is_active", true),
+      ]);
+      setPendingDriverData({ profile: data, vehicles: vehiclesRes.data || [], vehicleTypes: vtRes.data || [] });
+      setHasDriverProfile(false);
+      setDriverProfile(null);
+      return null;
+    }
+    setPendingDriverData(null);
     setHasDriverProfile(false);
     setDriverProfile(null);
     return null;
