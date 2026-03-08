@@ -572,6 +572,14 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const validStops = stops.filter((s): s is ServiceLocation => s !== null);
   const scheduledAtIso = scheduledDate && scheduledTime ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString() : undefined;
 
+  // Validate scheduled time is at least 30 minutes from now
+  const scheduledTooSoon = (() => {
+    if (bookingType !== "scheduled" || !scheduledDate || !scheduledTime) return false;
+    const scheduled = new Date(`${scheduledDate}T${scheduledTime}`);
+    const minTime = new Date(Date.now() + 30 * 60 * 1000);
+    return scheduled < minTime;
+  })();
+
 
   const renderSearchResults = (fieldKey: string) => {
     if (activeField !== fieldKey) return null;
