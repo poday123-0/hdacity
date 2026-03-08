@@ -736,6 +736,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Block new trips if driver already has an active trip
     if (currentTrip) return;
 
+    // Skip trips that don't match driver's eligible vehicle types
+    if (trip.vehicle_type_id && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
+      console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} not in driver's eligible types — skipping`);
+      return;
+    }
+
     // Skip trips outside driver's radius (fail-open if no GPS)
     if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
       const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
