@@ -596,7 +596,7 @@ const Dispatch = () => {
                       <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
                     ) : lostTrips.map((t: any) => (
                       <div key={t.id} className="bg-surface border border-destructive/20 rounded-md overflow-hidden">
-                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-destructive/5 transition-colors" onClick={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}>
+                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-destructive/5 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `loss-${t.id}` ? null : `loss-${t.id}`)}>
                           <span className="text-muted-foreground whitespace-nowrap font-medium">
                             {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()}{" "}
                             {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -623,7 +623,7 @@ const Dispatch = () => {
                             {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
                           </span>
                         </div>
-                        {expandedTripId === t.id && (
+                        {expandedTripId === `loss-${t.id}` && (
                           <div className="px-2.5 pb-2 pt-1 border-t border-destructive/10 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                             <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                             <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
@@ -677,7 +677,7 @@ const Dispatch = () => {
                       }
                       return filtered.map((t: any) => (
                         <div key={t.id} className="bg-surface border border-border rounded-md overflow-hidden">
-                          <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}>
+                          <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `booking-${t.id}` ? null : `booking-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
@@ -714,7 +714,7 @@ const Dispatch = () => {
                               <MessageSquare className="w-3 h-3" />
                             </button>
                           </div>
-                          {expandedTripId === t.id && (
+                          {expandedTripId === `booking-${t.id}` && (
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                               <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                               <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
