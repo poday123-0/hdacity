@@ -815,16 +815,18 @@ const Dispatch = () => {
                               {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
                             {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
-                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
-                                CANCEL
-                              </button>
+                              <>
+                                <CountdownTimer createdAt={t.created_at} tripId={t.id} />
+                                <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
+                                  CANCEL
+                                </button>
+                              </>
                             )}
                             {!t.is_loss && t.status !== "cancelled" && (
                               <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
                                 {markingLoss === t.id ? "..." : "LOSS"}
                               </button>
                             )}
-                            {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
                           </div>
                           {expandedTripId === `booking-${t.id}` && (
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
