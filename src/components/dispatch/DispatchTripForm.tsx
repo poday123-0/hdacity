@@ -751,31 +751,41 @@ const DispatchTripForm = ({
           {/* FROM - Pickup */}
           <div className="space-y-1.5 relative">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">From*</p>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                ref={pickupInputRef}
-                type="text"
-                value={selecting === "pickup" ? searchQuery : (pickup?.address || pickupQuery)}
-                onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
-                onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (osmResults.length > 0 && !pickup) {
-                      selectLocation(osmResults[0]);
+            <div className="relative flex gap-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  ref={pickupInputRef}
+                  type="text"
+                  value={selecting === "pickup" ? searchQuery : (pickup?.address || pickupQuery)}
+                  onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
+                  onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (osmResults.length > 0 && !pickup) {
+                        selectLocation(osmResults[0]);
+                      }
+                      setTimeout(() => toButtonsRef.current?.focus(), 50);
                     }
-                    setTimeout(() => toButtonsRef.current?.focus(), 50);
-                  }
-                }}
-               placeholder="Type location (e.g., Male, Airport, Sifco...)"
-                className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              {pickup && (
-                <button tabIndex={-1} onClick={() => { setPickup(null); setPickupQuery(""); setSearchQuery(""); setSelecting("pickup"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                </button>
-              )}
+                  }}
+                 placeholder="Type location (e.g., Male, Airport, Sifco...)"
+                  className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {pickup && (
+                  <button tabIndex={-1} onClick={() => { setPickup(null); setPickupQuery(""); setSearchQuery(""); setSelecting("pickup"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMapPicker("pickup")}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-border bg-surface hover:bg-muted transition-colors"
+                title="Pick on map"
+              >
+                <Crosshair className="w-4 h-4 text-primary" />
+              </button>
             </div>
             {selecting === "pickup" && osmResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
