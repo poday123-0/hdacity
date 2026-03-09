@@ -350,11 +350,10 @@ const DispatchTripForm = ({
     return best;
   }, [serviceLocations]);
 
-  // Google Places Autocomplete service ref
-  const autocompleteServiceRef = useRef<any>(null);
-  const placesServiceRef = useRef<any>(null);
+  // Nominatim search ref for cancellation
+  const nominatimAbortRef = useRef<AbortController | null>(null);
 
-  // Instant search: local DB + Google Places Autocomplete in parallel
+  // Instant search: local DB results immediately + Nominatim for real places (shops, schools, flats etc.)
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
@@ -388,73 +387,57 @@ const DispatchTripForm = ({
     // Show local results immediately
     setOsmResults(localMatches);
 
-    // 2. Google Places Autocomplete (async, appends results)
-    const g = (window as any).google;
-    if (!g?.maps?.places?.AutocompleteService) return;
+    // 2. Nominatim search for real-world places (shops, schools, flats, etc.)
+    if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
+    const abort = new AbortController();
+    nominatimAbortRef.current = abort;
 
-    if (!autocompleteServiceRef.current) {
-      autocompleteServiceRef.current = new g.maps.places.AutocompleteService();
-    }
-
-    // Debounce Google calls
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      autocompleteServiceRef.current.getPlacePredictions(
-        {
-          input: searchQuery,
-          locationBias: { center: { lat: 4.175, lng: 73.509 }, radius: 50000 },
-          componentRestrictions: { country: "mv" },
-        },
-        (predictions: any[], status: string) => {
-          if (status !== "OK" || !predictions?.length) return;
+      // Search Maldives bounding box
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&viewbox=72.6,7.2,74.0,0.5&bounded=0&limit=8&addressdetails=1&namedetails=1&extratags=1`;
+      fetch(url, {
+        signal: abort.signal,
+        headers: { "Accept-Language": "en" },
+      })
+        .then(r => r.json())
+        .then((data: any[]) => {
+          if (!data?.length) return;
+          const nominatimResults: NominatimResult[] = data
+            .filter((item: any) => item.lat && item.lon)
+            .map((item: any, i: number) => {
+              const lat = parseFloat(item.lat);
+              const lng = parseFloat(item.lon);
+              const areaName = findNearestServiceAreaName(lat, lng);
+              const placeName = item.namedetails?.name || item.name || item.display_name?.split(",")[0] || "Location";
+              // Skip duplicates
+              const isDup = localMatches.some(lm =>
+                haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05
+              );
+              if (isDup) return null;
+              return {
+                place_id: 600000 + i,
+                display_name: `${placeName} — ${areaName}`,
+                lat: String(lat),
+                lon: String(lng),
+                name: placeName,
+                tag: areaName,
+              };
+            })
+            .filter(Boolean) as NominatimResult[];
 
-          // Get details for each prediction to get lat/lng
-          if (!placesServiceRef.current) {
-            const div = document.createElement("div");
-            placesServiceRef.current = new g.maps.places.PlacesService(div);
+          if (nominatimResults.length > 0) {
+            setOsmResults(prev => {
+              const existingCoords = new Set(prev.map(r => `${parseFloat(r.lat).toFixed(4)},${parseFloat(r.lon).toFixed(4)}`));
+              const newResults = nominatimResults.filter(nr => !existingCoords.has(`${parseFloat(nr.lat).toFixed(4)},${parseFloat(nr.lon).toFixed(4)}`));
+              return [...prev, ...newResults];
+            });
           }
+        })
+        .catch(() => { /* aborted or network error - ignore */ });
+    }, 200);
 
-          const googleResults: NominatimResult[] = [];
-          let resolved = 0;
-
-          predictions.slice(0, 5).forEach((pred, i) => {
-            placesServiceRef.current.getDetails(
-              { placeId: pred.place_id, fields: ["geometry", "name"] },
-              (place: any, detailStatus: string) => {
-                resolved++;
-                if (detailStatus === "OK" && place?.geometry?.location) {
-                  const plat = place.geometry.location.lat();
-                  const plng = place.geometry.location.lng();
-                  const areaName = findNearestServiceAreaName(plat, plng);
-                  // Avoid duplicates with local results
-                  const isDuplicate = localMatches.some(lm =>
-                    haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), plat, plng) < 0.05
-                  );
-                  if (!isDuplicate) {
-                    googleResults.push({
-                      place_id: 700000 + i,
-                      display_name: `${place.name || pred.structured_formatting?.main_text || pred.description} — ${areaName}`,
-                      lat: String(plat),
-                      lon: String(plng),
-                      name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
-                      tag: areaName,
-                    });
-                  }
-                }
-                if (resolved >= Math.min(predictions.length, 5)) {
-                  setOsmResults(prev => {
-                    // Merge: keep local results, append new google results
-                    const existingIds = new Set(prev.map(r => r.place_id));
-                    const newResults = googleResults.filter(gr => !existingIds.has(gr.place_id));
-                    return [...prev, ...newResults];
-                  });
-                }
-              }
-            );
-          });
-        }
-      );
-    }, 150);
+    return () => { abort.abort(); };
   }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName]);
 
   const selectLocation = (result: NominatimResult) => {
@@ -725,11 +708,7 @@ const DispatchTripForm = ({
                       <p className="text-[10px] text-muted-foreground truncate">{r.display_name.split("—").slice(1).join("—").trim()}</p>
                     </div>
                     {r.tag && (
-                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        r.tag === "Service Area" ? "bg-primary/15 text-primary" :
-                        r.tag === "Admin" ? "bg-amber-500/15 text-amber-600" :
-                        "bg-muted text-muted-foreground"
-                      }`}>{r.tag}</span>
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
                     )}
                   </button>
                 ))}
