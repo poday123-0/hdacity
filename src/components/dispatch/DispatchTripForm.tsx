@@ -1088,6 +1088,7 @@ const DispatchTripForm = ({
                         <span className="font-bold">{info.code}</span>
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type}</span>}
+                        {info.color && <span className="text-muted-foreground"> • {info.color}</span>}
                         <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                       </span>
