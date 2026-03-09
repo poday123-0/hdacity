@@ -1009,6 +1009,81 @@ const Dispatch = () => {
           {trackingTripId && <LiveTripTracker tripId={trackingTripId} />}
         </DialogContent>
       </Dialog>
+
+      {/* All Bookings Dialog */}
+      <Dialog open={showAllBookings} onOpenChange={setShowAllBookings}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[85vh] overflow-hidden flex flex-col" aria-describedby={undefined}>
+          <DialogTitle className="text-sm font-bold flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-primary" />
+            All Bookings ({recentTrips.length})
+          </DialogTitle>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {recentTrips.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">No bookings found</p>
+            ) : recentTrips.map((t: any) => (
+              <div
+                key={t.id}
+                className={`rounded-md overflow-hidden ${
+                  t.is_loss
+                    ? "bg-destructive/10 border border-destructive/30"
+                    : t.status === "completed"
+                      ? "bg-success/10 border border-success/30"
+                      : t.status === "cancelled"
+                        ? "bg-warning/10 border border-warning/30"
+                        : "bg-surface border border-border"
+                }`}
+              >
+                <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `all-${t.id}` ? null : `all-${t.id}`)}>
+                  <span className="text-muted-foreground whitespace-nowrap font-medium">
+                    {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {t.vehicle ? (
+                    <>
+                      {(t.vehicle as any).center_code && (
+                        <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                      )}
+                      <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                    t.is_loss ? "bg-destructive/20 text-destructive" :
+                    t.status === "cancelled" ? "bg-warning/20 text-warning" :
+                    t.status === "completed" ? "bg-success/20 text-success" :
+                    t.status === "started" ? "bg-blue-500/15 text-blue-500" :
+                    t.status === "accepted" ? "bg-success/20 text-success" :
+                    "bg-surface text-muted-foreground"
+                  }`}>{t.is_loss ? "LOSS" : t.status}</span>
+                  <span className="text-foreground truncate flex-1">
+                    {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                  </span>
+                  {t.driver && (t.status === "accepted" || t.status === "started") && (
+                    <a href={`tel:${(t.driver as any).phone_number}`} onClick={(e) => e.stopPropagation()} className="text-[9px] font-bold text-success shrink-0 px-1.5 py-0.5 rounded bg-success/15 hover:bg-success/25 transition-colors">
+                      <Phone className="w-3 h-3" />
+                    </a>
+                  )}
+                  {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
+                    <button onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); setShowAllBookings(false); }} className="text-[9px] font-bold text-primary shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors">
+                      <Navigation className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {expandedTripId === `all-${t.id}` && (
+                  <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                    <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                    <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} {t.customer_phone || ""}</span></div>
+                    <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
+                    <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                    <div><span className="text-muted-foreground">Status:</span> <span className={`font-bold ${t.is_loss ? "text-destructive" : t.status === "completed" ? "text-success" : "text-foreground"}`}>{t.is_loss ? "LOSS" : t.status?.toUpperCase()}</span></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
