@@ -930,62 +930,138 @@ const Dispatch = () => {
 
                 {/* App Requests Table */}
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border">
+                  <div className="px-3 py-2 border-b border-border bg-orange-500/5">
                     <h3 className="text-xs font-bold text-orange-500 flex items-center gap-1.5">
                       <Send className="w-3.5 h-3.5 text-orange-500" />
                       App Requests ({appRequestTrips.length})
                     </h3>
                   </div>
-                  <div className="max-h-[220px] overflow-y-auto p-1.5 space-y-1">
+                  <div className="max-h-[280px] overflow-y-auto p-1.5 space-y-1.5">
                     {appRequestTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
-                    ) : appRequestTrips.map((t: any) => (
-                      <div
-                        key={t.id}
-                        className={`rounded-md overflow-hidden ${
-                          t.status === "cancelled"
-                            ? "bg-warning/10 border border-warning/30"
-                            : t.status === "completed"
-                              ? "bg-success/10 border border-success/30"
-                              : t.status === "accepted" || t.status === "started"
-                                ? "bg-orange-500/10 border border-orange-500/30"
-                                : "bg-surface border border-border"
-                        }`}
-                      >
-                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `app-${t.id}` ? null : `app-${t.id}`)}>
-                          <span className="text-muted-foreground whitespace-nowrap font-medium">
-                            {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                            t.status === "cancelled" ? "bg-destructive/20 text-destructive" :
-                            t.status === "completed" ? "bg-success/20 text-success" :
-                            t.status === "accepted" || t.status === "started" ? "bg-orange-500/20 text-orange-500" :
-                            "bg-surface text-muted-foreground"
-                          }`}>{t.status === "cancelled" ? "No drivers available" : t.status}</span>
-                          <span className="text-foreground truncate flex-1">
-                            {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
-                          </span>
-                          {t.driver && (
-                            <span className="text-[9px] text-muted-foreground whitespace-nowrap">{(t.driver as any).first_name}</span>
+                    ) : appRequestTrips.map((t: any) => {
+                      // Status logic: cancelled without accept = no drivers, cancelled after accept = cancelled
+                      const wasAccepted = !!t.accepted_at;
+                      const statusLabel = t.status === "cancelled"
+                        ? (wasAccepted ? "Cancelled" : "No drivers available")
+                        : t.status === "completed" ? "Completed"
+                        : t.status === "accepted" ? "Accepted"
+                        : t.status === "started" ? "On Trip"
+                        : "Searching...";
+                      const statusColor = t.status === "cancelled"
+                        ? (wasAccepted ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive")
+                        : t.status === "completed" ? "bg-success/20 text-success"
+                        : t.status === "accepted" || t.status === "started" ? "bg-orange-500/20 text-orange-500"
+                        : "bg-primary/10 text-primary animate-pulse";
+                      const borderColor = t.status === "cancelled"
+                        ? (wasAccepted ? "border-warning/30" : "border-destructive/30")
+                        : t.status === "completed" ? "border-success/30"
+                        : t.status === "accepted" || t.status === "started" ? "border-orange-500/30"
+                        : "border-primary/20";
+
+                      const driver = t.driver as any;
+                      const vehicle = t.vehicle as any;
+                      const hasDriverInfo = driver && (t.status === "accepted" || t.status === "started" || t.status === "completed");
+
+                      return (
+                        <div
+                          key={t.id}
+                          className={`rounded-lg overflow-hidden bg-card border ${borderColor} transition-all`}
+                        >
+                          {/* Header row */}
+                          <div className="px-2.5 py-2 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `app-${t.id}` ? null : `app-${t.id}`)}>
+                            <span className="text-muted-foreground whitespace-nowrap font-medium">
+                              {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase whitespace-nowrap ${statusColor}`}>
+                              {statusLabel}
+                            </span>
+                            <span className="text-foreground truncate flex-1 font-medium">
+                              {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
+                            </span>
+                            {hasDriverInfo && (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {driver.avatar_url ? (
+                                  <img src={driver.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover border border-border" />
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center text-[8px] font-bold text-orange-500">
+                                    {driver.first_name?.[0] || "?"}
+                                  </div>
+                                )}
+                                <span className="text-[9px] text-foreground font-medium">{driver.first_name}</span>
+                              </div>
+                            )}
+                            {t.status === "requested" && (
+                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
+                                CANCEL
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Driver + Vehicle card (shown when accepted) */}
+                          {hasDriverInfo && expandedTripId === `app-${t.id}` && (
+                            <div className="mx-2.5 mb-2 rounded-lg bg-muted/30 border border-border p-2.5">
+                              <div className="flex items-start gap-3">
+                                {/* Driver avatar */}
+                                <div className="shrink-0">
+                                  {driver.avatar_url ? (
+                                    <img src={driver.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-orange-500/30" />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center text-sm font-bold text-orange-500 border-2 border-orange-500/30">
+                                      {driver.first_name?.[0]}{driver.last_name?.[0]}
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Driver info */}
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</span>
+                                    {driver.company_name && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{driver.company_name}</span>
+                                    )}
+                                  </div>
+                                  <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
+                                </div>
+                              </div>
+                              {/* Vehicle info */}
+                              {vehicle && (
+                                <div className="mt-2 pt-2 border-t border-border flex items-center gap-3 text-[10px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-muted-foreground">Plate:</span>
+                                    <span className="font-bold text-foreground">{vehicle.plate_number}</span>
+                                  </div>
+                                  {vehicle.color && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-muted-foreground">Color:</span>
+                                      <span className="font-medium text-foreground flex items-center gap-1">
+                                        <span className="w-2.5 h-2.5 rounded-full border border-border inline-block" style={{ backgroundColor: vehicle.color.toLowerCase() }} />
+                                        {vehicle.color}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {vehicle.center_code && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-muted-foreground">Center:</span>
+                                      <span className="font-bold text-primary">{vehicle.center_code}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           )}
-                          {t.status === "requested" && (
-                            <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
-                              CANCEL
-                            </button>
+
+                          {/* Expanded trip details */}
+                          {expandedTripId === `app-${t.id}` && (
+                            <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                              <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                              <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                            </div>
                           )}
                         </div>
-                        {expandedTripId === `app-${t.id}` && (
-                          <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                            <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
-                            <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
-                            <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
-                            <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "Waiting..."}</span></div>
-                            <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
-                            <div><span className="text-muted-foreground">Status:</span> <span className="font-bold text-foreground">{t.status?.toUpperCase()}</span></div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
