@@ -90,6 +90,7 @@ const Dispatch = () => {
   const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
+  const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
 
   // Login state
   const [phone, setPhone] = useState("");
