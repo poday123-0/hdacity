@@ -286,29 +286,6 @@ const DispatchTripForm = ({
     setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
   }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount]);
 
-  // Timer: countdown and auto-complete
-  useEffect(() => {
-    if (!timerTripId || timerSecondsLeft <= 0) return;
-    timerRef.current = setInterval(() => {
-      setTimerSecondsLeft(prev => {
-        if (prev <= 1) {
-          // Auto-complete the trip
-          clearInterval(timerRef.current!);
-          timerRef.current = null;
-          supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", timerTripId).then(() => {
-            onTripCreated();
-          });
-          setTimerTripId(null);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [timerTripId, timerSecondsLeft > 0]);
-
   // Realtime subscription for created trip
   useEffect(() => {
     if (!createdTrip?.id) return;
