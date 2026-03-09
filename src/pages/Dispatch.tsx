@@ -840,8 +840,8 @@ const Dispatch = () => {
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
-                                  {t.status !== "cancelled" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
-                                  {t.status !== "cancelled" && <span className="text-[9px] text-muted-foreground">auto-complete</span>}
+                                  {t.status !== "cancelled" && !t.is_loss && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
+                                  {t.status !== "cancelled" && !t.is_loss && <span className="text-[9px] text-muted-foreground">auto-complete</span>}
                                 </div>
                                 <div className="flex gap-2">
                                   {(t.is_loss || t.status === "cancelled") && (
