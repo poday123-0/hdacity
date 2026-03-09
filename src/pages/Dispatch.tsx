@@ -746,7 +746,16 @@ const Dispatch = () => {
                         return <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches found" : "No recent rides"}</p>;
                       }
                       return filtered.map((t: any) => (
-                        <div key={t.id} className={`rounded-md overflow-hidden ${t.status === "completed" ? "bg-green-500/10 border border-green-500/30" : "bg-surface border border-border"}`}>
+                        <div
+                          key={t.id}
+                          className={`rounded-md overflow-hidden ${
+                            t.status === "completed"
+                              ? "bg-success/10 border border-success/30"
+                              : t.status === "cancelled"
+                                ? "bg-warning/10 border border-warning/30"
+                                : "bg-surface border border-border"
+                          }`}
+                        >
                           <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `booking-${t.id}` ? null : `booking-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -780,23 +789,24 @@ const Dispatch = () => {
                             )}
                             {t.status !== "completed" && (
                               <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                t.status === "cancelled" ? "bg-warning/20 text-warning" :
                                 t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                                t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
+                                t.status === "accepted" ? "bg-warning/20 text-warning" :
                                 "bg-surface text-muted-foreground"
                               }`}>{t.status}</span>
                             )}
                             <span className="text-foreground truncate flex-1">
                               {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
-                            {t.status !== "completed" && (
-                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-amber-500 hover:text-amber-400 shrink-0 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 transition-colors">
+                            {t.status !== "completed" && t.status !== "cancelled" && (
+                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
                                 CANCEL
                               </button>
                             )}
                             <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
                               {markingLoss === t.id ? "..." : "LOSS"}
                             </button>
-                            {t.status !== "completed" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
+                            {t.status !== "completed" && t.status !== "cancelled" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
                           </div>
                           {expandedTripId === `booking-${t.id}` && (
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
