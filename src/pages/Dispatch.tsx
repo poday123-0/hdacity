@@ -802,7 +802,7 @@ const Dispatch = () => {
               </div>
 
               {/* Right — 3 Bid Forms side by side */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 min-w-0">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 min-w-0">
                 {/* Bid 1 */}
                 <DispatchTripForm
                   formIndex={0}
