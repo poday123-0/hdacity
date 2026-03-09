@@ -882,21 +882,26 @@ const Dispatch = () => {
                             </div>
                           )}
                         </div>
-                      ));
+                      ))}
+                        {filtered.length > 5 && (
+                          <button
+                            onClick={() => setShowAllBookings(true)}
+                            className="w-full text-center py-1.5 text-[10px] font-bold text-primary hover:underline"
+                          >
+                            View All {filtered.length} Bookings →
+                          </button>
+                        )}
+                      </>);
                     })()}
                   </div>
                   <div className="px-3 py-1.5 border-t border-border flex items-center justify-between">
                     <span className="text-[9px] text-muted-foreground">
-                      {bookingSearch.trim() ? `Found ${recentTrips.filter((t: any) => {
-                        const q = bookingSearch.toLowerCase().trim();
-                        const centerCode = t.vehicle?.center_code?.toLowerCase() || t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() || "";
-                        const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
-                        const pickup = (t.pickup_address || "").toLowerCase();
-                        const dropoff = (t.dropoff_address || "").toLowerCase();
-                        return centerCode.includes(q) || plateNumber.includes(q) || pickup.includes(q) || dropoff.includes(q);
-                      }).length} of ${recentTrips.length}` : `Showing ${recentTrips.length} bookings`}
+                      {`${recentTrips.length} total bookings`}
                     </span>
-                    <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowAllBookings(true)} className="text-[9px] text-primary font-medium hover:underline">View All</button>
+                      <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
+                    </div>
                   </div>
                 </div>
               </div>
