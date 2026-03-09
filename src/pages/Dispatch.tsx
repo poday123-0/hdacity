@@ -102,6 +102,7 @@ const Dispatch = () => {
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [lostTrips, setLostTrips] = useState<any[]>([]);
+  const [markingLoss, setMarkingLoss] = useState<string | null>(null);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
