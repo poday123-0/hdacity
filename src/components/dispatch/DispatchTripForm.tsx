@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw
+  ChevronUp, ChevronDown, RotateCcw, Crosshair
 } from "lucide-react";
+import MapPicker from "@/components/MapPicker";
 
 interface NominatimResult {
   place_id: number;
