@@ -7,7 +7,8 @@ import { useTheme } from "@/hooks/use-theme";
 import {
   Phone, MapPin, X, Loader2, Navigation, ArrowRight, Moon, Sun,
   MessageSquare, PackageX, AlertTriangle, LayoutDashboard, Users,
-  MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building
+  MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building,
+  Search, CalendarIcon
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
