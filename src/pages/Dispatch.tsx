@@ -721,19 +721,6 @@ const Dispatch = () => {
                               </button>
                             </div>
                             {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  supabase.from("trips").update({ is_loss: false, status: "completed", cancel_reason: null, cancelled_at: null }).eq("id", t.id).then(() => {
-                                    toast({ title: "Removed from Loss" });
-                                    refreshTrips();
-                                  });
-                                }}
-                                className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors"
-                              >
-                                Remove from Loss
-                              </button>
-                            </div>
                           </div>
                         )}
                       </div>
