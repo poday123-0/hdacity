@@ -1,0 +1,1 @@
+ALTER TABLE public.competitions ADD COLUMN rules_text text DEFAULT '';

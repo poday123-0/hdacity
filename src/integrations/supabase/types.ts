@@ -186,6 +186,7 @@ export type Database = {
           is_active: boolean
           metric: string
           period_type: string
+          rules_text: string | null
           service_location_id: string | null
           start_date: string
           status: string
@@ -202,6 +203,7 @@ export type Database = {
           is_active?: boolean
           metric?: string
           period_type?: string
+          rules_text?: string | null
           service_location_id?: string | null
           start_date: string
           status?: string
@@ -218,6 +220,7 @@ export type Database = {
           is_active?: boolean
           metric?: string
           period_type?: string
+          rules_text?: string | null
           service_location_id?: string | null
           start_date?: string
           status?: string
