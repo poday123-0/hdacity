@@ -421,7 +421,7 @@ const Dispatch = () => {
       supabase.from("trips").select(tripSelect)
         .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(200),
       supabase.from("trips").select(tripSelect)
-        .eq("dispatch_type", "dispatch_broadcast").in("status", ["requested", "accepted", "started", "completed", "cancelled"]).order("updated_at", { ascending: false }).limit(300),
+        .eq("dispatch_type", "dispatch_broadcast").in("status", ["requested", "accepted", "started", "in_progress", "completed", "cancelled"]).order("updated_at", { ascending: false }).limit(300),
       supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").eq("is_loss", true).order("created_at", { ascending: false }).limit(200),
     ]);
