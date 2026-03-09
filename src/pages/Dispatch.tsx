@@ -706,8 +706,7 @@ const Dispatch = () => {
                               return assigned.centerCode ? `${assigned.centerCode}${vehicleText ? ` • ${vehicleText}` : ""}` : "—";
                             })()}</span></div>
                             <div><span className="text-muted-foreground">Cancel Reason:</span> <span className="text-foreground">{t.cancel_reason || "—"}</span></div>
-                            {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
-                            <div className="col-span-2 flex justify-end pt-1">
+                            <div className="col-span-2 flex items-center justify-between">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -721,6 +720,7 @@ const Dispatch = () => {
                                 Remove from Loss
                               </button>
                             </div>
+                            {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
                           </div>
                         )}
                       </div>
