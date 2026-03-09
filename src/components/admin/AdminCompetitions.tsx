@@ -423,6 +423,7 @@ const AdminCompetitions = () => {
               placeholder="Enter competition rules, eligibility criteria, prize details, etc."
               rows={8}
             />
+          </div>
 
           {/* Prize Tiers */}
           <div className="space-y-3">
