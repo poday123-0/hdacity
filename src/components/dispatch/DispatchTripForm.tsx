@@ -303,49 +303,30 @@ const DispatchTripForm = ({
   };
 
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 2) { setOsmResults([]); return; }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setOsmSearching(true);
-      try {
-        // First, search admin-added service locations + named locations
-        const q = searchQuery.toLowerCase();
-        const adminMatches: NominatimResult[] = [
-          ...serviceLocations
-            .filter((sl: any) => sl.name.toLowerCase().includes(q))
-            .map((sl: any) => ({
-              place_id: Date.now() + Math.random(),
-              display_name: sl.name,
-              lat: String(sl.lat),
-              lon: String(sl.lng),
-              name: sl.name,
-            })),
-          ...namedLocations
-            .filter((nl: any) => nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q))
-            .map((nl: any) => ({
-              place_id: Date.now() + Math.random(),
-              display_name: nl.address || nl.name,
-              lat: String(nl.lat),
-              lon: String(nl.lng),
-              name: nl.name,
-            })),
-        ];
-
-        // Then fetch from Nominatim
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        const osmData = await res.json();
-
-        // Combine: admin locations first, then OSM results (deduplicated)
-        const adminNames = new Set(adminMatches.map(m => m.name?.toLowerCase()));
-        const filtered = osmData.filter((r: any) => !adminNames.has((r.name || "").toLowerCase()));
-        setOsmResults([...adminMatches, ...filtered]);
-      } catch { setOsmResults([]); }
-      setOsmSearching(false);
-    }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
+    // Instant local-only search - no external API calls
+    const q = searchQuery.toLowerCase();
+    const localMatches: NominatimResult[] = [
+      ...serviceLocations
+        .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
+        .map((sl: any, i: number) => ({
+          place_id: 900000 + i,
+          display_name: `${sl.name} — ${sl.address || "Service Area"}`,
+          lat: String(sl.lat),
+          lon: String(sl.lng),
+          name: sl.name,
+        })),
+      ...namedLocations
+        .filter((nl: any) => (nl.status === "approved") && (nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q)))
+        .map((nl: any, i: number) => ({
+          place_id: 800000 + i,
+          display_name: `${nl.name} — ${nl.address || "Named Location"}`,
+          lat: String(nl.lat),
+          lon: String(nl.lng),
+          name: nl.name,
+        })),
+    ];
+    setOsmResults(localMatches);
   }, [searchQuery, serviceLocations, namedLocations]);
 
   const selectLocation = (result: NominatimResult) => {
@@ -549,14 +530,19 @@ const DispatchTripForm = ({
           {/* Vehicle type - buttons instead of select */}
           <div className="space-y-1">
             <div className="flex flex-wrap gap-1">
-              {[...vehicleTypes].sort((a, b) => {
-                const order = ["car", "van", "mini pickup", "big pickup", "hda wav"];
+              {[...vehicleTypes]
+                .filter(vt => {
+                  const n = vt.name.toLowerCase();
+                  return !n.includes("hda wav") && !n.includes("ladies cyc") && !n.includes("hda cyc");
+                })
+                .sort((a, b) => {
+                const order = ["car", "van", "mini pickup", "big pickup"];
                 const aName = a.name.toLowerCase();
                 const bName = b.name.toLowerCase();
                 const aIdx = order.findIndex(o => aName.includes(o));
                 const bIdx = order.findIndex(o => bName.includes(o));
-                const aOrder = aIdx >= 0 ? aIdx : (aName.includes("cyc") ? 100 + order.length : 50);
-                const bOrder = bIdx >= 0 ? bIdx : (bName.includes("cyc") ? 100 + order.length : 50);
+                const aOrder = aIdx >= 0 ? aIdx : 50;
+                const bOrder = bIdx >= 0 ? bIdx : 50;
                 return aOrder - bOrder;
               }).map(vt => (
                 <button
