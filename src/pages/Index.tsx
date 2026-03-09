@@ -371,8 +371,8 @@ const Index = () => {
   });
 
   const fetchOnlineDrivers = useCallback(async () => {
-    // Only fetch drivers updated within the last 10 minutes (filters out stale/inactive)
-    const staleThreshold = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    // Only fetch drivers updated within the last 60 minutes (filters out stale/inactive)
+    const staleThreshold = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
     const { data } = await supabase
       .from("driver_locations")
