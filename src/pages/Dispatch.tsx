@@ -612,12 +612,10 @@ const Dispatch = () => {
                           ) : (
                             <span className="text-muted-foreground whitespace-nowrap italic">
                               {(() => {
-                                const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
-                                if (!raw) return "—";
-                                const code = raw.split(",")[0].trim();
-                                if (!code) return "—";
-                                const info = centerCodeIndex[code.toUpperCase()];
-                                return info ? `${code} . ${info.plate_number}` : code;
+                                const assigned = getAssignedVehicleDetails(t);
+                                if (!assigned.centerCode) return "—";
+                                const vehicleText = [assigned.color, assigned.plateNumber].filter(Boolean).join(" • ");
+                                return vehicleText ? `${assigned.centerCode} • ${vehicleText}` : assigned.centerCode;
                               })()}
                             </span>
                           )}
