@@ -92,7 +92,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   // Init map — only once
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const center = initialCenterRef.current;
+    const center = initialCenterRef.current || { lat: 4.1755, lng: 73.5093 }; // Fallback to Malé
     if (!center) return;
     const g = (window as any).google;
     if (!g?.maps) return;
