@@ -310,7 +310,7 @@ const DispatchTripForm = ({
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
         .map((sl: any) => ({
-          place_id: `sl-${sl.id}`,
+          place_id: Math.abs(sl.id?.hashCode?.() || Math.random() * 999999) as any,
           display_name: `${sl.name} — ${sl.address || "Service Area"}`,
           lat: String(sl.lat),
           lon: String(sl.lng),
