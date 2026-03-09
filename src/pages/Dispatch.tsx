@@ -463,7 +463,15 @@ const Dispatch = () => {
   };
 
   const handleDispatchCancel = async (tripId: string) => {
-    await supabase.from("trips").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancel_reason: "Cancelled by dispatch" }).eq("id", tripId);
+    await supabase
+      .from("trips")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancel_reason: "Cancelled by dispatch",
+        is_loss: true,
+      })
+      .eq("id", tripId);
     toast({ title: "Trip Cancelled" });
     refreshTrips();
   };
@@ -487,7 +495,7 @@ const Dispatch = () => {
       return () => clearInterval(iv);
     }, [createdAt, tripId]);
 
-    if (remaining <= 0) return <span className="text-[9px] font-bold text-green-500">✓</span>;
+    if (remaining <= 0) return <span className="text-[9px] font-bold text-success">✓</span>;
     const mins = Math.floor(remaining / 60000);
     const secs = Math.floor((remaining % 60000) / 1000);
     const pct = remaining / (5 * 60 * 1000);
@@ -631,13 +639,33 @@ const Dispatch = () => {
                     {lostTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
                     ) : lostTrips.map((t: any) => (
-                      <div key={t.id} className="bg-surface border border-destructive/20 rounded-md overflow-hidden">
-                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-destructive/5 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `loss-${t.id}` ? null : `loss-${t.id}`)}>
+                      <div
+                        key={t.id}
+                        className={`rounded-md overflow-hidden ${
+                          t.status === "cancelled"
+                            ? "bg-warning/10 border border-warning/30"
+                            : "bg-surface border border-destructive/20"
+                        }`}
+                      >
+                        <div
+                          className={`px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer transition-colors ${
+                            t.status === "cancelled" ? "hover:bg-warning/10" : "hover:bg-destructive/5"
+                          }`}
+                          onClick={() => setExpandedTripId(expandedTripId === `loss-${t.id}` ? null : `loss-${t.id}`)}
+                        >
                           <span className="text-muted-foreground whitespace-nowrap font-medium">
                             {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()}{" "}
                             {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
+                          <span
+                            className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              t.status === "cancelled"
+                                ? "bg-warning/20 text-warning"
+                                : "bg-destructive/15 text-destructive"
+                            }`}
+                          >
+                            LOSS STATUS
+                          </span>
                           {t.vehicle ? (
                             <>
                               {(t.vehicle as any).center_code && (
@@ -656,11 +684,17 @@ const Dispatch = () => {
                             </span>
                           )}
                           <span className="text-foreground truncate flex-1">
-                            {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
+                            {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]}{" "}
+                            <span className={t.status === "cancelled" ? "text-warning" : "text-destructive"}>→</span>{" "}
+                            {(t.dropoff_address || "").split(",")[0]}
                           </span>
                         </div>
                         {expandedTripId === `loss-${t.id}` && (
-                          <div className="px-2.5 pb-2 pt-1 border-t border-destructive/10 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                          <div
+                            className={`px-2.5 pb-2 pt-1 border-t grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] ${
+                              t.status === "cancelled" ? "border-warning/20" : "border-destructive/10"
+                            }`}
+                          >
                             <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                             <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
                             <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"}</span></div>
@@ -712,7 +746,16 @@ const Dispatch = () => {
                         return <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches found" : "No recent rides"}</p>;
                       }
                       return filtered.map((t: any) => (
-                        <div key={t.id} className={`rounded-md overflow-hidden ${t.status === "completed" ? "bg-green-500/10 border border-green-500/30" : "bg-surface border border-border"}`}>
+                        <div
+                          key={t.id}
+                          className={`rounded-md overflow-hidden ${
+                            t.status === "completed"
+                              ? "bg-success/10 border border-success/30"
+                              : t.status === "cancelled"
+                                ? "bg-warning/10 border border-warning/30"
+                                : "bg-surface border border-border"
+                          }`}
+                        >
                           <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `booking-${t.id}` ? null : `booking-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -746,23 +789,24 @@ const Dispatch = () => {
                             )}
                             {t.status !== "completed" && (
                               <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                t.status === "cancelled" ? "bg-warning/20 text-warning" :
                                 t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                                t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
+                                t.status === "accepted" ? "bg-warning/20 text-warning" :
                                 "bg-surface text-muted-foreground"
                               }`}>{t.status}</span>
                             )}
                             <span className="text-foreground truncate flex-1">
                               {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
-                            {t.status !== "completed" && (
-                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-amber-500 hover:text-amber-400 shrink-0 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 transition-colors">
+                            {t.status !== "completed" && t.status !== "cancelled" && (
+                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
                                 CANCEL
                               </button>
                             )}
                             <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
                               {markingLoss === t.id ? "..." : "LOSS"}
                             </button>
-                            {t.status !== "completed" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
+                            {t.status !== "completed" && t.status !== "cancelled" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
                           </div>
                           {expandedTripId === `booking-${t.id}` && (
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
@@ -780,6 +824,17 @@ const Dispatch = () => {
                               <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
                               <div><span className="text-muted-foreground">Status:</span> <span className="text-foreground">{t.status}</span></div>
                               {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
+
+                              <div className="col-span-2 flex justify-end gap-2 pt-1">
+                                {t.status !== "completed" && t.status !== "cancelled" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
+                                    className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
+                                  >
+                                    Cancel Trip
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
