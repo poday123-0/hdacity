@@ -102,7 +102,7 @@ const DispatchTripForm = ({
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>("");
-  const [dispatchMethod, setDispatchMethod] = useState<"broadcast" | "specific">("broadcast");
+  const [dispatchMethod, setDispatchMethod] = useState<"broadcast" | "specific">("specific");
   const [selectedDriverId, setSelectedDriverId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
