@@ -909,11 +909,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setTripStops(stopsRes.data as any[] || []);
     setScreen("ride-request");
 
-    // Auto-stop sound after 15 seconds for assigned trips
+    // Auto-stop sound after 5 seconds for assigned trips
     setTimeout(() => {
       stopAllSounds();
       tripSoundRef.current = null;
-    }, 15000);
+    }, 5000);
   };
 
   useEffect(() => {
