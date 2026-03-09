@@ -339,34 +339,123 @@ const DispatchTripForm = ({
     setTripVehicle(null);
   };
 
-  // Instant local-only search for from field
+  // Helper: find nearest service area name for a lat/lng
+  const findNearestServiceAreaName = useCallback((lat: number, lng: number): string => {
+    let best: string = "Location";
+    let bestDist = Infinity;
+    for (const sl of serviceLocations) {
+      const d = haversineKm(lat, lng, Number(sl.lat), Number(sl.lng));
+      if (d < bestDist) { bestDist = d; best = sl.name; }
+    }
+    return best;
+  }, [serviceLocations]);
+
+  // Google Places Autocomplete service ref
+  const autocompleteServiceRef = useRef<any>(null);
+  const placesServiceRef = useRef<any>(null);
+
+  // Instant search: local DB + Google Places Autocomplete in parallel
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
+
+    // 1. Instant local matches from DB
     const localMatches: NominatimResult[] = [
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
         .map((sl: any, i: number) => ({
           place_id: 900000 + i,
-          display_name: `${sl.name} — Service Area`,
+          display_name: sl.name,
           lat: String(sl.lat),
           lon: String(sl.lng),
           name: sl.name,
-          tag: "Service Area",
+          tag: sl.name,
         })),
       ...namedLocations
         .filter((nl: any) => nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q))
-        .map((nl: any, i: number) => ({
-          place_id: 800000 + i,
-          display_name: `${nl.name} — ${nl.address || "Named Location"}`,
-          lat: String(nl.lat),
-          lon: String(nl.lng),
-          name: nl.name,
-          tag: nl.suggested_by_type === "admin" ? "Admin" : nl.suggested_by_type === "driver" ? "Driver" : nl.suggested_by_type === "passenger" ? "Passenger" : "User",
-        })),
+        .map((nl: any, i: number) => {
+          const areaName = findNearestServiceAreaName(Number(nl.lat), Number(nl.lng));
+          return {
+            place_id: 800000 + i,
+            display_name: `${nl.name} — ${areaName}`,
+            lat: String(nl.lat),
+            lon: String(nl.lng),
+            name: nl.name,
+            tag: areaName,
+          };
+        }),
     ];
+    // Show local results immediately
     setOsmResults(localMatches);
-  }, [searchQuery, serviceLocations, namedLocations]);
+
+    // 2. Google Places Autocomplete (async, appends results)
+    const g = (window as any).google;
+    if (!g?.maps?.places?.AutocompleteService) return;
+
+    if (!autocompleteServiceRef.current) {
+      autocompleteServiceRef.current = new g.maps.places.AutocompleteService();
+    }
+
+    // Debounce Google calls
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input: searchQuery,
+          locationBias: { center: { lat: 4.175, lng: 73.509 }, radius: 50000 },
+          componentRestrictions: { country: "mv" },
+        },
+        (predictions: any[], status: string) => {
+          if (status !== "OK" || !predictions?.length) return;
+
+          // Get details for each prediction to get lat/lng
+          if (!placesServiceRef.current) {
+            const div = document.createElement("div");
+            placesServiceRef.current = new g.maps.places.PlacesService(div);
+          }
+
+          const googleResults: NominatimResult[] = [];
+          let resolved = 0;
+
+          predictions.slice(0, 5).forEach((pred, i) => {
+            placesServiceRef.current.getDetails(
+              { placeId: pred.place_id, fields: ["geometry", "name"] },
+              (place: any, detailStatus: string) => {
+                resolved++;
+                if (detailStatus === "OK" && place?.geometry?.location) {
+                  const plat = place.geometry.location.lat();
+                  const plng = place.geometry.location.lng();
+                  const areaName = findNearestServiceAreaName(plat, plng);
+                  // Avoid duplicates with local results
+                  const isDuplicate = localMatches.some(lm =>
+                    haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), plat, plng) < 0.05
+                  );
+                  if (!isDuplicate) {
+                    googleResults.push({
+                      place_id: 700000 + i,
+                      display_name: `${place.name || pred.structured_formatting?.main_text || pred.description} — ${areaName}`,
+                      lat: String(plat),
+                      lon: String(plng),
+                      name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
+                      tag: areaName,
+                    });
+                  }
+                }
+                if (resolved >= Math.min(predictions.length, 5)) {
+                  setOsmResults(prev => {
+                    // Merge: keep local results, append new google results
+                    const existingIds = new Set(prev.map(r => r.place_id));
+                    const newResults = googleResults.filter(gr => !existingIds.has(gr.place_id));
+                    return [...prev, ...newResults];
+                  });
+                }
+              }
+            );
+          });
+        }
+      );
+    }, 150);
+  }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName]);
 
   const selectLocation = (result: NominatimResult) => {
     const loc: StopLocation = {
