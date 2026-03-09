@@ -962,18 +962,20 @@ const DispatchTripForm = ({
                   }
                   return null;
                 })()}
-                {onlineDrivers.length === 0 && !selectedDriverId ? (
-                  <p className="text-[10px] text-muted-foreground">No drivers online</p>
-                ) : (
-                  onlineDrivers.map(d => (
-                    <button key={d.driver_id} onClick={() => { setSelectedDriverId(d.driver_id); setSelectedCenterCode(null); }} className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs transition-all ${selectedDriverId === d.driver_id ? "bg-primary/10 ring-1 ring-primary" : "bg-surface hover:bg-muted"}`}>
-                      <div>
-                        <p className="font-medium text-foreground">{d.first_name} {d.last_name}</p>
-                        <p className="text-[10px] text-muted-foreground">{d.vehicle_name} • {d.plate_number}</p>
-                      </div>
-                      {selectedDriverId === d.driver_id && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
-                    </button>
-                  ))
+                {!selectedCenterCode && (
+                  onlineDrivers.length === 0 && !selectedDriverId ? (
+                    <p className="text-[10px] text-muted-foreground">No drivers online</p>
+                  ) : (
+                    onlineDrivers.map(d => (
+                      <button key={d.driver_id} onClick={() => { setSelectedDriverId(d.driver_id); setSelectedCenterCode(null); }} className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs transition-all ${selectedDriverId === d.driver_id ? "bg-primary/10 ring-1 ring-primary" : "bg-surface hover:bg-muted"}`}>
+                        <div>
+                          <p className="font-medium text-foreground">{d.first_name} {d.last_name}</p>
+                          <p className="text-[10px] text-muted-foreground">{d.vehicle_name} • {d.plate_number}</p>
+                        </div>
+                        {selectedDriverId === d.driver_id && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
+                      </button>
+                    ))
+                  )
                 )}
               </div>
             )}
