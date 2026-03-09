@@ -999,9 +999,21 @@ const DispatchTripForm = ({
                     toast({ title: "Vehicle inactive", description: `Code "${code}" belongs to an inactive vehicle`, variant: "destructive" });
                     return;
                   }
-                  if (vCheck.blocked_until && new Date(vCheck.blocked_until) > new Date()) {
-                    const remaining = Math.ceil((new Date(vCheck.blocked_until).getTime() - Date.now()) / 60000);
-                    toast({ title: "Vehicle blocked", description: `Code "${code}" is blocked for ${remaining} more minutes`, variant: "destructive" });
+                  if (vCheck.blocked_until && new Date(vCheck.blocked_until as string) > new Date()) {
+                    const remaining = Math.ceil((new Date(vCheck.blocked_until as string).getTime() - Date.now()) / 60000);
+                    toast({
+                      title: "Vehicle blocked",
+                      description: `Code "${code}" is blocked for ${remaining} more min. Unblock?`,
+                      action: (
+                        <button
+                          className="text-xs font-bold text-primary underline ml-2"
+                          onClick={async () => {
+                            await supabase.from("vehicles").update({ blocked_until: null } as any).eq("center_code", code);
+                            toast({ title: "Unblocked", description: `${code} has been unblocked` });
+                          }}
+                        >Unblock</button>
+                      ),
+                    });
                     return;
                   }
                   addEntry({ ...cached, code });
