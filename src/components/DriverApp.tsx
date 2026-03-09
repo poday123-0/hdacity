@@ -1035,6 +1035,57 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
+  // Poll for vehicle block status
+  useEffect(() => {
+    if (screen !== "online" || !userProfile?.id) {
+      setVehicleBlockedUntil(null);
+      setBlockCountdown("");
+      return;
+    }
+
+    const checkBlockStatus = async () => {
+      const vehicleId = selectedVehicleId || (driverVehicles[0]?.id);
+      if (!vehicleId) return;
+      const { data } = await supabase
+        .from("vehicles")
+        .select("blocked_until")
+        .eq("id", vehicleId)
+        .single();
+      if (data?.blocked_until && new Date(data.blocked_until) > new Date()) {
+        setVehicleBlockedUntil(new Date(data.blocked_until));
+      } else {
+        setVehicleBlockedUntil(null);
+      }
+    };
+
+    checkBlockStatus();
+    const poll = setInterval(checkBlockStatus, 30000); // Check every 30s
+    return () => clearInterval(poll);
+  }, [screen, userProfile?.id, selectedVehicleId, driverVehicles]);
+
+  // Countdown timer for blocked vehicle
+  useEffect(() => {
+    if (!vehicleBlockedUntil) {
+      setBlockCountdown("");
+      return;
+    }
+    const tick = () => {
+      const remaining = vehicleBlockedUntil.getTime() - Date.now();
+      if (remaining <= 0) {
+        setVehicleBlockedUntil(null);
+        setBlockCountdown("");
+        return;
+      }
+      const hrs = Math.floor(remaining / 3600000);
+      const mins = Math.floor((remaining % 3600000) / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      setBlockCountdown(`${hrs}h ${mins}m ${secs}s`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [vehicleBlockedUntil]);
+
   // Poll for upcoming scheduled trips to show reminder banner
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) {
