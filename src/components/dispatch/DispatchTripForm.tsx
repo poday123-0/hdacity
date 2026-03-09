@@ -374,7 +374,18 @@ const DispatchTripForm = ({
     }
   }, []);
 
-  // Local-only search from service_locations + named_locations
+  // Check if a coordinate falls within any admin service area (10km radius)
+  const isWithinServiceArea = useCallback((lat: number, lng: number): boolean => {
+    for (const sl of serviceLocations) {
+      if (haversineKm(lat, lng, Number(sl.lat), Number(sl.lng)) <= 10) return true;
+    }
+    return false;
+  }, [serviceLocations]);
+
+  const nominatimAbortRef = useRef<AbortController | null>(null);
+  const googleAbortRef = useRef<AbortController | null>(null);
+
+  // Search: local DB + Google Places (filtered to service areas only)
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
@@ -405,9 +416,63 @@ const DispatchTripForm = ({
           };
         }),
     ];
-    // Only show local DB results (service locations + named locations)
     setOsmResults(localMatches);
-  }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName]);
+
+    // Cancel previous external requests
+    if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
+    if (googleAbortRef.current) googleAbortRef.current.abort();
+    const googleAbort = new AbortController();
+    googleAbortRef.current = googleAbort;
+
+    if (searchQuery.length < 2) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const mergeResults = (newResults: NominatimResult[]) => {
+        if (newResults.length > 0) {
+          setOsmResults(prev => {
+            const existingCoords = new Set(prev.map(r => `${parseFloat(r.lat).toFixed(4)},${parseFloat(r.lon).toFixed(4)}`));
+            const filtered = newResults.filter(nr => !existingCoords.has(`${parseFloat(nr.lat).toFixed(4)},${parseFloat(nr.lon).toFixed(4)}`));
+            return [...prev, ...filtered];
+          });
+        }
+      };
+
+      // Google Places — only show results WITHIN admin service areas
+      if (mapsKeyRef.current) {
+        supabase.functions.invoke("google-places-search", {
+          body: { query: searchQuery, key: mapsKeyRef.current },
+        }).then(({ data }) => {
+          if (googleAbort.signal.aborted) return;
+          if (!data?.results?.length) return;
+          const googleResults: NominatimResult[] = data.results
+            .filter((p: any) => p.geometry?.location)
+            .map((p: any, i: number) => {
+              const lat = p.geometry.location.lat;
+              const lng = p.geometry.location.lng;
+              // ONLY include places within admin service areas
+              if (!isWithinServiceArea(lat, lng)) return null;
+              const areaName = findNearestServiceAreaName(lat, lng);
+              const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
+              if (isDup) return null;
+              return {
+                place_id: 700000 + i,
+                display_name: `${p.name} — ${areaName}`,
+                lat: String(lat),
+                lon: String(lng),
+                name: p.name,
+                tag: areaName,
+                road: p.formatted_address?.split(",")[0] || null,
+              };
+            })
+            .filter(Boolean) as NominatimResult[];
+          mergeResults(googleResults);
+        }).catch(() => {});
+      }
+    }, 300);
+
+    return () => { googleAbort.abort(); };
+  }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName, isWithinServiceArea]);
 
   const selectLocation = (result: NominatimResult) => {
     const loc: StopLocation = {
