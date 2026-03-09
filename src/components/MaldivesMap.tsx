@@ -262,7 +262,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
         waypoints, travelMode: g.maps.TravelMode.DRIVING,
       }).then((result: any) => dr.setDirections(result))
         .catch((err: any) => console.error("Directions error:", err));
-    } else if (pickup && dropoff) {
+    } else if (pickup && dropoff && !userInteractingRef.current) {
       const bounds = new g.maps.LatLngBounds();
       bounds.extend({ lat: pickup.lat, lng: pickup.lng });
       bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
