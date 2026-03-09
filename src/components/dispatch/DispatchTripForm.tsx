@@ -1042,7 +1042,19 @@ const DispatchTripForm = ({
                   // Check if blocked
                   if ((vehicle as any).blocked_until && new Date((vehicle as any).blocked_until) > new Date()) {
                     const remaining = Math.ceil((new Date((vehicle as any).blocked_until).getTime() - Date.now()) / 60000);
-                    toast({ title: "Vehicle blocked", description: `Code "${code}" is blocked for ${remaining} more minutes`, variant: "destructive" });
+                    toast({
+                      title: "Vehicle blocked",
+                      description: `Code "${code}" is blocked for ${remaining} more min. Unblock?`,
+                      action: (
+                        <button
+                          className="text-xs font-bold text-primary underline ml-2"
+                          onClick={async () => {
+                            await supabase.from("vehicles").update({ blocked_until: null } as any).eq("center_code", code);
+                            toast({ title: "Unblocked", description: `${code} has been unblocked` });
+                          }}
+                        >Unblock</button>
+                      ),
+                    });
                     return;
                   }
 
