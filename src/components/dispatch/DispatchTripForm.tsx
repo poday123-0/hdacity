@@ -846,7 +846,15 @@ const DispatchTripForm = ({
                   </button>
                 ))}
               </div>
-            ) : (
+              <button
+                type="button"
+                onClick={() => setShowMapPicker("dropoff")}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-border bg-surface hover:bg-muted transition-colors mt-0.5"
+                title="Pick on map"
+              >
+                <Crosshair className="w-4 h-4 text-primary" />
+              </button>
+            </div>
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <input
