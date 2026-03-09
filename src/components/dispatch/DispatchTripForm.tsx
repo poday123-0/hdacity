@@ -374,11 +374,7 @@ const DispatchTripForm = ({
     }
   }, []);
 
-  // Nominatim search ref for cancellation
-  const nominatimAbortRef = useRef<AbortController | null>(null);
-  const googleAbortRef = useRef<AbortController | null>(null);
-
-  // Instant search: local DB results immediately + Google Places + Nominatim fallback
+  // Local-only search from service_locations + named_locations
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
@@ -409,99 +405,8 @@ const DispatchTripForm = ({
           };
         }),
     ];
-    // Show local results immediately
+    // Only show local DB results (service locations + named locations)
     setOsmResults(localMatches);
-
-    // Cancel previous requests
-    if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
-    if (googleAbortRef.current) googleAbortRef.current.abort();
-    const nominatimAbort = new AbortController();
-    const googleAbort = new AbortController();
-    nominatimAbortRef.current = nominatimAbort;
-    googleAbortRef.current = googleAbort;
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const mergeResults = (newResults: NominatimResult[]) => {
-        if (newResults.length > 0) {
-          setOsmResults(prev => {
-            const existingCoords = new Set(prev.map(r => `${parseFloat(r.lat).toFixed(4)},${parseFloat(r.lon).toFixed(4)}`));
-            const filtered = newResults.filter(nr => !existingCoords.has(`${parseFloat(nr.lat).toFixed(4)},${parseFloat(nr.lon).toFixed(4)}`));
-            return [...prev, ...filtered];
-          });
-        }
-      };
-
-      // Google Places Text Search (primary — best coverage for shops, businesses etc.)
-      if (mapsKeyRef.current) {
-        const googleUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=4.1755,73.5093&radius=50000&key=${mapsKeyRef.current}`;
-        // Use the new Places API via edge function proxy to avoid CORS
-        supabase.functions.invoke("google-places-search", {
-          body: { query: searchQuery, key: mapsKeyRef.current },
-        }).then(({ data }) => {
-          if (googleAbort.signal.aborted) return;
-          if (!data?.results?.length) return;
-          const googleResults: NominatimResult[] = data.results
-            .filter((p: any) => p.geometry?.location)
-            .map((p: any, i: number) => {
-              const lat = p.geometry.location.lat;
-              const lng = p.geometry.location.lng;
-              const areaName = findNearestServiceAreaName(lat, lng);
-              const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
-              if (isDup) return null;
-              return {
-                place_id: 700000 + i,
-                display_name: `${p.name} — ${areaName}`,
-                lat: String(lat),
-                lon: String(lng),
-                name: p.name,
-                tag: areaName,
-                road: p.formatted_address?.split(",")[0] || null,
-              };
-            })
-            .filter(Boolean) as NominatimResult[];
-          mergeResults(googleResults);
-        }).catch(() => {});
-      }
-
-      // Nominatim fallback (free OSM data)
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&viewbox=72.6,7.2,74.0,0.5&bounded=0&limit=8&addressdetails=1&namedetails=1&extratags=1`;
-      fetch(url, {
-        signal: nominatimAbort.signal,
-        headers: { "Accept-Language": "en" },
-      })
-        .then(r => r.json())
-        .then((data: any[]) => {
-          if (!data?.length) return;
-          const nominatimResults: NominatimResult[] = data
-            .filter((item: any) => item.lat && item.lon)
-            .map((item: any, i: number) => {
-              const lat = parseFloat(item.lat);
-              const lng = parseFloat(item.lon);
-              const areaName = findNearestServiceAreaName(lat, lng);
-              const placeName = item.namedetails?.name || item.name || item.display_name?.split(",")[0] || "Location";
-              const roadName = item.address?.road || null;
-              const isDup = localMatches.some(lm =>
-                haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05
-              );
-              if (isDup) return null;
-              return {
-                place_id: 600000 + i,
-                display_name: `${placeName} — ${areaName}`,
-                lat: String(lat),
-                lon: String(lng),
-                name: placeName,
-                tag: areaName,
-                road: roadName,
-              };
-            })
-            .filter(Boolean) as NominatimResult[];
-          mergeResults(nominatimResults);
-        })
-        .catch(() => {});
-    }, 200);
-
-    return () => { nominatimAbort.abort(); googleAbort.abort(); };
   }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName]);
 
   const selectLocation = (result: NominatimResult) => {
