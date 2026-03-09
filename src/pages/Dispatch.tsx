@@ -647,7 +647,14 @@ const Dispatch = () => {
                             </>
                           ) : (
                             <span className="text-muted-foreground whitespace-nowrap italic">
-                              {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                              {(() => {
+                                const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
+                                if (!raw) return "—";
+                                return raw.split(",").map((c: string) => c.trim()).filter(Boolean).map((code: string) => {
+                                  const info = centerCodeIndex[code.toUpperCase()];
+                                  return info ? `${code} . ${info.plate_number}` : code;
+                                }).join(", ");
+                              })()}
                             </span>
                           )}
                           <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
