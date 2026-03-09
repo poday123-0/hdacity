@@ -650,10 +650,10 @@ const Dispatch = () => {
                               {(() => {
                                 const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
                                 if (!raw) return "—";
-                                return raw.split(",").map((c: string) => c.trim()).filter(Boolean).map((code: string) => {
-                                  const info = centerCodeIndex[code.toUpperCase()];
-                                  return info ? `${code} . ${info.plate_number}` : code;
-                                }).join(", ");
+                                const code = raw.split(",")[0].trim();
+                                if (!code) return "—";
+                                const info = centerCodeIndex[code.toUpperCase()];
+                                return info ? `${code} . ${info.plate_number}` : code;
                               })()}
                             </span>
                           )}
