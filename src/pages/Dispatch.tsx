@@ -318,9 +318,9 @@ const Dispatch = () => {
         supabase
           .from("trips")
           .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
+            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
           )
-          .eq("dispatch_type", "operator")
+          .or(`dispatch_type.eq.operator${dispatcherProfile?.id ? `,created_by.eq.${dispatcherProfile.id}` : ""}`)
           .in("status", ["requested", "accepted", "started", "completed"])
           .order("created_at", { ascending: false })
           .limit(200),
@@ -370,8 +370,8 @@ const Dispatch = () => {
 
   const refreshTrips = async () => {
     const [{ data }, { data: lost }] = await Promise.all([
-      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
-        .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(200),
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
+        .or(`dispatch_type.eq.operator${dispatcherProfile?.id ? `,created_by.eq.${dispatcherProfile.id}` : ""}`).in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(200),
       supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").eq("is_loss", true).order("created_at", { ascending: false }).limit(200),
     ]);
@@ -752,6 +752,9 @@ const Dispatch = () => {
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
+                            {t.dispatch_type !== "operator" && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-blue-500/15 text-blue-500 text-[8px] font-bold whitespace-nowrap">APP</span>
+                            )}
                             {t.vehicle ? (
                               <>
                                 {(t.vehicle as any).center_code && (
