@@ -623,7 +623,7 @@ const Dispatch = () => {
                             {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
                           </span>
                         </div>
-                        {expandedTripId === t.id && (
+                        {expandedTripId === `loss-${t.id}` && (
                           <div className="px-2.5 pb-2 pt-1 border-t border-destructive/10 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                             <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                             <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
