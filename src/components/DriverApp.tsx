@@ -3049,7 +3049,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
           {/* Sticky action button - always visible */}
           <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 border-t border-border/40 shrink-0 space-y-2">
-            {/* Driver cancel trip button */}
+            {/* Driver cancel trip button - hidden for dispatch trips */}
+            {currentTrip?.dispatch_type !== "operator" && (
             <button
               onClick={() => setShowDriverCancelConfirm(true)}
               className="w-full flex items-center justify-center gap-1.5 text-destructive text-xs font-medium py-1.5 active:scale-95 transition-transform"
@@ -3057,6 +3058,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <X className="w-3.5 h-3.5" />
               Cancel Trip
             </button>
+            )}
             {driverTripPhase === "heading_to_pickup" &&
           <button onClick={async () => {
             if (!currentTrip) return;

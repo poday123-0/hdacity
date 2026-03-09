@@ -462,6 +462,42 @@ const Dispatch = () => {
     setMarkingLoss(null);
   };
 
+  const handleDispatchCancel = async (tripId: string) => {
+    await supabase.from("trips").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancel_reason: "Cancelled by dispatch" }).eq("id", tripId);
+    toast({ title: "Trip Cancelled" });
+    refreshTrips();
+  };
+
+  // Countdown timer component for accepted/started trips (5 min from created_at)
+  const CountdownTimer = ({ createdAt, tripId }: { createdAt: string; tripId: string }) => {
+    const [remaining, setRemaining] = useState(0);
+
+    useEffect(() => {
+      const endTime = new Date(createdAt).getTime() + 5 * 60 * 1000;
+      const tick = () => {
+        const left = Math.max(0, endTime - Date.now());
+        setRemaining(left);
+        if (left <= 0) {
+          // Auto-complete
+          supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", tripId).then(() => refreshTrips());
+        }
+      };
+      tick();
+      const iv = setInterval(tick, 1000);
+      return () => clearInterval(iv);
+    }, [createdAt, tripId]);
+
+    if (remaining <= 0) return <span className="text-[9px] font-bold text-green-500">✓</span>;
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    const pct = remaining / (5 * 60 * 1000);
+    return (
+      <span className={`text-[9px] font-bold tabular-nums shrink-0 ${pct < 0.2 ? "text-destructive" : "text-primary"}`}>
+        {mins}:{secs.toString().padStart(2, "0")}
+      </span>
+    );
+  };
+
   const handleLogout = () => {
     setIsAuthed(false);
     setDispatcherProfile(null);
@@ -705,14 +741,17 @@ const Dispatch = () => {
                               "bg-surface text-muted-foreground"
                             }`}>{t.status}</span>
                             <span className="text-foreground truncate flex-1">
-                              {t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                              {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
+                            {t.status !== "completed" && (
+                              <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-amber-500 hover:text-amber-400 shrink-0 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 transition-colors">
+                                CANCEL
+                              </button>
+                            )}
                             <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
                               {markingLoss === t.id ? "..." : "LOSS"}
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); viewMessages(t.id); }} className="text-muted-foreground hover:text-primary shrink-0">
-                              <MessageSquare className="w-3 h-3" />
-                            </button>
+                            {t.status !== "completed" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
                           </div>
                           {expandedTripId === `booking-${t.id}` && (
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
