@@ -648,44 +648,59 @@ const Dispatch = () => {
                         return <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches found" : "No recent rides"}</p>;
                       }
                       return filtered.map((t: any) => (
-                        <div key={t.id} className="bg-surface border border-border rounded-md px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
-                          <span className="text-muted-foreground whitespace-nowrap font-medium">
-                            {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          {t.vehicle ? (
-                            <>
-                              {(t.vehicle as any).center_code && (
-                                <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
-                              )}
-                              <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground whitespace-nowrap italic">
-                              {(() => {
-                                const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
-                                if (!raw) return "—";
-                                const code = raw.split(",")[0].trim();
-                                if (!code) return "—";
-                                const info = centerCodeIndex[code.toUpperCase()];
-                                return info ? `${code} . ${info.plate_number}` : code;
-                              })()}
+                        <div key={t.id} className="bg-surface border border-border rounded-md overflow-hidden">
+                          <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}>
+                            <span className="text-muted-foreground whitespace-nowrap font-medium">
+                              {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
+                            {t.vehicle ? (
+                              <>
+                                {(t.vehicle as any).center_code && (
+                                  <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                                )}
+                                <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground whitespace-nowrap italic">
+                                {(() => {
+                                  const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
+                                  if (!raw) return "—";
+                                  const code = raw.split(",")[0].trim();
+                                  if (!code) return "—";
+                                  const info = centerCodeIndex[code.toUpperCase()];
+                                  return info ? `${code} . ${info.plate_number}` : code;
+                                })()}
+                              </span>
+                            )}
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              t.status === "completed" ? "bg-green-500/15 text-green-500" :
+                              t.status === "started" ? "bg-blue-500/15 text-blue-500" :
+                              t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
+                              "bg-surface text-muted-foreground"
+                            }`}>{t.status}</span>
+                            <span className="text-foreground truncate flex-1">
+                              {t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                            </span>
+                            <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
+                              {markingLoss === t.id ? "..." : "LOSS"}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); viewMessages(t.id); }} className="text-muted-foreground hover:text-primary shrink-0">
+                              <MessageSquare className="w-3 h-3" />
+                            </button>
+                          </div>
+                          {expandedTripId === t.id && (
+                            <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                              <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                              <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Customer Phone:</span> <span className="text-foreground">{t.customer_phone || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
+                              <div><span className="text-muted-foreground">Driver Phone:</span> <span className="text-foreground">{t.driver ? (t.driver as any).phone_number || "—" : "—"}</span></div>
+                              <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                              <div><span className="text-muted-foreground">Status:</span> <span className="text-foreground">{t.status}</span></div>
+                              {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes}</span></div>}
+                            </div>
                           )}
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                            t.status === "completed" ? "bg-green-500/15 text-green-500" :
-                            t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                            t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
-                            "bg-surface text-muted-foreground"
-                          }`}>{t.status}</span>
-                          <span className="text-foreground truncate flex-1">
-                            {t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
-                          </span>
-                          <button onClick={() => handleMarkLoss(t.id)} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
-                            {markingLoss === t.id ? "..." : "LOSS"}
-                          </button>
-                          <button onClick={() => viewMessages(t.id)} className="text-muted-foreground hover:text-primary shrink-0">
-                            <MessageSquare className="w-3 h-3" />
-                          </button>
                         </div>
                       ));
                     })()}
