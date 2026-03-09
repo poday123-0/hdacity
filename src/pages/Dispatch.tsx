@@ -973,26 +973,27 @@ const Dispatch = () => {
                     ) : appRequestTrips.map((t: any) => {
                       // Status logic: cancelled without accept = no drivers, cancelled after accept = cancelled
                       const wasAccepted = !!t.accepted_at;
+                      const isOngoing = t.status === "accepted" || t.status === "started" || t.status === "in_progress";
                       const statusLabel = t.status === "cancelled"
                         ? (wasAccepted ? "Cancelled" : "No drivers available")
                         : t.status === "completed" ? "Completed"
                         : t.status === "accepted" ? "Accepted"
-                        : t.status === "started" ? "On Trip"
+                        : t.status === "started" || t.status === "in_progress" ? "On Trip"
                         : "Searching...";
                       const statusColor = t.status === "cancelled"
                         ? (wasAccepted ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive")
                         : t.status === "completed" ? "bg-success/20 text-success"
-                        : t.status === "accepted" || t.status === "started" ? "bg-orange-500/20 text-orange-500"
+                        : isOngoing ? "bg-orange-500/20 text-orange-500"
                         : "bg-primary/10 text-primary animate-pulse";
                       const borderColor = t.status === "cancelled"
                         ? (wasAccepted ? "border-warning/30" : "border-destructive/30")
                         : t.status === "completed" ? "border-success/30"
-                        : t.status === "accepted" || t.status === "started" ? "border-orange-500/30"
+                        : isOngoing ? "border-orange-500/30"
                         : "border-primary/20";
 
                       const driver = t.driver as any;
                       const vehicle = t.vehicle as any;
-                      const hasDriverInfo = driver && (t.status === "accepted" || t.status === "started" || t.status === "completed");
+                      const hasDriverInfo = driver && (isOngoing || t.status === "completed");
 
                       return (
                         <div
