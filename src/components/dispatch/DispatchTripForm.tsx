@@ -846,7 +846,6 @@ const DispatchTripForm = ({
                 }
               }}
             />
-          </div>
             {centerCodeResults.length > 0 && (
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {centerCodeResults.map((info) => (
