@@ -103,6 +103,7 @@ const Dispatch = () => {
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [lostTrips, setLostTrips] = useState<any[]>([]);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
+  const [bookingSearch, setBookingSearch] = useState("");
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
@@ -597,52 +598,81 @@ const Dispatch = () => {
                 {/* Todays Booking */}
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   <div className="px-3 py-2 border-b border-border">
-                    <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
-                      <Navigation className="w-3.5 h-3.5 text-primary" />
-                      Todays Booking ({recentTrips.length})
-                    </h3>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">💡 Search by center code or from location.</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                        <Navigation className="w-3.5 h-3.5 text-primary" />
+                        Todays Booking ({recentTrips.length})
+                      </h3>
+                      <input
+                        type="text"
+                        value={bookingSearch}
+                        onChange={(e) => setBookingSearch(e.target.value)}
+                        placeholder="Search..."
+                        className="h-6 w-28 px-2 text-[10px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
                   </div>
                   <div className="flex-1 overflow-y-auto max-h-[calc(100vh-420px)] p-1.5 space-y-1">
-                    {recentTrips.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">No recent rides</p>
-                    ) : recentTrips.map((t: any) => (
-                      <div key={t.id} className="bg-surface border border-border rounded-md px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
-                        <span className="text-muted-foreground whitespace-nowrap font-medium">
-                          {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                        {t.vehicle ? (
-                          <>
-                            {(t.vehicle as any).center_code && (
-                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
-                            )}
-                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground whitespace-nowrap italic">
-                            {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                    {(() => {
+                      const q = bookingSearch.toLowerCase().trim();
+                      const filtered = q ? recentTrips.filter((t: any) => {
+                        const centerCode = t.vehicle?.center_code?.toLowerCase() || t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() || "";
+                        const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
+                        const pickup = (t.pickup_address || "").toLowerCase();
+                        const dropoff = (t.dropoff_address || "").toLowerCase();
+                        return centerCode.includes(q) || plateNumber.includes(q) || pickup.includes(q) || dropoff.includes(q);
+                      }) : recentTrips;
+                      
+                      if (filtered.length === 0) {
+                        return <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches found" : "No recent rides"}</p>;
+                      }
+                      return filtered.map((t: any) => (
+                        <div key={t.id} className="bg-surface border border-border rounded-md px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
+                          <span className="text-muted-foreground whitespace-nowrap font-medium">
+                            {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
-                        )}
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                          t.status === "completed" ? "bg-green-500/15 text-green-500" :
-                          t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                          t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
-                          "bg-surface text-muted-foreground"
-                        }`}>{t.status}</span>
-                        <span className="text-foreground truncate flex-1">
-                          {t.vehicle ? `${(t.vehicle as any).plate_number}` : ""}{t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
-                        </span>
-                        <button onClick={() => handleMarkLoss(t.id)} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
-                          {markingLoss === t.id ? "..." : "LOSS"}
-                        </button>
-                        <button onClick={() => viewMessages(t.id)} className="text-muted-foreground hover:text-primary shrink-0">
-                          <MessageSquare className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                          {t.vehicle ? (
+                            <>
+                              {(t.vehicle as any).center_code && (
+                                <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                              )}
+                              <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground whitespace-nowrap italic">
+                              {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                            </span>
+                          )}
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                            t.status === "completed" ? "bg-green-500/15 text-green-500" :
+                            t.status === "started" ? "bg-blue-500/15 text-blue-500" :
+                            t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
+                            "bg-surface text-muted-foreground"
+                          }`}>{t.status}</span>
+                          <span className="text-foreground truncate flex-1">
+                            {t.vehicle ? `${(t.vehicle as any).plate_number}` : ""}{t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                          </span>
+                          <button onClick={() => handleMarkLoss(t.id)} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
+                            {markingLoss === t.id ? "..." : "LOSS"}
+                          </button>
+                          <button onClick={() => viewMessages(t.id)} className="text-muted-foreground hover:text-primary shrink-0">
+                            <MessageSquare className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ));
+                    })()}
                   </div>
                   <div className="px-3 py-1.5 border-t border-border flex items-center justify-between">
-                    <span className="text-[9px] text-muted-foreground">Showing {recentTrips.length} bookings</span>
+                    <span className="text-[9px] text-muted-foreground">
+                      {bookingSearch.trim() ? `Found ${recentTrips.filter((t: any) => {
+                        const q = bookingSearch.toLowerCase().trim();
+                        const centerCode = t.vehicle?.center_code?.toLowerCase() || t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() || "";
+                        const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
+                        const pickup = (t.pickup_address || "").toLowerCase();
+                        const dropoff = (t.dropoff_address || "").toLowerCase();
+                        return centerCode.includes(q) || plateNumber.includes(q) || pickup.includes(q) || dropoff.includes(q);
+                      }).length} of ${recentTrips.length}` : `Showing ${recentTrips.length} bookings`}
+                    </span>
                     <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
                   </div>
                 </div>
