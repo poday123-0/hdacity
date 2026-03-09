@@ -288,6 +288,18 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
                 <Target className="w-3.5 h-3.5" />
                 <span>Most trips wins</span>
               </div>
+              {selectedComp.rules_text && (
+                <>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button
+                    onClick={() => setShowRules(true)}
+                    className="flex items-center gap-1.5 text-xs text-primary font-semibold active:scale-95 transition-transform"
+                  >
+                    <ScrollText className="w-3.5 h-3.5" />
+                    <span>Terms</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Leaderboard */}
