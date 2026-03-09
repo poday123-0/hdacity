@@ -117,11 +117,6 @@ const DispatchTripForm = ({
   const [toButtonFocusIndex, setToButtonFocusIndex] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
 
-  // Post-submit timer state
-  const [timerTripId, setTimerTripId] = useState<string | null>(null);
-  const [timerSecondsLeft, setTimerSecondsLeft] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   // Post-submit tracking state (kept for realtime subscription)
   const [createdTrip, setCreatedTrip] = useState<any>(null);
   const [tripDriver, setTripDriver] = useState<any>(null);
