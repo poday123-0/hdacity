@@ -309,8 +309,8 @@ const DispatchTripForm = ({
     const localMatches: NominatimResult[] = [
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
-        .map((sl: any) => ({
-          place_id: Math.abs(sl.id?.hashCode?.() || Math.random() * 999999) as any,
+        .map((sl: any, i: number) => ({
+          place_id: 900000 + i,
           display_name: `${sl.name} — ${sl.address || "Service Area"}`,
           lat: String(sl.lat),
           lon: String(sl.lng),
@@ -318,8 +318,8 @@ const DispatchTripForm = ({
         })),
       ...namedLocations
         .filter((nl: any) => (nl.status === "approved") && (nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q)))
-        .map((nl: any) => ({
-          place_id: `nl-${nl.id}`,
+        .map((nl: any, i: number) => ({
+          place_id: 800000 + i,
           display_name: `${nl.name} — ${nl.address || "Named Location"}`,
           lat: String(nl.lat),
           lon: String(nl.lng),
