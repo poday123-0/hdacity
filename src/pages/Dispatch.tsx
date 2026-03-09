@@ -752,6 +752,9 @@ const Dispatch = () => {
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
+                            {t.dispatch_type !== "operator" && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-blue-500/15 text-blue-500 text-[8px] font-bold whitespace-nowrap">APP</span>
+                            )}
                             {t.vehicle ? (
                               <>
                                 {(t.vehicle as any).center_code && (
