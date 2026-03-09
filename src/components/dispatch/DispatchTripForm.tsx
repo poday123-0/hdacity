@@ -549,14 +549,19 @@ const DispatchTripForm = ({
           {/* Vehicle type - buttons instead of select */}
           <div className="space-y-1">
             <div className="flex flex-wrap gap-1">
-              {[...vehicleTypes].sort((a, b) => {
-                const order = ["car", "van", "mini pickup", "big pickup", "hda wav"];
+              {[...vehicleTypes]
+                .filter(vt => {
+                  const n = vt.name.toLowerCase();
+                  return !n.includes("hda wav") && !n.includes("ladies cyc") && !n.includes("hda cyc");
+                })
+                .sort((a, b) => {
+                const order = ["car", "van", "mini pickup", "big pickup"];
                 const aName = a.name.toLowerCase();
                 const bName = b.name.toLowerCase();
                 const aIdx = order.findIndex(o => aName.includes(o));
                 const bIdx = order.findIndex(o => bName.includes(o));
-                const aOrder = aIdx >= 0 ? aIdx : (aName.includes("cyc") ? 100 + order.length : 50);
-                const bOrder = bIdx >= 0 ? bIdx : (bName.includes("cyc") ? 100 + order.length : 50);
+                const aOrder = aIdx >= 0 ? aIdx : 50;
+                const bOrder = bIdx >= 0 ? bIdx : 50;
                 return aOrder - bOrder;
               }).map(vt => (
                 <button
