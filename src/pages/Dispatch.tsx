@@ -103,6 +103,7 @@ const Dispatch = () => {
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [lostTrips, setLostTrips] = useState<any[]>([]);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
+  const [bookingSearch, setBookingSearch] = useState("");
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
