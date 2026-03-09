@@ -1118,13 +1118,6 @@ const DispatchTripForm = ({
             })()}
           </div>
 
-          {/* Fare display */}
-          {estimatedFare != null && (
-            <div className="bg-primary/5 rounded-lg px-3 py-2 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Estimated Fare</span>
-              <span className="text-base font-bold text-primary">{estimatedFare} MVR</span>
-            </div>
-          )}
 
         </div>
       )}
