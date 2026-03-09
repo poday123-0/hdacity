@@ -303,49 +303,30 @@ const DispatchTripForm = ({
   };
 
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 2) { setOsmResults([]); return; }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setOsmSearching(true);
-      try {
-        // First, search admin-added service locations + named locations
-        const q = searchQuery.toLowerCase();
-        const adminMatches: NominatimResult[] = [
-          ...serviceLocations
-            .filter((sl: any) => sl.name.toLowerCase().includes(q))
-            .map((sl: any) => ({
-              place_id: Date.now() + Math.random(),
-              display_name: sl.name,
-              lat: String(sl.lat),
-              lon: String(sl.lng),
-              name: sl.name,
-            })),
-          ...namedLocations
-            .filter((nl: any) => nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q))
-            .map((nl: any) => ({
-              place_id: Date.now() + Math.random(),
-              display_name: nl.address || nl.name,
-              lat: String(nl.lat),
-              lon: String(nl.lng),
-              name: nl.name,
-            })),
-        ];
-
-        // Then fetch from Nominatim
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        const osmData = await res.json();
-
-        // Combine: admin locations first, then OSM results (deduplicated)
-        const adminNames = new Set(adminMatches.map(m => m.name?.toLowerCase()));
-        const filtered = osmData.filter((r: any) => !adminNames.has((r.name || "").toLowerCase()));
-        setOsmResults([...adminMatches, ...filtered]);
-      } catch { setOsmResults([]); }
-      setOsmSearching(false);
-    }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
+    // Instant local-only search - no external API calls
+    const q = searchQuery.toLowerCase();
+    const localMatches: NominatimResult[] = [
+      ...serviceLocations
+        .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
+        .map((sl: any) => ({
+          place_id: `sl-${sl.id}`,
+          display_name: `${sl.name} — ${sl.address || "Service Area"}`,
+          lat: String(sl.lat),
+          lon: String(sl.lng),
+          name: sl.name,
+        })),
+      ...namedLocations
+        .filter((nl: any) => (nl.status === "approved") && (nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q)))
+        .map((nl: any) => ({
+          place_id: `nl-${nl.id}`,
+          display_name: `${nl.name} — ${nl.address || "Named Location"}`,
+          lat: String(nl.lat),
+          lon: String(nl.lng),
+          name: nl.name,
+        })),
+    ];
+    setOsmResults(localMatches);
   }, [searchQuery, serviceLocations, namedLocations]);
 
   const selectLocation = (result: NominatimResult) => {
