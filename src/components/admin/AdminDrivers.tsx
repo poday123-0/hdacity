@@ -1422,6 +1422,21 @@ const AdminDrivers = () => {
                                           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${v.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                                             {v.is_active ? "Active" : "Inactive"}
                                           </span>
+                                          {v.blocked_until && new Date(v.blocked_until) > new Date() && (
+                                            <button
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await supabase.from("vehicles").update({ blocked_until: null } as any).eq("id", v.id);
+                                                toast({ title: "Unblocked", description: `${v.plate_number} has been unblocked` });
+                                                fetchAll();
+                                              }}
+                                              className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                                              title="Click to unblock"
+                                            >
+                                              <Ban className="w-3 h-3" />
+                                              Blocked · {Math.ceil((new Date(v.blocked_until).getTime() - Date.now()) / 60000)}m
+                                            </button>
+                                          )}
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-0.5">{v.make} {v.model} {v.color} {v.year ? `· ${v.year}` : ""} · {v.vehicle_types?.name || "No type"}</p>
                                         {v.rejection_reason && (
