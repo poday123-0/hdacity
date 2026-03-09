@@ -2761,12 +2761,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 eq("id", currentTrip.id).
                 single();
 
-                if (!freshTrip || (freshTrip.status !== "requested" && freshTrip.status !== "scheduled")) {
+                // Direct-assigned trips already have status "accepted" with driver_id set
+                const isDirectAssigned = freshTrip?.status === "accepted" && freshTrip?.driver_id === userProfile.id;
+
+                if (!freshTrip || (!isDirectAssigned && freshTrip.status !== "requested" && freshTrip.status !== "scheduled")) {
                   const isCancelled = freshTrip?.status === "cancelled";
                   toast({ title: isCancelled ? "Trip Cancelled" : "Trip Unavailable", description: isCancelled ? "The passenger cancelled this trip." : "This trip has already been accepted by another driver.", variant: "destructive" });
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);
+                  return;
+                }
+
+                // If direct-assigned, skip the DB update (already accepted) and go straight to navigating
+                if (isDirectAssigned) {
+                  await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+                  fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
+                  if (currentTrip.passenger_id) {
+                    notifyTripAccepted(currentTrip.passenger_id, `${userProfile.first_name} ${userProfile.last_name}`, currentTrip.id);
+                  }
+                  setScreen("navigating");
                   return;
                 }
 
