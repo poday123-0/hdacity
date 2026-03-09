@@ -620,13 +620,6 @@ const DispatchTripForm = ({
           </button>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          {/* Timer display */}
-          {timerTripId && timerSecondsLeft > 0 && (
-            <span className={`flex items-center gap-1 text-xs font-bold ${timerSecondsLeft <= 60 ? "text-destructive" : "text-primary"}`}>
-              <Timer className="w-3.5 h-3.5" />
-              {formatTimer(timerSecondsLeft)}
-            </span>
-          )}
           {estimatedFare != null && (
             <span className="flex items-center gap-1 text-sm font-bold text-primary">
               <DollarSign className="w-3.5 h-3.5" />
