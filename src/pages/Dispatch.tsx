@@ -822,7 +822,11 @@ const Dispatch = () => {
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
                                   {t.status !== "cancelled" && !t.is_loss && (
-                                    <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); if (t.status !== "completed") setTrackingTripId(t.id); }}
+                                      disabled={t.status === "completed"}
+                                      className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
                                       <Navigation className="w-3 h-3" /> Track Live
                                     </button>
                                   )}
@@ -843,12 +847,17 @@ const Dispatch = () => {
                                     </button>
                                   )}
                                   {t.status !== "cancelled" && !t.is_loss && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
-                                      className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
-                                    >
-                                      Cancel Trip
-                                    </button>
+                                    <>
+                                      <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="h-6 px-2 rounded text-[10px] font-bold bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40">
+                                        {markingLoss === t.id ? "..." : "LOSS"}
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
+                                        className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
+                                      >
+                                        Cancel Trip
+                                      </button>
+                                    </>
                                   )}
                                 </div>
                               </div>
