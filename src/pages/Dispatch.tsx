@@ -427,6 +427,14 @@ const Dispatch = () => {
     setLostItems((items as any[]) || []);
   };
 
+  const handleMarkLoss = async (tripId: string) => {
+    setMarkingLoss(tripId);
+    await supabase.from("trips").update({ is_loss: true }).eq("id", tripId);
+    toast({ title: "Marked as Loss" });
+    refreshTrips();
+    setMarkingLoss(null);
+  };
+
   const handleLogout = () => {
     setIsAuthed(false);
     setDispatcherProfile(null);
