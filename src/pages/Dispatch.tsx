@@ -927,6 +927,67 @@ const Dispatch = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* App Requests Table */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border">
+                    <h3 className="text-xs font-bold text-orange-500 flex items-center gap-1.5">
+                      <Send className="w-3.5 h-3.5 text-orange-500" />
+                      App Requests ({appRequestTrips.length})
+                    </h3>
+                  </div>
+                  <div className="max-h-[220px] overflow-y-auto p-1.5 space-y-1">
+                    {appRequestTrips.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
+                    ) : appRequestTrips.map((t: any) => (
+                      <div
+                        key={t.id}
+                        className={`rounded-md overflow-hidden ${
+                          t.status === "cancelled"
+                            ? "bg-warning/10 border border-warning/30"
+                            : t.status === "completed"
+                              ? "bg-success/10 border border-success/30"
+                              : t.status === "accepted" || t.status === "started"
+                                ? "bg-orange-500/10 border border-orange-500/30"
+                                : "bg-surface border border-border"
+                        }`}
+                      >
+                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `app-${t.id}` ? null : `app-${t.id}`)}>
+                          <span className="text-muted-foreground whitespace-nowrap font-medium">
+                            {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            t.status === "cancelled" ? "bg-warning/20 text-warning" :
+                            t.status === "completed" ? "bg-success/20 text-success" :
+                            t.status === "accepted" || t.status === "started" ? "bg-orange-500/20 text-orange-500" :
+                            "bg-surface text-muted-foreground"
+                          }`}>{t.status}</span>
+                          <span className="text-foreground truncate flex-1">
+                            {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
+                          </span>
+                          {t.driver && (
+                            <span className="text-[9px] text-muted-foreground whitespace-nowrap">{(t.driver as any).first_name}</span>
+                          )}
+                          {t.status === "requested" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
+                              CANCEL
+                            </button>
+                          )}
+                        </div>
+                        {expandedTripId === `app-${t.id}` && (
+                          <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                            <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                            <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "Waiting..."}</span></div>
+                            <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                            <div><span className="text-muted-foreground">Status:</span> <span className="font-bold text-foreground">{t.status?.toUpperCase()}</span></div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Right — 3 Bid Forms side by side */}
