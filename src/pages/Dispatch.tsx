@@ -379,9 +379,18 @@ const Dispatch = () => {
         table: "trips",
       }, (payload) => {
         const updated = payload.new as any;
-        // Instantly patch trip status in both lists for snappy UI
+        // Instantly patch trip scalar fields — preserve joined objects (driver, vehicle)
         const patchTrip = (trips: any[]) =>
-          trips.map(t => t.id === updated.id ? { ...t, status: updated.status, accepted_at: updated.accepted_at, driver_id: updated.driver_id, actual_fare: updated.actual_fare, completed_at: updated.completed_at, cancelled_at: updated.cancelled_at } : t);
+          trips.map(t => t.id === updated.id ? {
+            ...t,
+            status: updated.status,
+            accepted_at: updated.accepted_at,
+            driver_id: updated.driver_id,
+            actual_fare: updated.actual_fare,
+            completed_at: updated.completed_at,
+            cancelled_at: updated.cancelled_at,
+            vehicle_id: updated.vehicle_id,
+          } : t);
         setRecentTrips(prev => patchTrip(prev));
         setAppRequestTrips(prev => patchTrip(prev));
         setLostTrips(prev => patchTrip(prev));
