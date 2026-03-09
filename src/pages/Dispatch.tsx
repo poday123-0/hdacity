@@ -495,7 +495,7 @@ const Dispatch = () => {
       return () => clearInterval(iv);
     }, [createdAt, tripId]);
 
-    if (remaining <= 0) return <span className="text-[9px] font-bold text-green-500">✓</span>;
+    if (remaining <= 0) return <span className="text-[9px] font-bold text-success">✓</span>;
     const mins = Math.floor(remaining / 60000);
     const secs = Math.floor((remaining % 60000) / 1000);
     const pct = remaining / (5 * 60 * 1000);
