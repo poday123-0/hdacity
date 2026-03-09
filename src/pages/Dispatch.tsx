@@ -630,8 +630,13 @@ const Dispatch = () => {
                             <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"}</span></div>
                             <div><span className="text-muted-foreground">Customer Phone:</span> <span className="text-foreground">{t.customer_phone || "—"}</span></div>
                             <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
+                            <div><span className="text-muted-foreground">Vehicle:</span> <span className="text-foreground">{(() => {
+                              const assigned = getAssignedVehicleDetails(t);
+                              const vehicleText = [assigned.color, assigned.plateNumber].filter(Boolean).join(" • ");
+                              return assigned.centerCode ? `${assigned.centerCode}${vehicleText ? ` • ${vehicleText}` : ""}` : "—";
+                            })()}</span></div>
                             <div><span className="text-muted-foreground">Cancel Reason:</span> <span className="text-foreground">{t.cancel_reason || "—"}</span></div>
-                            {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes}</span></div>}
+                            {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
                           </div>
                         )}
                       </div>
