@@ -16,6 +16,7 @@ interface NominatimResult {
   lon: string;
   name?: string;
   tag?: string;
+  road?: string;
 }
 
 interface StopLocation {
