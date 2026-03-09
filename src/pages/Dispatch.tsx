@@ -825,7 +825,6 @@ const Dispatch = () => {
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                               <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                               <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
-                              <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"}</span></div>
                               <div><span className="text-muted-foreground">Customer Phone:</span> <span className="text-foreground">{t.customer_phone || "—"}</span></div>
                               <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
                               <div><span className="text-muted-foreground">Driver Phone:</span> <span className="text-foreground">{t.driver ? (t.driver as any).phone_number || "—" : "—"}</span></div>
