@@ -657,9 +657,32 @@ const DispatchTripForm = ({
             </div>
           </div>
 
-          {/* Vehicle type - buttons */}
+          {/* Vehicle type - buttons with keyboard navigation */}
           <div className="space-y-1">
-            <div className="flex flex-wrap gap-1">
+            <div
+              ref={vehicleTypeButtonsRef}
+              className="flex flex-wrap gap-1"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                const filtered = [...vehicleTypes].filter(vt => {
+                  const n = vt.name.toLowerCase();
+                  return !n.includes("hda wav") && !n.includes("ladies cyc") && !n.includes("hda cyc");
+                });
+                const count = filtered.length;
+                if (!count) return;
+                if (["ArrowRight", "ArrowDown"].includes(e.key)) {
+                  e.preventDefault();
+                  setVehicleTypeFocusIndex(prev => (prev + 1) % count);
+                } else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
+                  e.preventDefault();
+                  setVehicleTypeFocusIndex(prev => (prev - 1 + count) % count);
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  setSelectedVehicleType(filtered[vehicleTypeFocusIndex]?.id);
+                  pickupInputRef.current?.focus();
+                }
+              }}
+            >
               {[...vehicleTypes]
                 .filter(vt => {
                   const n = vt.name.toLowerCase();
@@ -674,12 +697,13 @@ const DispatchTripForm = ({
                 const aOrder = aIdx >= 0 ? aIdx : 50;
                 const bOrder = bIdx >= 0 ? bIdx : 50;
                 return aOrder - bOrder;
-              }).map(vt => (
+              }).map((vt, i) => (
                 <button
                   key={vt.id}
+                  tabIndex={-1}
                   onClick={() => setSelectedVehicleType(vt.id)}
                   className={`px-2 py-1 rounded text-[9px] font-medium transition-all border ${
-                    selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-foreground hover:bg-muted"
+                    selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : i === vehicleTypeFocusIndex ? "bg-muted border-primary/50" : "bg-surface border-border text-foreground hover:bg-muted"
                   }`}
                 >
                   {vt.name}
