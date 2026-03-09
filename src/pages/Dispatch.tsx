@@ -227,6 +227,15 @@ const Dispatch = () => {
           todayCounts.set(t.driver_id, (todayCounts.get(t.driver_id) || 0) + 1);
         });
 
+        // Fetch loss driver IDs
+        const { data: lossTrips } = await supabase
+          .from("trips")
+          .select("driver_id")
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator")
+          .not("driver_id", "is", null);
+        const lossDriverIds = new Set((lossTrips || []).map((t: any) => t.driver_id));
+
         const index: Record<string, any> = {};
         (vehicles || []).forEach((v: any) => {
           const code = (v.center_code || "").toUpperCase();
@@ -244,6 +253,7 @@ const Dispatch = () => {
             driver_phone: p?.phone_number || null,
             last_trip_date: v.driver_id ? lastTripMap.get(v.driver_id) || null : null,
             today_trips: v.driver_id ? todayCounts.get(v.driver_id) || 0 : 0,
+            has_loss: v.driver_id ? lossDriverIds.has(v.driver_id) : false,
           };
         });
 
