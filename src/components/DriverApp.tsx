@@ -239,6 +239,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverLat, setDriverLat] = useState<number | null>(null);
   const [driverLng, setDriverLng] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [vehicleBlockedUntil, setVehicleBlockedUntil] = useState<Date | null>(null);
+  const [blockCountdown, setBlockCountdown] = useState<string>("");
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const activeVehicleTypeIdRef = useRef<string | null>(null);
   const forceSessionTakeoverLogout = useCallback(() => {
