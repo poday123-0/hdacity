@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw
+  ChevronUp, ChevronDown, RotateCcw, Crosshair
 } from "lucide-react";
+import MapPicker from "@/components/MapPicker";
 
 interface NominatimResult {
   place_id: number;
@@ -116,6 +117,7 @@ const DispatchTripForm = ({
   const [vehicleTypeFocusIndex, setVehicleTypeFocusIndex] = useState(0);
   const [toButtonFocusIndex, setToButtonFocusIndex] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState<"pickup" | "dropoff" | null>(null);
 
   // Post-submit tracking state (kept for realtime subscription)
   const [createdTrip, setCreatedTrip] = useState<any>(null);
@@ -749,31 +751,41 @@ const DispatchTripForm = ({
           {/* FROM - Pickup */}
           <div className="space-y-1.5 relative">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">From*</p>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                ref={pickupInputRef}
-                type="text"
-                value={selecting === "pickup" ? searchQuery : (pickup?.address || pickupQuery)}
-                onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
-                onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (osmResults.length > 0 && !pickup) {
-                      selectLocation(osmResults[0]);
+            <div className="relative flex gap-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  ref={pickupInputRef}
+                  type="text"
+                  value={selecting === "pickup" ? searchQuery : (pickup?.address || pickupQuery)}
+                  onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
+                  onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (osmResults.length > 0 && !pickup) {
+                        selectLocation(osmResults[0]);
+                      }
+                      setTimeout(() => toButtonsRef.current?.focus(), 50);
                     }
-                    setTimeout(() => toButtonsRef.current?.focus(), 50);
-                  }
-                }}
-               placeholder="Type location (e.g., Male, Airport, Sifco...)"
-                className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              {pickup && (
-                <button tabIndex={-1} onClick={() => { setPickup(null); setPickupQuery(""); setSearchQuery(""); setSelecting("pickup"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                </button>
-              )}
+                  }}
+                 placeholder="Type location (e.g., Male, Airport, Sifco...)"
+                  className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {pickup && (
+                  <button tabIndex={-1} onClick={() => { setPickup(null); setPickupQuery(""); setSearchQuery(""); setSelecting("pickup"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMapPicker("pickup")}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-border bg-surface hover:bg-muted transition-colors"
+                title="Pick on map"
+              >
+                <Crosshair className="w-4 h-4 text-primary" />
+              </button>
             </div>
             {selecting === "pickup" && osmResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -797,9 +809,10 @@ const DispatchTripForm = ({
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">To*</p>
             {serviceLocations.length > 0 ? (
+            <div className="flex items-start gap-1">
               <div
                 ref={toButtonsRef}
-                className="flex flex-wrap gap-1.5 outline-none"
+                className="flex flex-wrap gap-1.5 outline-none flex-1"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   const count = serviceLocations.length;
@@ -833,40 +846,59 @@ const DispatchTripForm = ({
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => setShowMapPicker("dropoff")}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-border bg-surface hover:bg-muted transition-colors mt-0.5"
+                title="Pick on map"
+              >
+                <Crosshair className="w-4 h-4 text-primary" />
+              </button>
+            </div>
             ) : (
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <input
-                  ref={dropoffInputRef}
-                  type="text"
-                  value={selecting === "dropoff" ? searchQuery : (dropoff?.address || "")}
-                  onChange={e => { setSelecting("dropoff"); setSearchQuery(e.target.value); }}
-                  onFocus={() => { setSelecting("dropoff"); setSearchQuery(""); }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (osmResults.length > 0 && !dropoff) selectLocation(osmResults[0]);
-                      setTimeout(() => phoneInputRef.current?.focus(), 50);
-                    }
-                  }}
-                  placeholder="Search destination..."
-                  className="w-full pl-8 pr-8 py-2.5 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                {dropoff && (
-                  <button tabIndex={-1} onClick={() => { setDropoff(null); setSearchQuery(""); setSelecting("dropoff"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
-                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                  </button>
-                )}
-                {selecting === "dropoff" && osmResults.length > 0 && (
-                  <div className="absolute left-0 right-0 z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {osmResults.map(r => (
-                      <button key={r.place_id} onClick={() => { selectLocation(r); setTimeout(() => phoneInputRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
-                        <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <p className="text-xs text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="flex gap-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    ref={dropoffInputRef}
+                    type="text"
+                    value={selecting === "dropoff" ? searchQuery : (dropoff?.address || "")}
+                    onChange={e => { setSelecting("dropoff"); setSearchQuery(e.target.value); }}
+                    onFocus={() => { setSelecting("dropoff"); setSearchQuery(""); }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (osmResults.length > 0 && !dropoff) selectLocation(osmResults[0]);
+                        setTimeout(() => phoneInputRef.current?.focus(), 50);
+                      }
+                    }}
+                    placeholder="Search destination..."
+                    className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  {dropoff && (
+                    <button tabIndex={-1} onClick={() => { setDropoff(null); setSearchQuery(""); setSelecting("dropoff"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  )}
+                  {selecting === "dropoff" && osmResults.length > 0 && (
+                    <div className="absolute left-0 right-0 z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {osmResults.map(r => (
+                        <button key={r.place_id} onClick={() => { selectLocation(r); setTimeout(() => phoneInputRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                          <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <p className="text-xs text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMapPicker("dropoff")}
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-border bg-surface hover:bg-muted transition-colors"
+                  title="Pick on map"
+                >
+                  <Crosshair className="w-4 h-4 text-primary" />
+                </button>
               </div>
             )}
             {distanceKm != null && (
@@ -1158,6 +1190,28 @@ const DispatchTripForm = ({
         </div>
       )}
 
+      {/* Map Picker Modal */}
+      {showMapPicker && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setShowMapPicker(null)}>
+          <div className="w-full max-w-lg h-[80vh] max-h-[600px] rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <MapPicker
+              initialLat={showMapPicker === "pickup" ? (pickup?.lat || undefined) : (dropoff?.lat || undefined)}
+              initialLng={showMapPicker === "pickup" ? (pickup?.lng || undefined) : (dropoff?.lng || undefined)}
+              onConfirm={(lat, lng, name, address) => {
+                const loc = { lat, lng, address: name || address };
+                if (showMapPicker === "pickup") {
+                  setPickup(loc);
+                  setPickupQuery(loc.address);
+                } else {
+                  setDropoff(loc);
+                }
+                setShowMapPicker(null);
+              }}
+              onCancel={() => setShowMapPicker(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
