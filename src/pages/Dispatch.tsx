@@ -839,7 +839,7 @@ const Dispatch = () => {
                                 return assigned.centerCode ? `${assigned.centerCode}${vehicleText ? ` • ${vehicleText}` : ""}` : "—";
                               })()}</span></div>
                               <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
-                              <div><span className="text-muted-foreground">Status:</span> <span className={`font-bold ${t.is_loss ? "text-red-500" : t.status === "cancelled" ? "text-warning" : t.status === "completed" ? "text-green-500" : "text-foreground"}`}>{t.is_loss ? "LOSS" : t.status === "cancelled" ? "CANCELLED" : t.status}</span></div>
+                              <div><span className="text-muted-foreground">Status:</span> <span className={`font-bold ${t.is_loss ? "text-red-500" : t.status === "cancelled" ? "text-warning" : t.status === "completed" ? "text-green-500" : "text-foreground"}`}>{t.is_loss ? "LOSS" : t.status?.toUpperCase()}</span></div>
                               
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
