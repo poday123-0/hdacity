@@ -86,6 +86,7 @@ const AdminCompetitions = () => {
     end_date: "",
     service_location_id: "",
     vehicle_type_id: "",
+    rules_text: "",
   });
 
   // Prize form
@@ -146,7 +147,7 @@ const AdminCompetitions = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "" });
+    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "", rules_text: "" });
     setPrizeRows([
       { tier_rank: 1, tier_name: "Gold", prize_type: "wallet_credit", wallet_amount: 500, fee_free_months: 0, badge_label: "🥇 Champion", custom_description: "" },
       { tier_rank: 2, tier_name: "Silver", prize_type: "wallet_credit", wallet_amount: 300, fee_free_months: 0, badge_label: "🥈 Runner-up", custom_description: "" },
@@ -172,6 +173,7 @@ const AdminCompetitions = () => {
         end_date: new Date(form.end_date).toISOString(),
         service_location_id: form.service_location_id || null,
         vehicle_type_id: form.vehicle_type_id || null,
+        rules_text: form.rules_text || "",
       };
 
       let compId = editingId;
@@ -210,6 +212,7 @@ const AdminCompetitions = () => {
       end_date: comp.end_date.slice(0, 16),
       service_location_id: comp.service_location_id || "",
       vehicle_type_id: (comp as any).vehicle_type_id || "",
+      rules_text: (comp as any).rules_text || "",
     });
     setEditingId(comp.id);
     // Load prizes
@@ -408,6 +411,18 @@ const AdminCompetitions = () => {
               <label className="text-xs font-medium text-muted-foreground">End Date *</label>
               <input type="datetime-local" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className={inputCls} />
             </div>
+          </div>
+
+          {/* Rules / Terms */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Competition Rules / Terms (shown to drivers)</label>
+            <textarea
+              value={form.rules_text}
+              onChange={e => setForm(f => ({ ...f, rules_text: e.target.value }))}
+              className="w-full px-3 py-2.5 bg-surface rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary border border-border/40 min-h-[150px]"
+              placeholder="Enter competition rules, eligibility criteria, prize details, etc."
+              rows={8}
+            />
           </div>
 
           {/* Prize Tiers */}

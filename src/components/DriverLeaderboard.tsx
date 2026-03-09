@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trophy, ChevronLeft, Medal, Clock, Target } from "lucide-react";
+import { Trophy, ChevronLeft, Medal, Clock, Target, ScrollText, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 
@@ -13,6 +13,7 @@ interface Competition {
   end_date: string;
   status: string;
   vehicle_type_id: string | null;
+  rules_text?: string;
 }
 
 interface Entry {
@@ -67,6 +68,7 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
   const [myRank, setMyRank] = useState<number | null>(null);
   const [myTrips, setMyTrips] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     fetchCompetitions();
@@ -286,6 +288,18 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
                 <Target className="w-3.5 h-3.5" />
                 <span>Most trips wins</span>
               </div>
+              {selectedComp.rules_text && (
+                <>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button
+                    onClick={() => setShowRules(true)}
+                    className="flex items-center gap-1.5 text-xs text-primary font-semibold active:scale-95 transition-transform"
+                  >
+                    <ScrollText className="w-3.5 h-3.5" />
+                    <span>Terms</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Leaderboard */}
@@ -348,6 +362,50 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
           </>
         )}
       </div>
+
+      {/* Rules Popup */}
+      <AnimatePresence>
+        {showRules && selectedComp?.rules_text && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowRules(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-background rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-primary to-primary/80 px-5 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ScrollText className="w-5 h-5 text-primary-foreground" />
+                  <h3 className="text-base font-bold text-primary-foreground">Competition Rules</h3>
+                </div>
+                <button
+                  onClick={() => setShowRules(false)}
+                  className="w-8 h-8 rounded-xl bg-primary-foreground/20 flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <X className="w-4 h-4 text-primary-foreground" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-5 py-4 overflow-y-auto max-h-[calc(80vh-64px)]">
+                <p className="text-xs font-semibold text-primary mb-3">{selectedComp.title}</p>
+                <div className="text-sm text-foreground leading-relaxed whitespace-pre-line">
+                  {selectedComp.rules_text}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
