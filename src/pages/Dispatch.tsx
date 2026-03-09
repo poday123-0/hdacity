@@ -729,10 +729,13 @@ const Dispatch = () => {
                         return centerCode.includes(q) || plateNumber.includes(q) || pickup.includes(q) || dropoff.includes(q);
                       }) : recentTrips;
                       
+                      const displayTrips = filtered.slice(0, 5);
+                      
                       if (filtered.length === 0) {
                         return <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches found" : "No recent rides"}</p>;
                       }
-                      return filtered.map((t: any) => (
+                      return (<>
+                        {displayTrips.map((t: any) => (
                         <div
                           key={t.id}
                           className={`rounded-md overflow-hidden ${
