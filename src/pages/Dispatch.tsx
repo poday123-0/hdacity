@@ -712,7 +712,7 @@ const Dispatch = () => {
                         return <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches found" : "No recent rides"}</p>;
                       }
                       return filtered.map((t: any) => (
-                        <div key={t.id} className="bg-surface border border-border rounded-md overflow-hidden">
+                        <div key={t.id} className={`rounded-md overflow-hidden ${t.status === "completed" ? "bg-green-500/10 border border-green-500/30" : "bg-surface border border-border"}`}>
                           <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `booking-${t.id}` ? null : `booking-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -744,12 +744,13 @@ const Dispatch = () => {
                                 })()}
                               </span>
                             )}
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                              t.status === "completed" ? "bg-green-500/15 text-green-500" :
-                              t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                              t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
-                              "bg-surface text-muted-foreground"
-                            }`}>{t.status}</span>
+                            {t.status !== "completed" && (
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                t.status === "started" ? "bg-blue-500/15 text-blue-500" :
+                                t.status === "accepted" ? "bg-amber-500/15 text-amber-500" :
+                                "bg-surface text-muted-foreground"
+                              }`}>{t.status}</span>
+                            )}
                             <span className="text-foreground truncate flex-1">
                               {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
