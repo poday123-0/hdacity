@@ -729,11 +729,16 @@ const Dispatch = () => {
                                 {(() => {
                                   const assigned = getAssignedVehicleDetails(t);
                                   if (!assigned.centerCode) return <span className="text-muted-foreground">—</span>;
-                                  const vehicleText = [assigned.color, assigned.plateNumber].filter(Boolean).join(" • ");
                                   return (
                                     <>
                                       <span className="font-bold text-[11px] text-primary">{assigned.centerCode}</span>
-                                      {vehicleText && <span className="text-muted-foreground"> • {vehicleText}</span>}
+                                      {assigned.color && (
+                                        <>
+                                          <span className="text-muted-foreground"> • </span>
+                                          <span style={{ color: assigned.color.toLowerCase() }}>{assigned.color}</span>
+                                        </>
+                                      )}
+                                      {assigned.plateNumber && <span className="text-muted-foreground"> • {assigned.plateNumber}</span>}
                                     </>
                                   );
                                 })()}
