@@ -3420,6 +3420,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     { label: "Phone", value: `+960 ${userProfile?.phone_number || "—"}` },
                     { label: "Email", value: userProfile?.email || "Not set" },
                     { label: "Gender", value: userProfile?.gender === "1" ? "Male" : userProfile?.gender === "2" ? "Female" : userProfile?.gender || "—" },
+                    { label: "Company", value: companyInfo?.name || "No company" },
                     { label: "Status", value: userProfile?.status || "—" }].
                     map((item) =>
                     <div key={item.label} className="flex items-center justify-between px-4 py-3">
