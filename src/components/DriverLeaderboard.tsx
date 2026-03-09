@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trophy, ChevronLeft, Medal, Clock, Target } from "lucide-react";
+import { Trophy, ChevronLeft, Medal, Clock, Target, ScrollText, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 
@@ -13,6 +13,7 @@ interface Competition {
   end_date: string;
   status: string;
   vehicle_type_id: string | null;
+  rules_text?: string;
 }
 
 interface Entry {

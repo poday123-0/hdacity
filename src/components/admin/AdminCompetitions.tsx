@@ -413,6 +413,17 @@ const AdminCompetitions = () => {
             </div>
           </div>
 
+          {/* Rules / Terms */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Competition Rules / Terms (shown to drivers)</label>
+            <textarea
+              value={form.rules_text}
+              onChange={e => setForm(f => ({ ...f, rules_text: e.target.value }))}
+              className="w-full px-3 py-2.5 bg-surface rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary border border-border/40 min-h-[150px]"
+              placeholder="Enter competition rules, eligibility criteria, prize details, etc."
+              rows={8}
+            />
+
           {/* Prize Tiers */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
