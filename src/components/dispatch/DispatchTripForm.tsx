@@ -489,7 +489,7 @@ const DispatchTripForm = ({
     setCreatedTrip(null);
     setTripDriver(null);
     setTripVehicle(null);
-    // Don't clear timer - it runs independently
+    
   };
 
   const handleSubmit = async () => {
