@@ -825,15 +825,21 @@ const Dispatch = () => {
                               <div><span className="text-muted-foreground">Status:</span> <span className="text-foreground">{t.status}</span></div>
                               {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
 
-                              <div className="col-span-2 flex justify-end gap-2 pt-1">
-                                {t.status !== "completed" && t.status !== "cancelled" && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
-                                    className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
-                                  >
-                                    Cancel Trip
-                                  </button>
-                                )}
+                              <div className="col-span-2 flex items-center justify-between pt-1">
+                                <div className="flex items-center gap-2">
+                                  {t.status !== "cancelled" && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
+                                  {t.status !== "cancelled" && <span className="text-[9px] text-muted-foreground">auto-complete</span>}
+                                </div>
+                                <div className="flex gap-2">
+                                  {t.status !== "cancelled" && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
+                                      className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
+                                    >
+                                      Cancel Trip
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           )}
