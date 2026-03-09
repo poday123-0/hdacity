@@ -978,6 +978,19 @@ const Dispatch = () => {
           </div>
         </div>
       )}
+
+      {/* Live Map Tracking Dialog */}
+      <Dialog open={!!trackingTripId} onOpenChange={(open) => { if (!open) setTrackingTripId(null); }}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden">
+          {trackingTripId && (
+            <iframe
+              src={`/live-map?trip=${trackingTripId}`}
+              className="w-full h-full border-0"
+              title="Live Trip Tracking"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
