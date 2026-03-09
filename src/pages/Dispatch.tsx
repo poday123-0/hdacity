@@ -570,34 +570,47 @@ const Dispatch = () => {
                     {lostTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
                     ) : lostTrips.map((t: any) => (
-                      <div key={t.id} className="bg-surface border border-destructive/20 rounded-md px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
-                        <span className="text-muted-foreground whitespace-nowrap font-medium">
-                          {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()}{" "}
-                          {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
-                        {t.vehicle ? (
-                          <>
-                            {(t.vehicle as any).center_code && (
-                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
-                            )}
-                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground whitespace-nowrap italic">
-                            {(() => {
-                              const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
-                              if (!raw) return "—";
-                              const code = raw.split(",")[0].trim();
-                              if (!code) return "—";
-                              const info = centerCodeIndex[code.toUpperCase()];
-                              return info ? `${code} . ${info.plate_number}` : code;
-                            })()}
+                      <div key={t.id} className="bg-surface border border-destructive/20 rounded-md overflow-hidden">
+                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-destructive/5 transition-colors" onClick={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}>
+                          <span className="text-muted-foreground whitespace-nowrap font-medium">
+                            {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()}{" "}
+                            {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
+                          {t.vehicle ? (
+                            <>
+                              {(t.vehicle as any).center_code && (
+                                <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                              )}
+                              <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground whitespace-nowrap italic">
+                              {(() => {
+                                const raw = t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "";
+                                if (!raw) return "—";
+                                const code = raw.split(",")[0].trim();
+                                if (!code) return "—";
+                                const info = centerCodeIndex[code.toUpperCase()];
+                                return info ? `${code} . ${info.plate_number}` : code;
+                              })()}
+                            </span>
+                          )}
+                          <span className="text-foreground truncate flex-1">
+                            {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
+                          </span>
+                        </div>
+                        {expandedTripId === t.id && (
+                          <div className="px-2.5 pb-2 pt-1 border-t border-destructive/10 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                            <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                            <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Customer Phone:</span> <span className="text-foreground">{t.customer_phone || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
+                            <div><span className="text-muted-foreground">Cancel Reason:</span> <span className="text-foreground">{t.cancel_reason || "—"}</span></div>
+                            {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes}</span></div>}
+                          </div>
                         )}
-                        <span className="text-foreground truncate flex-1">
-                          {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
-                        </span>
                       </div>
                     ))}
                   </div>
