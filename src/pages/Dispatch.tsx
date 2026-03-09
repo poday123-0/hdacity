@@ -462,6 +462,42 @@ const Dispatch = () => {
     setMarkingLoss(null);
   };
 
+  const handleDispatchCancel = async (tripId: string) => {
+    await supabase.from("trips").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancel_reason: "Cancelled by dispatch" }).eq("id", tripId);
+    toast({ title: "Trip Cancelled" });
+    refreshTrips();
+  };
+
+  // Countdown timer component for accepted/started trips (5 min from created_at)
+  const CountdownTimer = ({ createdAt, tripId }: { createdAt: string; tripId: string }) => {
+    const [remaining, setRemaining] = useState(0);
+
+    useEffect(() => {
+      const endTime = new Date(createdAt).getTime() + 5 * 60 * 1000;
+      const tick = () => {
+        const left = Math.max(0, endTime - Date.now());
+        setRemaining(left);
+        if (left <= 0) {
+          // Auto-complete
+          supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", tripId).then(() => refreshTrips());
+        }
+      };
+      tick();
+      const iv = setInterval(tick, 1000);
+      return () => clearInterval(iv);
+    }, [createdAt, tripId]);
+
+    if (remaining <= 0) return <span className="text-[9px] font-bold text-green-500">✓</span>;
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    const pct = remaining / (5 * 60 * 1000);
+    return (
+      <span className={`text-[9px] font-bold tabular-nums shrink-0 ${pct < 0.2 ? "text-destructive" : "text-primary"}`}>
+        {mins}:{secs.toString().padStart(2, "0")}
+      </span>
+    );
+  };
+
   const handleLogout = () => {
     setIsAuthed(false);
     setDispatcherProfile(null);
