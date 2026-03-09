@@ -3902,6 +3902,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <Plus className="w-4 h-4" />Add vehicle
                       </button>
                 }
+
+                    {/* Ride Types per Vehicle */}
+                    <RideTypesTab
+                      userId={userProfile?.id}
+                      vehicleTypes={vehicleTypes}
+                      vehicles={driverVehicles}
+                    />
                   </div>
               }
 
