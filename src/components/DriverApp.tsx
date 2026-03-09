@@ -4340,6 +4340,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
         </div>
       )}
+
+      {/* Vehicle blocked banner */}
+      {screen === "online" && vehicleBlockedUntil && blockCountdown && (
+        <div className="fixed top-14 left-2 right-2 z-[1000] mx-auto max-w-md">
+          <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 flex items-center gap-3 shadow-lg backdrop-blur-sm">
+            <Ban className="w-5 h-5 text-destructive shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-destructive">Vehicle Temporarily Blocked</p>
+              <p className="text-[10px] text-destructive/80">You won't receive any trip requests</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold text-destructive tabular-nums">{blockCountdown}</p>
+              <p className="text-[9px] text-destructive/60">remaining</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
 
       {/* Withdraw Modal */}
