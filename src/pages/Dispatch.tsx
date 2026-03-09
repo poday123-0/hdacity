@@ -14,7 +14,6 @@ import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import LiveMap from "@/pages/LiveMap";
 
 // Admin area imports
 import AdminDashboard from "@/components/admin/AdminDashboard";
