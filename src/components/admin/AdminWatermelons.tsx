@@ -481,7 +481,13 @@ const AdminWatermelons = () => {
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">Drop promo items (watermelons, oranges, etc.) on the map for users to collect!</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {activeItems.length > 1 && (
+            <Button variant="outline" onClick={() => setShowBulkMove(!showBulkMove)} className="gap-2">
+              <MapPin className="w-4 h-4" />
+              {showBulkMove ? "Close Map" : "Move on Map"}
+            </Button>
+          )}
           {activeItems.length > 0 && (
             <Button variant="outline" onClick={handleReshuffle} className="gap-2">
               <Shuffle className="w-4 h-4" />
@@ -494,6 +500,30 @@ const AdminWatermelons = () => {
           </Button>
         </div>
       </div>
+
+      {/* Bulk Move Map */}
+      {showBulkMove && activeItems.length > 0 && (
+        <BulkMoveMap
+          items={activeItems}
+          onConfirm={async (updates) => {
+            if (updates.length === 0) {
+              toast({ title: "No changes", description: "Drag items to reposition them" });
+              return;
+            }
+            try {
+              for (const u of updates) {
+                await supabase.from("promo_watermelons").update({ lat: u.lat, lng: u.lng }).eq("id", u.id);
+              }
+              toast({ title: "📍 Items moved!", description: `${updates.length} item${updates.length !== 1 ? "s" : ""} repositioned` });
+              setShowBulkMove(false);
+              fetchItems();
+            } catch (err: any) {
+              toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
+          }}
+          onCancel={() => setShowBulkMove(false)}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
