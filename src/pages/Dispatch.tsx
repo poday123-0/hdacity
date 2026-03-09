@@ -416,12 +416,12 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
-    const tripSelect = "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+    const tripSelect = "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
     const [{ data }, { data: appReq }, { data: lost }] = await Promise.all([
       supabase.from("trips").select(tripSelect)
         .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(200),
       supabase.from("trips").select(tripSelect)
-        .eq("dispatch_type", "dispatch_broadcast").in("status", ["requested", "accepted", "started", "completed", "cancelled"]).order("created_at", { ascending: false }).limit(100),
+        .eq("dispatch_type", "dispatch_broadcast").in("status", ["requested", "accepted", "started", "completed", "cancelled"]).order("updated_at", { ascending: false }).limit(300),
       supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").eq("is_loss", true).order("created_at", { ascending: false }).limit(200),
     ]);
