@@ -786,7 +786,9 @@ const Dispatch = () => {
                             </span>
                             {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
                               <>
-                                <CountdownTimer createdAt={t.created_at} tripId={t.id} />
+                                <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="text-[9px] font-bold text-primary hover:text-primary/90 shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors" title="Track on Live Map">
+                                  <Navigation className="w-3 h-3" />
+                                </button>
                                 <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
                                   CANCEL
                                 </button>
