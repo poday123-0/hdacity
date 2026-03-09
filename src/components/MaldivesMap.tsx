@@ -55,6 +55,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   const tripMarkersRef = useRef<any[]>([]);
   const watchIdRef = useRef<number | null>(null);
   const userInteractingRef = useRef(false);
+  const initialFitDoneRef = useRef(false);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const { isLoaded, error, mapId } = useGoogleMaps();
 
