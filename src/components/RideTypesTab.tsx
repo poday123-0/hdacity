@@ -102,7 +102,7 @@ const RideTypesTab = ({ userId, vehicleTypes, vehicles = [] }: RideTypesTabProps
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {vehicleTypes.map((vt) => {
+              {vehicleTypes.filter(vt => vt.is_active !== false).map((vt) => {
                 const entry = entries.find(e => e.vehicle_type_id === vt.id);
                 const isApproved = entry?.status === "approved";
                 const isPending = entry?.status === "pending";
