@@ -7,7 +7,8 @@ import { useTheme } from "@/hooks/use-theme";
 import {
   Phone, MapPin, X, Loader2, Navigation, ArrowRight, Moon, Sun,
   MessageSquare, PackageX, AlertTriangle, LayoutDashboard, Users,
-  MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building
+  MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building,
+  Search, CalendarIcon
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
@@ -15,6 +16,10 @@ import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 // Admin area imports
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -109,6 +114,9 @@ const Dispatch = () => {
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const [showAllBookings, setShowAllBookings] = useState(false);
+  const [allBookingsSearch, setAllBookingsSearch] = useState("");
+  const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
+  const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
@@ -1015,75 +1023,181 @@ const Dispatch = () => {
 
       {/* All Bookings Dialog */}
       <Dialog open={showAllBookings} onOpenChange={setShowAllBookings}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[85vh] overflow-hidden flex flex-col" aria-describedby={undefined}>
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] overflow-hidden flex flex-col" aria-describedby={undefined}>
           <DialogTitle className="text-sm font-bold flex items-center gap-2">
             <Navigation className="w-4 h-4 text-primary" />
-            All Bookings ({recentTrips.length})
+            All Bookings
           </DialogTitle>
+          
+          {/* Search + Filters */}
+          <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={allBookingsSearch}
+                onChange={(e) => setAllBookingsSearch(e.target.value)}
+                placeholder="Search center code, plate, address..."
+                className="w-full h-7 pl-7 pr-2 text-[11px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              {[
+                { key: "today", label: "Today" },
+                { key: "yesterday", label: "Yesterday" },
+                { key: "this_week", label: "This Week" },
+                { key: "last_week", label: "Last Week" },
+                { key: "this_month", label: "This Month" },
+                { key: "last_month", label: "Last Month" },
+                { key: "all", label: "All Time" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => { setAllBookingsDateFilter(f.key); setAllBookingsCustomDate(undefined); }}
+                  className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+                    allBookingsDateFilter === f.key && !allBookingsCustomDate
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={`px-2 py-1 text-[10px] font-medium rounded transition-colors flex items-center gap-1 ${
+                    allBookingsCustomDate ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}>
+                    <CalendarIcon className="w-3 h-3" />
+                    {allBookingsCustomDate ? format(allBookingsCustomDate, "dd MMM") : "Pick Date"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={allBookingsCustomDate}
+                    onSelect={(d) => { setAllBookingsCustomDate(d); setAllBookingsDateFilter("custom"); }}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Filtered list */}
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            {recentTrips.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">No bookings found</p>
-            ) : recentTrips.map((t: any) => (
-              <div
-                key={t.id}
-                className={`rounded-md overflow-hidden ${
-                  t.is_loss
-                    ? "bg-destructive/10 border border-destructive/30"
-                    : t.status === "completed"
-                      ? "bg-success/10 border border-success/30"
-                      : t.status === "cancelled"
-                        ? "bg-warning/10 border border-warning/30"
-                        : "bg-surface border border-border"
-                }`}
-              >
-                <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `all-${t.id}` ? null : `all-${t.id}`)}>
-                  <span className="text-muted-foreground whitespace-nowrap font-medium">
-                    {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  {t.vehicle ? (
-                    <>
-                      {(t.vehicle as any).center_code && (
-                        <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+            {(() => {
+              const now = new Date();
+              let dateStart: Date | null = null;
+              let dateEnd: Date | null = null;
+              
+              if (allBookingsCustomDate) {
+                dateStart = startOfDay(allBookingsCustomDate);
+                dateEnd = endOfDay(allBookingsCustomDate);
+              } else {
+                switch (allBookingsDateFilter) {
+                  case "today": dateStart = startOfDay(now); dateEnd = endOfDay(now); break;
+                  case "yesterday": dateStart = startOfDay(subDays(now, 1)); dateEnd = endOfDay(subDays(now, 1)); break;
+                  case "this_week": dateStart = startOfWeek(now, { weekStartsOn: 1 }); dateEnd = endOfWeek(now, { weekStartsOn: 1 }); break;
+                  case "last_week": dateStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }); dateEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }); break;
+                  case "this_month": dateStart = startOfMonth(now); dateEnd = endOfMonth(now); break;
+                  case "last_month": dateStart = startOfMonth(subMonths(now, 1)); dateEnd = endOfMonth(subMonths(now, 1)); break;
+                  case "all": dateStart = null; dateEnd = null; break;
+                }
+              }
+
+              const q = allBookingsSearch.toLowerCase().trim();
+              const filtered = recentTrips.filter((t: any) => {
+                // Date filter
+                if (dateStart && dateEnd) {
+                  const created = new Date(t.created_at);
+                  if (created < dateStart || created > dateEnd) return false;
+                }
+                // Search filter
+                if (q) {
+                  const centerCode = t.vehicle?.center_code?.toLowerCase() || t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() || "";
+                  const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
+                  const pickup = (t.pickup_address || "").toLowerCase();
+                  const dropoff = (t.dropoff_address || "").toLowerCase();
+                  const customerName = (t.customer_name || "").toLowerCase();
+                  const driverName = t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}`.toLowerCase() : "";
+                  return centerCode.includes(q) || plateNumber.includes(q) || pickup.includes(q) || dropoff.includes(q) || customerName.includes(q) || driverName.includes(q);
+                }
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return <p className="text-xs text-muted-foreground text-center py-8">No bookings found</p>;
+              }
+
+              return (
+                <>
+                  <p className="text-[10px] text-muted-foreground px-1">{filtered.length} booking{filtered.length !== 1 ? "s" : ""}</p>
+                  {filtered.map((t: any) => (
+                    <div
+                      key={t.id}
+                      className={`rounded-md overflow-hidden ${
+                        t.is_loss
+                          ? "bg-destructive/10 border border-destructive/30"
+                          : t.status === "completed"
+                            ? "bg-success/10 border border-success/30"
+                            : t.status === "cancelled"
+                              ? "bg-warning/10 border border-warning/30"
+                              : "bg-surface border border-border"
+                      }`}
+                    >
+                      <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `all-${t.id}` ? null : `all-${t.id}`)}>
+                        <span className="text-muted-foreground whitespace-nowrap font-medium">
+                          {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {t.vehicle ? (
+                          <>
+                            {(t.vehicle as any).center_code && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                            )}
+                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                          t.is_loss ? "bg-destructive/20 text-destructive" :
+                          t.status === "cancelled" ? "bg-warning/20 text-warning" :
+                          t.status === "completed" ? "bg-success/20 text-success" :
+                          t.status === "started" ? "bg-accent/50 text-accent-foreground" :
+                          t.status === "accepted" ? "bg-success/20 text-success" :
+                          "bg-surface text-muted-foreground"
+                        }`}>{t.is_loss ? "LOSS" : t.status}</span>
+                        <span className="text-foreground truncate flex-1">
+                          {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
+                        </span>
+                        {t.driver && (t.status === "accepted" || t.status === "started") && (
+                          <a href={`tel:${(t.driver as any).phone_number}`} onClick={(e) => e.stopPropagation()} className="text-[9px] font-bold text-success shrink-0 px-1.5 py-0.5 rounded bg-success/15 hover:bg-success/25 transition-colors">
+                            <Phone className="w-3 h-3" />
+                          </a>
+                        )}
+                        {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
+                          <button onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); setShowAllBookings(false); }} className="text-[9px] font-bold text-primary shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors">
+                            <Navigation className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {expandedTripId === `all-${t.id}` && (
+                        <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                          <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                          <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                          <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} {t.customer_phone || ""}</span></div>
+                          <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
+                          <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                          <div><span className="text-muted-foreground">Status:</span> <span className={`font-bold ${t.is_loss ? "text-destructive" : t.status === "completed" ? "text-success" : "text-foreground"}`}>{t.is_loss ? "LOSS" : t.status?.toUpperCase()}</span></div>
+                        </div>
                       )}
-                      <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                  <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                    t.is_loss ? "bg-destructive/20 text-destructive" :
-                    t.status === "cancelled" ? "bg-warning/20 text-warning" :
-                    t.status === "completed" ? "bg-success/20 text-success" :
-                    t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                    t.status === "accepted" ? "bg-success/20 text-success" :
-                    "bg-surface text-muted-foreground"
-                  }`}>{t.is_loss ? "LOSS" : t.status}</span>
-                  <span className="text-foreground truncate flex-1">
-                    {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
-                  </span>
-                  {t.driver && (t.status === "accepted" || t.status === "started") && (
-                    <a href={`tel:${(t.driver as any).phone_number}`} onClick={(e) => e.stopPropagation()} className="text-[9px] font-bold text-success shrink-0 px-1.5 py-0.5 rounded bg-success/15 hover:bg-success/25 transition-colors">
-                      <Phone className="w-3 h-3" />
-                    </a>
-                  )}
-                  {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
-                    <button onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); setShowAllBookings(false); }} className="text-[9px] font-bold text-primary shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors">
-                      <Navigation className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-                {expandedTripId === `all-${t.id}` && (
-                  <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                    <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
-                    <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} {t.customer_phone || ""}</span></div>
-                    <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
-                    <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
-                    <div><span className="text-muted-foreground">Status:</span> <span className={`font-bold ${t.is_loss ? "text-destructive" : t.status === "completed" ? "text-success" : "text-foreground"}`}>{t.is_loss ? "LOSS" : t.status?.toUpperCase()}</span></div>
-                  </div>
-                )}
-              </div>
-            ))}
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
