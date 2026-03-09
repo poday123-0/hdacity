@@ -173,6 +173,7 @@ const AdminCompetitions = () => {
         end_date: new Date(form.end_date).toISOString(),
         service_location_id: form.service_location_id || null,
         vehicle_type_id: form.vehicle_type_id || null,
+        rules_text: form.rules_text || "",
       };
 
       let compId = editingId;
