@@ -575,12 +575,16 @@ const Dispatch = () => {
                         </span>
                         <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
                         {t.vehicle ? (
-                          <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          <>
+                            {(t.vehicle as any).center_code && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                            )}
+                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          </>
                         ) : (
-                          <span className="text-destructive whitespace-nowrap">No Vehicle</span>
-                        )}
-                        {t.vehicle && (t.vehicle as any).center_code && (
-                          <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                          <span className="text-muted-foreground whitespace-nowrap italic">
+                            {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                          </span>
                         )}
                         <span className="text-foreground truncate flex-1">
                           {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
