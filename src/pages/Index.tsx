@@ -414,7 +414,7 @@ const Index = () => {
       });
 
       // Limit to ~8 vehicles per vehicle type for a cleaner map
-      const MAX_PER_TYPE = 8;
+      const MAX_PER_TYPE = 3;
       const byType: Record<string, typeof uniqueMarkers> = {};
       uniqueMarkers.forEach(m => {
         const key = m.vehicleTypeId || "unknown";
