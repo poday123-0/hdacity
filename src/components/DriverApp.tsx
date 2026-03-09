@@ -61,7 +61,8 @@ import {
   AlertTriangle,
   Bell as BellIcon,
   Trophy,
-  XCircle } from
+  XCircle,
+  Ban } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
@@ -239,6 +240,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverLat, setDriverLat] = useState<number | null>(null);
   const [driverLng, setDriverLng] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [vehicleBlockedUntil, setVehicleBlockedUntil] = useState<Date | null>(null);
+  const [blockCountdown, setBlockCountdown] = useState<string>("");
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const activeVehicleTypeIdRef = useRef<string | null>(null);
   const forceSessionTakeoverLogout = useCallback(() => {
@@ -1032,6 +1035,57 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       supabase.removeChannel(targetChannel);
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
+
+  // Poll for vehicle block status
+  useEffect(() => {
+    if (screen !== "online" || !userProfile?.id) {
+      setVehicleBlockedUntil(null);
+      setBlockCountdown("");
+      return;
+    }
+
+    const checkBlockStatus = async () => {
+      const vehicleId = selectedVehicleId || (driverVehicles[0]?.id);
+      if (!vehicleId) return;
+      const { data } = await supabase
+        .from("vehicles")
+        .select("blocked_until")
+        .eq("id", vehicleId)
+        .single();
+      if (data?.blocked_until && new Date(data.blocked_until) > new Date()) {
+        setVehicleBlockedUntil(new Date(data.blocked_until));
+      } else {
+        setVehicleBlockedUntil(null);
+      }
+    };
+
+    checkBlockStatus();
+    const poll = setInterval(checkBlockStatus, 30000); // Check every 30s
+    return () => clearInterval(poll);
+  }, [screen, userProfile?.id, selectedVehicleId, driverVehicles]);
+
+  // Countdown timer for blocked vehicle
+  useEffect(() => {
+    if (!vehicleBlockedUntil) {
+      setBlockCountdown("");
+      return;
+    }
+    const tick = () => {
+      const remaining = vehicleBlockedUntil.getTime() - Date.now();
+      if (remaining <= 0) {
+        setVehicleBlockedUntil(null);
+        setBlockCountdown("");
+        return;
+      }
+      const hrs = Math.floor(remaining / 3600000);
+      const mins = Math.floor((remaining % 3600000) / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      setBlockCountdown(`${hrs}h ${mins}m ${secs}s`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [vehicleBlockedUntil]);
 
   // Poll for upcoming scheduled trips to show reminder banner
   useEffect(() => {
@@ -4287,6 +4341,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </div>
         </div>
       )}
+
+      {/* Vehicle blocked banner */}
+      {screen === "online" && vehicleBlockedUntil && blockCountdown && (
+        <div className="fixed top-14 left-2 right-2 z-[1000] mx-auto max-w-md">
+          <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 flex items-center gap-3 shadow-lg backdrop-blur-sm">
+            <Ban className="w-5 h-5 text-destructive shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-destructive">Vehicle Temporarily Blocked</p>
+              <p className="text-[10px] text-destructive/80">You won't receive any trip requests</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold text-destructive tabular-nums">{blockCountdown}</p>
+              <p className="text-[9px] text-destructive/60">remaining</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DriverNotifications userId={userProfile?.id} userType="driver" visible={showNotifications} onClose={() => setShowNotifications(false)} />
 
       {/* Withdraw Modal */}
