@@ -639,13 +639,33 @@ const Dispatch = () => {
                     {lostTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
                     ) : lostTrips.map((t: any) => (
-                      <div key={t.id} className="bg-surface border border-destructive/20 rounded-md overflow-hidden">
-                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-destructive/5 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `loss-${t.id}` ? null : `loss-${t.id}`)}>
+                      <div
+                        key={t.id}
+                        className={`rounded-md overflow-hidden ${
+                          t.status === "cancelled"
+                            ? "bg-warning/10 border border-warning/30"
+                            : "bg-surface border border-destructive/20"
+                        }`}
+                      >
+                        <div
+                          className={`px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer transition-colors ${
+                            t.status === "cancelled" ? "hover:bg-warning/10" : "hover:bg-destructive/5"
+                          }`}
+                          onClick={() => setExpandedTripId(expandedTripId === `loss-${t.id}` ? null : `loss-${t.id}`)}
+                        >
                           <span className="text-muted-foreground whitespace-nowrap font-medium">
                             {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()}{" "}
                             {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
+                          <span
+                            className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              t.status === "cancelled"
+                                ? "bg-warning/20 text-warning"
+                                : "bg-destructive/15 text-destructive"
+                            }`}
+                          >
+                            LOSS STATUS
+                          </span>
                           {t.vehicle ? (
                             <>
                               {(t.vehicle as any).center_code && (
