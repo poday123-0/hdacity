@@ -787,6 +787,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       console.log(`[RADIUS CHECK] No GPS or no pickup coords — fail-open, allowing trip through`);
     }
 
+    // Check if driver's vehicle is temporarily blocked
+    if (userProfile?.id) {
+      const { data: blockedVehicle } = await supabase
+        .from("vehicles")
+        .select("blocked_until")
+        .eq("driver_id", userProfile.id)
+        .eq("is_active", true)
+        .not("blocked_until", "is", null)
+        .limit(1)
+        .maybeSingle();
+      if (blockedVehicle?.blocked_until && new Date(blockedVehicle.blocked_until as string) > new Date()) {
+        console.log(`[BLOCK CHECK] Driver vehicle is blocked until ${blockedVehicle.blocked_until} — skipping trip`);
+        return;
+      }
+    }
+
     // Verify the trip is still valid before showing it (prevents stale/old trip requests)
     const { data: freshTrip } = await supabase.
     from("trips").

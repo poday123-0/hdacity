@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ADD COLUMN blocked_until timestamp with time zone DEFAULT NULL;

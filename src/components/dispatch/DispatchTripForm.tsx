@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw, Crosshair
+  ChevronUp, ChevronDown, RotateCcw, Crosshair, Ban, ShieldOff
 } from "lucide-react";
 import MapPicker from "@/components/MapPicker";
 
@@ -515,6 +515,21 @@ const DispatchTripForm = ({
 
     setSubmitting(true);
     try {
+      // Check if assigned vehicle is blocked
+      if (assignedEntry) {
+        const { data: veh } = await supabase
+          .from("vehicles")
+          .select("blocked_until")
+          .eq("center_code", assignedEntry.code)
+          .limit(1)
+          .maybeSingle();
+        if (veh?.blocked_until && new Date(veh.blocked_until as string) > new Date()) {
+          const remaining = Math.ceil((new Date(veh.blocked_until as string).getTime() - Date.now()) / 60000);
+          toast({ title: "Vehicle blocked", description: `${assignedEntry.code} is blocked for ${remaining} more minutes`, variant: "destructive" });
+          setSubmitting(false);
+          return;
+        }
+      }
       const customerName = "Dispatch";
 
       const tripPayload: any = {
@@ -972,14 +987,21 @@ const DispatchTripForm = ({
                 // 1) Instant path: use preloaded index, but verify vehicle is still active
                 const cached = centerCodeIndex?.[code];
                 if (cached) {
-                  // Quick check vehicle is still active
-                  const { count } = await supabase
+                  // Quick check vehicle is still active and not blocked
+                  const { data: vCheck } = await supabase
                     .from("vehicles")
-                    .select("id", { count: "exact", head: true })
+                    .select("id, blocked_until")
                     .eq("center_code", code)
-                    .eq("is_active", true);
-                  if (!count || count === 0) {
+                    .eq("is_active", true)
+                    .limit(1)
+                    .maybeSingle();
+                  if (!vCheck) {
                     toast({ title: "Vehicle inactive", description: `Code "${code}" belongs to an inactive vehicle`, variant: "destructive" });
+                    return;
+                  }
+                  if (vCheck.blocked_until && new Date(vCheck.blocked_until) > new Date()) {
+                    const remaining = Math.ceil((new Date(vCheck.blocked_until).getTime() - Date.now()) / 60000);
+                    toast({ title: "Vehicle blocked", description: `Code "${code}" is blocked for ${remaining} more minutes`, variant: "destructive" });
                     return;
                   }
                   addEntry({ ...cached, code });
@@ -990,7 +1012,7 @@ const DispatchTripForm = ({
                 try {
                   const { data: vehicle } = await supabase
                     .from("vehicles")
-                    .select("plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)")
+                    .select("plate_number, color, vehicle_type_id, driver_id, blocked_until, vehicle_types:vehicle_type_id(name)")
                     .eq("center_code", code)
                     .eq("is_active", true)
                     .limit(1)
@@ -1002,6 +1024,13 @@ const DispatchTripForm = ({
                       description: `Center code "${code}" not found`,
                       variant: "destructive",
                     });
+                    return;
+                  }
+
+                  // Check if blocked
+                  if ((vehicle as any).blocked_until && new Date((vehicle as any).blocked_until) > new Date()) {
+                    const remaining = Math.ceil((new Date((vehicle as any).blocked_until).getTime() - Date.now()) / 60000);
+                    toast({ title: "Vehicle blocked", description: `Code "${code}" is blocked for ${remaining} more minutes`, variant: "destructive" });
                     return;
                   }
 
@@ -1103,17 +1132,41 @@ const DispatchTripForm = ({
                         <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                       </span>
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        const updated = centerCodeResults.filter(r => r.code !== info.code);
-                        setCenterCodeResults(updated);
-                        if (selectedCenterCode === info.code) setSelectedCenterCode(null);
-                        if (updated.length > 0 && updated[0].vehicle_type_id) {
-                          setSelectedVehicleType(updated[0].vehicle_type_id);
-                        }
-                      }} className="text-muted-foreground hover:text-destructive ml-2">
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          title="Block vehicle for 3 hours"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const blockedUntil = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+                            const { error } = await supabase
+                              .from("vehicles")
+                              .update({ blocked_until: blockedUntil } as any)
+                              .eq("center_code", info.code);
+                            if (!error) {
+                              toast({ title: "Vehicle blocked", description: `${info.code} blocked for 3 hours` });
+                              const updated = centerCodeResults.filter(r => r.code !== info.code);
+                              setCenterCodeResults(updated);
+                              if (selectedCenterCode === info.code) setSelectedCenterCode(null);
+                            } else {
+                              toast({ title: "Block failed", variant: "destructive" });
+                            }
+                          }}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Ban className="w-3 h-3" />
+                        </button>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          const updated = centerCodeResults.filter(r => r.code !== info.code);
+                          setCenterCodeResults(updated);
+                          if (selectedCenterCode === info.code) setSelectedCenterCode(null);
+                          if (updated.length > 0 && updated[0].vehicle_type_id) {
+                            setSelectedVehicleType(updated[0].vehicle_type_id);
+                          }
+                        }} className="text-muted-foreground hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
