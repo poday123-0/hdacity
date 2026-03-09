@@ -818,8 +818,11 @@ const Dispatch = () => {
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
-                                  {t.status !== "cancelled" && !t.is_loss && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
-                                  {t.status !== "cancelled" && !t.is_loss && <span className="text-[9px] text-muted-foreground">auto-complete</span>}
+                                  {t.status !== "cancelled" && !t.is_loss && (
+                                    <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1">
+                                      <Navigation className="w-3 h-3" /> Track Live
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="flex gap-2">
                                   {(t.is_loss || t.status === "cancelled") && (
