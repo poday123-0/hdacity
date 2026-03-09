@@ -49,7 +49,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 function isTooClose(lat: number, lng: number, existingItems: { lat: number; lng: number }[]): boolean {
   return existingItems.some(item => haversineDistance(lat, lng, item.lat, item.lng) < MIN_DISTANCE_METERS);
 }
-/** Visual map component for dragging a marker to a new position */
+/** Visual map component for dragging a single marker to a new position */
 const MoveOnMap = ({ lat, lng, onConfirm, onCancel }: { lat: number; lng: number; onConfirm: (lat: number, lng: number) => void; onCancel: () => void }) => {
   const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -92,6 +92,91 @@ const MoveOnMap = ({ lat, lng, onConfirm, onCancel }: { lat: number; lng: number
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
           <Button size="sm" className="h-7 text-xs gap-1" onClick={() => onConfirm(posRef.current.lat, posRef.current.lng)}>
             <Check className="w-3 h-3" /> Confirm
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** Bulk map view to drag multiple items at once */
+const BulkMoveMap = ({ items, onConfirm, onCancel }: { items: PromoItem[]; onConfirm: (updates: { id: string; lat: number; lng: number }[]) => void; onCancel: () => void }) => {
+  const { isLoaded } = useGoogleMaps();
+  const mapRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<Map<string, any>>(new Map());
+  const positionsRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
+  const [movedCount, setMovedCount] = useState(0);
+
+  useEffect(() => {
+    if (!isLoaded || !mapRef.current || items.length === 0) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    const bounds = new g.maps.LatLngBounds();
+    items.forEach(item => bounds.extend({ lat: item.lat, lng: item.lng }));
+
+    const map = new g.maps.Map(mapRef.current, {
+      center: bounds.getCenter(), zoom: 15, mapId: "hda_bulk_move",
+      disableDefaultUI: true, zoomControl: true,
+    });
+    map.fitBounds(bounds, 40);
+
+    // Init positions
+    items.forEach(item => {
+      positionsRef.current.set(item.id, { lat: item.lat, lng: item.lng });
+    });
+
+    // Create draggable markers
+    const movedIds = new Set<string>();
+    items.forEach(item => {
+      const el = document.createElement("div");
+      el.innerHTML = `<div style="font-size:24px;cursor:grab;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));transition:transform 0.1s;" title="${item.amount} MVR - ${item.target_user_type}">🍉</div>`;
+      const marker = new g.maps.marker.AdvancedMarkerElement({
+        map, position: { lat: item.lat, lng: item.lng }, content: el, gmpDraggable: true,
+      });
+      markersRef.current.set(item.id, marker);
+
+      marker.addListener("dragend", () => {
+        const p = marker.position;
+        positionsRef.current.set(item.id, { lat: p.lat, lng: p.lng });
+        movedIds.add(item.id);
+        setMovedCount(movedIds.size);
+        // Highlight moved marker
+        el.innerHTML = `<div style="font-size:24px;cursor:grab;filter:drop-shadow(0 2px 6px rgba(34,197,94,0.6));transform:scale(1.2);" title="${item.amount} MVR - ${item.target_user_type}">🍉</div>`;
+      });
+    });
+
+    return () => {
+      markersRef.current.forEach(m => { m.map = null; });
+      markersRef.current.clear();
+    };
+  }, [isLoaded, items]);
+
+  const handleConfirm = () => {
+    const updates: { id: string; lat: number; lng: number }[] = [];
+    positionsRef.current.forEach((pos, id) => {
+      const orig = items.find(i => i.id === id);
+      if (orig && (Math.abs(orig.lat - pos.lat) > 0.000001 || Math.abs(orig.lng - pos.lng) > 0.000001)) {
+        updates.push({ id, lat: pos.lat, lng: pos.lng });
+      }
+    });
+    onConfirm(updates);
+  };
+
+  return (
+    <div className="border-2 border-primary/30 rounded-2xl overflow-hidden bg-primary/5">
+      <div ref={mapRef} style={{ width: "100%", height: 400 }} />
+      <div className="flex items-center justify-between px-4 py-3 bg-card/80">
+        <div>
+          <p className="text-xs font-semibold text-foreground">Drag any 🍉 to reposition</p>
+          <p className="text-[10px] text-muted-foreground">{movedCount} item{movedCount !== 1 ? "s" : ""} moved • {items.length} total on map</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onCancel}>
+            <X className="w-3.5 h-3.5 mr-1" /> Cancel
+          </Button>
+          <Button size="sm" className="h-8 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConfirm} disabled={movedCount === 0}>
+            <Check className="w-3.5 h-3.5" /> Save {movedCount} Change{movedCount !== 1 ? "s" : ""}
           </Button>
         </div>
       </div>
@@ -168,6 +253,7 @@ const AdminWatermelons = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editLat, setEditLat] = useState("");
   const [editLng, setEditLng] = useState("");
+  const [showBulkMove, setShowBulkMove] = useState(false);
 
   // Form state
   const [promoType, setPromoType] = useState("wallet_amount");
@@ -395,7 +481,13 @@ const AdminWatermelons = () => {
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">Drop promo items (watermelons, oranges, etc.) on the map for users to collect!</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {activeItems.length > 1 && (
+            <Button variant="outline" onClick={() => setShowBulkMove(!showBulkMove)} className="gap-2">
+              <MapPin className="w-4 h-4" />
+              {showBulkMove ? "Close Map" : "Move on Map"}
+            </Button>
+          )}
           {activeItems.length > 0 && (
             <Button variant="outline" onClick={handleReshuffle} className="gap-2">
               <Shuffle className="w-4 h-4" />
@@ -408,6 +500,30 @@ const AdminWatermelons = () => {
           </Button>
         </div>
       </div>
+
+      {/* Bulk Move Map */}
+      {showBulkMove && activeItems.length > 0 && (
+        <BulkMoveMap
+          items={activeItems}
+          onConfirm={async (updates) => {
+            if (updates.length === 0) {
+              toast({ title: "No changes", description: "Drag items to reposition them" });
+              return;
+            }
+            try {
+              for (const u of updates) {
+                await supabase.from("promo_watermelons").update({ lat: u.lat, lng: u.lng }).eq("id", u.id);
+              }
+              toast({ title: "📍 Items moved!", description: `${updates.length} item${updates.length !== 1 ? "s" : ""} repositioned` });
+              setShowBulkMove(false);
+              fetchItems();
+            } catch (err: any) {
+              toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
+          }}
+          onCancel={() => setShowBulkMove(false)}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
