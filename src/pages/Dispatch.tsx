@@ -114,6 +114,31 @@ const Dispatch = () => {
   // Preloaded center-code index for instant lookups (refreshed in background)
   const [centerCodeIndex, setCenterCodeIndex] = useState<Record<string, any>>({});
 
+  const getAssignedCenterCode = (bookingNotes?: string | null) => {
+    const raw = bookingNotes?.match(/Center:\s*(.+)/)?.[1] || "";
+    return raw.split(",")[0]?.trim() || "";
+  };
+
+  const getAssignedVehicleDetails = (trip: any) => {
+    if (trip?.vehicle) {
+      return {
+        centerCode: (trip.vehicle as any).center_code || "",
+        plateNumber: (trip.vehicle as any).plate_number || "",
+        color: (trip.vehicle as any).color || "",
+      };
+    }
+
+    const centerCode = getAssignedCenterCode(trip?.booking_notes);
+    if (!centerCode) return { centerCode: "", plateNumber: "", color: "" };
+
+    const info = centerCodeIndex[centerCode.toUpperCase()];
+    return {
+      centerCode,
+      plateNumber: info?.plate_number || "",
+      color: info?.color || "",
+    };
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem("hda_dispatcher");
     if (stored) {
