@@ -1113,8 +1113,8 @@ const DispatchTripForm = ({
       {/* Submit */}
       {!collapsed && (
         <div className="p-3 pt-0">
-          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || !customerPhone} className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm">
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Send</>}
+          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || !customerPhone} className={`w-full font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm ${dispatchMethod === "broadcast" ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground"}`}>
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> {dispatchMethod === "broadcast" ? "Send to App" : "Assign"}</>}
           </button>
         </div>
       )}
