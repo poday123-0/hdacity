@@ -55,6 +55,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   const tripMarkersRef = useRef<any[]>([]);
   const watchIdRef = useRef<number | null>(null);
   const userInteractingRef = useRef(false);
+  const initialFitDoneRef = useRef(false);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const { isLoaded, error, mapId } = useGoogleMaps();
 
@@ -189,11 +190,13 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, [mapReady, mapId]);
 
-  // Update user marker
+  // Update user marker — never auto-pan after user has interacted
   useEffect(() => {
     if (!userPos || !userMarkerRef.current || !mapInstance.current) return;
     userMarkerRef.current.setPosition(userPos);
-    if (!rideData?.showRoute && !userInteractingRef.current) {
+    // Only auto-pan on the very first position fix, never after
+    if (!initialFitDoneRef.current && !userInteractingRef.current && !rideData?.showRoute) {
+      initialFitDoneRef.current = true;
       mapInstance.current.panTo(userPos);
     }
   }, [userPos, rideData?.showRoute]);
@@ -259,7 +262,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
         waypoints, travelMode: g.maps.TravelMode.DRIVING,
       }).then((result: any) => dr.setDirections(result))
         .catch((err: any) => console.error("Directions error:", err));
-    } else if (pickup && dropoff) {
+    } else if (pickup && dropoff && !userInteractingRef.current) {
       const bounds = new g.maps.LatLngBounds();
       bounds.extend({ lat: pickup.lat, lng: pickup.lng });
       bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
