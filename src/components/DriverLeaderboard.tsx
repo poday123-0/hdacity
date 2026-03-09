@@ -68,6 +68,7 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
   const [myRank, setMyRank] = useState<number | null>(null);
   const [myTrips, setMyTrips] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     fetchCompetitions();
