@@ -677,7 +677,7 @@ const Dispatch = () => {
                       }
                       return filtered.map((t: any) => (
                         <div key={t.id} className="bg-surface border border-border rounded-md overflow-hidden">
-                          <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}>
+                          <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `booking-${t.id}` ? null : `booking-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
