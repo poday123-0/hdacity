@@ -16,6 +16,7 @@ interface NominatimResult {
   lon: string;
   name?: string;
   tag?: string;
+  road?: string;
 }
 
 interface StopLocation {
@@ -419,6 +420,7 @@ const DispatchTripForm = ({
               const lng = parseFloat(item.lon);
               const areaName = findNearestServiceAreaName(lat, lng);
               const placeName = item.namedetails?.name || item.name || item.display_name?.split(",")[0] || "Location";
+              const roadName = item.address?.road || null;
               // Skip duplicates
               const isDup = localMatches.some(lm =>
                 haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05
@@ -431,6 +433,7 @@ const DispatchTripForm = ({
                 lon: String(lng),
                 name: placeName,
                 tag: areaName,
+                road: roadName,
               };
             })
             .filter(Boolean) as NominatimResult[];
@@ -763,7 +766,7 @@ const DispatchTripForm = ({
                     <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{r.display_name.split("—").slice(1).join("—").trim()}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{r.road ? `${r.road} • ${r.tag || r.display_name.split("—").slice(1).join("—").trim()}` : (r.tag || r.display_name.split("—").slice(1).join("—").trim())}</p>
                     </div>
                     {r.tag && (
                       <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
