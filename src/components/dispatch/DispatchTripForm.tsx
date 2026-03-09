@@ -1098,29 +1098,22 @@ const DispatchTripForm = ({
             )}
           </div>
 
-          <div className="space-y-2">
-            <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-              <option value="broadcast">Broadcast</option>
-              <option value="specific">Assign driver</option>
-            </select>
-
-            {dispatchMethod === "specific" && selectedDriverId && selectedCenterCode && (() => {
-              const entry = centerCodeResults.find(r => r.code === selectedCenterCode);
-              const isOnline = onlineDrivers.some(d => d.driver_id === selectedDriverId);
-              if (entry && !isOnline) {
-                return (
-                  <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs bg-primary/10 ring-1 ring-primary">
-                    <div>
-                      <p className="font-medium text-foreground">{entry.driver_name || "Driver"} <span className="text-muted-foreground">(from {entry.code})</span></p>
-                      <p className="text-[10px] text-muted-foreground">{entry.vehicle_type} • {entry.plate_number}</p>
-                    </div>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+          {dispatchMethod === "specific" && selectedDriverId && selectedCenterCode && (() => {
+            const entry = centerCodeResults.find(r => r.code === selectedCenterCode);
+            const isOnline = onlineDrivers.some(d => d.driver_id === selectedDriverId);
+            if (entry && !isOnline) {
+              return (
+                <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs bg-primary/10 ring-1 ring-primary">
+                  <div>
+                    <p className="font-medium text-foreground">{entry.driver_name || "Driver"} <span className="text-muted-foreground">(from {entry.code})</span></p>
+                    <p className="text-[10px] text-muted-foreground">{entry.vehicle_type} • {entry.plate_number}</p>
                   </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                </div>
+              );
+            }
+            return null;
+          })()}
 
 
         </div>
