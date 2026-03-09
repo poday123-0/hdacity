@@ -809,9 +809,10 @@ const DispatchTripForm = ({
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">To*</p>
             {serviceLocations.length > 0 ? (
+            <div className="flex items-start gap-1">
               <div
                 ref={toButtonsRef}
-                className="flex flex-wrap gap-1.5 outline-none"
+                className="flex flex-wrap gap-1.5 outline-none flex-1"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   const count = serviceLocations.length;
