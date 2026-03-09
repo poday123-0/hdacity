@@ -826,6 +826,15 @@ const Dispatch = () => {
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
+                                  {t.driver && (t.status === "accepted" || t.status === "started") && (
+                                    <a
+                                      href={`tel:${(t.driver as any).phone_number}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors flex items-center gap-1"
+                                    >
+                                      <Phone className="w-3 h-3" /> Call Driver
+                                    </a>
+                                  )}
                                   {t.status !== "cancelled" && !t.is_loss && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); if (t.status !== "completed") setTrackingTripId(t.id); }}
