@@ -1710,6 +1710,7 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          blocked_until: string | null
           center_code: string | null
           color: string | null
           created_at: string
@@ -1729,6 +1730,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          blocked_until?: string | null
           center_code?: string | null
           color?: string | null
           created_at?: string
@@ -1748,6 +1750,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          blocked_until?: string | null
           center_code?: string | null
           color?: string | null
           created_at?: string
