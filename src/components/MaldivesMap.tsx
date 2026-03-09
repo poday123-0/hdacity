@@ -103,7 +103,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       center,
       zoom: 15,
       disableDefaultUI: true,
-      zoomControl: false,
+      zoomControl: true,
       gestureHandling: "greedy",
     };
 
