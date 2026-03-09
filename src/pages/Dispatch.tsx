@@ -13,7 +13,8 @@ import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
 
 // Admin area imports
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -980,14 +981,9 @@ const Dispatch = () => {
 
       {/* Live Map Tracking Dialog */}
       <Dialog open={!!trackingTripId} onOpenChange={(open) => { if (!open) setTrackingTripId(null); }}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden">
-          {trackingTripId && (
-            <iframe
-              src={`/live-map?trip=${trackingTripId}`}
-              className="w-full h-full border-0"
-              title="Live Trip Tracking"
-            />
-          )}
+        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">Live Trip Tracking</DialogTitle>
+          {trackingTripId && <LiveTripTracker tripId={trackingTripId} />}
         </DialogContent>
       </Dialog>
     </div>
