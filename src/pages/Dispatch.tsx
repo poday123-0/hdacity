@@ -615,9 +615,9 @@ const Dispatch = () => {
             <SOSAlertPanel />
 
             {/* Layout: Left tables column | 3 Bid forms right */}
-            <div className="flex flex-col lg:flex-row gap-1.5 mt-2">
-              {/* Left Column — IN LOSS + Todays Booking (takes ~38% on desktop) */}
-              <div className="lg:w-[38%] lg:min-w-[340px] space-y-1.5 min-w-0 shrink-0">
+            <div className="flex flex-col lg:flex-row gap-2 mt-2">
+              {/* Left Column — IN LOSS + Todays Booking (narrower on desktop) */}
+              <div className="lg:w-[320px] lg:min-w-[280px] space-y-1.5 min-w-0 shrink-0">
                 {/* IN LOSS */}
                 <div className="bg-card border border-destructive/30 rounded-lg overflow-hidden">
                   <div className="px-3 py-2 border-b border-border">
@@ -802,7 +802,7 @@ const Dispatch = () => {
               </div>
 
               {/* Right — 3 Bid Forms side by side */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 min-w-0">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 min-w-0">
                 {/* Bid 1 */}
                 <DispatchTripForm
                   formIndex={0}
