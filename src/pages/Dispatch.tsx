@@ -118,6 +118,9 @@ const Dispatch = () => {
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
+  const [showAllAppRequests, setShowAllAppRequests] = useState(false);
+  const [appRequestsSearch, setAppRequestsSearch] = useState("");
+  const [appRequestsStatusFilter, setAppRequestsStatusFilter] = useState<string>("all");
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
@@ -970,8 +973,7 @@ const Dispatch = () => {
                   <div className="max-h-[280px] overflow-y-auto p-1.5 space-y-1.5">
                     {appRequestTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
-                    ) : appRequestTrips.map((t: any) => {
-                      // Status logic: cancelled without accept = no drivers, cancelled after accept = cancelled
+                    ) : appRequestTrips.slice(0, 5).map((t: any) => {
                       const wasAccepted = !!t.accepted_at;
                       const isOngoing = t.status === "accepted" || t.status === "started" || t.status === "in_progress";
                       const statusLabel = t.status === "cancelled"
@@ -994,14 +996,12 @@ const Dispatch = () => {
                       const driver = t.driver as any;
                       const vehicle = t.vehicle as any;
                       const hasDriverInfo = driver && (isOngoing || t.status === "completed");
+                      const isExpanded = expandedTripId === `app-${t.id}`;
 
                       return (
-                        <div
-                          key={t.id}
-                          className={`rounded-lg overflow-hidden bg-card border ${borderColor} transition-all`}
-                        >
+                        <div key={t.id} className={`rounded-lg overflow-hidden bg-card border ${borderColor} transition-all`}>
                           {/* Header row */}
-                          <div className="px-2.5 py-2 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `app-${t.id}` ? null : `app-${t.id}`)}>
+                          <div className="px-2.5 py-2 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedTripId(isExpanded ? null : `app-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
@@ -1011,17 +1011,8 @@ const Dispatch = () => {
                             <span className="text-foreground truncate flex-1 font-medium">
                               {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
-                            {hasDriverInfo && (
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {driver.avatar_url ? (
-                                  <img src={driver.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover border border-border" />
-                                ) : (
-                                  <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center text-[8px] font-bold text-orange-500">
-                                    {driver.first_name?.[0] || "?"}
-                                  </div>
-                                )}
-                                <span className="text-[9px] text-foreground font-medium">{driver.first_name}</span>
-                              </div>
+                            {hasDriverInfo && !isExpanded && (
+                              <span className="text-[9px] text-foreground font-medium shrink-0">{driver.first_name}</span>
                             )}
                             {t.status === "requested" && (
                               <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
@@ -1030,81 +1021,84 @@ const Dispatch = () => {
                             )}
                           </div>
 
-                          {/* Driver + Vehicle card (always shown when accepted) */}
-                          {hasDriverInfo && (
-                            <div className="mx-2.5 mb-2 rounded-lg bg-muted/30 border border-border p-2.5">
-                              <div className="flex items-start gap-3">
-                                {/* Driver avatar */}
-                                <div className="shrink-0">
-                                  {driver.avatar_url ? (
-                                    <img src={driver.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-orange-500/30" />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center text-sm font-bold text-orange-500 border-2 border-orange-500/30">
-                                      {driver.first_name?.[0]}{driver.last_name?.[0]}
+                          {/* Expanded: driver card + trip details */}
+                          {isExpanded && (
+                            <div className="border-t border-border">
+                              {hasDriverInfo && (
+                                <div className="mx-2.5 mt-2 mb-2 rounded-lg bg-muted/30 border border-border p-2.5">
+                                  <div className="flex items-start gap-3">
+                                    <div className="shrink-0">
+                                      {driver.avatar_url ? (
+                                        <img src={driver.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-orange-500/30" />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center text-sm font-bold text-orange-500 border-2 border-orange-500/30">
+                                          {driver.first_name?.[0]}{driver.last_name?.[0]}
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                                {/* Driver info */}
-                                <div className="flex-1 min-w-0 space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</span>
-                                    {driver.company_name && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{driver.company_name}</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
-                                    {isOngoing && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }}
-                                        className="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors flex items-center gap-1"
-                                      >
-                                        <Navigation className="w-3 h-3" /> Track Live
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              {/* Vehicle info */}
-                              {vehicle && (
-                                <div className="mt-2 pt-2 border-t border-border flex items-center gap-3 text-[10px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-muted-foreground">Plate:</span>
-                                    <span className="font-bold text-foreground">{vehicle.plate_number}</span>
-                                  </div>
-                                  {vehicle.color && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-muted-foreground">Color:</span>
-                                      <span className="font-medium text-foreground flex items-center gap-1">
-                                        <span className="w-2.5 h-2.5 rounded-full border border-border inline-block" style={{ backgroundColor: vehicle.color.toLowerCase() }} />
-                                        {vehicle.color}
-                                      </span>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</span>
+                                        {driver.company_name && (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{driver.company_name}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
+                                        {isOngoing && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }}
+                                            className="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors flex items-center gap-1"
+                                          >
+                                            <Navigation className="w-3 h-3" /> Track Live
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
-                                  {vehicle.center_code && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-muted-foreground">Center:</span>
-                                      <span className="font-bold text-primary">{vehicle.center_code}</span>
+                                  </div>
+                                  {vehicle && (
+                                    <div className="mt-2 pt-2 border-t border-border flex items-center gap-3 text-[10px]">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-muted-foreground">Plate:</span>
+                                        <span className="font-bold text-foreground">{vehicle.plate_number}</span>
+                                      </div>
+                                      {vehicle.color && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-muted-foreground">Color:</span>
+                                          <span className="font-medium text-foreground flex items-center gap-1">
+                                            <span className="w-2.5 h-2.5 rounded-full border border-border inline-block" style={{ backgroundColor: vehicle.color.toLowerCase() }} />
+                                            {vehicle.color}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {vehicle.center_code && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-muted-foreground">Center:</span>
+                                          <span className="font-bold text-primary">{vehicle.center_code}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
                               )}
-                            </div>
-                          )}
-
-                          {/* Expanded trip details */}
-                          {expandedTripId === `app-${t.id}` && (
-                            <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                              <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
-                              <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
-                              <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
-                              <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                              <div className="px-2.5 pb-2 pt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                                <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                                <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                                <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
+                                <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                              </div>
                             </div>
                           )}
                         </div>
                       );
                     })}
                   </div>
+                  {appRequestTrips.length > 5 && (
+                    <div className="px-3 py-1.5 border-t border-border flex items-center justify-between">
+                      <span className="text-[9px] text-muted-foreground">{appRequestTrips.length} total requests</span>
+                      <button onClick={() => setShowAllAppRequests(true)} className="text-[9px] text-orange-500 font-medium hover:underline">View All →</button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1386,6 +1380,164 @@ const Dispatch = () => {
                       )}
                     </div>
                   ))}
+                </>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* All App Requests Dialog */}
+      <Dialog open={showAllAppRequests} onOpenChange={setShowAllAppRequests}>
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] overflow-hidden flex flex-col" aria-describedby={undefined}>
+          <DialogTitle className="text-sm font-bold flex items-center gap-2">
+            <Send className="w-4 h-4 text-orange-500" />
+            All App Requests
+          </DialogTitle>
+
+          {/* Search + Status Filters */}
+          <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={appRequestsSearch}
+                onChange={(e) => setAppRequestsSearch(e.target.value)}
+                placeholder="Search address, driver, customer..."
+                className="w-full h-7 pl-7 pr-2 text-[11px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              {[
+                { key: "all", label: "All" },
+                { key: "searching", label: "Searching" },
+                { key: "accepted", label: "Accepted" },
+                { key: "on_trip", label: "On Trip" },
+                { key: "completed", label: "Completed" },
+                { key: "cancelled", label: "Cancelled" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setAppRequestsStatusFilter(f.key)}
+                  className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+                    appRequestsStatusFilter === f.key
+                      ? "bg-orange-500 text-white"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filtered list */}
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {(() => {
+              const q = appRequestsSearch.toLowerCase().trim();
+              const filtered = appRequestTrips.filter((t: any) => {
+                // Status filter
+                if (appRequestsStatusFilter !== "all") {
+                  if (appRequestsStatusFilter === "searching" && t.status !== "requested") return false;
+                  if (appRequestsStatusFilter === "accepted" && t.status !== "accepted") return false;
+                  if (appRequestsStatusFilter === "on_trip" && t.status !== "started" && t.status !== "in_progress") return false;
+                  if (appRequestsStatusFilter === "completed" && t.status !== "completed") return false;
+                  if (appRequestsStatusFilter === "cancelled" && t.status !== "cancelled") return false;
+                }
+                // Search
+                if (q) {
+                  const pickup = (t.pickup_address || "").toLowerCase();
+                  const dropoff = (t.dropoff_address || "").toLowerCase();
+                  const customerName = (t.customer_name || "").toLowerCase();
+                  const driverName = t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}`.toLowerCase() : "";
+                  const phone = (t.customer_phone || "").toLowerCase();
+                  const plate = t.vehicle?.plate_number?.toLowerCase() || "";
+                  const center = t.vehicle?.center_code?.toLowerCase() || "";
+                  return pickup.includes(q) || dropoff.includes(q) || customerName.includes(q) || driverName.includes(q) || phone.includes(q) || plate.includes(q) || center.includes(q);
+                }
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return <p className="text-xs text-muted-foreground text-center py-8">No app requests found</p>;
+              }
+
+              return (
+                <>
+                  <p className="text-[10px] text-muted-foreground px-1">{filtered.length} request{filtered.length !== 1 ? "s" : ""}</p>
+                  {filtered.map((t: any) => {
+                    const wasAccepted = !!t.accepted_at;
+                    const isOngoing = t.status === "accepted" || t.status === "started" || t.status === "in_progress";
+                    const statusLabel = t.status === "cancelled"
+                      ? (wasAccepted ? "Cancelled" : "No drivers")
+                      : t.status === "completed" ? "Completed"
+                      : t.status === "accepted" ? "Accepted"
+                      : t.status === "started" || t.status === "in_progress" ? "On Trip"
+                      : "Searching";
+                    const driver = t.driver as any;
+                    const vehicle = t.vehicle as any;
+
+                    return (
+                      <div
+                        key={t.id}
+                        className={`rounded-md overflow-hidden ${
+                          t.status === "cancelled" ? (wasAccepted ? "bg-warning/10 border border-warning/30" : "bg-destructive/10 border border-destructive/30")
+                          : t.status === "completed" ? "bg-success/10 border border-success/30"
+                          : isOngoing ? "bg-orange-500/5 border border-orange-500/30"
+                          : "bg-surface border border-border"
+                        }`}
+                      >
+                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `appdlg-${t.id}` ? null : `appdlg-${t.id}`)}>
+                          <span className="text-muted-foreground whitespace-nowrap font-medium">
+                            {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            t.status === "cancelled" ? (wasAccepted ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive")
+                            : t.status === "completed" ? "bg-success/20 text-success"
+                            : isOngoing ? "bg-orange-500/20 text-orange-500"
+                            : "bg-primary/10 text-primary"
+                          }`}>{statusLabel}</span>
+                          <span className="text-foreground truncate flex-1">
+                            {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
+                          </span>
+                          {driver && (
+                            <span className="text-[9px] text-foreground font-medium shrink-0">{driver.first_name} {driver.last_name?.[0]}.</span>
+                          )}
+                          {isOngoing && (
+                            <button onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); setShowAllAppRequests(false); }} className="text-[9px] font-bold text-orange-500 shrink-0 px-1.5 py-0.5 rounded bg-orange-500/15 hover:bg-orange-500/25 transition-colors">
+                              <Navigation className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        {expandedTripId === `appdlg-${t.id}` && (
+                          <div className="px-2.5 pb-2 pt-1 border-t border-border space-y-2">
+                            {driver && (
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span className="text-muted-foreground">Driver:</span>
+                                <span className="font-bold text-foreground">{driver.first_name} {driver.last_name}</span>
+                                <a href={`tel:${driver.phone_number}`} className="text-primary hover:underline">{driver.phone_number}</a>
+                                {driver.company_name && <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">{driver.company_name}</span>}
+                              </div>
+                            )}
+                            {vehicle && (
+                              <div className="flex items-center gap-3 text-[10px]">
+                                <span className="text-muted-foreground">Vehicle:</span>
+                                <span className="font-bold">{vehicle.plate_number}</span>
+                                {vehicle.color && <span>{vehicle.color}</span>}
+                                {vehicle.center_code && <span className="font-bold text-primary">{vehicle.center_code}</span>}
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                              <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                              <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </>
               );
             })()}
