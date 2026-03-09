@@ -836,7 +836,7 @@ const Dispatch = () => {
                                 return assigned.centerCode ? `${assigned.centerCode}${vehicleText ? ` • ${vehicleText}` : ""}` : "—";
                               })()}</span></div>
                               <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
-                              <div><span className="text-muted-foreground">Status:</span> <span className="text-foreground">{t.status}</span></div>
+                              <div><span className="text-muted-foreground">Status:</span> <span className={`font-bold ${t.is_loss ? "text-red-500" : t.status === "cancelled" ? "text-warning" : t.status === "completed" ? "text-green-500" : "text-foreground"}`}>{t.is_loss ? "LOSS" : t.status === "cancelled" ? "CANCELLED" : t.status}</span></div>
                               {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
