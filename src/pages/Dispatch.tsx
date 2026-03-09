@@ -1052,7 +1052,17 @@ const Dispatch = () => {
                                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{driver.company_name}</span>
                                     )}
                                   </div>
-                                  <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
+                                  <div className="flex items-center gap-2">
+                                    <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
+                                    {isOngoing && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }}
+                                        className="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors flex items-center gap-1"
+                                      >
+                                        <Navigation className="w-3 h-3" /> Track Live
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               {/* Vehicle info */}
