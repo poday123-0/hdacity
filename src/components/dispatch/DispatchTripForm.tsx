@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw, Timer
+  ChevronUp, ChevronDown, RotateCcw
 } from "lucide-react";
 
 interface NominatimResult {
@@ -116,11 +116,6 @@ const DispatchTripForm = ({
   const [vehicleTypeFocusIndex, setVehicleTypeFocusIndex] = useState(0);
   const [toButtonFocusIndex, setToButtonFocusIndex] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
-
-  // Post-submit timer state
-  const [timerTripId, setTimerTripId] = useState<string | null>(null);
-  const [timerSecondsLeft, setTimerSecondsLeft] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Post-submit tracking state (kept for realtime subscription)
   const [createdTrip, setCreatedTrip] = useState<any>(null);
@@ -290,29 +285,6 @@ const DispatchTripForm = ({
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
     setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
   }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount]);
-
-  // Timer: countdown and auto-complete
-  useEffect(() => {
-    if (!timerTripId || timerSecondsLeft <= 0) return;
-    timerRef.current = setInterval(() => {
-      setTimerSecondsLeft(prev => {
-        if (prev <= 1) {
-          // Auto-complete the trip
-          clearInterval(timerRef.current!);
-          timerRef.current = null;
-          supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", timerTripId).then(() => {
-            onTripCreated();
-          });
-          setTimerTripId(null);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [timerTripId, timerSecondsLeft > 0]);
 
   // Realtime subscription for created trip
   useEffect(() => {
@@ -517,7 +489,7 @@ const DispatchTripForm = ({
     setCreatedTrip(null);
     setTripDriver(null);
     setTripVehicle(null);
-    // Don't clear timer - it runs independently
+    
   };
 
   const handleSubmit = async () => {
@@ -603,10 +575,6 @@ const DispatchTripForm = ({
         console.warn("Push notification failed:", pushErr);
       }
 
-      // Start 5-min timer
-      setTimerTripId(trip.id);
-      setTimerSecondsLeft(300); // 5 minutes
-
       // Reset form
       setCustomerPhone("");
       setPickup(null);
@@ -625,12 +593,6 @@ const DispatchTripForm = ({
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
     setSubmitting(false);
-  };
-
-  const formatTimer = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const formLabels = ["Bid 1", "Bid 2", "Bid 3"];
@@ -658,13 +620,6 @@ const DispatchTripForm = ({
           </button>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          {/* Timer display */}
-          {timerTripId && timerSecondsLeft > 0 && (
-            <span className={`flex items-center gap-1 text-xs font-bold ${timerSecondsLeft <= 60 ? "text-destructive" : "text-primary"}`}>
-              <Timer className="w-3.5 h-3.5" />
-              {formatTimer(timerSecondsLeft)}
-            </span>
-          )}
           {estimatedFare != null && (
             <span className="flex items-center gap-1 text-sm font-bold text-primary">
               <DollarSign className="w-3.5 h-3.5" />

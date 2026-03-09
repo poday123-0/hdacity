@@ -476,36 +476,6 @@ const Dispatch = () => {
     refreshTrips();
   };
 
-  // Countdown timer component for accepted/started trips (5 min from created_at)
-  const CountdownTimer = ({ createdAt, tripId }: { createdAt: string; tripId: string }) => {
-    const [remaining, setRemaining] = useState(0);
-
-    useEffect(() => {
-      const endTime = new Date(createdAt).getTime() + 5 * 60 * 1000;
-      const tick = () => {
-        const left = Math.max(0, endTime - Date.now());
-        setRemaining(left);
-        if (left <= 0) {
-          // Auto-complete
-          supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", tripId).then(() => refreshTrips());
-        }
-      };
-      tick();
-      const iv = setInterval(tick, 1000);
-      return () => clearInterval(iv);
-    }, [createdAt, tripId]);
-
-    if (remaining <= 0) return <span className="text-[9px] font-bold text-success">✓</span>;
-    const mins = Math.floor(remaining / 60000);
-    const secs = Math.floor((remaining % 60000) / 1000);
-    const pct = remaining / (5 * 60 * 1000);
-    return (
-      <span className={`text-[9px] font-bold tabular-nums shrink-0 ${pct < 0.2 ? "text-destructive" : "text-primary"}`}>
-        {mins}:{secs.toString().padStart(2, "0")}
-      </span>
-    );
-  };
-
   const handleLogout = () => {
     setIsAuthed(false);
     setDispatcherProfile(null);
@@ -816,7 +786,9 @@ const Dispatch = () => {
                             </span>
                             {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
                               <>
-                                <CountdownTimer createdAt={t.created_at} tripId={t.id} />
+                                <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="text-[9px] font-bold text-primary hover:text-primary/90 shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors" title="Track on Live Map">
+                                  <Navigation className="w-3 h-3" />
+                                </button>
                                 <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
                                   CANCEL
                                 </button>
@@ -846,8 +818,11 @@ const Dispatch = () => {
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
-                                  {t.status !== "cancelled" && !t.is_loss && <CountdownTimer createdAt={t.created_at} tripId={t.id} />}
-                                  {t.status !== "cancelled" && !t.is_loss && <span className="text-[9px] text-muted-foreground">auto-complete</span>}
+                                  {t.status !== "cancelled" && !t.is_loss && (
+                                    <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1">
+                                      <Navigation className="w-3 h-3" /> Track Live
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="flex gap-2">
                                   {(t.is_loss || t.status === "cancelled") && (

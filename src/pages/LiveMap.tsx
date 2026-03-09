@@ -67,7 +67,6 @@ const LiveMap = () => {
           .single();
 
         if (!data) {
-          // Trip doesn't exist — redirect
           setSharedTripEnded(true);
           return;
         }
@@ -96,7 +95,7 @@ const LiveMap = () => {
         const { data } = await supabase
           .from("trips")
           .select("id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address, status, driver_id, profiles:driver_id(first_name, last_name)")
-          .in("status", ["accepted", "in_progress"]);
+          .in("status", ["accepted", "in_progress", "started"]);
         if (data) {
           setActiveTrips(data.filter((t: any) => t.pickup_lat && t.dropoff_lat).map((t: any) => ({
             id: t.id,
@@ -113,7 +112,7 @@ const LiveMap = () => {
       }
     };
     fetchTrips();
-    const interval = setInterval(fetchTrips, 5000);
+    const interval = setInterval(fetchTrips, 3000);
     return () => clearInterval(interval);
   }, [sharedTripId]);
 
@@ -144,6 +143,37 @@ const LiveMap = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, [sharedTripId]);
+
+  // Subscribe to realtime driver location updates for shared trip
+  useEffect(() => {
+    if (!sharedTripId) return;
+    // Get the driver_id for this trip to subscribe to their location
+    const subscribeToDriver = async () => {
+      const { data: trip } = await supabase.from("trips").select("driver_id").eq("id", sharedTripId).single();
+      if (!trip?.driver_id) return;
+
+      const channel = supabase
+        .channel(`driver-loc-${trip.driver_id}`)
+        .on("postgres_changes", {
+          event: "UPDATE",
+          schema: "public",
+          table: "driver_locations",
+          filter: `driver_id=eq.${trip.driver_id}`,
+        }, (payload) => {
+          const newLoc = payload.new as any;
+          setVehicleMarkers(prev => prev.map(v => 
+            v.driverId === trip.driver_id ? { ...v, lat: newLoc.lat, lng: newLoc.lng } : v
+          ));
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    };
+    
+    let cleanup: (() => void) | undefined;
+    subscribeToDriver().then(fn => { cleanup = fn; });
+    return () => { cleanup?.(); };
   }, [sharedTripId]);
 
   const toggleFullscreen = () => {
