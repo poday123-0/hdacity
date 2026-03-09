@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw, Timer
+  ChevronUp, ChevronDown, RotateCcw
 } from "lucide-react";
 
 interface NominatimResult {
