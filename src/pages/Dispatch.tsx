@@ -463,7 +463,15 @@ const Dispatch = () => {
   };
 
   const handleDispatchCancel = async (tripId: string) => {
-    await supabase.from("trips").update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancel_reason: "Cancelled by dispatch" }).eq("id", tripId);
+    await supabase
+      .from("trips")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancel_reason: "Cancelled by dispatch",
+        is_loss: true,
+      })
+      .eq("id", tripId);
     toast({ title: "Trip Cancelled" });
     refreshTrips();
   };
