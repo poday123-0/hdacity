@@ -565,9 +565,60 @@ const DispatchTripForm = ({
         if (isAssigned && assignedDriverId) {
           await notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address);
         } else {
-          const { data: drivers } = await supabase.from("driver_locations").select("driver_id").eq("is_online", true).eq("is_on_trip", false);
-          if (drivers && drivers.length > 0) {
-            await notifyTripRequested(drivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address);
+          // Broadcast: find online drivers within 2km of pickup, max 10
+          const { data: drivers } = await supabase
+            .from("driver_locations")
+            .select("driver_id, lat, lng")
+            .eq("is_online", true)
+            .eq("is_on_trip", false);
+
+          if (drivers && drivers.length > 0 && pickup) {
+            const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+              const R = 6371;
+              const dLat = ((lat2 - lat1) * Math.PI) / 180;
+              const dLon = ((lon2 - lon1) * Math.PI) / 180;
+              const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+              return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            };
+
+            const nearbyDrivers = drivers
+              .map((d: any) => ({ ...d, dist: haversineKm(pickup.lat, pickup.lng, d.lat, d.lng) }))
+              .filter((d: any) => d.dist <= 2)
+              .sort((a: any, b: any) => a.dist - b.dist)
+              .slice(0, 10);
+
+            if (nearbyDrivers.length > 0) {
+              await notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address);
+              toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: "First to accept gets the trip" });
+            } else {
+              toast({ title: "No drivers within 2km", description: "Trip will auto-cancel in 2 minutes", variant: "destructive" });
+            }
+
+            // Auto-cancel after 2 minutes if no driver accepts
+            setTimeout(async () => {
+              const { data: check } = await supabase.from("trips").select("status").eq("id", trip.id).single();
+              if (check && check.status === "requested") {
+                await supabase.from("trips").update({
+                  status: "cancelled",
+                  cancelled_at: new Date().toISOString(),
+                  cancel_reason: "No driver available - auto cancelled",
+                }).eq("id", trip.id);
+                onTripCreated();
+              }
+            }, 120_000);
+          } else {
+            toast({ title: "No online drivers found", description: "Trip will auto-cancel in 2 minutes", variant: "destructive" });
+            setTimeout(async () => {
+              const { data: check } = await supabase.from("trips").select("status").eq("id", trip.id).single();
+              if (check && check.status === "requested") {
+                await supabase.from("trips").update({
+                  status: "cancelled",
+                  cancelled_at: new Date().toISOString(),
+                  cancel_reason: "No driver available - auto cancelled",
+                }).eq("id", trip.id);
+                onTripCreated();
+              }
+            }, 120_000);
           }
         }
       } catch (pushErr) {
