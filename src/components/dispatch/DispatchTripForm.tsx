@@ -612,12 +612,16 @@ const DispatchTripForm = ({
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col min-w-[300px]">
       {/* Form header */}
-      <div className="border-b border-border px-2.5 py-1.5 flex items-center justify-between">
-        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-1.5">
+      <div className="border-b border-border px-2.5 py-1.5 flex items-center justify-between gap-2">
+        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-1.5 shrink-0">
           <h3 className="text-xs font-bold text-foreground">{formLabels[formIndex]}</h3>
           {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />}
         </button>
-        <div className="flex items-center gap-3">
+        <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="px-2 py-1 bg-surface border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+          <option value="broadcast">Broadcast</option>
+          <option value="specific">Assign</option>
+        </select>
+        <div className="flex items-center gap-2 ml-auto">
           {/* Timer display */}
           {timerTripId && timerSecondsLeft > 0 && (
             <span className={`flex items-center gap-1 text-xs font-bold ${timerSecondsLeft <= 60 ? "text-destructive" : "text-primary"}`}>
@@ -631,7 +635,7 @@ const DispatchTripForm = ({
               {estimatedFare} MVR
             </span>
           )}
-          <button onClick={clearForm} className="text-[10px] text-muted-foreground hover:text-foreground font-medium">Clear Form</button>
+          <button onClick={clearForm} className="text-[10px] text-muted-foreground hover:text-foreground font-medium">Clear</button>
         </div>
       </div>
 
