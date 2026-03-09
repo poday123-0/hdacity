@@ -147,7 +147,7 @@ const AdminCompetitions = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "" });
+    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "", rules_text: "" });
     setPrizeRows([
       { tier_rank: 1, tier_name: "Gold", prize_type: "wallet_credit", wallet_amount: 500, fee_free_months: 0, badge_label: "🥇 Champion", custom_description: "" },
       { tier_rank: 2, tier_name: "Silver", prize_type: "wallet_credit", wallet_amount: 300, fee_free_months: 0, badge_label: "🥈 Runner-up", custom_description: "" },
