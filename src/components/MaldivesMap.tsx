@@ -103,7 +103,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       center,
       zoom: 15,
       disableDefaultUI: true,
-      zoomControl: false,
+      zoomControl: true,
       gestureHandling: "greedy",
     };
 
@@ -146,6 +146,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
     // Detect user interaction to stop auto-panning
     map.addListener("dragstart", () => { userInteractingRef.current = true; });
+    map.addListener("zoom_changed", () => { userInteractingRef.current = true; });
 
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
