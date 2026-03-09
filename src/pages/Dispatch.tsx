@@ -323,7 +323,7 @@ const Dispatch = () => {
           .eq("dispatch_type", "operator")
           .in("status", ["requested", "accepted", "started", "completed"])
           .order("created_at", { ascending: false })
-          .limit(30),
+          .limit(200),
         supabase
           .from("trips")
           .select(
