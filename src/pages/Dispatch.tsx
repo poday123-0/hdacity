@@ -287,7 +287,7 @@ const Dispatch = () => {
         supabase
           .from("trips")
           .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
+            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
           )
           .eq("dispatch_type", "operator")
           .in("status", ["requested", "accepted", "started", "completed"])
@@ -296,7 +296,7 @@ const Dispatch = () => {
         supabase
           .from("trips")
           .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
+            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
           )
           .eq("dispatch_type", "operator")
           .eq("is_loss", true)
@@ -339,9 +339,9 @@ const Dispatch = () => {
 
   const refreshTrips = async () => {
     const [{ data }, { data: lost }] = await Promise.all([
-      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(30),
-      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
+      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").eq("is_loss", true).order("created_at", { ascending: false }).limit(30),
     ]);
     setRecentTrips(data || []);
@@ -575,12 +575,16 @@ const Dispatch = () => {
                         </span>
                         <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive uppercase">LOSS STATUS</span>
                         {t.vehicle ? (
-                          <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          <>
+                            {(t.vehicle as any).center_code && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                            )}
+                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          </>
                         ) : (
-                          <span className="text-destructive whitespace-nowrap">No Vehicle</span>
-                        )}
-                        {t.vehicle && (t.vehicle as any).center_code && (
-                          <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                          <span className="text-muted-foreground whitespace-nowrap italic">
+                            {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                          </span>
                         )}
                         <span className="text-foreground truncate flex-1">
                           {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
@@ -608,12 +612,16 @@ const Dispatch = () => {
                           {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         {t.vehicle ? (
-                          <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""}</span>
+                          <>
+                            {(t.vehicle as any).center_code && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                            )}
+                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          </>
                         ) : (
-                          <span className="text-destructive whitespace-nowrap">No Vehicle</span>
-                        )}
-                        {t.vehicle && (t.vehicle as any).center_code && (
-                          <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                          <span className="text-muted-foreground whitespace-nowrap italic">
+                            {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                          </span>
                         )}
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
                           t.status === "completed" ? "bg-green-500/15 text-green-500" :
