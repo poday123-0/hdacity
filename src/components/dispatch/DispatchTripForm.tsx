@@ -617,10 +617,20 @@ const DispatchTripForm = ({
           <h3 className="text-xs font-bold text-foreground">{formLabels[formIndex]}</h3>
           {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />}
         </button>
-        <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="px-2 py-1 bg-surface border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-          <option value="broadcast">Broadcast</option>
-          <option value="specific">Assign</option>
-        </select>
+        <div className="flex rounded overflow-hidden border border-border">
+          <button
+            onClick={() => setDispatchMethod("specific")}
+            className={`px-2 py-1 text-[10px] font-medium transition-colors ${dispatchMethod === "specific" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}
+          >
+            Assign
+          </button>
+          <button
+            onClick={() => setDispatchMethod("broadcast")}
+            className={`px-2 py-1 text-[10px] font-medium transition-colors ${dispatchMethod === "broadcast" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}
+          >
+            Send to App
+          </button>
+        </div>
         <div className="flex items-center gap-2 ml-auto">
           {/* Timer display */}
           {timerTripId && timerSecondsLeft > 0 && (
