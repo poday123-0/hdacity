@@ -725,12 +725,17 @@ const Dispatch = () => {
                                 <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
                               </>
                             ) : (
-                              <span className="text-muted-foreground whitespace-nowrap italic">
+                              <span className="whitespace-nowrap italic">
                                 {(() => {
                                   const assigned = getAssignedVehicleDetails(t);
-                                  if (!assigned.centerCode) return "—";
+                                  if (!assigned.centerCode) return <span className="text-muted-foreground">—</span>;
                                   const vehicleText = [assigned.color, assigned.plateNumber].filter(Boolean).join(" • ");
-                                  return vehicleText ? `${assigned.centerCode} • ${vehicleText}` : assigned.centerCode;
+                                  return (
+                                    <>
+                                      <span className="font-bold text-[11px] text-primary">{assigned.centerCode}</span>
+                                      {vehicleText && <span className="text-muted-foreground"> • {vehicleText}</span>}
+                                    </>
+                                  );
                                 })()}
                               </span>
                             )}
