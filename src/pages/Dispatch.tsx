@@ -845,7 +845,21 @@ const Dispatch = () => {
                                   {t.status !== "cancelled" && <span className="text-[9px] text-muted-foreground">auto-complete</span>}
                                 </div>
                                 <div className="flex gap-2">
-                                  {t.status !== "cancelled" && (
+                                  {(t.is_loss || t.status === "cancelled") && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        supabase.from("trips").update({ is_loss: false, status: "completed", cancel_reason: null, cancelled_at: null }).eq("id", t.id).then(() => {
+                                          toast({ title: "Removed from Loss/Cancel" });
+                                          refreshTrips();
+                                        });
+                                      }}
+                                      className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors"
+                                    >
+                                      Restore Trip
+                                    </button>
+                                  )}
+                                  {t.status !== "cancelled" && !t.is_loss && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
                                       className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
