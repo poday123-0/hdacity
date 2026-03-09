@@ -61,7 +61,8 @@ import {
   AlertTriangle,
   Bell as BellIcon,
   Trophy,
-  XCircle } from
+  XCircle,
+  Ban } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
