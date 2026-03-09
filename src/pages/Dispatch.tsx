@@ -108,6 +108,7 @@ const Dispatch = () => {
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
+  const [showAllBookings, setShowAllBookings] = useState(false);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
