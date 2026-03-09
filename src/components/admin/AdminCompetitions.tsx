@@ -212,6 +212,7 @@ const AdminCompetitions = () => {
       end_date: comp.end_date.slice(0, 16),
       service_location_id: comp.service_location_id || "",
       vehicle_type_id: (comp as any).vehicle_type_id || "",
+      rules_text: (comp as any).rules_text || "",
     });
     setEditingId(comp.id);
     // Load prizes
