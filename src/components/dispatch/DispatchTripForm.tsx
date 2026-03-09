@@ -105,6 +105,15 @@ const DispatchTripForm = ({
   const [dispatchMethod, setDispatchMethod] = useState<"broadcast" | "specific">("broadcast");
   const [selectedDriverId, setSelectedDriverId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Refs for keyboard navigation
+  const pickupInputRef = useRef<HTMLInputElement | null>(null);
+  const dropoffInputRef = useRef<HTMLInputElement | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const vehicleTypeButtonsRef = useRef<HTMLDivElement | null>(null);
+  const toButtonsRef = useRef<HTMLDivElement | null>(null);
+  const [vehicleTypeFocusIndex, setVehicleTypeFocusIndex] = useState(0);
+  const [toButtonFocusIndex, setToButtonFocusIndex] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
 
   // Post-submit timer state
