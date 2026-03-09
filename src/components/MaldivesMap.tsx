@@ -190,11 +190,13 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, [mapReady, mapId]);
 
-  // Update user marker
+  // Update user marker — never auto-pan after user has interacted
   useEffect(() => {
     if (!userPos || !userMarkerRef.current || !mapInstance.current) return;
     userMarkerRef.current.setPosition(userPos);
-    if (!rideData?.showRoute && !userInteractingRef.current) {
+    // Only auto-pan on the very first position fix, never after
+    if (!initialFitDoneRef.current && !userInteractingRef.current && !rideData?.showRoute) {
+      initialFitDoneRef.current = true;
       mapInstance.current.panTo(userPos);
     }
   }, [userPos, rideData?.showRoute]);
