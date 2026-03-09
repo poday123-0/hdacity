@@ -972,14 +972,21 @@ const DispatchTripForm = ({
                 // 1) Instant path: use preloaded index, but verify vehicle is still active
                 const cached = centerCodeIndex?.[code];
                 if (cached) {
-                  // Quick check vehicle is still active
-                  const { count } = await supabase
+                  // Quick check vehicle is still active and not blocked
+                  const { data: vCheck } = await supabase
                     .from("vehicles")
-                    .select("id", { count: "exact", head: true })
+                    .select("id, blocked_until")
                     .eq("center_code", code)
-                    .eq("is_active", true);
-                  if (!count || count === 0) {
+                    .eq("is_active", true)
+                    .limit(1)
+                    .maybeSingle();
+                  if (!vCheck) {
                     toast({ title: "Vehicle inactive", description: `Code "${code}" belongs to an inactive vehicle`, variant: "destructive" });
+                    return;
+                  }
+                  if (vCheck.blocked_until && new Date(vCheck.blocked_until) > new Date()) {
+                    const remaining = Math.ceil((new Date(vCheck.blocked_until).getTime() - Date.now()) / 60000);
+                    toast({ title: "Vehicle blocked", description: `Code "${code}" is blocked for ${remaining} more minutes`, variant: "destructive" });
                     return;
                   }
                   addEntry({ ...cached, code });
