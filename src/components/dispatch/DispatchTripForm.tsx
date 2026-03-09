@@ -997,7 +997,7 @@ const DispatchTripForm = ({
                 try {
                   const { data: vehicle } = await supabase
                     .from("vehicles")
-                    .select("plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)")
+                    .select("plate_number, color, vehicle_type_id, driver_id, blocked_until, vehicle_types:vehicle_type_id(name)")
                     .eq("center_code", code)
                     .eq("is_active", true)
                     .limit(1)
