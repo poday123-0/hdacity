@@ -103,6 +103,11 @@ const Dispatch = () => {
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [lostTrips, setLostTrips] = useState<any[]>([]);
 
+  // Chat history
+  const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [lostItems, setLostItems] = useState<any[]>([]);
+
   // Preloaded center-code index for instant lookups (refreshed in background)
   const [centerCodeIndex, setCenterCodeIndex] = useState<Record<string, any>>({});
 
