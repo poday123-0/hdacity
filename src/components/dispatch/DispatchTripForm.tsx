@@ -561,18 +561,22 @@ const DispatchTripForm = ({
 
       toast({ title: `Bid ${formIndex + 1} sent!`, description: isAssigned ? "Assigned to driver" : "Broadcasting to nearby drivers" });
 
-      try {
-        if (isAssigned && assignedDriverId) {
-          await notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address);
-        } else {
-          // Broadcast: find online drivers within 2km of pickup, max 10
-          const { data: drivers } = await supabase
-            .from("driver_locations")
-            .select("driver_id, lat, lng")
-            .eq("is_online", true)
-            .eq("is_on_trip", false);
+      // Fire notifications non-blocking for speed
+      if (isAssigned && assignedDriverId) {
+        notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address).catch(console.warn);
+      } else if (pickup) {
+        // Broadcast: find online drivers within 2km of pickup, max 10
+        supabase
+          .from("driver_locations")
+          .select("driver_id, lat, lng")
+          .eq("is_online", true)
+          .eq("is_on_trip", false)
+          .then(({ data: drivers }) => {
+            if (!drivers || drivers.length === 0 || !pickup) {
+              toast({ title: "No online drivers found", description: "Trip will auto-cancel in 2 minutes", variant: "destructive" });
+              return;
+            }
 
-          if (drivers && drivers.length > 0 && pickup) {
             const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
               const R = 6371;
               const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -588,41 +592,26 @@ const DispatchTripForm = ({
               .slice(0, 10);
 
             if (nearbyDrivers.length > 0) {
-              await notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address);
+              notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address).catch(console.warn);
               toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: "First to accept gets the trip" });
             } else {
               toast({ title: "No drivers within 2km", description: "Trip will auto-cancel in 2 minutes", variant: "destructive" });
             }
+          });
 
-            // Auto-cancel after 2 minutes if no driver accepts
-            setTimeout(async () => {
-              const { data: check } = await supabase.from("trips").select("status").eq("id", trip.id).single();
-              if (check && check.status === "requested") {
-                await supabase.from("trips").update({
-                  status: "cancelled",
-                  cancelled_at: new Date().toISOString(),
-                  cancel_reason: "No driver available - auto cancelled",
-                }).eq("id", trip.id);
-                onTripCreated();
-              }
-            }, 120_000);
-          } else {
-            toast({ title: "No online drivers found", description: "Trip will auto-cancel in 2 minutes", variant: "destructive" });
-            setTimeout(async () => {
-              const { data: check } = await supabase.from("trips").select("status").eq("id", trip.id).single();
-              if (check && check.status === "requested") {
-                await supabase.from("trips").update({
-                  status: "cancelled",
-                  cancelled_at: new Date().toISOString(),
-                  cancel_reason: "No driver available - auto cancelled",
-                }).eq("id", trip.id);
-                onTripCreated();
-              }
-            }, 120_000);
+        // Auto-cancel after 2 minutes if still requested
+        const tripId = trip.id;
+        setTimeout(async () => {
+          const { data: check } = await supabase.from("trips").select("status").eq("id", tripId).single();
+          if (check && check.status === "requested") {
+            await supabase.from("trips").update({
+              status: "cancelled",
+              cancelled_at: new Date().toISOString(),
+              cancel_reason: "No driver available - auto cancelled",
+            }).eq("id", tripId);
+            onTripCreated();
           }
-        }
-      } catch (pushErr) {
-        console.warn("Push notification failed:", pushErr);
+        }, 120_000);
       }
 
       // Reset form
