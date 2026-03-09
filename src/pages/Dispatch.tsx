@@ -114,6 +114,9 @@ const Dispatch = () => {
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const [showAllBookings, setShowAllBookings] = useState(false);
+  const [allBookingsSearch, setAllBookingsSearch] = useState("");
+  const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
+  const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
