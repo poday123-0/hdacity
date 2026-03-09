@@ -420,6 +420,7 @@ const DispatchTripForm = ({
               const lng = parseFloat(item.lon);
               const areaName = findNearestServiceAreaName(lat, lng);
               const placeName = item.namedetails?.name || item.name || item.display_name?.split(",")[0] || "Location";
+              const roadName = item.address?.road || null;
               // Skip duplicates
               const isDup = localMatches.some(lm =>
                 haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05
@@ -432,6 +433,7 @@ const DispatchTripForm = ({
                 lon: String(lng),
                 name: placeName,
                 tag: areaName,
+                road: roadName,
               };
             })
             .filter(Boolean) as NominatimResult[];
