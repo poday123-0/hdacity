@@ -969,9 +969,19 @@ const DispatchTripForm = ({
                   }
                 };
 
-                // 1) Instant path: use preloaded index
+                // 1) Instant path: use preloaded index, but verify vehicle is still active
                 const cached = centerCodeIndex?.[code];
                 if (cached) {
+                  // Quick check vehicle is still active
+                  const { count } = await supabase
+                    .from("vehicles")
+                    .select("id", { count: "exact", head: true })
+                    .eq("center_code", code)
+                    .eq("is_active", true);
+                  if (!count || count === 0) {
+                    toast({ title: "Vehicle inactive", description: `Code "${code}" belongs to an inactive vehicle`, variant: "destructive" });
+                    return;
+                  }
                   addEntry({ ...cached, code });
                   return;
                 }
