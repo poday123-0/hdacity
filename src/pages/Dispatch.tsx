@@ -998,8 +998,8 @@ const Dispatch = () => {
                             )}
                           </div>
 
-                          {/* Driver + Vehicle card (shown when accepted) */}
-                          {hasDriverInfo && expandedTripId === `app-${t.id}` && (
+                          {/* Driver + Vehicle card (always shown when accepted) */}
+                          {hasDriverInfo && (
                             <div className="mx-2.5 mb-2 rounded-lg bg-muted/30 border border-border p-2.5">
                               <div className="flex items-start gap-3">
                                 {/* Driver avatar */}
