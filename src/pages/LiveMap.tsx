@@ -67,7 +67,6 @@ const LiveMap = () => {
           .single();
 
         if (!data) {
-          // Trip doesn't exist — redirect
           setSharedTripEnded(true);
           return;
         }
@@ -96,7 +95,7 @@ const LiveMap = () => {
         const { data } = await supabase
           .from("trips")
           .select("id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address, status, driver_id, profiles:driver_id(first_name, last_name)")
-          .in("status", ["accepted", "in_progress"]);
+          .in("status", ["accepted", "in_progress", "started"]);
         if (data) {
           setActiveTrips(data.filter((t: any) => t.pickup_lat && t.dropoff_lat).map((t: any) => ({
             id: t.id,
@@ -113,7 +112,7 @@ const LiveMap = () => {
       }
     };
     fetchTrips();
-    const interval = setInterval(fetchTrips, 5000);
+    const interval = setInterval(fetchTrips, 3000);
     return () => clearInterval(interval);
   }, [sharedTripId]);
 
