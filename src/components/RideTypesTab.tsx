@@ -4,7 +4,7 @@ import { Car, Clock } from "lucide-react";
 
 interface RideTypesTabProps {
   userId?: string;
-  vehicleTypes: Array<{ id: string; name: string }>;
+  vehicleTypes: Array<{ id: string; name: string; is_active?: boolean }>;
   vehicles?: Array<{ id: string; plate_number: string; make?: string; model?: string; vehicle_type_id?: string; vehicle_status?: string }>;
 }
 
