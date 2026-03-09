@@ -957,11 +957,11 @@ const Dispatch = () => {
                             {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                           <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                            t.status === "cancelled" ? "bg-warning/20 text-warning" :
+                            t.status === "cancelled" ? "bg-destructive/20 text-destructive" :
                             t.status === "completed" ? "bg-success/20 text-success" :
                             t.status === "accepted" || t.status === "started" ? "bg-orange-500/20 text-orange-500" :
                             "bg-surface text-muted-foreground"
-                          }`}>{t.status}</span>
+                          }`}>{t.status === "cancelled" ? "No drivers available" : t.status}</span>
                           <span className="text-foreground truncate flex-1">
                             {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
                           </span>
