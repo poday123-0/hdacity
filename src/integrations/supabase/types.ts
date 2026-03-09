@@ -1399,6 +1399,7 @@ export type Database = {
           hourly_ended_at: string | null
           hourly_started_at: string | null
           id: string
+          is_loss: boolean
           luggage_count: number
           passenger_bonus: number
           passenger_count: number
@@ -1448,6 +1449,7 @@ export type Database = {
           hourly_ended_at?: string | null
           hourly_started_at?: string | null
           id?: string
+          is_loss?: boolean
           luggage_count?: number
           passenger_bonus?: number
           passenger_count?: number
@@ -1497,6 +1499,7 @@ export type Database = {
           hourly_ended_at?: string | null
           hourly_started_at?: string | null
           id?: string
+          is_loss?: boolean
           luggage_count?: number
           passenger_bonus?: number
           passenger_count?: number
