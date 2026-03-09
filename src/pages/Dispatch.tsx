@@ -684,11 +684,17 @@ const Dispatch = () => {
                             </span>
                           )}
                           <span className="text-foreground truncate flex-1">
-                            {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]} <span className="text-destructive">→</span> {(t.dropoff_address || "").split(",")[0]}
+                            {t.customer_name || "N/A"} • {(t.pickup_address || "").split(",")[0]}{" "}
+                            <span className={t.status === "cancelled" ? "text-warning" : "text-destructive"}>→</span>{" "}
+                            {(t.dropoff_address || "").split(",")[0]}
                           </span>
                         </div>
                         {expandedTripId === `loss-${t.id}` && (
-                          <div className="px-2.5 pb-2 pt-1 border-t border-destructive/10 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                          <div
+                            className={`px-2.5 pb-2 pt-1 border-t grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] ${
+                              t.status === "cancelled" ? "border-warning/20" : "border-destructive/10"
+                            }`}
+                          >
                             <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                             <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
                             <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"}</span></div>
