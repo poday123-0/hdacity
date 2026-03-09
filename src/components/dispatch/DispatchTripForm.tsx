@@ -527,8 +527,7 @@ const DispatchTripForm = ({
         customer_name: customerName,
         customer_phone: customerPhone.trim(),
         created_by: dispatcherProfile?.id || null,
-        // "specific" (Assign) = operator dispatch, "broadcast" (Send to App) = treated like passenger request
-        dispatch_type: dispatchMethod === "specific" ? "operator" : "passenger",
+        dispatch_type: dispatchMethod === "specific" ? "operator" : "dispatch_broadcast",
         vehicle_type_id: selectedVehicleType || null,
         status: isAssigned ? "accepted" : "requested",
         driver_id: assignedDriverId || null,
