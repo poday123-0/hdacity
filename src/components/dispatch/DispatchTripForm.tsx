@@ -117,6 +117,7 @@ const DispatchTripForm = ({
   const [vehicleTypeFocusIndex, setVehicleTypeFocusIndex] = useState(0);
   const [toButtonFocusIndex, setToButtonFocusIndex] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState<"pickup" | "dropoff" | null>(null);
 
   // Post-submit tracking state (kept for realtime subscription)
   const [createdTrip, setCreatedTrip] = useState<any>(null);
