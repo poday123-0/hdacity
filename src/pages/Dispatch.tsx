@@ -8,7 +8,7 @@ import {
   Phone, MapPin, X, Loader2, Navigation, ArrowRight, Moon, Sun,
   MessageSquare, PackageX, AlertTriangle, LayoutDashboard, Users,
   MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building,
-  Search, CalendarIcon
+  Search, CalendarIcon, Send
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
