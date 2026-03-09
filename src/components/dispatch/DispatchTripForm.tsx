@@ -708,11 +708,7 @@ const DispatchTripForm = ({
                       <p className="text-[10px] text-muted-foreground truncate">{r.display_name.split("—").slice(1).join("—").trim()}</p>
                     </div>
                     {r.tag && (
-                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        r.tag === "Service Area" ? "bg-primary/15 text-primary" :
-                        r.tag === "Admin" ? "bg-amber-500/15 text-amber-600" :
-                        "bg-muted text-muted-foreground"
-                      }`}>{r.tag}</span>
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
                     )}
                   </button>
                 ))}
