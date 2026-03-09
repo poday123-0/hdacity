@@ -109,6 +109,7 @@ const Dispatch = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
+  const [appRequestTrips, setAppRequestTrips] = useState<any[]>([]);
   const [lostTrips, setLostTrips] = useState<any[]>([]);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
