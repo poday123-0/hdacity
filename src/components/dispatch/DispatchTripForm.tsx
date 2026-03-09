@@ -34,11 +34,26 @@ interface OnlineDriver {
   lng: number;
 }
 
+type CenterCodeIndexEntry = {
+  code: string;
+  color: string | null;
+  plate_number: string;
+  vehicle_type: string | null;
+  vehicle_type_id: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+  last_trip_date: string | null;
+  driver_id: string | null;
+  today_trips: number;
+};
+
 interface DispatchTripFormProps {
   formIndex: number;
   dispatcherProfile: any;
   vehicleTypes: any[];
   onlineDrivers: OnlineDriver[];
+  /** Preloaded map for instant center-code lookup */
+  centerCodeIndex: Record<string, CenterCodeIndexEntry>;
   onTripCreated: () => void;
 }
 
@@ -46,11 +61,22 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDrivers, onTripCreated }: DispatchTripFormProps) => {
+const DispatchTripForm = ({
+  formIndex,
+  dispatcherProfile,
+  vehicleTypes,
+  onlineDrivers,
+  centerCodeIndex,
+  onTripCreated,
+}: DispatchTripFormProps) => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [pickupQuery, setPickupQuery] = useState("");
   const [pickup, setPickup] = useState<StopLocation | null>(null);
@@ -59,6 +85,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageCount, setLuggageCount] = useState(0);
   const [centerCode, setCenterCode] = useState("");
+  const centerCodeInputRef = useRef<HTMLInputElement | null>(null);
   const [centerCodeResults, setCenterCodeResults] = useState<{
     code: string;
     color: string | null;
@@ -72,7 +99,7 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
     today_trips: number;
   }[]>([]);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(null);
-  const [centerCodeLoading, setCenterCodeLoading] = useState(false);
+
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
