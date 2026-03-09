@@ -661,7 +661,7 @@ const DispatchTripForm = ({
           <div className="space-y-1">
             <div
               ref={vehicleTypeButtonsRef}
-              className="flex flex-wrap gap-1"
+              className="flex flex-wrap gap-1 outline-none"
               tabIndex={0}
               onKeyDown={(e) => {
                 const filtered = [...vehicleTypes].filter(vt => {
