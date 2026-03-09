@@ -77,7 +77,10 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   // Use a ref for initial center so GPS updates don't re-trigger map init
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   if (!initialCenterRef.current) {
-    initialCenterRef.current = userPos || (rideData?.pickup ? { lat: rideData.pickup.lat, lng: rideData.pickup.lng } : null);
+    initialCenterRef.current = userPos
+      || (rideData?.pickup ? { lat: rideData.pickup.lat, lng: rideData.pickup.lng } : null)
+      || (tripRoutes && tripRoutes.length > 0 ? { lat: tripRoutes[0].pickupLat, lng: tripRoutes[0].pickupLng } : null)
+      || (vehicleMarkers && vehicleMarkers.length > 0 ? { lat: vehicleMarkers[0].lat, lng: vehicleMarkers[0].lng } : null);
   }
   if (!initialCenterRef.current && userPos) {
     initialCenterRef.current = userPos;
@@ -89,7 +92,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   // Init map — only once
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const center = initialCenterRef.current;
+    const center = initialCenterRef.current || { lat: 4.1755, lng: 73.5093 }; // Fallback to Malé
     if (!center) return;
     const g = (window as any).google;
     if (!g?.maps) return;
