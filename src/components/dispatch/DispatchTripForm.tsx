@@ -515,6 +515,21 @@ const DispatchTripForm = ({
 
     setSubmitting(true);
     try {
+      // Check if assigned vehicle is blocked
+      if (assignedEntry) {
+        const { data: veh } = await supabase
+          .from("vehicles")
+          .select("blocked_until")
+          .eq("center_code", assignedEntry.code)
+          .limit(1)
+          .maybeSingle();
+        if (veh?.blocked_until && new Date(veh.blocked_until as string) > new Date()) {
+          const remaining = Math.ceil((new Date(veh.blocked_until as string).getTime() - Date.now()) / 60000);
+          toast({ title: "Vehicle blocked", description: `${assignedEntry.code} is blocked for ${remaining} more minutes`, variant: "destructive" });
+          setSubmitting(false);
+          return;
+        }
+      }
       const customerName = "Dispatch";
 
       const tripPayload: any = {
