@@ -13,7 +13,8 @@ import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
 
 // Admin area imports
 import AdminDashboard from "@/components/admin/AdminDashboard";
