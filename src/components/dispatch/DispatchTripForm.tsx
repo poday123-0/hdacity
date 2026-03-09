@@ -374,11 +374,7 @@ const DispatchTripForm = ({
     }
   }, []);
 
-  // Nominatim search ref for cancellation
-  const nominatimAbortRef = useRef<AbortController | null>(null);
-  const googleAbortRef = useRef<AbortController | null>(null);
-
-  // Instant search: local DB results immediately + Google Places + Nominatim fallback
+  // Local-only search from service_locations + named_locations
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
