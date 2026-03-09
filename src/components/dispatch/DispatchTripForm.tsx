@@ -110,7 +110,7 @@ const DispatchTripForm = ({
 
   // Refs for keyboard navigation
   const pickupInputRef = useRef<HTMLInputElement | null>(null);
-  const dropoffInputRef = useRef<HTMLInputElement | null>(null);
+  
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const vehicleTypeButtonsRef = useRef<HTMLDivElement | null>(null);
   const toButtonsRef = useRef<HTMLDivElement | null>(null);
