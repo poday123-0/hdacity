@@ -1088,7 +1088,8 @@ const DispatchTripForm = ({
                         <span className="font-bold">{info.code}</span>
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type}</span>}
-                        {info.today_trips > 0 && <span className="text-primary font-semibold"> • {info.today_trips} today</span>}
+                        <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
+                        {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                       </span>
                       <button onClick={(e) => {
                         e.stopPropagation();
@@ -1102,11 +1103,6 @@ const DispatchTripForm = ({
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                    <p className="text-muted-foreground text-[10px]">
-                      {info.last_trip_date && <>Last: {new Date(info.last_trip_date).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "2-digit" }).toUpperCase()} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</>}
-                      {!info.last_trip_date && <span>No trips yet</span>}
-                      {info.driver_phone && <> • Driver: {info.driver_phone}</>}
-                    </p>
                   </div>
                 ))}
               </div>
