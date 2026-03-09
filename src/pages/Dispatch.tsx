@@ -612,12 +612,16 @@ const Dispatch = () => {
                           {new Date(t.created_at).toLocaleDateString([], { month: "short", day: "2-digit" }).toUpperCase()} • {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         {t.vehicle ? (
-                          <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""}</span>
+                          <>
+                            {(t.vehicle as any).center_code && (
+                              <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                            )}
+                            <span className="text-muted-foreground whitespace-nowrap">{(t.vehicle as any).color || ""} • {(t.vehicle as any).plate_number}</span>
+                          </>
                         ) : (
-                          <span className="text-destructive whitespace-nowrap">No Vehicle</span>
-                        )}
-                        {t.vehicle && (t.vehicle as any).center_code && (
-                          <span className="inline-block px-1 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold whitespace-nowrap">{(t.vehicle as any).center_code}</span>
+                          <span className="text-muted-foreground whitespace-nowrap italic">
+                            {t.booking_notes?.match(/Center:\s*(.+)/)?.[1] || "—"}
+                          </span>
                         )}
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
                           t.status === "completed" ? "bg-green-500/15 text-green-500" :
