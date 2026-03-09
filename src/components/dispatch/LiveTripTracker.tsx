@@ -129,9 +129,12 @@ const LiveTripTracker = ({ tripId }: Props) => {
 
   if (tripEnded) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-2">
-        <p className="text-sm font-bold text-foreground">Trip has ended</p>
-        <p className="text-xs text-muted-foreground">Tracking is no longer available.</p>
+      <div className="h-full flex flex-col items-center justify-center gap-3 p-6">
+        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Navigation className="w-6 h-6 text-primary" />
+        </div>
+        <p className="text-sm font-bold text-foreground">Trip Completed</p>
+        <p className="text-xs text-muted-foreground text-center">This trip has ended. You can close this window.</p>
       </div>
     );
   }
