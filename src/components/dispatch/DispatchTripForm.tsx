@@ -423,21 +423,7 @@ const DispatchTripForm = ({
       const { data: trip, error } = await supabase.from("trips").insert(tripPayload).select("*").single();
       if (error) throw error;
 
-      if (isAssigned && assignedDriverId) {
-        setCreatedTrip(trip);
-        if (assignedEntry) {
-          setTripDriver({ first_name: assignedEntry.driver_name || "", last_name: "", phone_number: assignedEntry.driver_phone || "" });
-          setTripVehicle({ plate_number: assignedEntry.plate_number, make: assignedEntry.vehicle_type || "" });
-        } else {
-          const driverLoc = onlineDrivers.find(d => d.driver_id === assignedDriverId);
-          if (driverLoc) {
-            setTripDriver({ first_name: driverLoc.first_name, last_name: driverLoc.last_name, phone_number: driverLoc.phone_number });
-            setTripVehicle({ plate_number: driverLoc.plate_number, make: driverLoc.vehicle_name });
-          }
-        }
-      } else {
-        setCreatedTrip(trip);
-      }
+      // Trip created — form will be cleared below, trip appears in Today's Booking table
 
       if (stops.length > 0) {
         const validStops = stops.filter(s => s.lat !== 0 && s.address);
