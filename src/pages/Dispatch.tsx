@@ -368,13 +368,28 @@ const Dispatch = () => {
     load();
   }, [isAuthed]);
 
-  // Realtime: auto-refresh trips table on any change
+  // Realtime: auto-refresh trips table on any change — instant status update + full refetch
   useEffect(() => {
     if (!isAuthed) return;
     const channel = supabase
       .channel("dispatch-trips-realtime")
       .on("postgres_changes", {
-        event: "*",
+        event: "UPDATE",
+        schema: "public",
+        table: "trips",
+      }, (payload) => {
+        const updated = payload.new as any;
+        // Instantly patch trip status in both lists for snappy UI
+        const patchTrip = (trips: any[]) =>
+          trips.map(t => t.id === updated.id ? { ...t, status: updated.status, accepted_at: updated.accepted_at, driver_id: updated.driver_id, actual_fare: updated.actual_fare, completed_at: updated.completed_at, cancelled_at: updated.cancelled_at } : t);
+        setRecentTrips(prev => patchTrip(prev));
+        setAppRequestTrips(prev => patchTrip(prev));
+        setLostTrips(prev => patchTrip(prev));
+        // Full refetch for joined data (driver/vehicle details)
+        refreshTrips();
+      })
+      .on("postgres_changes", {
+        event: "INSERT",
         schema: "public",
         table: "trips",
       }, () => {
