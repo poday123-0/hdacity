@@ -313,7 +313,8 @@ const Dispatch = () => {
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
-      const [vtRes, driversRes, tripsRes, lostRes] = await Promise.all([
+      const tripSelect = "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+      const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase
           .from("driver_locations")
@@ -326,13 +327,18 @@ const Dispatch = () => {
           .eq("is_on_trip", false),
         supabase
           .from("trips")
-          .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
-          )
-          .or(`dispatch_type.eq.operator${dispatcherProfile?.id ? `,created_by.eq.${dispatcherProfile.id}` : ""}`)
+          .select(tripSelect)
+          .eq("dispatch_type", "operator")
           .in("status", ["requested", "accepted", "started", "completed"])
           .order("created_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("trips")
+          .select(tripSelect)
+          .eq("dispatch_type", "dispatch_broadcast")
+          .in("status", ["requested", "accepted", "started", "completed", "cancelled"])
+          .order("created_at", { ascending: false })
+          .limit(100),
         supabase
           .from("trips")
           .select(
@@ -345,6 +351,7 @@ const Dispatch = () => {
       ]);
       setVehicleTypes(vtRes.data || []);
       setRecentTrips(tripsRes.data || []);
+      setAppRequestTrips(appReqRes.data || []);
       setLostTrips(lostRes.data || []);
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
