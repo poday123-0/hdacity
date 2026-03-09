@@ -108,6 +108,9 @@ const Dispatch = () => {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [lostItems, setLostItems] = useState<any[]>([]);
 
+  // Preloaded center-code index for instant lookups (refreshed in background)
+  const [centerCodeIndex, setCenterCodeIndex] = useState<Record<string, any>>({});
+
   useEffect(() => {
     const stored = localStorage.getItem("hda_dispatcher");
     if (stored) {
@@ -136,21 +139,158 @@ const Dispatch = () => {
     setLoading(false);
   }, []);
 
+  // Build a local index of center_code -> vehicle/driver info so Enter lookup is instant
+  useEffect(() => {
+    if (!isAuthed) return;
+
+    const CACHE_KEY = "hda_center_code_index_v1";
+    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+    const loadFromCache = () => {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed?.ts || Date.now() - parsed.ts > CACHE_TTL_MS) return null;
+        return parsed.index || null;
+      } catch {
+        return null;
+      }
+    };
+
+    const saveToCache = (index: Record<string, any>) => {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), index }));
+      } catch {}
+    };
+
+    const refresh = async () => {
+      const cached = loadFromCache();
+      if (cached) setCenterCodeIndex(cached);
+
+      try {
+        const { data: vehicles } = await supabase
+          .from("vehicles")
+          .select(
+            "center_code, plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)"
+          )
+          .eq("is_active", true)
+          .not("center_code", "is", null);
+
+        const driverIds = Array.from(
+          new Set((vehicles || []).map((v: any) => v.driver_id).filter(Boolean))
+        ) as string[];
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const [profilesRes, todayTripsRes, completedTripsRes] = await Promise.all([
+          driverIds.length
+            ? supabase
+                .from("profiles")
+                .select("id, first_name, last_name, phone_number")
+                .in("id", driverIds)
+            : Promise.resolve({ data: [] as any[] }),
+          driverIds.length
+            ? supabase
+                .from("trips")
+                .select("driver_id")
+                .in("driver_id", driverIds)
+                .gte("created_at", todayStart.toISOString())
+                .in("status", ["requested", "accepted", "started", "completed"])
+            : Promise.resolve({ data: [] as any[] }),
+          driverIds.length
+            ? supabase
+                .from("trips")
+                .select("driver_id, completed_at")
+                .in("driver_id", driverIds)
+                .eq("status", "completed")
+                .order("completed_at", { ascending: false })
+                .limit(2000)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+
+        const profileMap = new Map<string, any>();
+        (profilesRes.data || []).forEach((p: any) => profileMap.set(p.id, p));
+
+        const lastTripMap = new Map<string, string>();
+        (completedTripsRes.data || []).forEach((t: any) => {
+          if (t?.driver_id && t?.completed_at && !lastTripMap.has(t.driver_id)) {
+            lastTripMap.set(t.driver_id, t.completed_at);
+          }
+        });
+
+        const todayCounts = new Map<string, number>();
+        (todayTripsRes.data || []).forEach((t: any) => {
+          if (!t?.driver_id) return;
+          todayCounts.set(t.driver_id, (todayCounts.get(t.driver_id) || 0) + 1);
+        });
+
+        const index: Record<string, any> = {};
+        (vehicles || []).forEach((v: any) => {
+          const code = (v.center_code || "").toUpperCase();
+          if (!code) return;
+
+          const p = v.driver_id ? profileMap.get(v.driver_id) : null;
+          index[code] = {
+            code,
+            color: v.color || null,
+            plate_number: v.plate_number,
+            vehicle_type: (v.vehicle_types as any)?.name || null,
+            vehicle_type_id: v.vehicle_type_id || null,
+            driver_id: v.driver_id || null,
+            driver_name: p ? `${p.first_name} ${p.last_name}`.trim() : null,
+            driver_phone: p?.phone_number || null,
+            last_trip_date: v.driver_id ? lastTripMap.get(v.driver_id) || null : null,
+            today_trips: v.driver_id ? todayCounts.get(v.driver_id) || 0 : 0,
+          };
+        });
+
+        setCenterCodeIndex(index);
+        saveToCache(index);
+      } catch {
+        // keep any cached data
+      }
+    };
+
+    refresh();
+    const interval = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(interval);
+  }, [isAuthed]);
+
   // Load vehicle types, drivers, recent trips
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
       const [vtRes, driversRes, tripsRes, lostRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("driver_locations").select(`
-          driver_id, lat, lng,
-          profiles:driver_id (first_name, last_name, phone_number),
-          vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
-        `).eq("is_online", true).eq("is_on_trip", false),
-        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
-          .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(30),
-        supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
-          .eq("dispatch_type", "operator").in("status", ["cancelled", "expired", "no_driver"]).order("created_at", { ascending: false }).limit(20),
+        supabase
+          .from("driver_locations")
+          .select(`
+            driver_id, lat, lng,
+            profiles:driver_id (first_name, last_name, phone_number),
+            vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
+          `)
+          .eq("is_online", true)
+          .eq("is_on_trip", false),
+        supabase
+          .from("trips")
+          .select(
+            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
+          )
+          .eq("dispatch_type", "operator")
+          .in("status", ["requested", "accepted", "started", "completed"])
+          .order("created_at", { ascending: false })
+          .limit(30),
+        supabase
+          .from("trips")
+          .select(
+            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
+          )
+          .eq("dispatch_type", "operator")
+          .in("status", ["cancelled", "expired", "no_driver"])
+          .order("created_at", { ascending: false })
+          .limit(20),
       ]);
       setVehicleTypes(vtRes.data || []);
       setRecentTrips(tripsRes.data || []);
@@ -486,6 +626,7 @@ const Dispatch = () => {
                   dispatcherProfile={dispatcherProfile}
                   vehicleTypes={vehicleTypes}
                   onlineDrivers={onlineDrivers}
+                  centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
                 />
 
@@ -495,6 +636,7 @@ const Dispatch = () => {
                   dispatcherProfile={dispatcherProfile}
                   vehicleTypes={vehicleTypes}
                   onlineDrivers={onlineDrivers}
+                  centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
                 />
 
@@ -504,6 +646,7 @@ const Dispatch = () => {
                   dispatcherProfile={dispatcherProfile}
                   vehicleTypes={vehicleTypes}
                   onlineDrivers={onlineDrivers}
+                  centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
                 />
               </div>
