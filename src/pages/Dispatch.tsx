@@ -780,13 +780,18 @@ const Dispatch = () => {
                                 t.is_loss ? "bg-destructive/20 text-destructive" :
                                 t.status === "cancelled" ? "bg-warning/20 text-warning" :
                                 t.status === "started" ? "bg-blue-500/15 text-blue-500" :
-                                t.status === "accepted" ? "bg-warning/20 text-warning" :
+                                t.status === "accepted" ? "bg-success/20 text-success" :
                                 "bg-surface text-muted-foreground"
                               }`}>{t.is_loss ? "LOSS" : t.status}</span>
                             )}
                             <span className="text-foreground truncate flex-1">
                               {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
+                            {!t.is_loss && (t.status === "accepted" || t.status === "started") && t.driver && (
+                              <a href={`tel:${(t.driver as any).phone_number}`} onClick={(e) => e.stopPropagation()} className="text-[9px] font-bold text-success shrink-0 px-1.5 py-0.5 rounded bg-success/15 hover:bg-success/25 transition-colors" title={`Call ${(t.driver as any).first_name}`}>
+                                <Phone className="w-3 h-3" />
+                              </a>
+                            )}
                             {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
                               <>
                                 <button onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }} className="text-[9px] font-bold text-primary hover:text-primary/90 shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors" title="Track on Live Map">
@@ -821,6 +826,15 @@ const Dispatch = () => {
 
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
+                                  {t.driver && (t.status === "accepted" || t.status === "started") && (
+                                    <a
+                                      href={`tel:${(t.driver as any).phone_number}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors flex items-center gap-1"
+                                    >
+                                      <Phone className="w-3 h-3" /> Call Driver
+                                    </a>
+                                  )}
                                   {t.status !== "cancelled" && !t.is_loss && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); if (t.status !== "completed") setTrackingTripId(t.id); }}
