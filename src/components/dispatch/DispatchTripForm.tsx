@@ -1117,17 +1117,41 @@ const DispatchTripForm = ({
                         <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                       </span>
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        const updated = centerCodeResults.filter(r => r.code !== info.code);
-                        setCenterCodeResults(updated);
-                        if (selectedCenterCode === info.code) setSelectedCenterCode(null);
-                        if (updated.length > 0 && updated[0].vehicle_type_id) {
-                          setSelectedVehicleType(updated[0].vehicle_type_id);
-                        }
-                      }} className="text-muted-foreground hover:text-destructive ml-2">
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          title="Block vehicle for 3 hours"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const blockedUntil = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+                            const { error } = await supabase
+                              .from("vehicles")
+                              .update({ blocked_until: blockedUntil } as any)
+                              .eq("center_code", info.code);
+                            if (!error) {
+                              toast({ title: "Vehicle blocked", description: `${info.code} blocked for 3 hours` });
+                              const updated = centerCodeResults.filter(r => r.code !== info.code);
+                              setCenterCodeResults(updated);
+                              if (selectedCenterCode === info.code) setSelectedCenterCode(null);
+                            } else {
+                              toast({ title: "Block failed", variant: "destructive" });
+                            }
+                          }}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Ban className="w-3 h-3" />
+                        </button>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          const updated = centerCodeResults.filter(r => r.code !== info.code);
+                          setCenterCodeResults(updated);
+                          if (selectedCenterCode === info.code) setSelectedCenterCode(null);
+                          if (updated.length > 0 && updated[0].vehicle_type_id) {
+                            setSelectedVehicleType(updated[0].vehicle_type_id);
+                          }
+                        }} className="text-muted-foreground hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
