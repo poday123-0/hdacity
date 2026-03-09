@@ -682,101 +682,144 @@ const DispatchTripForm = ({ formIndex, dispatcherProfile, vehicleTypes, onlineDr
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Center Code*</p>
             <input
+              ref={centerCodeInputRef}
               value={centerCode}
-              onChange={e => {
+              onChange={(e) => {
                 setCenterCode(e.target.value.toUpperCase());
               }}
               placeholder="Type code & press Enter (multiple allowed)"
               className="w-full px-2.5 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              onKeyDown={async e => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
-                  const code = centerCode.trim();
-                  if (!code) return;
-                  // Don't add duplicates
-                  if (centerCodeResults.some(r => r.code === code)) {
-                    toast({ title: "Already added", description: `Code "${code}" is already in the list` });
-                    setCenterCode("");
+              onKeyDown={async (e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+
+                const code = centerCode.trim().toUpperCase();
+                if (!code) return;
+
+                // Keep ready for next code entry
+                setCenterCode("");
+                requestAnimationFrame(() => centerCodeInputRef.current?.focus());
+
+                // Don't add duplicates
+                if (centerCodeResults.some((r) => r.code === code)) {
+                  toast({ title: "Already added", description: `Code "${code}" is already in the list` });
+                  return;
+                }
+
+                const addEntry = (entry: {
+                  code: string;
+                  color: string | null;
+                  plate_number: string;
+                  vehicle_type: string | null;
+                  vehicle_type_id: string | null;
+                  driver_name: string | null;
+                  driver_phone: string | null;
+                  last_trip_date: string | null;
+                  driver_id: string | null;
+                  today_trips: number;
+                }) => {
+                  const updated = [...centerCodeResults, entry].sort((a, b) => {
+                    // Sort: least recent trip first
+                    if (!a.last_trip_date && !b.last_trip_date) return 0;
+                    if (!a.last_trip_date) return -1;
+                    if (!b.last_trip_date) return 1;
+                    return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+                  });
+
+                  setCenterCodeResults(updated);
+
+                  // Auto-select vehicle type from top (least-recent) result
+                  const topResult = updated[0];
+                  if (topResult?.vehicle_type_id) {
+                    setSelectedVehicleType(topResult.vehicle_type_id);
+                  }
+                };
+
+                // 1) Instant path: use preloaded index
+                const cached = centerCodeIndex?.[code];
+                if (cached) {
+                  addEntry({ ...cached, code });
+                  return;
+                }
+
+                // 2) Silent fallback: direct lookup (no loading UI)
+                try {
+                  const { data: vehicle } = await supabase
+                    .from("vehicles")
+                    .select("plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)")
+                    .eq("center_code", code)
+                    .eq("is_active", true)
+                    .limit(1)
+                    .maybeSingle();
+
+                  if (!vehicle) {
+                    toast({
+                      title: "No vehicle found",
+                      description: `Center code "${code}" not found`,
+                      variant: "destructive",
+                    });
                     return;
                   }
-                  setCenterCodeLoading(true);
-                  try {
-                    const { data: vehicle } = await supabase
-                      .from("vehicles")
-                      .select("plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)")
-                      .eq("center_code", code)
-                      .eq("is_active", true)
-                      .limit(1)
-                      .single();
-                    if (!vehicle) {
-                      toast({ title: "No vehicle found", description: `Center code "${code}" not found`, variant: "destructive" });
-                      setCenterCodeLoading(false);
-                      return;
+
+                  let driverName: string | null = null;
+                  let driverPhone: string | null = null;
+                  let lastTripDate: string | null = null;
+                  let todayTrips = 0;
+
+                  if (vehicle.driver_id) {
+                    const todayStart = new Date();
+                    todayStart.setHours(0, 0, 0, 0);
+
+                    const [{ data: profile }, { data: lastTrip }, { count: todayCount }] = await Promise.all([
+                      supabase
+                        .from("profiles")
+                        .select("first_name, last_name, phone_number")
+                        .eq("id", vehicle.driver_id)
+                        .maybeSingle(),
+                      supabase
+                        .from("trips")
+                        .select("completed_at")
+                        .eq("driver_id", vehicle.driver_id)
+                        .eq("status", "completed")
+                        .order("completed_at", { ascending: false })
+                        .limit(1)
+                        .maybeSingle(),
+                      supabase
+                        .from("trips")
+                        .select("id", { count: "exact", head: true })
+                        .eq("driver_id", vehicle.driver_id)
+                        .gte("created_at", todayStart.toISOString())
+                        .in("status", ["requested", "accepted", "started", "completed"]),
+                    ]);
+
+                    if (profile) {
+                      driverName = `${profile.first_name} ${profile.last_name}`.trim();
+                      driverPhone = profile.phone_number;
                     }
-                    let driverName: string | null = null;
-                    let driverPhone: string | null = null;
-                    let lastTripDate: string | null = null;
-                    let todayTrips = 0;
-
-                    if (vehicle.driver_id) {
-                      const todayStart = new Date();
-                      todayStart.setHours(0, 0, 0, 0);
-                      const [{ data: profile }, { data: lastTrip }, { count: todayCount }] = await Promise.all([
-                        supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", vehicle.driver_id).single(),
-                        supabase.from("trips").select("completed_at").eq("driver_id", vehicle.driver_id).eq("status", "completed").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
-                        supabase.from("trips").select("id", { count: "exact", head: true }).eq("driver_id", vehicle.driver_id).gte("created_at", todayStart.toISOString()).in("status", ["requested", "accepted", "started", "completed"]),
-                      ]);
-                      if (profile) {
-                        driverName = `${profile.first_name} ${profile.last_name}`.trim();
-                        driverPhone = profile.phone_number;
-                      }
-                      if (lastTrip?.completed_at) {
-                        lastTripDate = lastTrip.completed_at;
-                      }
-                      todayTrips = todayCount || 0;
+                    if (lastTrip?.completed_at) {
+                      lastTripDate = lastTrip.completed_at;
                     }
-
-                    const newEntry = {
-                      code,
-                      color: vehicle.color,
-                      plate_number: vehicle.plate_number,
-                      vehicle_type: (vehicle.vehicle_types as any)?.name || null,
-                      vehicle_type_id: vehicle.vehicle_type_id,
-                      driver_name: driverName,
-                      driver_phone: driverPhone,
-                      last_trip_date: lastTripDate,
-                      driver_id: vehicle.driver_id,
-                      today_trips: todayTrips,
-                    };
-
-                    // Sort: least recent trip first (driver who hasn't had a trip recently comes up)
-                    const updated = [...centerCodeResults, newEntry].sort((a, b) => {
-                      if (!a.last_trip_date && !b.last_trip_date) return 0;
-                      if (!a.last_trip_date) return -1;
-                      if (!b.last_trip_date) return 1;
-                      return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
-                    });
-                    setCenterCodeResults(updated);
-
-                    // Auto-select vehicle type from first (most recent) result
-                    const topResult = updated[0];
-                    if (topResult?.vehicle_type_id) {
-                      setSelectedVehicleType(topResult.vehicle_type_id);
-                    }
-
-                    setCenterCode("");
-                  } catch {
-                    toast({ title: "Lookup failed", variant: "destructive" });
+                    todayTrips = todayCount || 0;
                   }
-                  setCenterCodeLoading(false);
+
+                  addEntry({
+                    code,
+                    color: vehicle.color,
+                    plate_number: vehicle.plate_number,
+                    vehicle_type: (vehicle.vehicle_types as any)?.name || null,
+                    vehicle_type_id: vehicle.vehicle_type_id,
+                    driver_name: driverName,
+                    driver_phone: driverPhone,
+                    last_trip_date: lastTripDate,
+                    driver_id: vehicle.driver_id,
+                    today_trips: todayTrips,
+                  });
+                } catch {
+                  toast({ title: "Lookup failed", variant: "destructive" });
                 }
               }}
             />
-            {centerCodeLoading && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="w-3 h-3 animate-spin" /> Looking up...
-              </div>
-            )}
+          </div>
             {centerCodeResults.length > 0 && (
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {centerCodeResults.map((info) => (

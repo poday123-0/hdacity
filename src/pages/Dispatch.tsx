@@ -621,6 +621,7 @@ const Dispatch = () => {
                   dispatcherProfile={dispatcherProfile}
                   vehicleTypes={vehicleTypes}
                   onlineDrivers={onlineDrivers}
+                  centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
                 />
 
@@ -630,6 +631,7 @@ const Dispatch = () => {
                   dispatcherProfile={dispatcherProfile}
                   vehicleTypes={vehicleTypes}
                   onlineDrivers={onlineDrivers}
+                  centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
                 />
 
@@ -639,6 +641,7 @@ const Dispatch = () => {
                   dispatcherProfile={dispatcherProfile}
                   vehicleTypes={vehicleTypes}
                   onlineDrivers={onlineDrivers}
+                  centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
                 />
               </div>
