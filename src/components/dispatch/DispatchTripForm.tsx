@@ -808,7 +808,6 @@ const DispatchTripForm = ({
           {/* TO - Service area buttons with keyboard navigation */}
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">To*</p>
-            {serviceLocations.length > 0 ? (
             <div className="flex items-start gap-1">
               <div
                 ref={toButtonsRef}
@@ -855,7 +854,6 @@ const DispatchTripForm = ({
                 <Crosshair className="w-4 h-4 text-primary" />
               </button>
             </div>
-            )
             {distanceKm != null && (
               <p className="text-[10px] text-muted-foreground">Distance: <span className="font-semibold text-foreground">{distanceKm.toFixed(1)} km</span></p>
             )}
