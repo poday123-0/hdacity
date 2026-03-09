@@ -919,23 +919,8 @@ const DispatchTripForm = ({
             <Plus className="w-3 h-3" /> Add Stop
           </button>
 
-          {/* Contact */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Contact</p>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-semibold">+960</span>
-              <input
-                ref={phoneInputRef}
-                value={customerPhone}
-                onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                onKeyDown={e => {
-                  if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
-                }}
-                placeholder="Customer phone"
-                className="w-full pl-10 pr-2.5 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
+
+
 
           {/* Center Code */}
           <div className="space-y-1.5">
