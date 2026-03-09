@@ -624,6 +624,9 @@ const Dispatch = () => {
                         <span className="text-foreground truncate flex-1">
                           {t.vehicle ? `${(t.vehicle as any).plate_number}` : ""}{t.driver ? `• ${(t.driver as any).first_name}` : ""} • {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span> {(t.dropoff_address || "").split(",")[0]}
                         </span>
+                        <button onClick={() => handleMarkLoss(t.id)} disabled={markingLoss === t.id} className="text-[9px] font-bold text-destructive hover:text-destructive/80 shrink-0 px-1.5 py-0.5 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors disabled:opacity-40">
+                          {markingLoss === t.id ? "..." : "LOSS"}
+                        </button>
                         <button onClick={() => viewMessages(t.id)} className="text-muted-foreground hover:text-primary shrink-0">
                           <MessageSquare className="w-3 h-3" />
                         </button>
