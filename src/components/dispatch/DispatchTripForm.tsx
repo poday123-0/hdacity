@@ -934,49 +934,6 @@ const DispatchTripForm = ({
             </div>
           )}
 
-          {/* Trip status tracker */}
-          {createdTrip && (
-            <div className="space-y-2">
-              <div className={`rounded-xl p-3 space-y-2 ${createdTrip.status === "accepted" || createdTrip.status === "arrived" || createdTrip.status === "in_progress" ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" : createdTrip.status === "cancelled" ? "bg-destructive/5 border border-destructive/20" : "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800"}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {createdTrip.status === "requested" ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
-                    ) : createdTrip.status === "cancelled" ? (
-                      <X className="w-4 h-4 text-destructive" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    )}
-                    <span className="text-xs font-bold text-foreground capitalize">{createdTrip.status === "requested" ? "Waiting for driver..." : createdTrip.status}</span>
-                  </div>
-                  <button onClick={dismissTrip} className="text-muted-foreground hover:text-foreground">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="text-[10px] text-muted-foreground space-y-0.5">
-                  <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {createdTrip.pickup_address} → {createdTrip.dropoff_address}</p>
-                  <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {createdTrip.customer_name} • {createdTrip.customer_phone}</p>
-                  {createdTrip.estimated_fare && <p className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {createdTrip.estimated_fare}{(createdTrip as any).passenger_bonus > 0 ? ` (+${(createdTrip as any).passenger_bonus} boost)` : ""} MVR</p>}
-                </div>
-
-                {tripDriver && (
-                  <div className="bg-card rounded-lg p-2.5 space-y-1 border border-border">
-                    <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Driver Assigned</p>
-                    <p className="text-sm font-bold text-foreground">{tripDriver.first_name} {tripDriver.last_name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {tripDriver.phone_number}</p>
-                    {tripVehicle && (
-                      <div className="flex items-center gap-1.5 pt-1 border-t border-border mt-1">
-                        <Car className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs font-bold text-foreground">{tripVehicle.plate_number}</span>
-                        <span className="text-[10px] text-muted-foreground">{tripVehicle.make} {tripVehicle.model} {tripVehicle.color ? `• ${tripVehicle.color}` : ""}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
