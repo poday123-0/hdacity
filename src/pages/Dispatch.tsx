@@ -336,7 +336,7 @@ const Dispatch = () => {
           .from("trips")
           .select(tripSelect)
           .eq("dispatch_type", "dispatch_broadcast")
-          .in("status", ["requested", "accepted", "started", "completed", "cancelled"])
+          .in("status", ["requested", "accepted", "started", "in_progress", "completed", "cancelled"])
           .order("updated_at", { ascending: false })
           .limit(300),
         supabase
