@@ -711,7 +711,7 @@ const Dispatch = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  supabase.from("trips").update({ is_loss: false }).eq("id", t.id).then(() => {
+                                  supabase.from("trips").update({ is_loss: false, status: "completed", cancel_reason: null, cancelled_at: null }).eq("id", t.id).then(() => {
                                     toast({ title: "Removed from Loss" });
                                     refreshTrips();
                                   });
