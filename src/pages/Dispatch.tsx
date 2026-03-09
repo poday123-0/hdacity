@@ -332,7 +332,7 @@ const Dispatch = () => {
           .eq("dispatch_type", "operator")
           .eq("is_loss", true)
           .order("created_at", { ascending: false })
-          .limit(30),
+          .limit(200),
       ]);
       setVehicleTypes(vtRes.data || []);
       setRecentTrips(tripsRes.data || []);
