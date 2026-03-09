@@ -1012,6 +1012,13 @@ const DispatchTripForm = ({
                     return;
                   }
 
+                  // Check if blocked
+                  if ((vehicle as any).blocked_until && new Date((vehicle as any).blocked_until) > new Date()) {
+                    const remaining = Math.ceil((new Date((vehicle as any).blocked_until).getTime() - Date.now()) / 60000);
+                    toast({ title: "Vehicle blocked", description: `Code "${code}" is blocked for ${remaining} more minutes`, variant: "destructive" });
+                    return;
+                  }
+
                   let driverName: string | null = null;
                   let driverPhone: string | null = null;
                   let lastTripDate: string | null = null;
