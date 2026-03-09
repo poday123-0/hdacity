@@ -714,7 +714,7 @@ const Dispatch = () => {
                               <MessageSquare className="w-3 h-3" />
                             </button>
                           </div>
-                          {expandedTripId === t.id && (
+                          {expandedTripId === `booking-${t.id}` && (
                             <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                               <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                               <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
