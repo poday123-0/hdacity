@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyTripRequested } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw
+  ChevronUp, ChevronDown, RotateCcw, Timer
 } from "lucide-react";
 
 interface NominatimResult {
@@ -15,6 +15,7 @@ interface NominatimResult {
   lat: string;
   lon: string;
   name?: string;
+  tag?: string;
 }
 
 interface StopLocation {
@@ -45,6 +46,7 @@ type CenterCodeIndexEntry = {
   last_trip_date: string | null;
   driver_id: string | null;
   today_trips: number;
+  has_loss?: boolean;
 };
 
 interface DispatchTripFormProps {
@@ -52,7 +54,6 @@ interface DispatchTripFormProps {
   dispatcherProfile: any;
   vehicleTypes: any[];
   onlineDrivers: OnlineDriver[];
-  /** Preloaded map for instant center-code lookup */
   centerCodeIndex: Record<string, CenterCodeIndexEntry>;
   onTripCreated: () => void;
 }
@@ -68,6 +69,11 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
       Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
+
+// Local cache for locations data shared across form instances
+let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[] } | null = null;
+let _locationsCacheTs = 0;
+const LOC_CACHE_TTL = 120_000; // 2 min
 
 const DispatchTripForm = ({
   formIndex,
@@ -86,20 +92,8 @@ const DispatchTripForm = ({
   const [luggageCount, setLuggageCount] = useState(0);
   const [centerCode, setCenterCode] = useState("");
   const centerCodeInputRef = useRef<HTMLInputElement | null>(null);
-  const [centerCodeResults, setCenterCodeResults] = useState<{
-    code: string;
-    color: string | null;
-    plate_number: string;
-    vehicle_type: string | null;
-    vehicle_type_id: string | null;
-    driver_name: string | null;
-    driver_phone: string | null;
-    last_trip_date: string | null;
-    driver_id: string | null;
-    today_trips: number;
-  }[]>([]);
+  const [centerCodeResults, setCenterCodeResults] = useState<CenterCodeIndexEntry[]>([]);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(null);
-
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,7 +107,12 @@ const DispatchTripForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
-  // Post-submit tracking state
+  // Post-submit timer state
+  const [timerTripId, setTimerTripId] = useState<string | null>(null);
+  const [timerSecondsLeft, setTimerSecondsLeft] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Post-submit tracking state (kept for realtime subscription)
   const [createdTrip, setCreatedTrip] = useState<any>(null);
   const [tripDriver, setTripDriver] = useState<any>(null);
   const [tripVehicle, setTripVehicle] = useState<any>(null);
@@ -127,19 +126,35 @@ const DispatchTripForm = ({
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
 
-  // Load fare data
+  // Load fare data with shared cache
   useEffect(() => {
     const load = async () => {
+      const now = Date.now();
+      if (_locationsCache && now - _locationsCacheTs < LOC_CACHE_TTL) {
+        setFareZones(_locationsCache.fareZones);
+        setSurcharges(_locationsCache.surcharges);
+        setServiceLocations(_locationsCache.serviceLocations);
+        setNamedLocations(_locationsCache.namedLocations);
+        return;
+      }
       const [fzRes, scRes, slRes, nlRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
-        supabase.from("named_locations").select("id, name, address, lat, lng").eq("is_active", true).eq("status", "approved"),
+        supabase.from("named_locations").select("id, name, address, lat, lng, suggested_by_type").eq("is_active", true).eq("status", "approved"),
       ]);
-      setFareZones(fzRes.data || []);
-      setSurcharges(scRes.data || []);
-      setServiceLocations(slRes.data || []);
-      setNamedLocations(nlRes.data || []);
+      const cache = {
+        fareZones: fzRes.data || [],
+        surcharges: scRes.data || [],
+        serviceLocations: slRes.data || [],
+        namedLocations: nlRes.data || [],
+      };
+      _locationsCache = cache;
+      _locationsCacheTs = Date.now();
+      setFareZones(cache.fareZones);
+      setSurcharges(cache.surcharges);
+      setServiceLocations(cache.serviceLocations);
+      setNamedLocations(cache.namedLocations);
     };
     load();
   }, []);
@@ -232,7 +247,6 @@ const DispatchTripForm = ({
           (toNames.includes(fz.from_area) && fromNames.includes(fz.to_area))
         );
       };
-      // Prefer zone with matching vehicle_type_id, fallback to generic (null) zones
       const exactZone = fareZones.find((fz: any) => fz.vehicle_type_id === vt.id && matchesZone(fz));
       const genericZone = fareZones.find((fz: any) => !fz.vehicle_type_id && matchesZone(fz));
       const zone = exactZone || genericZone;
@@ -266,6 +280,29 @@ const DispatchTripForm = ({
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
     setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
   }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount]);
+
+  // Timer: countdown and auto-complete
+  useEffect(() => {
+    if (!timerTripId || timerSecondsLeft <= 0) return;
+    timerRef.current = setInterval(() => {
+      setTimerSecondsLeft(prev => {
+        if (prev <= 1) {
+          // Auto-complete the trip
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", timerTripId).then(() => {
+            onTripCreated();
+          });
+          setTimerTripId(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timerTripId, timerSecondsLeft > 0]);
 
   // Realtime subscription for created trip
   useEffect(() => {
@@ -302,28 +339,30 @@ const DispatchTripForm = ({
     setTripVehicle(null);
   };
 
+  // Instant local-only search for from field
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
-    // Instant local-only search - no external API calls
     const q = searchQuery.toLowerCase();
     const localMatches: NominatimResult[] = [
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
         .map((sl: any, i: number) => ({
           place_id: 900000 + i,
-          display_name: `${sl.name} — ${sl.address || "Service Area"}`,
+          display_name: `${sl.name} — Service Area`,
           lat: String(sl.lat),
           lon: String(sl.lng),
           name: sl.name,
+          tag: "Service Area",
         })),
       ...namedLocations
-        .filter((nl: any) => (nl.status === "approved") && (nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q)))
+        .filter((nl: any) => nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q))
         .map((nl: any, i: number) => ({
           place_id: 800000 + i,
           display_name: `${nl.name} — ${nl.address || "Named Location"}`,
           lat: String(nl.lat),
           lon: String(nl.lng),
           name: nl.name,
+          tag: nl.suggested_by_type === "admin" ? "Admin" : nl.suggested_by_type === "driver" ? "Driver" : nl.suggested_by_type === "passenger" ? "Passenger" : "User",
         })),
     ];
     setOsmResults(localMatches);
@@ -372,6 +411,7 @@ const DispatchTripForm = ({
     setCreatedTrip(null);
     setTripDriver(null);
     setTripVehicle(null);
+    // Don't clear timer - it runs independently
   };
 
   const handleSubmit = async () => {
@@ -384,7 +424,6 @@ const DispatchTripForm = ({
       return;
     }
 
-    // Determine assigned driver: from center code selection or specific driver dropdown
     const assignedEntry = selectedCenterCode ? centerCodeResults.find(r => r.code === selectedCenterCode) : null;
     const assignedDriverId = assignedEntry?.driver_id || (dispatchMethod === "specific" ? selectedDriverId : null);
     const isAssigned = !!assignedDriverId;
@@ -423,7 +462,15 @@ const DispatchTripForm = ({
       const { data: trip, error } = await supabase.from("trips").insert(tripPayload).select("*").single();
       if (error) throw error;
 
-      // Trip created — form will be cleared below, trip appears in Today's Booking table
+      // If the assigned driver had a loss trip, clear it
+      if (assignedDriverId) {
+        supabase.from("trips")
+          .update({ is_loss: false })
+          .eq("driver_id", assignedDriverId)
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator")
+          .then(() => { onTripCreated(); });
+      }
 
       if (stops.length > 0) {
         const validStops = stops.filter(s => s.lat !== 0 && s.address);
@@ -438,7 +485,6 @@ const DispatchTripForm = ({
 
       try {
         if (isAssigned && assignedDriverId) {
-          // Notify the assigned driver with trip_requested type so they hear the trip sound
           await notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address);
         } else {
           const { data: drivers } = await supabase.from("driver_locations").select("driver_id").eq("is_online", true).eq("is_on_trip", false);
@@ -450,7 +496,11 @@ const DispatchTripForm = ({
         console.warn("Push notification failed:", pushErr);
       }
 
-      // Reset form after send
+      // Start 5-min timer
+      setTimerTripId(trip.id);
+      setTimerSecondsLeft(300); // 5 minutes
+
+      // Reset form
       setCustomerPhone("");
       setPickup(null);
       setPickupQuery("");
@@ -470,6 +520,12 @@ const DispatchTripForm = ({
     setSubmitting(false);
   };
 
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   const formLabels = ["Bid 1", "Bid 2", "Bid 3"];
 
   return (
@@ -481,6 +537,13 @@ const DispatchTripForm = ({
           {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />}
         </button>
         <div className="flex items-center gap-3">
+          {/* Timer display */}
+          {timerTripId && timerSecondsLeft > 0 && (
+            <span className={`flex items-center gap-1 text-xs font-bold ${timerSecondsLeft <= 60 ? "text-destructive" : "text-primary"}`}>
+              <Timer className="w-3.5 h-3.5" />
+              {formatTimer(timerSecondsLeft)}
+            </span>
+          )}
           {estimatedFare != null && (
             <span className="flex items-center gap-1 text-sm font-bold text-primary">
               <DollarSign className="w-3.5 h-3.5" />
@@ -513,7 +576,7 @@ const DispatchTripForm = ({
             </div>
           </div>
 
-          {/* Vehicle type - buttons instead of select */}
+          {/* Vehicle type - buttons */}
           <div className="space-y-1">
             <div className="flex flex-wrap gap-1">
               {[...vehicleTypes]
@@ -562,17 +625,23 @@ const DispatchTripForm = ({
                   <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
                 </button>
               )}
-              {osmSearching && selecting === "pickup" && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
             </div>
             {selecting === "pickup" && osmResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {osmResults.map(r => (
                   <button key={r.place_id} onClick={() => selectLocation(r)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
                     <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{r.display_name.split(",").slice(0, 3).join(",")}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{r.display_name.split("—").slice(1).join("—").trim()}</p>
                     </div>
+                    {r.tag && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        r.tag === "Service Area" ? "bg-primary/15 text-primary" :
+                        r.tag === "Admin" ? "bg-amber-500/15 text-amber-600" :
+                        "bg-muted text-muted-foreground"
+                      }`}>{r.tag}</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -695,30 +764,21 @@ const DispatchTripForm = ({
                 const code = centerCode.trim().toUpperCase();
                 if (!code) return;
 
-                // Keep ready for next code entry
+                // Clear field immediately for next entry
                 setCenterCode("");
                 requestAnimationFrame(() => centerCodeInputRef.current?.focus());
 
-                // Don't add duplicates
                 if (centerCodeResults.some((r) => r.code === code)) {
                   toast({ title: "Already added", description: `Code "${code}" is already in the list` });
                   return;
                 }
 
-                const addEntry = (entry: {
-                  code: string;
-                  color: string | null;
-                  plate_number: string;
-                  vehicle_type: string | null;
-                  vehicle_type_id: string | null;
-                  driver_name: string | null;
-                  driver_phone: string | null;
-                  last_trip_date: string | null;
-                  driver_id: string | null;
-                  today_trips: number;
-                }) => {
+                const addEntry = (entry: CenterCodeIndexEntry) => {
                   const updated = [...centerCodeResults, entry].sort((a, b) => {
-                    // Sort: least recent trip first
+                    // Loss drivers first
+                    if (a.has_loss && !b.has_loss) return -1;
+                    if (!a.has_loss && b.has_loss) return 1;
+                    // Then least recent trip first
                     if (!a.last_trip_date && !b.last_trip_date) return 0;
                     if (!a.last_trip_date) return -1;
                     if (!b.last_trip_date) return 1;
@@ -727,7 +787,6 @@ const DispatchTripForm = ({
 
                   setCenterCodeResults(updated);
 
-                  // Auto-select vehicle type from top (least-recent) result
                   const topResult = updated[0];
                   if (topResult?.vehicle_type_id) {
                     setSelectedVehicleType(topResult.vehicle_type_id);
@@ -741,7 +800,7 @@ const DispatchTripForm = ({
                   return;
                 }
 
-                // 2) Silent fallback: direct lookup (no loading UI)
+                // 2) Silent fallback: direct lookup
                 try {
                   const { data: vehicle } = await supabase
                     .from("vehicles")
@@ -764,12 +823,13 @@ const DispatchTripForm = ({
                   let driverPhone: string | null = null;
                   let lastTripDate: string | null = null;
                   let todayTrips = 0;
+                  let hasLoss = false;
 
                   if (vehicle.driver_id) {
                     const todayStart = new Date();
                     todayStart.setHours(0, 0, 0, 0);
 
-                    const [{ data: profile }, { data: lastTrip }, { count: todayCount }] = await Promise.all([
+                    const [{ data: profile }, { data: lastTrip }, { count: todayCount }, { count: lossCount }] = await Promise.all([
                       supabase
                         .from("profiles")
                         .select("first_name, last_name, phone_number")
@@ -789,6 +849,12 @@ const DispatchTripForm = ({
                         .eq("driver_id", vehicle.driver_id)
                         .gte("created_at", todayStart.toISOString())
                         .in("status", ["requested", "accepted", "started", "completed"]),
+                      supabase
+                        .from("trips")
+                        .select("id", { count: "exact", head: true })
+                        .eq("driver_id", vehicle.driver_id)
+                        .eq("is_loss", true)
+                        .eq("dispatch_type", "operator"),
                     ]);
 
                     if (profile) {
@@ -799,6 +865,7 @@ const DispatchTripForm = ({
                       lastTripDate = lastTrip.completed_at;
                     }
                     todayTrips = todayCount || 0;
+                    hasLoss = (lossCount || 0) > 0;
                   }
 
                   addEntry({
@@ -812,6 +879,7 @@ const DispatchTripForm = ({
                     last_trip_date: lastTripDate,
                     driver_id: vehicle.driver_id,
                     today_trips: todayTrips,
+                    has_loss: hasLoss,
                   });
                 } catch {
                   toast({ title: "Lookup failed", variant: "destructive" });
@@ -833,12 +901,15 @@ const DispatchTripForm = ({
                     className={`border rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-all ${
                       selectedCenterCode === info.code
                         ? "bg-primary/10 border-primary ring-1 ring-primary/30"
+                        : info.has_loss
+                        ? "bg-destructive/5 border-destructive/30 hover:border-destructive/50"
                         : "bg-surface border-border hover:border-muted-foreground/30"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-foreground">
                         {selectedCenterCode === info.code && <CheckCircle2 className="w-3 h-3 inline mr-1 text-primary" />}
+                        {info.has_loss && <span className="text-[9px] font-bold text-destructive mr-1">LOSS</span>}
                         <span className="font-bold">{info.code}</span>
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type}</span>}
@@ -867,9 +938,6 @@ const DispatchTripForm = ({
             )}
           </div>
 
-
-
-
           <div className="space-y-2">
             <select value={dispatchMethod} onChange={e => setDispatchMethod(e.target.value as any)} className="w-full px-2.5 py-2 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="broadcast">Broadcast</option>
@@ -878,7 +946,6 @@ const DispatchTripForm = ({
 
             {dispatchMethod === "specific" && (
               <div className="max-h-32 overflow-y-auto space-y-1">
-                {/* Show assigned driver from center code if not in online list */}
                 {selectedDriverId && selectedCenterCode && (() => {
                   const entry = centerCodeResults.find(r => r.code === selectedCenterCode);
                   const isOnline = onlineDrivers.some(d => d.driver_id === selectedDriverId);
