@@ -13,6 +13,7 @@ import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 // Admin area imports
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -88,6 +89,7 @@ const Dispatch = () => {
   const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
+  const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
 
   // Login state
   const [phone, setPhone] = useState("");
@@ -786,7 +788,7 @@ const Dispatch = () => {
                             </span>
                             {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
                               <>
-                                <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="text-[9px] font-bold text-primary hover:text-primary/90 shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors" title="Track on Live Map">
+                                <button onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }} className="text-[9px] font-bold text-primary hover:text-primary/90 shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors" title="Track on Live Map">
                                   <Navigation className="w-3 h-3" />
                                 </button>
                                 <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
@@ -819,7 +821,11 @@ const Dispatch = () => {
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
                                   {t.status !== "cancelled" && !t.is_loss && (
-                                    <button onClick={(e) => { e.stopPropagation(); window.open(`/live-map?trip=${t.id}`, '_blank'); }} className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); if (t.status !== "completed") setTrackingTripId(t.id); }}
+                                      disabled={t.status === "completed"}
+                                      className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
                                       <Navigation className="w-3 h-3" /> Track Live
                                     </button>
                                   )}
@@ -840,12 +846,17 @@ const Dispatch = () => {
                                     </button>
                                   )}
                                   {t.status !== "cancelled" && !t.is_loss && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
-                                      className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
-                                    >
-                                      Cancel Trip
-                                    </button>
+                                    <>
+                                      <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="h-6 px-2 rounded text-[10px] font-bold bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40">
+                                        {markingLoss === t.id ? "..." : "LOSS"}
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }}
+                                        className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
+                                      >
+                                        Cancel Trip
+                                      </button>
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -966,6 +977,19 @@ const Dispatch = () => {
           </div>
         </div>
       )}
+
+      {/* Live Map Tracking Dialog */}
+      <Dialog open={!!trackingTripId} onOpenChange={(open) => { if (!open) setTrackingTripId(null); }}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden">
+          {trackingTripId && (
+            <iframe
+              src={`/live-map?trip=${trackingTripId}`}
+              className="w-full h-full border-0"
+              title="Live Trip Tracking"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
