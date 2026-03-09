@@ -575,10 +575,6 @@ const DispatchTripForm = ({
         console.warn("Push notification failed:", pushErr);
       }
 
-      // Start 5-min timer
-      setTimerTripId(trip.id);
-      setTimerSecondsLeft(300); // 5 minutes
-
       // Reset form
       setCustomerPhone("");
       setPickup(null);
