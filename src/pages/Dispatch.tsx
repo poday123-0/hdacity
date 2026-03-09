@@ -973,8 +973,7 @@ const Dispatch = () => {
                   <div className="max-h-[280px] overflow-y-auto p-1.5 space-y-1.5">
                     {appRequestTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
-                    ) : appRequestTrips.map((t: any) => {
-                      // Status logic: cancelled without accept = no drivers, cancelled after accept = cancelled
+                    ) : appRequestTrips.slice(0, 5).map((t: any) => {
                       const wasAccepted = !!t.accepted_at;
                       const isOngoing = t.status === "accepted" || t.status === "started" || t.status === "in_progress";
                       const statusLabel = t.status === "cancelled"
@@ -997,14 +996,12 @@ const Dispatch = () => {
                       const driver = t.driver as any;
                       const vehicle = t.vehicle as any;
                       const hasDriverInfo = driver && (isOngoing || t.status === "completed");
+                      const isExpanded = expandedTripId === `app-${t.id}`;
 
                       return (
-                        <div
-                          key={t.id}
-                          className={`rounded-lg overflow-hidden bg-card border ${borderColor} transition-all`}
-                        >
+                        <div key={t.id} className={`rounded-lg overflow-hidden bg-card border ${borderColor} transition-all`}>
                           {/* Header row */}
-                          <div className="px-2.5 py-2 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `app-${t.id}` ? null : `app-${t.id}`)}>
+                          <div className="px-2.5 py-2 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedTripId(isExpanded ? null : `app-${t.id}`)}>
                             <span className="text-muted-foreground whitespace-nowrap font-medium">
                               {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
@@ -1014,17 +1011,8 @@ const Dispatch = () => {
                             <span className="text-foreground truncate flex-1 font-medium">
                               {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
                             </span>
-                            {hasDriverInfo && (
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {driver.avatar_url ? (
-                                  <img src={driver.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover border border-border" />
-                                ) : (
-                                  <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center text-[8px] font-bold text-orange-500">
-                                    {driver.first_name?.[0] || "?"}
-                                  </div>
-                                )}
-                                <span className="text-[9px] text-foreground font-medium">{driver.first_name}</span>
-                              </div>
+                            {hasDriverInfo && !isExpanded && (
+                              <span className="text-[9px] text-foreground font-medium shrink-0">{driver.first_name}</span>
                             )}
                             {t.status === "requested" && (
                               <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
@@ -1033,81 +1021,84 @@ const Dispatch = () => {
                             )}
                           </div>
 
-                          {/* Driver + Vehicle card (always shown when accepted) */}
-                          {hasDriverInfo && (
-                            <div className="mx-2.5 mb-2 rounded-lg bg-muted/30 border border-border p-2.5">
-                              <div className="flex items-start gap-3">
-                                {/* Driver avatar */}
-                                <div className="shrink-0">
-                                  {driver.avatar_url ? (
-                                    <img src={driver.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-orange-500/30" />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center text-sm font-bold text-orange-500 border-2 border-orange-500/30">
-                                      {driver.first_name?.[0]}{driver.last_name?.[0]}
+                          {/* Expanded: driver card + trip details */}
+                          {isExpanded && (
+                            <div className="border-t border-border">
+                              {hasDriverInfo && (
+                                <div className="mx-2.5 mt-2 mb-2 rounded-lg bg-muted/30 border border-border p-2.5">
+                                  <div className="flex items-start gap-3">
+                                    <div className="shrink-0">
+                                      {driver.avatar_url ? (
+                                        <img src={driver.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-orange-500/30" />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center text-sm font-bold text-orange-500 border-2 border-orange-500/30">
+                                          {driver.first_name?.[0]}{driver.last_name?.[0]}
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                                {/* Driver info */}
-                                <div className="flex-1 min-w-0 space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</span>
-                                    {driver.company_name && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{driver.company_name}</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
-                                    {isOngoing && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }}
-                                        className="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors flex items-center gap-1"
-                                      >
-                                        <Navigation className="w-3 h-3" /> Track Live
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              {/* Vehicle info */}
-                              {vehicle && (
-                                <div className="mt-2 pt-2 border-t border-border flex items-center gap-3 text-[10px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-muted-foreground">Plate:</span>
-                                    <span className="font-bold text-foreground">{vehicle.plate_number}</span>
-                                  </div>
-                                  {vehicle.color && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-muted-foreground">Color:</span>
-                                      <span className="font-medium text-foreground flex items-center gap-1">
-                                        <span className="w-2.5 h-2.5 rounded-full border border-border inline-block" style={{ backgroundColor: vehicle.color.toLowerCase() }} />
-                                        {vehicle.color}
-                                      </span>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</span>
+                                        {driver.company_name && (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{driver.company_name}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <a href={`tel:${driver.phone_number}`} className="text-[10px] text-primary hover:underline">{driver.phone_number}</a>
+                                        {isOngoing && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setTrackingTripId(t.id); }}
+                                            className="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors flex items-center gap-1"
+                                          >
+                                            <Navigation className="w-3 h-3" /> Track Live
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
-                                  {vehicle.center_code && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-muted-foreground">Center:</span>
-                                      <span className="font-bold text-primary">{vehicle.center_code}</span>
+                                  </div>
+                                  {vehicle && (
+                                    <div className="mt-2 pt-2 border-t border-border flex items-center gap-3 text-[10px]">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-muted-foreground">Plate:</span>
+                                        <span className="font-bold text-foreground">{vehicle.plate_number}</span>
+                                      </div>
+                                      {vehicle.color && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-muted-foreground">Color:</span>
+                                          <span className="font-medium text-foreground flex items-center gap-1">
+                                            <span className="w-2.5 h-2.5 rounded-full border border-border inline-block" style={{ backgroundColor: vehicle.color.toLowerCase() }} />
+                                            {vehicle.color}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {vehicle.center_code && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-muted-foreground">Center:</span>
+                                          <span className="font-bold text-primary">{vehicle.center_code}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
                               )}
-                            </div>
-                          )}
-
-                          {/* Expanded trip details */}
-                          {expandedTripId === `app-${t.id}` && (
-                            <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                              <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
-                              <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
-                              <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
-                              <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                              <div className="px-2.5 pb-2 pt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                                <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                                <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                                <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
+                                <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                              </div>
                             </div>
                           )}
                         </div>
                       );
                     })}
                   </div>
+                  {appRequestTrips.length > 5 && (
+                    <div className="px-3 py-1.5 border-t border-border flex items-center justify-between">
+                      <span className="text-[9px] text-muted-foreground">{appRequestTrips.length} total requests</span>
+                      <button onClick={() => setShowAllAppRequests(true)} className="text-[9px] text-orange-500 font-medium hover:underline">View All →</button>
+                    </div>
+                  )}
                 </div>
               </div>
 
