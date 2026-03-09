@@ -720,7 +720,6 @@ const Dispatch = () => {
                                 Remove from Loss
                               </button>
                             </div>
-                            {t.booking_notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> <span className="text-foreground">{t.booking_notes.replace(/Center:\s*([^\n]+)/i, `Center: ${getAssignedCenterCode(t.booking_notes) || "—"}`)}</span></div>}
                           </div>
                         )}
                       </div>
