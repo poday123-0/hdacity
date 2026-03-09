@@ -8,7 +8,7 @@ import {
   Phone, MapPin, X, Loader2, Navigation, ArrowRight, Moon, Sun,
   MessageSquare, PackageX, AlertTriangle, LayoutDashboard, Users,
   MapPinIcon, Layers, DollarSign, Receipt, Siren, BellRing, Wallet, Building2, Building,
-  Search, CalendarIcon
+  Search, CalendarIcon, Send
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
@@ -109,6 +109,7 @@ const Dispatch = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
+  const [appRequestTrips, setAppRequestTrips] = useState<any[]>([]);
   const [lostTrips, setLostTrips] = useState<any[]>([]);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
@@ -312,7 +313,8 @@ const Dispatch = () => {
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
-      const [vtRes, driversRes, tripsRes, lostRes] = await Promise.all([
+      const tripSelect = "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+      const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
         supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
         supabase
           .from("driver_locations")
@@ -325,13 +327,18 @@ const Dispatch = () => {
           .eq("is_on_trip", false),
         supabase
           .from("trips")
-          .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
-          )
-          .or(`dispatch_type.eq.operator${dispatcherProfile?.id ? `,created_by.eq.${dispatcherProfile.id}` : ""}`)
+          .select(tripSelect)
+          .eq("dispatch_type", "operator")
           .in("status", ["requested", "accepted", "started", "completed"])
           .order("created_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("trips")
+          .select(tripSelect)
+          .eq("dispatch_type", "dispatch_broadcast")
+          .in("status", ["requested", "accepted", "started", "completed", "cancelled"])
+          .order("created_at", { ascending: false })
+          .limit(100),
         supabase
           .from("trips")
           .select(
@@ -344,6 +351,7 @@ const Dispatch = () => {
       ]);
       setVehicleTypes(vtRes.data || []);
       setRecentTrips(tripsRes.data || []);
+      setAppRequestTrips(appReqRes.data || []);
       setLostTrips(lostRes.data || []);
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
@@ -377,13 +385,17 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
-    const [{ data }, { data: lost }] = await Promise.all([
-      supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
-        .or(`dispatch_type.eq.operator${dispatcherProfile?.id ? `,created_by.eq.${dispatcherProfile.id}` : ""}`).in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(200),
+    const tripSelect = "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+    const [{ data }, { data: appReq }, { data: lost }] = await Promise.all([
+      supabase.from("trips").select(tripSelect)
+        .eq("dispatch_type", "operator").in("status", ["requested", "accepted", "started", "completed"]).order("created_at", { ascending: false }).limit(200),
+      supabase.from("trips").select(tripSelect)
+        .eq("dispatch_type", "dispatch_broadcast").in("status", ["requested", "accepted", "started", "completed", "cancelled"]).order("created_at", { ascending: false }).limit(100),
       supabase.from("trips").select("id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)")
         .eq("dispatch_type", "operator").eq("is_loss", true).order("created_at", { ascending: false }).limit(200),
     ]);
     setRecentTrips(data || []);
+    setAppRequestTrips(appReq || []);
     setLostTrips(lost || []);
   };
 
@@ -913,6 +925,67 @@ const Dispatch = () => {
                       <button onClick={() => setShowAllBookings(true)} className="text-[9px] text-primary font-medium hover:underline">View All</button>
                       <button onClick={refreshTrips} className="text-[9px] text-primary font-medium hover:underline">Refresh</button>
                     </div>
+                  </div>
+                </div>
+
+                {/* App Requests Table */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border">
+                    <h3 className="text-xs font-bold text-orange-500 flex items-center gap-1.5">
+                      <Send className="w-3.5 h-3.5 text-orange-500" />
+                      App Requests ({appRequestTrips.length})
+                    </h3>
+                  </div>
+                  <div className="max-h-[220px] overflow-y-auto p-1.5 space-y-1">
+                    {appRequestTrips.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
+                    ) : appRequestTrips.map((t: any) => (
+                      <div
+                        key={t.id}
+                        className={`rounded-md overflow-hidden ${
+                          t.status === "cancelled"
+                            ? "bg-warning/10 border border-warning/30"
+                            : t.status === "completed"
+                              ? "bg-success/10 border border-success/30"
+                              : t.status === "accepted" || t.status === "started"
+                                ? "bg-orange-500/10 border border-orange-500/30"
+                                : "bg-surface border border-border"
+                        }`}
+                      >
+                        <div className="px-2.5 py-1.5 flex items-center gap-2 text-[10px] cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedTripId(expandedTripId === `app-${t.id}` ? null : `app-${t.id}`)}>
+                          <span className="text-muted-foreground whitespace-nowrap font-medium">
+                            {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            t.status === "cancelled" ? "bg-warning/20 text-warning" :
+                            t.status === "completed" ? "bg-success/20 text-success" :
+                            t.status === "accepted" || t.status === "started" ? "bg-orange-500/20 text-orange-500" :
+                            "bg-surface text-muted-foreground"
+                          }`}>{t.status}</span>
+                          <span className="text-foreground truncate flex-1">
+                            {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span> {(t.dropoff_address || "").split(",")[0]}
+                          </span>
+                          {t.driver && (
+                            <span className="text-[9px] text-muted-foreground whitespace-nowrap">{(t.driver as any).first_name}</span>
+                          )}
+                          {t.status === "requested" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleDispatchCancel(t.id); }} className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors">
+                              CANCEL
+                            </button>
+                          )}
+                        </div>
+                        {expandedTripId === `app-${t.id}` && (
+                          <div className="px-2.5 pb-2 pt-1 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                            <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
+                            <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{t.customer_name || "—"} • {t.customer_phone || "—"}</span></div>
+                            <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "Waiting..."}</span></div>
+                            <div><span className="text-muted-foreground">Fare:</span> <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span></div>
+                            <div><span className="text-muted-foreground">Status:</span> <span className="font-bold text-foreground">{t.status?.toUpperCase()}</span></div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
