@@ -487,6 +487,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         clearInterval(locationIntervalRef.current);
         locationIntervalRef.current = null;
       }
+      // Stop silent audio heartbeat to save battery
+      stopHeartbeat();
       // Mark driver as offline only if this device still owns the active session
       if (userProfile?.id) {
         supabase
