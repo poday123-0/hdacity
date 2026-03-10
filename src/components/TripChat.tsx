@@ -114,7 +114,7 @@ const TripChat = ({ tripId, senderId, senderName, recipientId, senderType, onClo
         console.log(`[TripChat] Realtime status: ${status}`, err || "");
       });
 
-    // Fallback polling every 2s
+    // Fallback polling every 8s
     const pollInterval = setInterval(async () => {
       if (!isActive) return;
       const lastMsg = messagesRef.current[messagesRef.current.length - 1];

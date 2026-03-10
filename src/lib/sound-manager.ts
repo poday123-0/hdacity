@@ -157,6 +157,18 @@ export const playTrackedSound = (url: string, loop = false): HTMLAudioElement | 
   }
 };
 
+/** Stop the silent heartbeat (call when driver goes offline to save battery). */
+export const stopHeartbeat = () => {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+  if (heartbeatAudio) {
+    try { heartbeatAudio.pause(); } catch {}
+    heartbeatAudio = null;
+  }
+};
+
 /** Stop ALL currently playing tracked sounds. */
 export const stopAllSounds = () => {
   activeSounds.forEach((audio) => {
