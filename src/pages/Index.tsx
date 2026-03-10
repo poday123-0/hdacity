@@ -521,8 +521,8 @@ const Index = () => {
       };
       fetchPos();
 
-      // Poll every 5s as backup for realtime
-      pollInterval = setInterval(fetchPos, 5000);
+      // Poll every 10s as backup for realtime
+      pollInterval = setInterval(fetchPos, 10000);
 
       const channel = supabase
         .channel(`driver-track-${trip.driver_id}`)
@@ -920,7 +920,7 @@ const Index = () => {
       })
       .subscribe();
 
-    // Polling fallback every 5s in case realtime misses the event
+    // Polling fallback every 10s in case realtime misses the event
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("*").eq("id", currentTripId).single();
       if (data) {

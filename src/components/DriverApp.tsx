@@ -76,7 +76,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
-import { stopAllSounds, playTrackedSound, unlockAudioPool } from "@/lib/sound-manager";
+import { stopAllSounds, playTrackedSound, unlockAudioPool, stopHeartbeat } from "@/lib/sound-manager";
 import RideTypesTab from "@/components/RideTypesTab";
 import SuggestPlace from "@/components/SuggestPlace";
 
@@ -487,6 +487,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         clearInterval(locationIntervalRef.current);
         locationIntervalRef.current = null;
       }
+      // Stop silent audio heartbeat to save battery
+      stopHeartbeat();
       // Mark driver as offline only if this device still owns the active session
       if (userProfile?.id) {
         supabase
