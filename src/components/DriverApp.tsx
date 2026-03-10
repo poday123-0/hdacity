@@ -558,7 +558,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(false);
             toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
         );
       } else {
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
