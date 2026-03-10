@@ -920,7 +920,7 @@ const Index = () => {
       })
       .subscribe();
 
-    // Polling fallback every 5s in case realtime misses the event
+    // Polling fallback every 10s in case realtime misses the event
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("*").eq("id", currentTripId).single();
       if (data) {
