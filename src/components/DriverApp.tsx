@@ -984,7 +984,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 5s for new requested/scheduled trips AND direct-assigned trips
+    // Fallback: Poll every 10s for new requested/scheduled trips AND direct-assigned trips
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
