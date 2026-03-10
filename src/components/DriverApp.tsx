@@ -76,7 +76,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
-import { stopAllSounds, playTrackedSound, unlockAudioPool } from "@/lib/sound-manager";
+import { stopAllSounds, playTrackedSound, unlockAudioPool, stopHeartbeat } from "@/lib/sound-manager";
 import RideTypesTab from "@/components/RideTypesTab";
 import SuggestPlace from "@/components/SuggestPlace";
 
