@@ -379,7 +379,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       };
       check();
       // Re-check periodically in case user grants permission externally
-      const interval = setInterval(check, 5000);
+      const interval = setInterval(check, 30000);
       return () => clearInterval(interval);
     } else {
       setNotifPermissionDenied(false);
@@ -558,14 +558,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(false);
             toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
         );
       } else {
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
       }
 
-      // Heartbeat — use admin-configured interval or default 3s
-      let driverIntervalMs = 3000;
+      // Heartbeat — use admin-configured interval or default 10s
+      let driverIntervalMs = 10000;
       try {
         const { data: intervalSetting } = await supabase.from("system_settings").select("value").eq("key", "driver_location_interval_ms").single();
         if (intervalSetting?.value) {
@@ -692,7 +692,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
 
-    const interval = setInterval(checkTakeover, 5000);
+    const interval = setInterval(checkTakeover, 15000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         checkTakeover();
@@ -984,7 +984,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 5s for new requested/scheduled trips AND direct-assigned trips
+    // Fallback: Poll every 10s for new requested/scheduled trips AND direct-assigned trips
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -1165,13 +1165,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Polling fallback every 5s in case realtime misses the event
+    // Polling fallback every 10s in case realtime misses the event
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
         await handleTripCancelledOrTaken(data);
       }
-    }, 5000);
+    }, 10000);
 
     return () => {
       supabase.removeChannel(channel);
