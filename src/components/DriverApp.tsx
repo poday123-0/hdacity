@@ -2080,6 +2080,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <button
               onClick={() => {
                 setScreen("offline");
+                goOfflineNow();
               }}
               className="relative w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
               title="Go Offline">
