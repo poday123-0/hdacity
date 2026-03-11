@@ -170,9 +170,11 @@ interface DriverMapProps {
   onMapHeadingChange?: (heading: number) => void;
   resetNorthRef?: React.MutableRefObject<(() => void) | null>;
   onMapReady?: (map: any) => void;
+  /** Pass GPS position from parent to avoid duplicate GPS watchers (battery optimization) */
+  externalPosition?: { lat: number; lng: number } | null;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
