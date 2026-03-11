@@ -1055,7 +1055,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 5000);
+    }, 15000);
 
     return () => {
       isActive = false;
