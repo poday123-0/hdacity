@@ -411,10 +411,27 @@ const AdminSettings = () => {
         </div>
       </SectionCard>
 
-      <SectionCard title="Location Updates" description="GPS update intervals for drivers and passengers" icon={Globe}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <SettingField label="Driver Location Update Interval (ms)" settingKey="driver_location_interval_ms" type="number" />
-          <SettingField label="Passenger Location Update Interval (ms)" settingKey="passenger_location_interval_ms" type="number" />
+      <SectionCard title="Location & Battery" description="GPS intervals, accuracy and battery optimization for drivers" icon={Globe}>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <SettingField label="Driver Location Update Interval (ms)" settingKey="driver_location_interval_ms" type="number" placeholder="10000" />
+            <SettingField label="Passenger Location Update Interval (ms)" settingKey="passenger_location_interval_ms" type="number" placeholder="5000" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <SettingSelect label="Driver GPS Accuracy" settingKey="driver_gps_accuracy" options={[
+              { value: '"high"', label: "High (Best accuracy, more battery)" },
+              { value: '"balanced"', label: "Balanced (Good accuracy, less battery)" },
+              { value: '"low"', label: "Low (Approximate, least battery)" },
+            ]} />
+            <SettingField label="GPS Max Age (ms)" settingKey="driver_gps_max_age_ms" type="number" placeholder="3000" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <SettingField label="Session Check Interval (ms)" settingKey="session_check_interval_ms" type="number" placeholder="15000" />
+            <SettingField label="Map Auto-Follow Resume (sec)" settingKey="map_auto_follow_resume_sec" type="number" placeholder="8" />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            💡 Higher intervals = less battery drain. Recommended: Driver GPS 10000ms, GPS Max Age 3000-5000ms, Balanced accuracy.
+          </p>
         </div>
       </SectionCard>
     </div>

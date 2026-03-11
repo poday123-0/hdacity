@@ -473,36 +473,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   // No fallback location — only use actual GPS
 
+  // Immediately stop all driver location tracking & mark offline
+  const goOfflineNow = useCallback(async () => {
+    // Clear GPS watcher
+    if (locationWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    // Clear heartbeat interval
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
+    }
+    // Stop silent audio heartbeat to save battery
+    stopHeartbeat();
+    // Mark driver as offline in DB (only if we own the session)
+    if (userProfile?.id) {
+      const { data } = await supabase
+        .from("driver_locations")
+        .select("session_id")
+        .eq("driver_id", userProfile.id)
+        .single();
+      const activeSessionId = (data as any)?.session_id;
+      if (!activeSessionId || activeSessionId === deviceSessionId.current) {
+        await supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
+      }
+    }
+  }, [userProfile?.id]);
+
   // Push driver location to driver_locations when online
   useEffect(() => {
     if (!userProfile?.id || !sessionReady) return;
 
-    if (screen !== "online") {
-      // Go offline: clear location watch and mark offline
-      if (locationWatchRef.current !== null) {
-        navigator.geolocation.clearWatch(locationWatchRef.current);
-        locationWatchRef.current = null;
-      }
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
-        locationIntervalRef.current = null;
-      }
-      // Stop silent audio heartbeat to save battery
-      stopHeartbeat();
-      // Mark driver as offline only if this device still owns the active session
-      if (userProfile?.id) {
-        supabase
-          .from("driver_locations")
-          .select("session_id")
-          .eq("driver_id", userProfile.id)
-          .single()
-          .then(({ data }) => {
-            const activeSessionId = (data as any)?.session_id;
-            if (activeSessionId === deviceSessionId.current) {
-              supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
-            }
-          });
-      }
+    if (screen === "offline") {
+      goOfflineNow();
+      return;
+    }
+
+    // Don't start tracking if screen is ride-request/complete (only online & navigating need GPS)
+    if (screen !== "online" && screen !== "navigating" && screen !== "ride-request") {
       return;
     }
 
@@ -547,6 +556,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // Wait for actual GPS before making driver visible — no fallback location
       setGpsEnabled(false);
 
+      // Fetch GPS accuracy settings from admin
+      let gpsHighAccuracy = true;
+      let gpsMaxAge = 3000;
+      try {
+        const [accRes, ageRes] = await Promise.all([
+          supabase.from("system_settings").select("value").eq("key", "driver_gps_accuracy").single(),
+          supabase.from("system_settings").select("value").eq("key", "driver_gps_max_age_ms").single(),
+        ]);
+        if (accRes.data?.value) {
+          const acc = typeof accRes.data.value === "string" ? accRes.data.value : String(accRes.data.value);
+          gpsHighAccuracy = acc === "high";
+        }
+        if (ageRes.data?.value) {
+          const val = typeof ageRes.data.value === "number" ? ageRes.data.value : parseInt(String(ageRes.data.value), 10);
+          if (!isNaN(val) && val >= 1000) gpsMaxAge = val;
+        }
+      } catch {}
+
       if (navigator.geolocation) {
         locationWatchRef.current = navigator.geolocation.watchPosition(
           (pos) => {
@@ -560,7 +587,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(false);
             toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
+          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
         );
       } else {
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
@@ -606,7 +633,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationIntervalRef.current = null;
       }
     };
-  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch]);
+  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch, goOfflineNow]);
 
   // Claim active driver session before takeover checks start
   useEffect(() => {
@@ -1964,7 +1991,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </button>
             {!currentTrip &&
             <button
-              onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+              onClick={() => {setShowProfile(false);setScreen("offline");goOfflineNow();onSwitchToPassenger();}}
               className="flex items-center gap-1.5 sm:gap-2 bg-card border border-border rounded-full pl-1.5 pr-2.5 sm:pl-2 sm:pr-3.5 py-1 sm:py-1.5 active:scale-95 transition-transform shadow-md min-w-0">
                 <SystemLogo className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded-full shrink-0" alt="Passenger" />
                 <span className="text-xs sm:text-sm font-bold text-primary whitespace-nowrap">Passenger</span>
@@ -2071,6 +2098,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <button
               onClick={() => {
                 setScreen("offline");
+                goOfflineNow();
               }}
               className="relative w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors duration-300 active:scale-95 flex items-center px-1 shrink-0 bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
               title="Go Offline">
@@ -4277,7 +4305,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                   {/* Switch to Passenger */}
                   <button
-                    onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+                    onClick={() => {setShowProfile(false);setScreen("offline");goOfflineNow();onSwitchToPassenger();}}
                     className="w-full flex items-center gap-2.5 bg-primary/10 border border-primary/20 rounded-2xl p-3.5 active:scale-[0.97] transition-transform">
                     <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
                       <Users className="w-4 h-4 text-primary" />
