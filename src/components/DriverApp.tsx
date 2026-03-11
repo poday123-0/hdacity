@@ -4286,7 +4286,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                   {/* Switch to Passenger */}
                   <button
-                    onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+                    onClick={() => {setShowProfile(false);setScreen("offline");goOfflineNow();onSwitchToPassenger();}}
                     className="w-full flex items-center gap-2.5 bg-primary/10 border border-primary/20 rounded-2xl p-3.5 active:scale-[0.97] transition-transform">
                     <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
                       <Users className="w-4 h-4 text-primary" />
