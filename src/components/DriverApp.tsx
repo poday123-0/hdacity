@@ -1973,7 +1973,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </button>
             {!currentTrip &&
             <button
-              onClick={() => {setShowProfile(false);onSwitchToPassenger();}}
+              onClick={() => {setShowProfile(false);setScreen("offline");goOfflineNow();onSwitchToPassenger();}}
               className="flex items-center gap-1.5 sm:gap-2 bg-card border border-border rounded-full pl-1.5 pr-2.5 sm:pl-2 sm:pr-3.5 py-1 sm:py-1.5 active:scale-95 transition-transform shadow-md min-w-0">
                 <SystemLogo className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded-full shrink-0" alt="Passenger" />
                 <span className="text-xs sm:text-sm font-bold text-primary whitespace-nowrap">Passenger</span>
