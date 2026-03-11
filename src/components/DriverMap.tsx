@@ -585,6 +585,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
             map.setZoom(18);
           }
         } else {
+          // Non-navigating (online idle): follow driver position, north-up
           if (typeof map.setHeading === "function") {
             if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
             map.setHeading(0);
