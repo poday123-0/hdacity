@@ -556,6 +556,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // Wait for actual GPS before making driver visible — no fallback location
       setGpsEnabled(false);
 
+      // Fetch GPS accuracy settings from admin
+      let gpsHighAccuracy = true;
+      let gpsMaxAge = 3000;
+      try {
+        const [accRes, ageRes] = await Promise.all([
+          supabase.from("system_settings").select("value").eq("key", "driver_gps_accuracy").single(),
+          supabase.from("system_settings").select("value").eq("key", "driver_gps_max_age_ms").single(),
+        ]);
+        if (accRes.data?.value) {
+          const acc = typeof accRes.data.value === "string" ? accRes.data.value : String(accRes.data.value);
+          gpsHighAccuracy = acc === "high";
+        }
+        if (ageRes.data?.value) {
+          const val = typeof ageRes.data.value === "number" ? ageRes.data.value : parseInt(String(ageRes.data.value), 10);
+          if (!isNaN(val) && val >= 1000) gpsMaxAge = val;
+        }
+      } catch {}
+
       if (navigator.geolocation) {
         locationWatchRef.current = navigator.geolocation.watchPosition(
           (pos) => {
@@ -569,7 +587,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(false);
             toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 }
+          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
         );
       } else {
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
