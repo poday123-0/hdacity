@@ -62,15 +62,16 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   // Track user location
   useEffect(() => {
     if (!navigator.geolocation) return;
+    // Use low accuracy for passenger overview map to save battery
     navigator.geolocation.getCurrentPosition(
       (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => { /* No fallback — wait for real GPS */ },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 15000 }
     );
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => {},
-      { enableHighAccuracy: false, maximumAge: 15000 }
+      { enableHighAccuracy: false, maximumAge: 30000 }
     );
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
