@@ -350,6 +350,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       setUserPannedAway(true);
       setFollowDriver(false);
     });
+    // Auto-resume follow after 8s of no interaction
+    let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
+    map.addListener("idle", () => {
+      if (userInteractingRef.current) {
+        if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
+        autoResumeTimeout = setTimeout(() => {
+          setFollowDriver(true);
+          userInteractingRef.current = false;
+          setUserPannedAway(false);
+        }, 8000);
+      }
+    });
     map.addListener("heading_changed", () => {
       const h = typeof map.getHeading === "function" ? (map.getHeading() || 0) : 0;
       setMapHeading(h);

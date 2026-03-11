@@ -615,7 +615,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         locationIntervalRef.current = null;
       }
     };
-  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch]);
+  }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch, goOfflineNow]);
 
   // Claim active driver session before takeover checks start
   useEffect(() => {
