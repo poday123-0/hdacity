@@ -583,7 +583,7 @@ const Index = () => {
       watchId = navigator.geolocation.watchPosition(
         (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
         () => {},
-        { enableHighAccuracy: true, maximumAge: 3000 }
+        { enableHighAccuracy: false, maximumAge: 5000 }
       );
     }
 

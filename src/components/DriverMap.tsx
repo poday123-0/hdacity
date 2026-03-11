@@ -170,9 +170,11 @@ interface DriverMapProps {
   onMapHeadingChange?: (heading: number) => void;
   resetNorthRef?: React.MutableRefObject<(() => void) | null>;
   onMapReady?: (map: any) => void;
+  /** Pass GPS position from parent to avoid duplicate GPS watchers (battery optimization) */
+  externalPosition?: { lat: number; lng: number } | null;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
@@ -239,8 +241,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
   }, [currentStepIndex, navSteps, navEta, navDistance, onNavStepChange]);
 
-  // Track GPS with heading
+  // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
+  // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
   useEffect(() => {
+    // If navigating, we need our own high-accuracy GPS for heading/speed
+    if (!isNavigating) {
+      // Clean up any existing watcher when not navigating
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      return;
+    }
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -248,14 +260,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         if (pos.coords.speed != null && pos.coords.speed >= 0) setCurrentSpeed(Math.round(pos.coords.speed * 3.6));
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) setCurrentHeading(pos.coords.heading);
       },
-      () => { /* Wait for real GPS — no fallback */ },
+      () => {},
       { enableHighAccuracy: true, timeout: 10000 }
     );
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCurrentPos(prev => {
-          // On first real GPS fix, pan map from fallback to real position
           if (!prev && mapInstance.current) {
             mapInstance.current.panTo(newPos);
             mapInstance.current.setZoom(17);
@@ -270,10 +281,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) setCurrentHeading(pos.coords.heading);
       },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 3000 }
+      { enableHighAccuracy: true, maximumAge: 2000 }
     );
-    return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
-  }, []);
+    return () => { if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; } };
+  }, [isNavigating]);
+
+  // When not navigating, use external position from parent (DriverApp's GPS watcher)
+  useEffect(() => {
+    if (isNavigating || !externalPosition) return;
+    setCurrentPos(prev => {
+      if (!prev && mapInstance.current) {
+        mapInstance.current.panTo(externalPosition);
+        mapInstance.current.setZoom(16);
+      }
+      return externalPosition;
+    });
+  }, [isNavigating, externalPosition?.lat, externalPosition?.lng]);
 
   // Use a ref for initial center so GPS updates don't re-trigger map init
   // IMPORTANT: never block map init on GPS — use fallback center immediately

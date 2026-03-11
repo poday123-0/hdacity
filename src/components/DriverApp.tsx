@@ -1055,7 +1055,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 5000);
+    }, 15000);
 
     return () => {
       isActive = false;
@@ -2151,7 +2151,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         navSettings={driverNavSettings}
         onMapHeadingChange={setMapHeading}
         onMapReady={setDriverMapInstance}
-        resetNorthRef={resetNorthRef} />
+        resetNorthRef={resetNorthRef}
+        externalPosition={driverLat != null && driverLng != null ? { lat: driverLat, lng: driverLng } : null} />
 
       {/* Promo Items Overlay — only when online and NOT on a trip */}
       {userProfile?.id && screen === "online" && driverMapInstance && (
