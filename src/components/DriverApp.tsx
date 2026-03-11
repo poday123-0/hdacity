@@ -473,36 +473,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   // No fallback location — only use actual GPS
 
+  // Immediately stop all driver location tracking & mark offline
+  const goOfflineNow = useCallback(async () => {
+    // Clear GPS watcher
+    if (locationWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    // Clear heartbeat interval
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
+    }
+    // Stop silent audio heartbeat to save battery
+    stopHeartbeat();
+    // Mark driver as offline in DB (only if we own the session)
+    if (userProfile?.id) {
+      const { data } = await supabase
+        .from("driver_locations")
+        .select("session_id")
+        .eq("driver_id", userProfile.id)
+        .single();
+      const activeSessionId = (data as any)?.session_id;
+      if (!activeSessionId || activeSessionId === deviceSessionId.current) {
+        await supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
+      }
+    }
+  }, [userProfile?.id]);
+
   // Push driver location to driver_locations when online
   useEffect(() => {
     if (!userProfile?.id || !sessionReady) return;
 
-    if (screen !== "online") {
-      // Go offline: clear location watch and mark offline
-      if (locationWatchRef.current !== null) {
-        navigator.geolocation.clearWatch(locationWatchRef.current);
-        locationWatchRef.current = null;
-      }
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
-        locationIntervalRef.current = null;
-      }
-      // Stop silent audio heartbeat to save battery
-      stopHeartbeat();
-      // Mark driver as offline only if this device still owns the active session
-      if (userProfile?.id) {
-        supabase
-          .from("driver_locations")
-          .select("session_id")
-          .eq("driver_id", userProfile.id)
-          .single()
-          .then(({ data }) => {
-            const activeSessionId = (data as any)?.session_id;
-            if (activeSessionId === deviceSessionId.current) {
-              supabase.from("driver_locations").update({ is_online: false }).eq("driver_id", userProfile.id);
-            }
-          });
-      }
+    if (screen === "offline") {
+      goOfflineNow();
+      return;
+    }
+
+    // Don't start tracking if screen is ride-request/complete (only online & navigating need GPS)
+    if (screen !== "online" && screen !== "navigating" && screen !== "ride-request") {
       return;
     }
 
