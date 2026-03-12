@@ -199,7 +199,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
       }
     }
     return bestMatch;
-  }, [serviceAreas, isPointInPolygon]);
+  }, [serviceAreas, isPointInPolygon, calcPolygonArea]);
 
   // Google Places search with debounce — admin locations shown first, then Google/Nominatim
   useEffect(() => {
