@@ -633,9 +633,17 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 </div>
               </div>
 
+              {/* Validation: all 3 vehicle documents must be uploaded */}
+              {(!vehicleRegUrl || !vehicleInsuranceUrl || !vehicleImageUrl) && (
+                <p className="text-xs text-amber-500 flex items-center gap-1">
+                  <Upload className="w-3 h-3" />
+                  Please upload all vehicle documents (registration, insurance &amp; photo) before submitting
+                </p>
+              )}
+
               <button
                 onClick={handleSubmit}
-                disabled={saving || !firstName.trim() || !plateNumber.trim() || selectedRideTypeIds.length === 0}
+                disabled={saving || !firstName.trim() || !plateNumber.trim() || selectedRideTypeIds.length === 0 || !vehicleRegUrl || !vehicleInsuranceUrl || !vehicleImageUrl}
                 className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {saving ? (
