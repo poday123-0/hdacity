@@ -526,9 +526,18 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 </div>
               </div>
 
+              {/* Validation: all 6 driver documents must be uploaded */}
+              {(!idCardFront || !idCardBack || !licenseFront || !licenseBack) && (
+                <p className="text-xs text-amber-500 flex items-center gap-1">
+                  <Upload className="w-3 h-3" />
+                  Please upload all ID card and license documents (front &amp; back) before proceeding
+                </p>
+              )}
+
               <button
                 onClick={() => setStep("vehicle")}
-                className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90"
+                disabled={!idCardFront || !idCardBack || !licenseFront || !licenseBack}
+                className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
               >
                 Next: Vehicle Information
               </button>
