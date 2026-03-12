@@ -159,7 +159,18 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     return inside;
   };
 
+  // Calculate rough polygon area (Shoelace formula) — used to pick smallest overlapping polygon
+  const calcPolygonArea = (polygon: { lat: number; lng: number }[]): number => {
+    if (!polygon || polygon.length < 3) return Infinity;
+    let area = 0;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      area += (polygon[j].lat + polygon[i].lat) * (polygon[j].lng - polygon[i].lng);
+    }
+    return Math.abs(area / 2);
+  };
+
   // Resolve which service area a location belongs to
+  // When polygons overlap, prefer the smallest (most specific) polygon
   const findServiceArea = (loc: LocationData | null | undefined) => {
     if (!loc) return null;
     // 1. Direct name match
@@ -167,12 +178,20 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       sl.name?.toLowerCase().trim() === loc.name?.toLowerCase().trim() || sl.id === loc.id
     );
     if (direct) return direct;
-    // 2. Point-in-polygon match using drawn boundaries
+    // 2. Point-in-polygon match — pick smallest polygon when overlapping
     if (loc.lat && loc.lng) {
-      const polyMatch = serviceLocations.find((sl: any) => 
-        sl.polygon && pointInPolygon(loc.lat!, loc.lng!, sl.polygon)
-      );
-      if (polyMatch) return polyMatch;
+      let bestMatch: any = null;
+      let smallestArea = Infinity;
+      for (const sl of serviceLocations) {
+        if (sl.polygon && pointInPolygon(loc.lat, loc.lng, sl.polygon)) {
+          const area = calcPolygonArea(sl.polygon);
+          if (area < smallestArea) {
+            smallestArea = area;
+            bestMatch = sl;
+          }
+        }
+      }
+      if (bestMatch) return bestMatch;
     }
     // 3. Fallback to nearest center point
     if (loc.lat && loc.lng && serviceLocations.length > 0) {

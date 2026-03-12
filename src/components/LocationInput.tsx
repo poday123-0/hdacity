@@ -174,15 +174,32 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     return inside;
   }, []);
 
-  // Check if point is within any service area
+  // Calculate rough polygon area (Shoelace formula) — used to pick smallest overlapping polygon
+  const calcPolygonArea = useCallback((polygon: { lat: number; lng: number }[]): number => {
+    if (!polygon || polygon.length < 3) return Infinity;
+    let area = 0;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      area += (polygon[j].lat + polygon[i].lat) * (polygon[j].lng - polygon[i].lng);
+    }
+    return Math.abs(area / 2);
+  }, []);
+
+  // Check if point is within any service area — when overlapping, prefer smallest polygon (most specific)
   const isInServiceArea = useCallback((lat: number, lng: number): ServiceAreaPolygon | null => {
+    let bestMatch: ServiceAreaPolygon | null = null;
+    let smallestArea = Infinity;
     for (const area of serviceAreas) {
       if (area.polygon && isPointInPolygon(lat, lng, area.polygon)) {
-        return area;
+        // Calculate rough polygon area to pick the smallest (most specific) match
+        const polyArea = calcPolygonArea(area.polygon);
+        if (polyArea < smallestArea) {
+          smallestArea = polyArea;
+          bestMatch = area;
+        }
       }
     }
-    return null;
-  }, [serviceAreas, isPointInPolygon]);
+    return bestMatch;
+  }, [serviceAreas, isPointInPolygon, calcPolygonArea]);
 
   // Google Places search with debounce — admin locations shown first, then Google/Nominatim
   useEffect(() => {

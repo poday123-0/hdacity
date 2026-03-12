@@ -226,7 +226,36 @@ const DispatchTripForm = ({
     const vt = vehicleTypes.find(v => v.id === selectedVehicleType);
     if (!vt) { setEstimatedFare(null); return; }
 
+    const pointInPolygon = (lat: number, lng: number, polygon: { lat: number; lng: number }[]): boolean => {
+      if (!polygon || polygon.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].lat, yi = polygon[i].lng;
+        const xj = polygon[j].lat, yj = polygon[j].lng;
+        if ((yi > lng) !== (yj > lng) && lat < ((xj - xi) * (lng - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    const calcPolyArea = (polygon: { lat: number; lng: number }[]): number => {
+      if (!polygon || polygon.length < 3) return Infinity;
+      let area = 0;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        area += (polygon[j].lat + polygon[i].lat) * (polygon[j].lng - polygon[i].lng);
+      }
+      return Math.abs(area / 2);
+    };
     const findServiceArea = (lat: number, lng: number) => {
+      // 1. Point-in-polygon — prefer smallest polygon when overlapping
+      let bestMatch: any = null;
+      let smallestArea = Infinity;
+      for (const sl of serviceLocations) {
+        if (sl.polygon && pointInPolygon(lat, lng, sl.polygon)) {
+          const area = calcPolyArea(sl.polygon);
+          if (area < smallestArea) { smallestArea = area; bestMatch = sl; }
+        }
+      }
+      if (bestMatch) return bestMatch;
+      // 2. Fallback to nearest center point
       let best: any = null;
       let bestDist = Infinity;
       for (const sl of serviceLocations) {
