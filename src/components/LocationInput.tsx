@@ -174,14 +174,21 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     return inside;
   }, []);
 
-  // Check if point is within any service area
+  // Check if point is within any service area — when overlapping, prefer smallest polygon (most specific)
   const isInServiceArea = useCallback((lat: number, lng: number): ServiceAreaPolygon | null => {
+    let bestMatch: ServiceAreaPolygon | null = null;
+    let smallestArea = Infinity;
     for (const area of serviceAreas) {
       if (area.polygon && isPointInPolygon(lat, lng, area.polygon)) {
-        return area;
+        // Calculate rough polygon area to pick the smallest (most specific) match
+        const polyArea = calcPolygonArea(area.polygon);
+        if (polyArea < smallestArea) {
+          smallestArea = polyArea;
+          bestMatch = area;
+        }
       }
     }
-    return null;
+    return bestMatch;
   }, [serviceAreas, isPointInPolygon]);
 
   // Google Places search with debounce — admin locations shown first, then Google/Nominatim
