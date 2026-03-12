@@ -174,6 +174,16 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     return inside;
   }, []);
 
+  // Calculate rough polygon area (Shoelace formula) — used to pick smallest overlapping polygon
+  const calcPolygonArea = useCallback((polygon: { lat: number; lng: number }[]): number => {
+    if (!polygon || polygon.length < 3) return Infinity;
+    let area = 0;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      area += (polygon[j].lat + polygon[i].lat) * (polygon[j].lng - polygon[i].lng);
+    }
+    return Math.abs(area / 2);
+  }, []);
+
   // Check if point is within any service area — when overlapping, prefer smallest polygon (most specific)
   const isInServiceArea = useCallback((lat: number, lng: number): ServiceAreaPolygon | null => {
     let bestMatch: ServiceAreaPolygon | null = null;
