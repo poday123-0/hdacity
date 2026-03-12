@@ -578,8 +578,16 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevMarkerPosRef.current = displayPos;
 
-    // Use exact admin map icon (no canvas transformation)
-    if (mapIconUrl) {
+    // When NOT on a trip (not navigating), show a simple dot instead of directional arrow
+    // because GPS heading is unreliable when stationary and the arrow points wrong
+    if (!isNavigating) {
+      driverMarkerRef.current.setIcon({
+        path: g.maps.SymbolPath.CIRCLE,
+        scale: 10, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 3,
+        anchor: new g.maps.Point(0, 0),
+      });
+    } else if (mapIconUrl) {
+      // Use exact admin map icon during navigation (no canvas transformation)
       driverMarkerRef.current.setIcon({
         url: mapIconUrl,
         scaledSize: new g.maps.Size(36, 36),
@@ -587,6 +595,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       });
       driverMarkerRef.current.setOptions({ optimized: false });
     } else {
+      // Directional arrow during navigation
       driverMarkerRef.current.setIcon({
         path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW,
         scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2.5,
