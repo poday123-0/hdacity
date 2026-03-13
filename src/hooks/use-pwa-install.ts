@@ -29,8 +29,10 @@ export function usePWAInstall() {
     // Detect installed state — multiple methods for cross-browser support
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches
       || window.matchMedia("(display-mode: fullscreen)").matches
+      || window.matchMedia("(display-mode: minimal-ui)").matches
       || (navigator as any).standalone === true  // iOS Safari
-      || document.referrer.startsWith("android-app://"); // TWA
+      || document.referrer.startsWith("android-app://") // TWA
+      || window.matchMedia("(display-mode: window-controls-overlay)").matches;
 
     setIsInstalled(isStandalone);
 
