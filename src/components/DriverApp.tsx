@@ -4036,6 +4036,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           )}
                             </div>
 
+                            {!hasAllVehicleDocs && (
+                              <p className="text-[11px] text-muted-foreground mt-2">Upload all 3 vehicle documents, then submit once.</p>
+                            )}
+
+                            <button
+                              onClick={() => submitVehicleDocuments(v)}
+                              disabled={!hasAllVehicleDocs || isUploadingVehicleDocs || isSubmittingVehicleDocs}
+                              className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40 active:scale-[0.98] transition-transform"
+                            >
+                              {isSubmittingVehicleDocs ? "Submitting..." : "Submit Vehicle Documents"}
+                            </button>
+
                             {/* Edit form */}
                             {isEditing &&
                         <div className="mt-3 space-y-2 bg-card rounded-xl p-3 border border-border">
