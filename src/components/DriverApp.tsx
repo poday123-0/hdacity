@@ -1516,6 +1516,103 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
 
+  const submitProfileDocuments = async () => {
+    if (!userProfile?.id) return;
+    if (!idCardFrontUrl || !idCardBackUrl || !licenseFrontUrl || !licenseBackUrl) {
+      toast({
+        title: "Missing documents",
+        description: "Please upload ID and license front/back before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingProfileDocs(true);
+    try {
+      const wasRejected = profileStatus === "Rejected";
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ status: "Pending Review", rejection_reason: null } as any)
+        .eq("id", userProfile.id);
+
+      if (updateError) throw updateError;
+
+      setProfileStatus("Pending Review");
+      setProfileRejectionReason("");
+
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: {
+          driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+          phone_number: userProfile.phone_number,
+          plate_number: "",
+          update_type: wasRejected ? "🔄 RESUBMISSION — Profile documents submitted" : "Profile documents submitted",
+        },
+      });
+
+      toast({ title: "Submitted", description: "Profile documents sent for admin review." });
+    } catch (err: any) {
+      toast({
+        title: "Submit failed",
+        description: err?.message || "Could not submit profile documents.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingProfileDocs(false);
+    }
+  };
+
+  const submitVehicleDocuments = async (vehicle: any) => {
+    if (!userProfile?.id || !vehicle?.id) return;
+    if (!vehicle.registration_url || !vehicle.insurance_url || !vehicle.image_url) {
+      toast({
+        title: "Missing documents",
+        description: "Please upload registration, insurance, and vehicle photo before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingVehicleDocsById((prev) => ({ ...prev, [vehicle.id]: true }));
+    try {
+      const wasRejected = vehicle.vehicle_status === "rejected";
+
+      const { error: updateError } = await supabase
+        .from("vehicles")
+        .update({ vehicle_status: "pending", rejection_reason: null } as any)
+        .eq("id", vehicle.id);
+
+      if (updateError) throw updateError;
+
+      setDriverVehicles((prev) =>
+        prev.map((v) => (v.id === vehicle.id ? { ...v, vehicle_status: "pending", rejection_reason: null } : v))
+      );
+
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: {
+          driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+          phone_number: userProfile.phone_number,
+          plate_number: vehicle.plate_number || "",
+          update_type: wasRejected ? "🔄 RESUBMISSION — Vehicle documents submitted" : "Vehicle documents submitted",
+        },
+      });
+
+      toast({ title: "Submitted", description: "Vehicle documents sent for admin review." });
+    } catch (err: any) {
+      toast({
+        title: "Submit failed",
+        description: err?.message || "Could not submit vehicle documents.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingVehicleDocsById((prev) => {
+        const next = { ...prev };
+        delete next[vehicle.id];
+        return next;
+      });
+    }
+  };
+
   const addBankAccount = async () => {
     if (!userProfile?.id || !newBank.bank_name || !newBank.account_number) return;
     const isPrimary = bankAccounts.length === 0;
