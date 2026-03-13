@@ -4043,10 +4043,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                             <button
                               onClick={() => submitVehicleDocuments(v)}
-                              disabled={!hasAllVehicleDocs || isUploadingVehicleDocs || isSubmittingVehicleDocs}
+                              disabled={isPending || !hasAllVehicleDocs || isUploadingVehicleDocs || isSubmittingVehicleDocs}
                               className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40 active:scale-[0.98] transition-transform"
                             >
-                              {isSubmittingVehicleDocs ? "Submitting..." : "Submit Vehicle Documents"}
+                              {isSubmittingVehicleDocs ? "Submitting..." : isPending ? "Already Submitted" : "Submit Vehicle Documents"}
                             </button>
 
                             {/* Edit form */}
