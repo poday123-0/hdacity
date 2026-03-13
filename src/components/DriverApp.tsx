@@ -3926,6 +3926,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const vStatus = v.vehicle_status || "approved";
                   const isPending = vStatus === "pending";
                   const isRejected = vStatus === "rejected";
+                  const hasAllVehicleDocs = !!(v.registration_url && v.insurance_url && v.image_url);
+                  const isUploadingVehicleDocs = !!uploading && uploading.endsWith(v.id) && uploading.startsWith("vehicle_");
+                  const isSubmittingVehicleDocs = !!submittingVehicleDocsById[v.id];
                   return (
                     <div
                       key={v.id}
