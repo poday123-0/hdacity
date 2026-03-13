@@ -39,6 +39,8 @@ export default defineConfig(({ mode }) => ({
         scope: "/",
         categories: ["transportation", "travel"],
         prefer_related_applications: false,
+        lang: "en",
+        dir: "ltr",
         icons: [
           {
             src: "/pwa-192x192.png",
@@ -63,6 +65,15 @@ export default defineConfig(({ mode }) => ({
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
+          },
+        ],
+        screenshots: [
+          {
+            src: "/pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "HDA Taxi App",
           },
         ],
       },

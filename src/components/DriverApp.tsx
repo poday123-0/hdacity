@@ -381,7 +381,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       };
       check();
       // Re-check periodically in case user grants permission externally
-      const interval = setInterval(check, 30000);
+      const interval = setInterval(check, 120000);
       return () => clearInterval(interval);
     } else {
       setNotifPermissionDenied(false);

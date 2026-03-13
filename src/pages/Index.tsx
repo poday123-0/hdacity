@@ -578,12 +578,12 @@ const Index = () => {
       navigator.geolocation.getCurrentPosition(
         (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
         () => {},
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
       );
       watchId = navigator.geolocation.watchPosition(
         (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
         () => {},
-        { enableHighAccuracy: false, maximumAge: 5000 }
+        { enableHighAccuracy: false, maximumAge: 15000 }
       );
     }
 
