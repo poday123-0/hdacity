@@ -3753,6 +3753,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     <button
                       onClick={submitProfileDocuments}
                       disabled={
+                        profileStatus === "Pending Review" ||
                         submittingProfileDocs ||
                         !!uploading ||
                         !idCardFrontUrl ||
@@ -3762,7 +3763,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       }
                       className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
                     >
-                      {submittingProfileDocs ? "Submitting..." : "Submit Profile Documents"}
+                      {submittingProfileDocs ? "Submitting..." : profileStatus === "Pending Review" ? "Already Submitted" : "Submit Profile Documents"}
                     </button>
                   </div>
               }
