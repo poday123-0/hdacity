@@ -1483,32 +1483,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (matchedPrefix) {
       const vehicleId = uploadTarget.slice(matchedPrefix.length);
       const vehicleField = matchedPrefix === "vehicle_registration_" ? "registration_url" : matchedPrefix === "vehicle_insurance_" ? "insurance_url" : "image_url";
-      await supabase.from("vehicles").update({ [vehicleField]: publicUrl, vehicle_status: "pending" } as any).eq("id", vehicleId);
-      setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
-      // Notify admin about vehicle document upload
-      const matchedVehicle = driverVehicles.find((v) => v.id === vehicleId);
-      const wasVehicleRejected = matchedVehicle?.vehicle_status === "rejected";
-      const docType = vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded";
-      try {
-        await supabase.functions.invoke("notify-vehicle-update", {
-          body: {
-            driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
-            phone_number: userProfile.phone_number,
-            plate_number: matchedVehicle?.plate_number || "",
-            update_type: wasVehicleRejected ? `🔄 RESUBMISSION — ${docType}` : docType,
-          },
-        });
-      } catch {} // Non-blocking
+      await supabase.from("vehicles").update({ [vehicleField]: publicUrl } as any).eq("id", vehicleId);
+      setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl } : v));
       setUploading(null);
       e.target.value = "";
-      toast({ title: "Uploaded!", description: "Vehicle document submitted for admin review" });
+      toast({ title: "Uploaded!", description: "Vehicle document uploaded. Tap submit after all 3 files." });
       return;
-    }
-
-    // Document uploads (not avatar) flag profile for review and clear rejection
-    if (uploadTarget !== "avatar") {
-      (updateField as any).status = "Pending Review";
-      (updateField as any).rejection_reason = null;
     }
 
     await supabase.from("profiles").update(updateField).eq("id", userProfile.id);
@@ -1521,24 +1501,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (uploadTarget === "taxi_permit_front") setTaxiPermitFrontUrl(publicUrl);else
     if (uploadTarget === "taxi_permit_back") setTaxiPermitBackUrl(publicUrl);
 
-    // Update status if doc was uploaded
     if (uploadTarget !== "avatar") {
-      setProfileStatus("Pending Review");
-      setProfileRejectionReason("");
-      // Notify admin about profile document update
-      try {
-        const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
-        const wasRejected = profileStatus === "Rejected";
-        await supabase.functions.invoke("notify-vehicle-update", {
-          body: {
-            driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
-            phone_number: userProfile.phone_number,
-            plate_number: "",
-            update_type: wasRejected ? `🔄 RESUBMISSION — Profile document updated: ${docLabel}` : `Profile document updated: ${docLabel}`,
-          },
-        });
-      } catch {} // Non-blocking
-      toast({ title: "Uploaded!", description: "Document submitted for admin review" });
+      toast({ title: "Uploaded!", description: "Document uploaded. Tap submit after all profile docs." });
     } else {
       toast({ title: "Uploaded!", description: "Image saved successfully" });
     }
