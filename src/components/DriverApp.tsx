@@ -3743,6 +3743,27 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <DocumentUpload label="Front" url={taxiPermitFrontUrl} uploading={uploading === "taxi_permit_front"} onUpload={() => triggerUpload("taxi_permit_front")} />
                       <DocumentUpload label="Back" url={taxiPermitBackUrl} uploading={uploading === "taxi_permit_back"} onUpload={() => triggerUpload("taxi_permit_back")} />
                     </div>
+
+                    {(!idCardFrontUrl || !idCardBackUrl || !licenseFrontUrl || !licenseBackUrl) && (
+                      <p className="text-[11px] text-amber-600">
+                        Upload ID and license front/back, then tap submit once.
+                      </p>
+                    )}
+
+                    <button
+                      onClick={submitProfileDocuments}
+                      disabled={
+                        submittingProfileDocs ||
+                        !!uploading ||
+                        !idCardFrontUrl ||
+                        !idCardBackUrl ||
+                        !licenseFrontUrl ||
+                        !licenseBackUrl
+                      }
+                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
+                    >
+                      {submittingProfileDocs ? "Submitting..." : "Submit Profile Documents"}
+                    </button>
                   </div>
               }
 
