@@ -3745,7 +3745,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </div>
 
                     {(!idCardFrontUrl || !idCardBackUrl || !licenseFrontUrl || !licenseBackUrl) && (
-                      <p className="text-[11px] text-amber-600">
+                      <p className="text-[11px] text-muted-foreground">
                         Upload ID and license front/back, then tap submit once.
                       </p>
                     )}
