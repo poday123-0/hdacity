@@ -178,6 +178,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
   const [availableBanks, setAvailableBanks] = useState<Array<{id: string;name: string;logo_url: string | null;}>>([]);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [submittingProfileDocs, setSubmittingProfileDocs] = useState(false);
+  const [submittingVehicleDocsById, setSubmittingVehicleDocsById] = useState<Record<string, boolean>>({});
   const [vehicleInfo, setVehicleInfo] = useState<{make: string;model: string;plate_number: string;color: string;vehicle_type_id?: string;} | null>(null);
   const [driverVehicles, setDriverVehicles] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
@@ -1481,32 +1483,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (matchedPrefix) {
       const vehicleId = uploadTarget.slice(matchedPrefix.length);
       const vehicleField = matchedPrefix === "vehicle_registration_" ? "registration_url" : matchedPrefix === "vehicle_insurance_" ? "insurance_url" : "image_url";
-      await supabase.from("vehicles").update({ [vehicleField]: publicUrl, vehicle_status: "pending" } as any).eq("id", vehicleId);
-      setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl, vehicle_status: "pending" } : v));
-      // Notify admin about vehicle document upload
-      const matchedVehicle = driverVehicles.find((v) => v.id === vehicleId);
-      const wasVehicleRejected = matchedVehicle?.vehicle_status === "rejected";
-      const docType = vehicleField === "registration_url" ? "Registration document uploaded" : vehicleField === "insurance_url" ? "Insurance document uploaded" : "Vehicle photo uploaded";
-      try {
-        await supabase.functions.invoke("notify-vehicle-update", {
-          body: {
-            driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
-            phone_number: userProfile.phone_number,
-            plate_number: matchedVehicle?.plate_number || "",
-            update_type: wasVehicleRejected ? `🔄 RESUBMISSION — ${docType}` : docType,
-          },
-        });
-      } catch {} // Non-blocking
+      await supabase.from("vehicles").update({ [vehicleField]: publicUrl } as any).eq("id", vehicleId);
+      setDriverVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, [vehicleField]: publicUrl } : v));
       setUploading(null);
       e.target.value = "";
-      toast({ title: "Uploaded!", description: "Vehicle document submitted for admin review" });
+      toast({ title: "Uploaded!", description: "Vehicle document uploaded. Tap submit after all 3 files." });
       return;
-    }
-
-    // Document uploads (not avatar) flag profile for review and clear rejection
-    if (uploadTarget !== "avatar") {
-      (updateField as any).status = "Pending Review";
-      (updateField as any).rejection_reason = null;
     }
 
     await supabase.from("profiles").update(updateField).eq("id", userProfile.id);
@@ -1519,24 +1501,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (uploadTarget === "taxi_permit_front") setTaxiPermitFrontUrl(publicUrl);else
     if (uploadTarget === "taxi_permit_back") setTaxiPermitBackUrl(publicUrl);
 
-    // Update status if doc was uploaded
     if (uploadTarget !== "avatar") {
-      setProfileStatus("Pending Review");
-      setProfileRejectionReason("");
-      // Notify admin about profile document update
-      try {
-        const docLabel = uploadTarget === "id_front" ? "ID Card (Front)" : uploadTarget === "id_back" ? "ID Card (Back)" : uploadTarget === "license_front" ? "License (Front)" : uploadTarget === "license_back" ? "License (Back)" : uploadTarget === "taxi_permit_front" ? "Taxi Permit (Front)" : "Taxi Permit (Back)";
-        const wasRejected = profileStatus === "Rejected";
-        await supabase.functions.invoke("notify-vehicle-update", {
-          body: {
-            driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
-            phone_number: userProfile.phone_number,
-            plate_number: "",
-            update_type: wasRejected ? `🔄 RESUBMISSION — Profile document updated: ${docLabel}` : `Profile document updated: ${docLabel}`,
-          },
-        });
-      } catch {} // Non-blocking
-      toast({ title: "Uploaded!", description: "Document submitted for admin review" });
+      toast({ title: "Uploaded!", description: "Document uploaded. Tap submit after all profile docs." });
     } else {
       toast({ title: "Uploaded!", description: "Image saved successfully" });
     }
@@ -1548,6 +1514,103 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const triggerUpload = (target: string) => {
     setUploadTarget(target);
     setTimeout(() => fileInputRef.current?.click(), 50);
+  };
+
+  const submitProfileDocuments = async () => {
+    if (!userProfile?.id) return;
+    if (!idCardFrontUrl || !idCardBackUrl || !licenseFrontUrl || !licenseBackUrl) {
+      toast({
+        title: "Missing documents",
+        description: "Please upload ID and license front/back before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingProfileDocs(true);
+    try {
+      const wasRejected = profileStatus === "Rejected";
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ status: "Pending Review", rejection_reason: null } as any)
+        .eq("id", userProfile.id);
+
+      if (updateError) throw updateError;
+
+      setProfileStatus("Pending Review");
+      setProfileRejectionReason("");
+
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: {
+          driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+          phone_number: userProfile.phone_number,
+          plate_number: "",
+          update_type: wasRejected ? "🔄 RESUBMISSION — Profile documents submitted" : "Profile documents submitted",
+        },
+      });
+
+      toast({ title: "Submitted", description: "Profile documents sent for admin review." });
+    } catch (err: any) {
+      toast({
+        title: "Submit failed",
+        description: err?.message || "Could not submit profile documents.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingProfileDocs(false);
+    }
+  };
+
+  const submitVehicleDocuments = async (vehicle: any) => {
+    if (!userProfile?.id || !vehicle?.id) return;
+    if (!vehicle.registration_url || !vehicle.insurance_url || !vehicle.image_url) {
+      toast({
+        title: "Missing documents",
+        description: "Please upload registration, insurance, and vehicle photo before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingVehicleDocsById((prev) => ({ ...prev, [vehicle.id]: true }));
+    try {
+      const wasRejected = vehicle.vehicle_status === "rejected";
+
+      const { error: updateError } = await supabase
+        .from("vehicles")
+        .update({ vehicle_status: "pending", rejection_reason: null } as any)
+        .eq("id", vehicle.id);
+
+      if (updateError) throw updateError;
+
+      setDriverVehicles((prev) =>
+        prev.map((v) => (v.id === vehicle.id ? { ...v, vehicle_status: "pending", rejection_reason: null } : v))
+      );
+
+      await supabase.functions.invoke("notify-vehicle-update", {
+        body: {
+          driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+          phone_number: userProfile.phone_number,
+          plate_number: vehicle.plate_number || "",
+          update_type: wasRejected ? "🔄 RESUBMISSION — Vehicle documents submitted" : "Vehicle documents submitted",
+        },
+      });
+
+      toast({ title: "Submitted", description: "Vehicle documents sent for admin review." });
+    } catch (err: any) {
+      toast({
+        title: "Submit failed",
+        description: err?.message || "Could not submit vehicle documents.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingVehicleDocsById((prev) => {
+        const next = { ...prev };
+        delete next[vehicle.id];
+        return next;
+      });
+    }
   };
 
   const addBankAccount = async () => {
@@ -3680,6 +3743,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       <DocumentUpload label="Front" url={taxiPermitFrontUrl} uploading={uploading === "taxi_permit_front"} onUpload={() => triggerUpload("taxi_permit_front")} />
                       <DocumentUpload label="Back" url={taxiPermitBackUrl} uploading={uploading === "taxi_permit_back"} onUpload={() => triggerUpload("taxi_permit_back")} />
                     </div>
+
+                    {(!idCardFrontUrl || !idCardBackUrl || !licenseFrontUrl || !licenseBackUrl) && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Upload ID and license front/back, then tap submit once.
+                      </p>
+                    )}
+
+                    <button
+                      onClick={submitProfileDocuments}
+                      disabled={
+                        profileStatus === "Pending Review" ||
+                        submittingProfileDocs ||
+                        !!uploading ||
+                        !idCardFrontUrl ||
+                        !idCardBackUrl ||
+                        !licenseFrontUrl ||
+                        !licenseBackUrl
+                      }
+                      className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
+                    >
+                      {submittingProfileDocs ? "Submitting..." : profileStatus === "Pending Review" ? "Already Submitted" : "Submit Profile Documents"}
+                    </button>
                   </div>
               }
 
@@ -3842,6 +3927,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const vStatus = v.vehicle_status || "approved";
                   const isPending = vStatus === "pending";
                   const isRejected = vStatus === "rejected";
+                  const hasAllVehicleDocs = !!(v.registration_url && v.insurance_url && v.image_url);
+                  const isUploadingVehicleDocs = !!uploading && uploading.endsWith(v.id) && uploading.startsWith("vehicle_");
+                  const isSubmittingVehicleDocs = !!submittingVehicleDocsById[v.id];
                   return (
                     <div
                       key={v.id}
@@ -3948,6 +4036,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 </button>
                           )}
                             </div>
+
+                            {!hasAllVehicleDocs && (
+                              <p className="text-[11px] text-muted-foreground mt-2">Upload all 3 vehicle documents, then submit once.</p>
+                            )}
+
+                            <button
+                              onClick={() => submitVehicleDocuments(v)}
+                              disabled={isPending || !hasAllVehicleDocs || isUploadingVehicleDocs || isSubmittingVehicleDocs}
+                              className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40 active:scale-[0.98] transition-transform"
+                            >
+                              {isSubmittingVehicleDocs ? "Submitting..." : isPending ? "Already Submitted" : "Submit Vehicle Documents"}
+                            </button>
 
                             {/* Edit form */}
                             {isEditing &&
