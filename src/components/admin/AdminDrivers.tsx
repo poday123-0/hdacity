@@ -1307,7 +1307,7 @@ const AdminDrivers = () => {
 
                             {/* Vehicle form */}
                             {showVehicleForm && expandedDriver === d.id && (
-                              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                              <div id="admin-vehicle-edit-form" className="bg-card border border-border rounded-2xl p-4 space-y-3">
                                 <p className="text-xs font-bold text-foreground">{editingVehicleId ? "Edit Vehicle" : "New Vehicle"}</p>
                                 <div className="grid grid-cols-3 gap-3">
                                   <div>

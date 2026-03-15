@@ -411,7 +411,7 @@ const Index = () => {
         });
       }
 
-      const markers = data.map((dl: any) => ({
+      const markers = activeData.map((dl: any) => ({
         id: dl.driver_id,
         lat: dl.lat,
         lng: dl.lng,
