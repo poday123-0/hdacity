@@ -989,7 +989,7 @@ const AdminDrivers = () => {
 
       {/* Edit Driver Form */}
       {editingId && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div id="admin-driver-edit-form" className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-foreground">Edit Driver</h3>
             <button onClick={() => setEditingId(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
