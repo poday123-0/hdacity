@@ -35,8 +35,23 @@ const LiveMap = () => {
     const fetchLocations = async () => {
       const { data } = await supabase
         .from("driver_locations")
-        .select("id, lat, lng, driver_id, is_on_trip, vehicle_type_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
+        .select("id, lat, lng, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
         .eq("is_online", true);
+
+      // Filter out drivers with inactive vehicles
+      let activeData = data;
+      if (data && data.length > 0) {
+        const vehicleIds = [...new Set(data.map(d => (d as any).vehicle_id).filter(Boolean))] as string[];
+        if (vehicleIds.length > 0) {
+          const { data: activeVehicles } = await supabase
+            .from("vehicles")
+            .select("id")
+            .in("id", vehicleIds)
+            .eq("is_active", true);
+          const activeVehicleIds = new Set((activeVehicles || []).map((v: any) => v.id));
+          activeData = data.filter(d => !(d as any).vehicle_id || activeVehicleIds.has((d as any).vehicle_id));
+        }
+      }
       if (data) {
         setVehicleMarkers(data.map((d: any) => ({
           id: d.id,
