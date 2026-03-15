@@ -376,14 +376,29 @@ const Index = () => {
 
     const { data } = await supabase
       .from("driver_locations")
-      .select("id, lat, lng, driver_id, vehicle_type_id, updated_at")
+      .select("id, lat, lng, driver_id, vehicle_type_id, updated_at, vehicle_id")
       .eq("is_online", true)
       .eq("is_on_trip", false)
       .gte("updated_at", staleThreshold);
 
+    // Filter out drivers with inactive vehicles
+    let activeData = data;
     if (data && data.length > 0) {
+      const vehicleIds = [...new Set(data.map(d => d.vehicle_id).filter(Boolean))] as string[];
+      if (vehicleIds.length > 0) {
+        const { data: activeVehicles } = await supabase
+          .from("vehicles")
+          .select("id")
+          .in("id", vehicleIds)
+          .eq("is_active", true);
+        const activeVehicleIds = new Set((activeVehicles || []).map((v: any) => v.id));
+        activeData = data.filter(d => !d.vehicle_id || activeVehicleIds.has(d.vehicle_id));
+      }
+    }
+
+    if (activeData && activeData.length > 0) {
       // Get unique vehicle type IDs
-      const vtIds = [...new Set(data.map(d => d.vehicle_type_id).filter(Boolean))] as string[];
+      const vtIds = [...new Set(activeData.map(d => d.vehicle_type_id).filter(Boolean))] as string[];
       let vtMap: Record<string, { name: string; map_icon_url: string | null }> = {};
 
       if (vtIds.length > 0) {
@@ -396,7 +411,7 @@ const Index = () => {
         });
       }
 
-      const markers = data.map((dl: any) => ({
+      const markers = activeData.map((dl: any) => ({
         id: dl.driver_id,
         lat: dl.lat,
         lng: dl.lng,

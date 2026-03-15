@@ -281,6 +281,10 @@ const AdminDrivers = () => {
     ]);
     setDriverBankAccounts(bankRes.data || []);
     setDriverFavaraAccounts(favaraRes.data || []);
+    // Auto-scroll to the edit form
+    setTimeout(() => {
+      document.getElementById("admin-driver-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   };
 
   const uploadDoc = async (field: string, file: File) => {
@@ -323,6 +327,10 @@ const AdminDrivers = () => {
   const openVehicleForm = (driverId: string, v?: any) => {
     setExpandedDriver(driverId);
     setShowVehicleForm(true);
+    // Auto-scroll to vehicle form after state update
+    setTimeout(() => {
+      document.getElementById("admin-vehicle-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
     if (v) {
       setEditingVehicleId(v.id);
       setVehicleForm({
@@ -985,7 +993,7 @@ const AdminDrivers = () => {
 
       {/* Edit Driver Form */}
       {editingId && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div id="admin-driver-edit-form" className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-foreground">Edit Driver</h3>
             <button onClick={() => setEditingId(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
@@ -1299,7 +1307,7 @@ const AdminDrivers = () => {
 
                             {/* Vehicle form */}
                             {showVehicleForm && expandedDriver === d.id && (
-                              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                              <div id="admin-vehicle-edit-form" className="bg-card border border-border rounded-2xl p-4 space-y-3">
                                 <p className="text-xs font-bold text-foreground">{editingVehicleId ? "Edit Vehicle" : "New Vehicle"}</p>
                                 <div className="grid grid-cols-3 gap-3">
                                   <div>
