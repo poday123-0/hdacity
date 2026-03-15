@@ -52,8 +52,8 @@ const LiveMap = () => {
           activeData = data.filter(d => !(d as any).vehicle_id || activeVehicleIds.has((d as any).vehicle_id));
         }
       }
-      if (data) {
-        setVehicleMarkers(data.map((d: any) => ({
+      if (activeData) {
+        setVehicleMarkers(activeData.map((d: any) => ({
           id: d.id,
           lat: d.lat,
           lng: d.lng,
