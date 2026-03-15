@@ -396,7 +396,7 @@ const Index = () => {
       }
     }
 
-    if (data && data.length > 0) {
+    if (activeData && activeData.length > 0) {
       // Get unique vehicle type IDs
       const vtIds = [...new Set(data.map(d => d.vehicle_type_id).filter(Boolean))] as string[];
       let vtMap: Record<string, { name: string; map_icon_url: string | null }> = {};
