@@ -327,6 +327,10 @@ const AdminDrivers = () => {
   const openVehicleForm = (driverId: string, v?: any) => {
     setExpandedDriver(driverId);
     setShowVehicleForm(true);
+    // Auto-scroll to vehicle form after state update
+    setTimeout(() => {
+      document.getElementById("admin-vehicle-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
     if (v) {
       setEditingVehicleId(v.id);
       setVehicleForm({
