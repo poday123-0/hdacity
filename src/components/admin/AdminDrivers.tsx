@@ -281,6 +281,10 @@ const AdminDrivers = () => {
     ]);
     setDriverBankAccounts(bankRes.data || []);
     setDriverFavaraAccounts(favaraRes.data || []);
+    // Auto-scroll to the edit form
+    setTimeout(() => {
+      document.getElementById("admin-driver-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   };
 
   const uploadDoc = async (field: string, file: File) => {
