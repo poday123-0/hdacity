@@ -308,7 +308,7 @@ const Dispatch = () => {
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 60_000);
+    const interval = window.setInterval(refresh, 30_000);
     return () => window.clearInterval(interval);
   }, [isAuthed]);
 
