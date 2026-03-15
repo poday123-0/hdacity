@@ -188,7 +188,7 @@ const Dispatch = () => {
     if (!isAuthed) return;
 
     const CACHE_KEY = "hda_center_code_index_v1";
-    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
     const loadFromCache = () => {
       try {
