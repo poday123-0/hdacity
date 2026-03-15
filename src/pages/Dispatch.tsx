@@ -188,7 +188,7 @@ const Dispatch = () => {
     if (!isAuthed) return;
 
     const CACHE_KEY = "hda_center_code_index_v1";
-    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
     const loadFromCache = () => {
       try {
@@ -308,7 +308,7 @@ const Dispatch = () => {
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 60_000);
+    const interval = window.setInterval(refresh, 30_000);
     return () => window.clearInterval(interval);
   }, [isAuthed]);
 
@@ -411,10 +411,10 @@ const Dispatch = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isAuthed]);
 
-  // Polling fallback: refresh every 10s in case realtime misses events
+  // Polling fallback: refresh every 5s for fast dispatch updates
   useEffect(() => {
     if (!isAuthed) return;
-    const interval = setInterval(() => { refreshTrips(); }, 10_000);
+    const interval = setInterval(() => { refreshTrips(); }, 5_000);
     return () => clearInterval(interval);
   }, [isAuthed]);
 
