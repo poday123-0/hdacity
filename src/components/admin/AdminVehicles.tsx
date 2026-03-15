@@ -81,6 +81,9 @@ const AdminVehicles = () => {
     });
     setEditingId(v.id);
     setShowForm(true);
+    setTimeout(() => {
+      document.getElementById("admin-vehicles-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   };
 
   const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false); };
