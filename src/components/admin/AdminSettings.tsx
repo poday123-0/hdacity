@@ -452,6 +452,7 @@ const AdminSettings = () => {
             <SettingField label="Surge Multiplier" settingKey="surge_multiplier" type="number" />
             <SettingField label="Max Search Radius (km)" settingKey="max_search_radius_km" type="number" />
             <SettingField label="Driver Accept Timeout (sec)" settingKey="driver_accept_timeout_seconds" type="number" />
+            <SettingField label="Dispatch Broadcast Timeout (sec)" settingKey="dispatch_broadcast_timeout_seconds" type="number" placeholder="60" />
             <SettingField label="Max Drivers to Try (0 = unlimited)" settingKey="max_auto_drivers" type="number" />
             <SettingField label="Default Driver Trip Radius (km)" settingKey="default_trip_radius_km" type="number" />
             <SettingField label="Min Scheduled Lead Time (min)" settingKey="min_scheduled_lead_minutes" type="number" placeholder="30" />
