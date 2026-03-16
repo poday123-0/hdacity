@@ -611,26 +611,10 @@ const DispatchTripForm = ({
       if (isAssigned && assignedDriverId) {
         notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address).catch(console.warn);
       } else if (pickup) {
-        // Fetch configurable broadcast timeout (default 60s)
-        let broadcastTimeoutMs = 60_000;
-        try {
-          const { data: tSetting } = await supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single();
-          if (tSetting?.value) {
-            const secs = typeof tSetting.value === "number" ? tSetting.value : parseInt(String(tSetting.value)) || 60;
-            broadcastTimeoutMs = secs * 1000;
-          }
-        } catch {}
-
-        // Broadcast: find online drivers within 2km of pickup, max 10
-        const { data: drivers } = await supabase
-          .from("driver_locations")
-          .select("driver_id, lat, lng")
-          .eq("is_online", true)
-          .eq("is_on_trip", false);
-
+        // Pre-fetched in parallel above — use cached results for zero delay
         const tripId = trip.id;
 
-        if (!drivers || drivers.length === 0) {
+        if (!broadcastDriversCache || broadcastDriversCache.length === 0) {
           // No online drivers at all — immediately cancel
           await supabase.from("trips").update({
             status: "cancelled",
@@ -640,15 +624,7 @@ const DispatchTripForm = ({
           toast({ title: "No online drivers", description: "Trip cancelled — no drivers available", variant: "destructive" });
           onTripCreated();
         } else {
-          const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-            const R = 6371;
-            const dLat = ((lat2 - lat1) * Math.PI) / 180;
-            const dLon = ((lon2 - lon1) * Math.PI) / 180;
-            const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          };
-
-          const nearbyDrivers = drivers
+          const nearbyDrivers = broadcastDriversCache
             .map((d: any) => ({ ...d, dist: haversineKm(pickup.lat, pickup.lng, d.lat, d.lng) }))
             .filter((d: any) => d.dist <= 2)
             .sort((a: any, b: any) => a.dist - b.dist)
@@ -664,10 +640,12 @@ const DispatchTripForm = ({
             toast({ title: "No drivers within 2km", description: "Trip cancelled — no nearby drivers", variant: "destructive" });
             onTripCreated();
           } else {
+            // Send push notification immediately — no awaits needed
             notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address).catch(console.warn);
-            toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMs / 1000)}s if no one accepts` });
+            toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
             // Auto-cancel after configurable timeout
+            const timeoutMs = broadcastTimeoutMsCache;
             setTimeout(async () => {
               const { data: check } = await supabase.from("trips").select("status").eq("id", tripId).single();
               if (check && check.status === "requested") {
@@ -678,7 +656,7 @@ const DispatchTripForm = ({
                 }).eq("id", tripId);
                 onTripCreated();
               }
-            }, broadcastTimeoutMs);
+            }, timeoutMs);
           }
         }
       }
