@@ -3343,10 +3343,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               const tripPaymentMethod = (currentTrip as any).payment_method || "cash";
               if (tripPaymentMethod === "wallet") {
                 // Wallet payment: auto-process
+                const acceptedAt = (currentTrip as any).accepted_at;
+                const calcDuration = acceptedAt ? Math.round((Date.now() - new Date(acceptedAt).getTime()) / 60000) : null;
                 await supabase.from("trips").update({
                   status: "completed",
                   completed_at: now,
                   actual_fare: actualFare,
+                  duration_minutes: calcDuration,
                   payment_confirmed_method: "wallet",
                   hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
