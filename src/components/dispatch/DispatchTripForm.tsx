@@ -561,6 +561,12 @@ const DispatchTripForm = ({
       }
       const customerName = "Dispatch";
 
+      // Pre-fetch broadcast data in parallel with trip insert for zero-delay notifications
+      let broadcastDriversCache: any[] | null = null;
+      let broadcastTimeoutMsCache = 60_000;
+
+      const isBroadcast = dispatchMethod === "broadcast";
+
       const tripPayload: any = {
         pickup_address: pickup.address,
         pickup_lat: pickup.lat,
@@ -573,7 +579,7 @@ const DispatchTripForm = ({
         customer_name: customerName,
         customer_phone: customerPhone.trim(),
         created_by: dispatcherProfile?.id || null,
-        dispatch_type: dispatchMethod === "specific" ? "operator" : "dispatch_broadcast",
+        dispatch_type: isBroadcast ? "dispatch_broadcast" : "operator",
         vehicle_type_id: selectedVehicleType || null,
         status: isAssigned ? "accepted" : "requested",
         driver_id: assignedDriverId || null,
@@ -583,8 +589,27 @@ const DispatchTripForm = ({
         booking_notes: centerCodeResults.length > 0 ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
       };
 
-      const { data: trip, error } = await supabase.from("trips").insert(tripPayload).select("*").single();
+      // Fire trip insert + broadcast pre-fetch in parallel
+      const tripInsertPromise = supabase.from("trips").insert(tripPayload).select("*").single();
+
+      const broadcastPreFetchPromise = isBroadcast ? Promise.all([
+        supabase.from("driver_locations").select("driver_id, lat, lng").eq("is_online", true).eq("is_on_trip", false),
+        supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single().catch(() => ({ data: null })),
+      ]) : Promise.resolve(null);
+
+      const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
+      
+      const { data: trip, error } = tripResult;
       if (error) throw error;
+
+      if (broadcastData) {
+        const [driversRes, timeoutRes] = broadcastData as any;
+        broadcastDriversCache = driversRes?.data || [];
+        if (timeoutRes?.data?.value) {
+          const secs = typeof timeoutRes.data.value === "number" ? timeoutRes.data.value : parseInt(String(timeoutRes.data.value)) || 60;
+          broadcastTimeoutMsCache = secs * 1000;
+        }
+      }
 
       // If the assigned driver had a loss trip, clear it
       if (assignedDriverId) {
