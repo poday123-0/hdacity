@@ -1300,7 +1300,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const [tripsRes, declinesRes, ratedRes] = await Promise.all([
-      supabase.from("trips").select("actual_fare, estimated_fare, duration_minutes, status").eq("driver_id", userProfile.id).gte("created_at", todayStart.toISOString()),
+      supabase.from("trips").select("actual_fare, estimated_fare, duration_minutes, accepted_at, completed_at, status").eq("driver_id", userProfile.id).gte("created_at", todayStart.toISOString()),
       supabase.from("trip_declines").select("id").eq("driver_id", userProfile.id).gte("declined_at", todayStart.toISOString()),
       supabase.from("trips").select("rating").eq("driver_id", userProfile.id).eq("status", "completed").not("rating", "is", null),
     ]);
@@ -1309,9 +1309,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const totalRatings = ratedRes.data?.length || 0;
     const avgRating = totalRatings > 0 ? ratedRes.data!.reduce((sum, t) => sum + Number(t.rating), 0) / totalRatings : 0;
     if (trips) {
-      const completedTrips = trips.filter((t) => t.status === "completed");
-      const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
-      const totalMinutes = completedTrips.reduce((sum, t) => sum + (Number(t.duration_minutes) || 0), 0);
+      const completedTrips = trips.filter((t: any) => t.status === "completed");
+      const totalEarnings = completedTrips.reduce((sum: number, t: any) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
+      const totalMinutes = completedTrips.reduce((sum: number, t: any) => {
+        if (Number(t.duration_minutes) > 0) return sum + Number(t.duration_minutes);
+        // Fallback: calculate from accepted_at to completed_at
+        if (t.accepted_at && t.completed_at) {
+          return sum + (new Date(t.completed_at).getTime() - new Date(t.accepted_at).getTime()) / 60000;
+        }
+        return sum;
+      }, 0);
       const h = Math.floor(totalMinutes / 60);
       const m = Math.round(totalMinutes % 60);
       setDriverStats({
@@ -1452,9 +1459,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         0;
 
         if (trips) {
-          const completedTrips = trips.filter((t) => t.status === "completed");
-          const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
-          const totalMinutes = completedTrips.reduce((sum, t) => sum + (Number(t.duration_minutes) || 0), 0);
+          const completedTrips = trips.filter((t: any) => t.status === "completed");
+          const totalEarnings = completedTrips.reduce((sum: number, t: any) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
+          const totalMinutes = completedTrips.reduce((sum: number, t: any) => {
+            if (Number(t.duration_minutes) > 0) return sum + Number(t.duration_minutes);
+            if (t.accepted_at && t.completed_at) {
+              return sum + (new Date(t.completed_at).getTime() - new Date(t.accepted_at).getTime()) / 60000;
+            }
+            return sum;
+          }, 0);
           const h = Math.floor(totalMinutes / 60);
           const m = Math.round(totalMinutes % 60);
         setDriverStats({
@@ -3330,10 +3343,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               const tripPaymentMethod = (currentTrip as any).payment_method || "cash";
               if (tripPaymentMethod === "wallet") {
                 // Wallet payment: auto-process
+                const acceptedAt = (currentTrip as any).accepted_at;
+                const calcDuration = acceptedAt ? Math.round((Date.now() - new Date(acceptedAt).getTime()) / 60000) : null;
                 await supabase.from("trips").update({
                   status: "completed",
                   completed_at: now,
                   actual_fare: actualFare,
+                  duration_minutes: calcDuration,
                   payment_confirmed_method: "wallet",
                   hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
@@ -3371,8 +3387,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               } else {
                 // Auto-complete with passenger's selected payment method (no driver confirmation needed)
                 const tripPM = (currentTrip as any).payment_method || "cash";
+                const acceptedAt2 = (currentTrip as any).accepted_at;
+                const calcDuration2 = acceptedAt2 ? Math.round((Date.now() - new Date(acceptedAt2).getTime()) / 60000) : null;
                 await supabase.from("trips").update({
                   status: "completed", completed_at: now, actual_fare: actualFare,
+                  duration_minutes: calcDuration2,
                   payment_confirmed_method: tripPM,
                   hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
