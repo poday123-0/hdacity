@@ -1426,7 +1426,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           const totalMinutes = completedTrips.reduce((sum, t) => sum + (Number(t.duration_minutes) || 0), 0);
           const h = Math.floor(totalMinutes / 60);
           const m = Math.round(totalMinutes % 60);
-          setDriverStats({
+        setDriverStats({
             rides: completedTrips.length,
             earnings: totalEarnings,
             hours: h > 0 ? `${h}h${m > 0 ? m.toString().padStart(2, "0") : ""}` : `${m}m`,
@@ -1441,6 +1441,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
     load();
+    // Refresh stats every 60s while driver is active
+    const statsInterval = setInterval(() => { refreshDriverStats(); }, 60000);
+    return () => clearInterval(statsInterval);
   }, [userProfile?.id]);
 
   const updateRadius = async (val: number) => {
