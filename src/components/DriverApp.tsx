@@ -1459,9 +1459,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         0;
 
         if (trips) {
-          const completedTrips = trips.filter((t) => t.status === "completed");
-          const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
-          const totalMinutes = completedTrips.reduce((sum, t) => sum + (Number(t.duration_minutes) || 0), 0);
+          const completedTrips = trips.filter((t: any) => t.status === "completed");
+          const totalEarnings = completedTrips.reduce((sum: number, t: any) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
+          const totalMinutes = completedTrips.reduce((sum: number, t: any) => {
+            if (Number(t.duration_minutes) > 0) return sum + Number(t.duration_minutes);
+            if (t.accepted_at && t.completed_at) {
+              return sum + (new Date(t.completed_at).getTime() - new Date(t.accepted_at).getTime()) / 60000;
+            }
+            return sum;
+          }, 0);
           const h = Math.floor(totalMinutes / 60);
           const m = Math.round(totalMinutes % 60);
         setDriverStats({
