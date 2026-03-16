@@ -3387,8 +3387,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               } else {
                 // Auto-complete with passenger's selected payment method (no driver confirmation needed)
                 const tripPM = (currentTrip as any).payment_method || "cash";
+                const acceptedAt2 = (currentTrip as any).accepted_at;
+                const calcDuration2 = acceptedAt2 ? Math.round((Date.now() - new Date(acceptedAt2).getTime()) / 60000) : null;
                 await supabase.from("trips").update({
                   status: "completed", completed_at: now, actual_fare: actualFare,
+                  duration_minutes: calcDuration2,
                   payment_confirmed_method: tripPM,
                   hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
