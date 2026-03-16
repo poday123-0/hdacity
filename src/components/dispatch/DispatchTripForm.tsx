@@ -594,7 +594,7 @@ const DispatchTripForm = ({
 
       const broadcastPreFetchPromise = isBroadcast ? Promise.all([
         supabase.from("driver_locations").select("driver_id, lat, lng").eq("is_online", true).eq("is_on_trip", false),
-        supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single().catch(() => ({ data: null })),
+        supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single().then(r => r).catch(() => ({ data: null })),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
