@@ -1294,6 +1294,37 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, []);
 
+  // Lightweight stats-only refresh (called periodically + after trip completion)
+  const refreshDriverStats = useCallback(async () => {
+    if (!userProfile?.id) return;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const [tripsRes, declinesRes, ratedRes] = await Promise.all([
+      supabase.from("trips").select("actual_fare, estimated_fare, duration_minutes, status").eq("driver_id", userProfile.id).gte("created_at", todayStart.toISOString()),
+      supabase.from("trip_declines").select("id").eq("driver_id", userProfile.id).gte("declined_at", todayStart.toISOString()),
+      supabase.from("trips").select("rating").eq("driver_id", userProfile.id).eq("status", "completed").not("rating", "is", null),
+    ]);
+    const trips = tripsRes.data;
+    const declinedToday = declinesRes.data?.length || 0;
+    const totalRatings = ratedRes.data?.length || 0;
+    const avgRating = totalRatings > 0 ? ratedRes.data!.reduce((sum, t) => sum + Number(t.rating), 0) / totalRatings : 0;
+    if (trips) {
+      const completedTrips = trips.filter((t) => t.status === "completed");
+      const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
+      const totalMinutes = completedTrips.reduce((sum, t) => sum + (Number(t.duration_minutes) || 0), 0);
+      const h = Math.floor(totalMinutes / 60);
+      const m = Math.round(totalMinutes % 60);
+      setDriverStats({
+        rides: completedTrips.length,
+        earnings: totalEarnings,
+        hours: h > 0 ? `${h}h${m > 0 ? m.toString().padStart(2, "0") : ""}` : `${m}m`,
+        avgRating: Math.round(avgRating * 10) / 10,
+        totalRatings,
+        declinedToday,
+      });
+    }
+  }, [userProfile?.id]);
+
   useEffect(() => {
     const load = async () => {
       const { data: settingData } = await supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").single();
