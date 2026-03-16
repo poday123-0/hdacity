@@ -536,8 +536,8 @@ const Index = () => {
       };
       fetchPos();
 
-      // Poll every 10s as backup for realtime
-      pollInterval = setInterval(fetchPos, 10000);
+      // Poll every 3s as backup for realtime
+      pollInterval = setInterval(fetchPos, 3000);
 
       const channel = supabase
         .channel(`driver-track-${trip.driver_id}`)

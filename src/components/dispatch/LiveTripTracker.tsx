@@ -74,7 +74,7 @@ const LiveTripTracker = ({ tripId }: Props) => {
     };
 
     fetchTrip();
-    const interval = setInterval(fetchTrip, 5000);
+    const interval = setInterval(fetchTrip, 3000);
     return () => clearInterval(interval);
   }, [tripId]);
 
