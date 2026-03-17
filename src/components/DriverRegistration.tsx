@@ -98,19 +98,63 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   const saveDraft = useCallback(() => {
     try {
       const d: RegDraft = {
-        step, firstName, lastName, email, gender, selectedCompanyId,
-        avatarUrl, idCardFront, idCardBack, idCardExpiry, licenseFront, licenseBack, licenseExpiry,
-        taxiPermitFront, taxiPermitBack, plateNumber, make, model, color,
-        vehicleTypeId, selectedRideTypeIds, vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl,
+        step,
+        firstName,
+        lastName,
+        email,
+        gender,
+        selectedCompanyId,
+        avatarUrl,
+        idCardFront,
+        idCardBack,
+        idCardExpiry,
+        licenseFront,
+        licenseBack,
+        licenseExpiry,
+        taxiPermitFront,
+        taxiPermitBack,
+        plateNumber,
+        make,
+        model,
+        color,
+        vehicleTypeId,
+        selectedRideTypeIds,
+        vehicleRegUrl,
+        vehicleInsuranceUrl,
+        vehicleImageUrl,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
     } catch {}
-  }, [step, firstName, lastName, email, gender, selectedCompanyId, avatarUrl,
-    idCardFront, idCardBack, idCardExpiry, licenseFront, licenseBack, licenseExpiry, taxiPermitFront, taxiPermitBack,
-    plateNumber, make, model, color, vehicleTypeId, selectedRideTypeIds,
-    vehicleRegUrl, vehicleInsuranceUrl, vehicleImageUrl]);
+  }, [
+    step,
+    firstName,
+    lastName,
+    email,
+    gender,
+    selectedCompanyId,
+    avatarUrl,
+    idCardFront,
+    idCardBack,
+    idCardExpiry,
+    licenseFront,
+    licenseBack,
+    licenseExpiry,
+    taxiPermitFront,
+    taxiPermitBack,
+    plateNumber,
+    make,
+    model,
+    color,
+    vehicleTypeId,
+    selectedRideTypeIds,
+    vehicleRegUrl,
+    vehicleInsuranceUrl,
+    vehicleImageUrl,
+  ]);
 
-  useEffect(() => { saveDraft(); }, [saveDraft]);
+  useEffect(() => {
+    saveDraft();
+  }, [saveDraft]);
 
   useEffect(() => {
     const load = async () => {
@@ -127,7 +171,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   // Auto-include the primary vehicle type in ride types
   useEffect(() => {
     if (vehicleTypeId && !selectedRideTypeIds.includes(vehicleTypeId)) {
-      setSelectedRideTypeIds(prev => [...prev, vehicleTypeId]);
+      setSelectedRideTypeIds((prev) => [...prev, vehicleTypeId]);
     }
   }, [vehicleTypeId]);
 
@@ -136,7 +180,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     const ext = file.name.split(".").pop();
     const folder = target === "avatar" ? "avatars" : "driver-documents";
     const path = `registration/${phoneNumber}/${target}_${Date.now()}.${ext}`;
-    
+
     const { error } = await supabase.storage.from(folder).upload(path, file, { upsert: true });
     if (error) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
@@ -147,16 +191,36 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     const url = `${urlData.publicUrl}?t=${Date.now()}`;
 
     switch (target) {
-      case "avatar": setAvatarUrl(url); break;
-      case "id_front": setIdCardFront(url); break;
-      case "id_back": setIdCardBack(url); break;
-      case "license_front": setLicenseFront(url); break;
-      case "license_back": setLicenseBack(url); break;
-      case "permit_front": setTaxiPermitFront(url); break;
-      case "permit_back": setTaxiPermitBack(url); break;
-      case "vehicle_reg": setVehicleRegUrl(url); break;
-      case "vehicle_insurance": setVehicleInsuranceUrl(url); break;
-      case "vehicle_image": setVehicleImageUrl(url); break;
+      case "avatar":
+        setAvatarUrl(url);
+        break;
+      case "id_front":
+        setIdCardFront(url);
+        break;
+      case "id_back":
+        setIdCardBack(url);
+        break;
+      case "license_front":
+        setLicenseFront(url);
+        break;
+      case "license_back":
+        setLicenseBack(url);
+        break;
+      case "permit_front":
+        setTaxiPermitFront(url);
+        break;
+      case "permit_back":
+        setTaxiPermitBack(url);
+        break;
+      case "vehicle_reg":
+        setVehicleRegUrl(url);
+        break;
+      case "vehicle_insurance":
+        setVehicleInsuranceUrl(url);
+        break;
+      case "vehicle_image":
+        setVehicleImageUrl(url);
+        break;
     }
     setUploading(null);
   };
@@ -177,9 +241,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
   };
 
   const toggleRideType = (id: string) => {
-    setSelectedRideTypeIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setSelectedRideTypeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const handleSubmit = async () => {
@@ -198,7 +260,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
     setSaving(true);
     try {
-      const companyName = companies.find(c => c.id === selectedCompanyId)?.name || "";
+      const companyName = companies.find((c) => c.id === selectedCompanyId)?.name || "";
 
       // Create driver profile with Pending status
       const { data: profile, error: profileErr } = await supabase
@@ -232,25 +294,29 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       // Create vehicle
       let createdVehicleId: string | null = null;
       if (plateNumber.trim()) {
-        const { data: vehicleData } = await supabase.from("vehicles").insert({
-          driver_id: profile.id,
-          plate_number: plateNumber.trim().toUpperCase(),
-          make: make.trim() || null,
-          model: model.trim() || null,
-          color: color.trim() || null,
-          vehicle_type_id: vehicleTypeId || null,
-          is_active: true,
-          vehicle_status: "pending",
-          registration_url: vehicleRegUrl,
-          insurance_url: vehicleInsuranceUrl,
-          image_url: vehicleImageUrl,
-        } as any).select().single();
+        const { data: vehicleData } = await supabase
+          .from("vehicles")
+          .insert({
+            driver_id: profile.id,
+            plate_number: plateNumber.trim().toUpperCase(),
+            make: make.trim() || null,
+            model: model.trim() || null,
+            color: color.trim() || null,
+            vehicle_type_id: vehicleTypeId || null,
+            is_active: true,
+            vehicle_status: "pending",
+            registration_url: vehicleRegUrl,
+            insurance_url: vehicleInsuranceUrl,
+            image_url: vehicleImageUrl,
+          } as any)
+          .select()
+          .single();
         createdVehicleId = vehicleData?.id || null;
       }
 
       // Insert all selected ride types as pending
       if (createdVehicleId && selectedRideTypeIds.length > 0) {
-        const rows = selectedRideTypeIds.map(vtId => ({
+        const rows = selectedRideTypeIds.map((vtId) => ({
           driver_id: profile.id,
           vehicle_type_id: vtId,
           vehicle_id: createdVehicleId!,
@@ -271,7 +337,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
       } catch {}
 
       // Clear draft on success
-      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {}
 
       toast({
         title: "Registration submitted!",
@@ -285,7 +353,8 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
     }
   };
 
-  const inputClass = "w-full mt-1 px-3 py-3 bg-surface rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary";
+  const inputClass =
+    "w-full mt-1 px-3 py-3 bg-surface rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
   const DocUploadCard = ({ label, url, target }: { label: string; url: string | null; target: string }) => (
     <button
@@ -430,28 +499,49 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground font-medium">First Name *</label>
-                  <input value={firstName} onChange={(e) => setFirstName(e.target.value.slice(0, 50))} placeholder="Ahmed" className={inputClass} />
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value.slice(0, 50))}
+                    placeholder="Ahmed"
+                    className={inputClass}
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground font-medium">Last Name</label>
-                  <input value={lastName} onChange={(e) => setLastName(e.target.value.slice(0, 50))} placeholder="Ali" className={inputClass} />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value.slice(0, 50))}
+                    placeholder="Ali"
+                    className={inputClass}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="text-xs text-muted-foreground font-medium">Email (optional)</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value.slice(0, 100))} placeholder="ahmed@example.com" className={inputClass} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value.slice(0, 100))}
+                  placeholder="ahmed@example.com"
+                  className={inputClass}
+                />
               </div>
 
               <div>
                 <label className="text-xs text-muted-foreground font-medium">Gender</label>
                 <div className="flex gap-2 mt-1">
-                  {[{ value: "1", label: "Male" }, { value: "2", label: "Female" }].map((g) => (
+                  {[
+                    { value: "1", label: "Male" },
+                    { value: "2", label: "Female" },
+                  ].map((g) => (
                     <button
                       key={g.value}
                       onClick={() => setGender(g.value)}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                        gender === g.value ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"
+                        gender === g.value
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-surface text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {g.label}
@@ -470,7 +560,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                   >
                     <option value="">Select company</option>
                     {companies.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none mt-0.5" />
@@ -492,7 +584,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Upload className="w-4 h-4 text-primary" /> Upload Documents
               </div>
-              <p className="text-xs text-muted-foreground">Upload clear photos of your ID card, driving license, and taxi permit (front & back).</p>
+              <p className="text-xs text-muted-foreground">
+                Upload clear photos of your ID card, driving license, and taxi permit (front & back).
+              </p>
 
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-foreground">ID Card</p>
@@ -502,7 +596,12 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground font-medium">ID Card Expiry Date</label>
-                  <input type="date" value={idCardExpiry} onChange={(e) => setIdCardExpiry(e.target.value)} className={inputClass} />
+                  <input
+                    type="date"
+                    value={idCardExpiry}
+                    onChange={(e) => setIdCardExpiry(e.target.value)}
+                    className={inputClass}
+                  />
                 </div>
               </div>
 
@@ -514,12 +613,19 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground font-medium">License Expiry Date</label>
-                  <input type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} className={inputClass} />
+                  <input
+                    type="date"
+                    value={licenseExpiry}
+                    onChange={(e) => setLicenseExpiry(e.target.value)}
+                    className={inputClass}
+                  />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-foreground">Taxi Permit <span className="font-normal text-muted-foreground">(optional)</span></p>
+                <p className="text-xs font-semibold text-foreground">
+                  Taxi Permit <span className="font-normal text-muted-foreground">(optional)</span>
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                   <DocUploadCard label="Front" url={taxiPermitFront} target="permit_front" />
                   <DocUploadCard label="Back" url={taxiPermitBack} target="permit_back" />
@@ -555,7 +661,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 <input
                   value={plateNumber}
                   onChange={(e) => setPlateNumber(e.target.value.slice(0, 20))}
-                  placeholder="P1234"
+                  placeholder="Enter full plate (e.g. AB1A P1234)"
                   className={inputClass}
                 />
               </div>
@@ -570,7 +676,12 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
               <div>
                 <label className="text-xs text-muted-foreground font-medium">Color</label>
-                <input value={color} onChange={(e) => setColor(e.target.value.slice(0, 20))} placeholder="White" className={inputClass} />
+                <input
+                  value={color}
+                  onChange={(e) => setColor(e.target.value.slice(0, 20))}
+                  placeholder="White"
+                  className={inputClass}
+                />
               </div>
 
               <div>
@@ -583,7 +694,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                   >
                     <option value="">Select type</option>
                     {vehicleTypes.map((vt) => (
-                      <option key={vt.id} value={vt.id}>{vt.name}</option>
+                      <option key={vt.id} value={vt.id}>
+                        {vt.name}
+                      </option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none mt-0.5" />
@@ -593,7 +706,9 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
               {/* Ride Types Selection */}
               <div>
                 <label className="text-xs text-muted-foreground font-medium">Ride Types for this Vehicle *</label>
-                <p className="text-[10px] text-muted-foreground mt-0.5 mb-2">Select all ride categories this vehicle can serve. Admin will review and approve.</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 mb-2">
+                  Select all ride categories this vehicle can serve. Admin will review and approve.
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {vehicleTypes.map((vt) => {
                     const isSelected = selectedRideTypeIds.includes(vt.id);
@@ -618,7 +733,8 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
                 {selectedRideTypeIds.length > 0 && (
                   <p className="text-[10px] text-primary mt-1.5 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {selectedRideTypeIds.length} type{selectedRideTypeIds.length > 1 ? "s" : ""} selected — pending admin approval after registration
+                    {selectedRideTypeIds.length} type{selectedRideTypeIds.length > 1 ? "s" : ""} selected — pending
+                    admin approval after registration
                   </p>
                 )}
               </div>
@@ -643,7 +759,15 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
               <button
                 onClick={handleSubmit}
-                disabled={saving || !firstName.trim() || !plateNumber.trim() || selectedRideTypeIds.length === 0 || !vehicleRegUrl || !vehicleInsuranceUrl || !vehicleImageUrl}
+                disabled={
+                  saving ||
+                  !firstName.trim() ||
+                  !plateNumber.trim() ||
+                  selectedRideTypeIds.length === 0 ||
+                  !vehicleRegUrl ||
+                  !vehicleInsuranceUrl ||
+                  !vehicleImageUrl
+                }
                 className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -662,10 +786,7 @@ const DriverRegistration = ({ phoneNumber, onComplete, onBack }: DriverRegistrat
 
       {/* Back button */}
       <div className="px-6 pb-6 pt-2">
-        <button
-          onClick={onBack}
-          className="w-full text-center text-sm text-muted-foreground font-medium py-2"
-        >
+        <button onClick={onBack} className="w-full text-center text-sm text-muted-foreground font-medium py-2">
           ← Back to login
         </button>
       </div>
