@@ -528,8 +528,9 @@ const DispatchTripForm = ({
       toast({ title: "Select pickup and dropoff", variant: "destructive" });
       return;
     }
-    if (!customerPhone.trim()) {
-      toast({ title: "Enter customer phone", variant: "destructive" });
+    // Phone required only for broadcast (Send to App)
+    if (dispatchMethod === "broadcast" && !customerPhone.trim()) {
+      toast({ title: "Phone number required for Send to App", variant: "destructive" });
       return;
     }
 
