@@ -411,10 +411,40 @@ const Dispatch = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isAuthed]);
 
-  // Polling fallback: refresh every 5s for fast dispatch updates
+  // Realtime: driver locations for online driver count updates
   useEffect(() => {
     if (!isAuthed) return;
-    const interval = setInterval(() => { refreshTrips(); }, 5_000);
+    const refreshOnlineDrivers = async () => {
+      const { data } = await supabase
+        .from("driver_locations")
+        .select(`driver_id, lat, lng, profiles:driver_id (first_name, last_name, phone_number), vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))`)
+        .eq("is_online", true)
+        .eq("is_on_trip", false);
+      const drivers: OnlineDriver[] = (data || []).map((d: any) => ({
+        driver_id: d.driver_id,
+        first_name: (d.profiles as any)?.first_name || "",
+        last_name: (d.profiles as any)?.last_name || "",
+        phone_number: (d.profiles as any)?.phone_number || "",
+        vehicle_name: (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+        plate_number: (d.vehicles as any)?.plate_number || "",
+        lat: d.lat,
+        lng: d.lng,
+      }));
+      setOnlineDrivers(drivers);
+    };
+    const driverChannel = supabase
+      .channel("dispatch-driver-locations")
+      .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
+        refreshOnlineDrivers();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(driverChannel); };
+  }, [isAuthed]);
+
+  // Polling fallback: refresh every 3s for fast dispatch updates
+  useEffect(() => {
+    if (!isAuthed) return;
+    const interval = setInterval(() => { refreshTrips(); }, 3_000);
     return () => clearInterval(interval);
   }, [isAuthed]);
 

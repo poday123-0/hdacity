@@ -5,6 +5,7 @@ import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Searc
 import * as XLSX from "xlsx";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
+type VehicleForm = typeof emptyForm;
 
 type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected";
 
@@ -35,6 +36,7 @@ const AdminVehicles = () => {
   const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState("");
   const [importing, setImporting] = useState(false);
+  const [driverSearch, setDriverSearch] = useState("");
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -464,12 +466,32 @@ const AdminVehicles = () => {
                 {vehicleTypes.map((vt) => (<option key={vt.id} value={vt.id}>{vt.name}</option>))}
               </select>
             </div>
-            <div>
+            <div className="relative">
               <label className="text-xs font-medium text-muted-foreground">Assign Driver</label>
-              <select value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })} className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">Unassigned</option>
-                {drivers.map((d) => (<option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>))}
-              </select>
+              <input
+                value={form.driver_id ? (() => { const d = drivers.find(d => d.id === form.driver_id); return d ? `${d.first_name} ${d.last_name} (${d.phone_number})` : ""; })() : driverSearch}
+                onChange={(e) => { setDriverSearch(e.target.value); setForm({ ...form, driver_id: "" }); }}
+                placeholder="Search by name or number..."
+                className="w-full mt-1 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {driverSearch.length > 0 && !form.driver_id && (
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  <button onClick={() => { setForm({ ...form, driver_id: "" }); setDriverSearch(""); }} className="w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-surface border-b border-border">Unassigned</button>
+                  {drivers.filter(d => {
+                    const q = driverSearch.toLowerCase();
+                    return `${d.first_name} ${d.last_name}`.toLowerCase().includes(q) || (d.phone_number || "").includes(q);
+                  }).slice(0, 20).map((d) => (
+                    <button key={d.id} onClick={() => { setForm({ ...form, driver_id: d.id }); setDriverSearch(""); }} className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface border-b border-border last:border-0">
+                      {d.first_name} {d.last_name} <span className="text-muted-foreground">({d.phone_number})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {form.driver_id && (
+                <button onClick={() => { setForm({ ...form, driver_id: "" }); setDriverSearch(""); }} className="absolute right-3 top-[calc(50%+4px)] text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {

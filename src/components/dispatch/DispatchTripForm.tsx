@@ -513,14 +513,15 @@ const DispatchTripForm = ({
     setCenterCode("");
     setCenterCodeResults([]);
     setSelectedCenterCode(null);
-    setSelectedVehicleType("");
-    setDispatchMethod("broadcast");
+    // Default back to Car
+    const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
+    setSelectedVehicleType(carType?.id || vehicleTypes[0]?.id || "");
+    setDispatchMethod("specific");
     setSelectedDriverId("");
     setEstimatedFare(null);
     setCreatedTrip(null);
     setTripDriver(null);
     setTripVehicle(null);
-    
   };
 
   const handleSubmit = async () => {
@@ -528,8 +529,9 @@ const DispatchTripForm = ({
       toast({ title: "Select pickup and dropoff", variant: "destructive" });
       return;
     }
-    if (!customerPhone.trim()) {
-      toast({ title: "Enter customer phone", variant: "destructive" });
+    // Phone required only for broadcast (Send to App)
+    if (dispatchMethod === "broadcast" && !customerPhone.trim()) {
+      toast({ title: "Phone number required for Send to App", variant: "destructive" });
       return;
     }
 
@@ -586,7 +588,7 @@ const DispatchTripForm = ({
         accepted_at: isAssigned ? new Date().toISOString() : null,
         fare_type: "distance",
         estimated_fare: estimatedFare || null,
-        booking_notes: centerCodeResults.length > 0 ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
+        booking_notes: (centerCodeResults.length > 0 && !isBroadcast) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
       };
 
       // Fire trip insert + broadcast pre-fetch in parallel
@@ -686,7 +688,7 @@ const DispatchTripForm = ({
         }
       }
 
-      // Reset form
+      // Reset form but keep Car default
       setCustomerPhone("");
       setPickup(null);
       setPickupQuery("");
@@ -697,6 +699,9 @@ const DispatchTripForm = ({
       setCenterCode("");
       setCenterCodeResults([]);
       setSelectedCenterCode(null);
+      // Default back to Car
+      const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
+      setSelectedVehicleType(carType?.id || vehicleTypes[0]?.id || "");
       setSelectedDriverId("");
       setEstimatedFare(null);
       onTripCreated();
@@ -743,42 +748,6 @@ const DispatchTripForm = ({
 
       {!collapsed && (
         <div className="p-2 space-y-2 overflow-y-auto flex-1">
-          {/* Pax, Luggage & Contact - compact */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-2.5 h-2.5" /></button>
-                <span className="text-xs font-bold text-foreground w-4 text-center">{passengerCount}</span>
-                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-2.5 h-2.5" /></button>
-                <span className="text-xs font-bold text-foreground w-4 text-center">{luggageCount}</span>
-                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Contact</p>
-              <div className="relative mt-1">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground font-semibold">+960</span>
-                <input
-                  ref={phoneInputRef}
-                  value={customerPhone}
-                  onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
-                  }}
-                  placeholder="Phone"
-                  className="w-full pl-9 pr-1.5 py-1 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary h-6"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Vehicle type - buttons with keyboard navigation */}
           <div className="space-y-1">
             <div
@@ -831,6 +800,42 @@ const DispatchTripForm = ({
                   {vt.name}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Pax, Luggage & Contact - compact */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-2.5 h-2.5" /></button>
+                <span className="text-xs font-bold text-foreground w-4 text-center">{passengerCount}</span>
+                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-2.5 h-2.5" /></button>
+                <span className="text-xs font-bold text-foreground w-4 text-center">{luggageCount}</span>
+                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Contact</p>
+              <div className="relative mt-1">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground font-semibold">+960</span>
+                <input
+                  ref={phoneInputRef}
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
+                  }}
+                  placeholder="Phone"
+                  className="w-full pl-9 pr-1.5 py-1 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary h-6"
+                />
+              </div>
             </div>
           </div>
 
@@ -1277,7 +1282,7 @@ const DispatchTripForm = ({
       {/* Submit */}
       {!collapsed && (
         <div className="p-3 pt-0">
-          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || !customerPhone} className={`w-full font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm ${dispatchMethod === "broadcast" ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground"}`}>
+          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || (dispatchMethod === "broadcast" && !customerPhone)} className={`w-full font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm ${dispatchMethod === "broadcast" ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground"}`}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> {dispatchMethod === "broadcast" ? "Send to App" : "Assign"}</>}
           </button>
         </div>
