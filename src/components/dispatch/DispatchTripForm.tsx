@@ -688,7 +688,7 @@ const DispatchTripForm = ({
         }
       }
 
-      // Reset form
+      // Reset form but keep Car default
       setCustomerPhone("");
       setPickup(null);
       setPickupQuery("");
@@ -699,6 +699,9 @@ const DispatchTripForm = ({
       setCenterCode("");
       setCenterCodeResults([]);
       setSelectedCenterCode(null);
+      // Default back to Car
+      const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
+      setSelectedVehicleType(carType?.id || vehicleTypes[0]?.id || "");
       setSelectedDriverId("");
       setEstimatedFare(null);
       onTripCreated();
