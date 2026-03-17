@@ -587,7 +587,7 @@ const DispatchTripForm = ({
         accepted_at: isAssigned ? new Date().toISOString() : null,
         fare_type: "distance",
         estimated_fare: estimatedFare || null,
-        booking_notes: centerCodeResults.length > 0 ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
+        booking_notes: (centerCodeResults.length > 0 && !isBroadcast) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
       };
 
       // Fire trip insert + broadcast pre-fetch in parallel
