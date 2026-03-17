@@ -513,14 +513,15 @@ const DispatchTripForm = ({
     setCenterCode("");
     setCenterCodeResults([]);
     setSelectedCenterCode(null);
-    setSelectedVehicleType("");
-    setDispatchMethod("broadcast");
+    // Default back to Car
+    const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
+    setSelectedVehicleType(carType?.id || vehicleTypes[0]?.id || "");
+    setDispatchMethod("specific");
     setSelectedDriverId("");
     setEstimatedFare(null);
     setCreatedTrip(null);
     setTripDriver(null);
     setTripVehicle(null);
-    
   };
 
   const handleSubmit = async () => {
