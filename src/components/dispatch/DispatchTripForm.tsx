@@ -748,42 +748,6 @@ const DispatchTripForm = ({
 
       {!collapsed && (
         <div className="p-2 space-y-2 overflow-y-auto flex-1">
-          {/* Pax, Luggage & Contact - compact */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-2.5 h-2.5" /></button>
-                <span className="text-xs font-bold text-foreground w-4 text-center">{passengerCount}</span>
-                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-2.5 h-2.5" /></button>
-                <span className="text-xs font-bold text-foreground w-4 text-center">{luggageCount}</span>
-                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Contact</p>
-              <div className="relative mt-1">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground font-semibold">+960</span>
-                <input
-                  ref={phoneInputRef}
-                  value={customerPhone}
-                  onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
-                  }}
-                  placeholder="Phone"
-                  className="w-full pl-9 pr-1.5 py-1 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary h-6"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Vehicle type - buttons with keyboard navigation */}
           <div className="space-y-1">
             <div
@@ -836,6 +800,42 @@ const DispatchTripForm = ({
                   {vt.name}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Pax, Luggage & Contact - compact */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" /> Pax</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={passengerCount <= 1}><Minus className="w-2.5 h-2.5" /></button>
+                <span className="text-xs font-bold text-foreground w-4 text-center">{passengerCount}</span>
+                <button onClick={() => setPassengerCount(Math.min(20, passengerCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Luggage className="w-3 h-3" /> Bags</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))} className="w-6 h-6 rounded bg-surface flex items-center justify-center" disabled={luggageCount <= 0}><Minus className="w-2.5 h-2.5" /></button>
+                <span className="text-xs font-bold text-foreground w-4 text-center">{luggageCount}</span>
+                <button onClick={() => setLuggageCount(Math.min(30, luggageCount + 1))} className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center"><Plus className="w-2.5 h-2.5 text-primary" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Contact</p>
+              <div className="relative mt-1">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground font-semibold">+960</span>
+                <input
+                  ref={phoneInputRef}
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
+                  }}
+                  placeholder="Phone"
+                  className="w-full pl-9 pr-1.5 py-1 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary h-6"
+                />
+              </div>
             </div>
           </div>
 
