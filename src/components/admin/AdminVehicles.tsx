@@ -5,6 +5,7 @@ import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Searc
 import * as XLSX from "xlsx";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
+type VehicleForm = typeof emptyForm;
 
 type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected";
 
