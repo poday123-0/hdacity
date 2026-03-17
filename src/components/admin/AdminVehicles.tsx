@@ -36,6 +36,7 @@ const AdminVehicles = () => {
   const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState("");
   const [importing, setImporting] = useState(false);
+  const [driverSearch, setDriverSearch] = useState("");
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
