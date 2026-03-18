@@ -420,9 +420,9 @@ const AdminBilling = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {!companyFeeFree && (
-                              <button onClick={() => toggleFeeFree(d.id, d.monthly_fee)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d.monthly_fee === 0 ? "text-destructive bg-destructive/10 hover:bg-destructive/20" : "text-primary bg-primary/10 hover:bg-primary/20"}`}>
+                              <button onClick={() => toggleFeeFree(d.id)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${(isFreeUntilActive(d)) ? "text-destructive bg-destructive/10 hover:bg-destructive/20" : "text-primary bg-primary/10 hover:bg-primary/20"}`}>
                                 <ShieldCheck className="w-3 h-3" />
-                                {d.monthly_fee === 0 ? "Set Fee" : "Make Free"}
+                                {isFreeUntilActive(d) ? "Remove Free" : "Make Free"}
                               </button>
                             )}
                             {temporaryFree ? (
