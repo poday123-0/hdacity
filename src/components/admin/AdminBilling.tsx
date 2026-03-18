@@ -381,7 +381,8 @@ const AdminBilling = () => {
                   filteredDrivers.map((d) => {
                     const companyFeeFree = isCompanyFeeFree(d);
                     const temporaryFree = isFreeUntilActive(d);
-                    const effectivelyFree = d.monthly_fee === 0 || companyFeeFree || temporaryFree;
+                    const driverFee = getDriverFee(d.id);
+                    const effectivelyFree = driverFee === 0 || companyFeeFree || temporaryFree;
 
                     return (
                       <tr key={d.id} className="border-b border-border last:border-0">
@@ -396,7 +397,7 @@ const AdminBilling = () => {
                           {effectivelyFree ? (
                             <span className="text-sm font-semibold text-primary">FREE</span>
                           ) : (
-                            <span className="text-sm font-semibold text-foreground">{d.monthly_fee} MVR</span>
+                            <span className="text-sm font-semibold text-foreground">{driverFee} MVR</span>
                           )}
                           {temporaryFree && <p className="text-[10px] text-muted-foreground">until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
                         </td>
