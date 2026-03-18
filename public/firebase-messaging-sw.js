@@ -32,6 +32,24 @@ self.addEventListener("activate", (event) => {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
+// ---- Pending sounds queue (for iOS where clients may be suspended) ----
+// When no client windows are available to play sound, store the request here.
+// The client will poll for pending sounds on visibilitychange.
+let pendingSounds = [];
+
+// Listen for clients asking for pending sounds
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "GET_PENDING_SOUNDS") {
+    const sounds = [...pendingSounds];
+    pendingSounds = [];
+    event.ports?.[0]?.postMessage({ sounds });
+  }
+  // Allow clients to clear pending sounds
+  if (event.data?.type === "CLEAR_PENDING_SOUNDS") {
+    pendingSounds = [];
+  }
+});
+
 // Vibration patterns per notification type
 const VIBRATE_PATTERNS = {
   trip_requested: [300, 100, 300, 100, 300, 100, 300, 100, 300],
@@ -80,6 +98,22 @@ messaging.onBackgroundMessage((payload) => {
   self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
     console.log(`[SW] Found ${clientList.length} client window(s)`);
 
+    // If no clients available (iOS backgrounded), queue the sound for later
+    if (clientList.length === 0 && soundUrl) {
+      console.log("[SW] No clients available — queuing sound for replay");
+      pendingSounds.push({
+        sound_url: soundUrl,
+        notification_type: type,
+        sound_category: soundCategory,
+        timestamp: Date.now(),
+      });
+      // Keep max 5 pending sounds, discard old ones
+      if (pendingSounds.length > 5) {
+        pendingSounds = pendingSounds.slice(-5);
+      }
+      return;
+    }
+
     for (const client of clientList) {
       // Play custom sound via client
       if (soundUrl) {
@@ -125,6 +159,15 @@ self.addEventListener("notificationclick", (event) => {
   const soundUrl = data.sound_url;
   if (soundUrl) {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length === 0) {
+        // Queue for when client opens
+        pendingSounds.push({
+          sound_url: soundUrl,
+          notification_type: data.type || "default",
+          sound_category: data.sound_category || data.type || "default",
+          timestamp: Date.now(),
+        });
+      }
       for (const client of clientList) {
         client.postMessage({
           type: "PLAY_NOTIFICATION_SOUND",
