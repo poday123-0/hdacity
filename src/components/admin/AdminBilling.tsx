@@ -208,11 +208,12 @@ const AdminBilling = () => {
   });
 
   const totalMonthlyRevenue = drivers.reduce((sum, d) => {
-    if (d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return sum;
-    return sum + (d.monthly_fee || 0);
+    const fee = getDriverFee(d.id);
+    if (fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return sum;
+    return sum + fee;
   }, 0);
 
-  const freeDriversCount = drivers.filter(d => d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)).length;
+  const freeDriversCount = drivers.filter(d => getDriverFee(d.id) === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)).length;
   const payingDriversCount = drivers.length - freeDriversCount;
   const pendingPayments = payments.filter(p => p.status === "submitted").length;
 
