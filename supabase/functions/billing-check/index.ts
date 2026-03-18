@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const isReminderDay = currentDay === billingDueDay - 1; // 24hrs before
     const isDueDay = currentDay >= billingDueDay;
 
-    // Fetch all active drivers with fees
+    // Fetch all active drivers
     const { data: drivers } = await supabase
       .from("profiles")
       .select("id, first_name, last_name, phone_number, country_code, monthly_fee, fee_free_until, company_id, status")
@@ -54,6 +54,27 @@ Deno.serve(async (req) => {
       (companies || []).filter((c) => c.fee_free).map((c) => c.id)
     );
 
+    // Fetch all active vehicles with their vehicle_type_id
+    const { data: allVehicles } = await supabase
+      .from("vehicles")
+      .select("id, driver_id, vehicle_type_id")
+      .eq("is_active", true);
+
+    // Fetch all vehicle types with their monthly_fee
+    const { data: vehicleTypes } = await supabase
+      .from("vehicle_types")
+      .select("id, monthly_fee")
+      .eq("is_active", true);
+    const vtFeeMap = new Map((vehicleTypes || []).map((vt) => [vt.id, vt.monthly_fee || 0]));
+
+    // Calculate per-driver fee from their vehicles' vehicle types
+    const driverFeeMap = new Map<string, number>();
+    for (const v of (allVehicles || [])) {
+      if (!v.driver_id || !v.vehicle_type_id) continue;
+      const vtFee = vtFeeMap.get(v.vehicle_type_id) || 0;
+      driverFeeMap.set(v.driver_id, (driverFeeMap.get(v.driver_id) || 0) + vtFee);
+    }
+
     // Fetch approved payments for current month
     const { data: paidPayments } = await supabase
       .from("driver_payments")
@@ -70,9 +91,10 @@ Deno.serve(async (req) => {
       .eq("status", "submitted");
     const pendingDriverIds = new Set((pendingPayments || []).map((p) => p.driver_id));
 
-    // Filter drivers who owe fees
+    // Filter drivers who owe fees (based on vehicle type monthly_fee)
     const driversOwingFees = drivers.filter((d) => {
-      if (d.monthly_fee === 0) return false;
+      const totalFee = driverFeeMap.get(d.id) || 0;
+      if (totalFee === 0) return false;
       if (feeFreeCompanyIds.has(d.company_id)) return false;
       if (d.fee_free_until && new Date(d.fee_free_until) > now) return false;
       if (paidDriverIds.has(d.id)) return false;
@@ -90,8 +112,9 @@ Deno.serve(async (req) => {
           // Don't remind drivers who already submitted payment
           if (pendingDriverIds.has(driver.id)) continue;
 
+          const totalFee = driverFeeMap.get(driver.id) || 0;
           const phone = `${driver.country_code || "960"}${driver.phone_number}`;
-          const message = `Hi ${driver.first_name}, your monthly fee of ${driver.monthly_fee} MVR is due tomorrow. Please pay to continue driving. - HDA`;
+          const message = `Hi ${driver.first_name}, your monthly fee of ${totalFee} MVR is due tomorrow. Please pay to continue driving. - HDA`;
 
           try {
             await fetch("https://rest.msgowl.com/messages", {

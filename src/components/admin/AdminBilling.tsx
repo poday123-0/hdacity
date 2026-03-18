@@ -76,10 +76,30 @@ const AdminBilling = () => {
     return getDriverVehicleType(driverId)?.name || "—";
   };
 
-  const toggleFeeFree = async (driverId: string, currentFee: number) => {
-    const newFee = currentFee === 0 ? 500 : 0;
-    await supabase.from("profiles").update({ monthly_fee: newFee } as any).eq("id", driverId);
-    toast({ title: newFee === 0 ? "Driver set to free" : "Monthly fee restored" });
+  // Calculate total monthly fee for a driver based on their vehicles' vehicle types
+  const getDriverFee = (driverId: string): number => {
+    const driverVehs = vehicles.filter(v => v.driver_id === driverId);
+    return driverVehs.reduce((sum, v) => {
+      const vt = vehicleTypes.find(t => t.id === v.vehicle_type_id);
+      return sum + (vt?.monthly_fee || 0);
+    }, 0);
+  };
+
+  // Toggle fee-free is now handled via fee_free_until or company setting
+  // The old toggle that set monthly_fee=0 on profile is no longer relevant
+  // since fees come from vehicle types. We keep the "Make Free" button to set fee_free_until far in the future.
+  const toggleFeeFree = async (driverId: string) => {
+    const driver = drivers.find(d => d.id === driverId);
+    const isFree = isFreeUntilActive(driver);
+    if (isFree) {
+      // Remove free period
+      await supabase.from("profiles").update({ fee_free_until: null } as any).eq("id", driverId);
+      toast({ title: "Free period removed" });
+    } else {
+      // Set free forever (year 2099)
+      await supabase.from("profiles").update({ fee_free_until: "2099-12-31T23:59:59Z" } as any).eq("id", driverId);
+      toast({ title: "Driver set to free (permanent)" });
+    }
     fetchDrivers();
   };
 
@@ -199,11 +219,12 @@ const AdminBilling = () => {
   });
 
   const totalMonthlyRevenue = drivers.reduce((sum, d) => {
-    if (d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return sum;
-    return sum + (d.monthly_fee || 0);
+    const fee = getDriverFee(d.id);
+    if (fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return sum;
+    return sum + fee;
   }, 0);
 
-  const freeDriversCount = drivers.filter(d => d.monthly_fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)).length;
+  const freeDriversCount = drivers.filter(d => getDriverFee(d.id) === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)).length;
   const payingDriversCount = drivers.length - freeDriversCount;
   const pendingPayments = payments.filter(p => p.status === "submitted").length;
 
@@ -371,7 +392,8 @@ const AdminBilling = () => {
                   filteredDrivers.map((d) => {
                     const companyFeeFree = isCompanyFeeFree(d);
                     const temporaryFree = isFreeUntilActive(d);
-                    const effectivelyFree = d.monthly_fee === 0 || companyFeeFree || temporaryFree;
+                    const driverFee = getDriverFee(d.id);
+                    const effectivelyFree = driverFee === 0 || companyFeeFree || temporaryFree;
 
                     return (
                       <tr key={d.id} className="border-b border-border last:border-0">
@@ -386,7 +408,7 @@ const AdminBilling = () => {
                           {effectivelyFree ? (
                             <span className="text-sm font-semibold text-primary">FREE</span>
                           ) : (
-                            <span className="text-sm font-semibold text-foreground">{d.monthly_fee} MVR</span>
+                            <span className="text-sm font-semibold text-foreground">{driverFee} MVR</span>
                           )}
                           {temporaryFree && <p className="text-[10px] text-muted-foreground">until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
                         </td>
@@ -398,9 +420,9 @@ const AdminBilling = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {!companyFeeFree && (
-                              <button onClick={() => toggleFeeFree(d.id, d.monthly_fee)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d.monthly_fee === 0 ? "text-destructive bg-destructive/10 hover:bg-destructive/20" : "text-primary bg-primary/10 hover:bg-primary/20"}`}>
+                              <button onClick={() => toggleFeeFree(d.id)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${(isFreeUntilActive(d)) ? "text-destructive bg-destructive/10 hover:bg-destructive/20" : "text-primary bg-primary/10 hover:bg-primary/20"}`}>
                                 <ShieldCheck className="w-3 h-3" />
-                                {d.monthly_fee === 0 ? "Set Fee" : "Make Free"}
+                                {isFreeUntilActive(d) ? "Remove Free" : "Make Free"}
                               </button>
                             )}
                             {temporaryFree ? (
