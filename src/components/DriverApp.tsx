@@ -4329,23 +4329,70 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </div>
                 }
 
-                    {/* Monthly fee info */}
-                    <div className="bg-surface rounded-xl p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Your monthly fee</span>
-                        <span className="text-lg font-bold text-foreground">
-                          {companyInfo?.fee_free ?
-                      <span className="text-primary">FREE</span> :
-                      userProfile?.monthly_fee === 0 ?
-                      <span className="text-primary">FREE</span> :
+                    {/* Monthly fee info — based on vehicle type */}
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
+                      {(() => {
+                        const isFreeCompany = companyInfo?.fee_free;
+                        const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
+                        
+                        // Calculate total fee from all active vehicles' vehicle types
+                        const vehicleFees = driverVehicles.map((v: any) => {
+                          const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                          return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                        });
+                        const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
-                      `${userProfile?.monthly_fee || 0} MVR`
-                      }
-                        </span>
-                      </div>
-                      {(userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date() &&
-                  <p className="text-xs text-primary mt-1">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
-                  }
+                        if (isFreeCompany) {
+                          return (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Status</span>
+                              <span className="text-lg font-bold text-primary">FREE (Company)</span>
+                            </div>
+                          );
+                        }
+                        if (isFreePeriod) {
+                          return (
+                            <div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">Status</span>
+                                <span className="text-lg font-bold text-primary">FREE</span>
+                              </div>
+                              <p className="text-xs text-primary mt-1">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Normal fee would be {totalFee} MVR</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {vehicleFees.map((v: any, i: number) => (
+                              <div key={i} className="flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">{v.plate} ({v.typeName})</span>
+                                <span className="text-sm font-semibold text-foreground">{v.fee} MVR</span>
+                              </div>
+                            ))}
+                            {vehicleFees.length > 1 && (
+                              <div className="flex items-center justify-between border-t border-border pt-2">
+                                <span className="text-sm font-semibold text-muted-foreground">Total</span>
+                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
+                              </div>
+                            )}
+                            {vehicleFees.length === 1 && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">Amount due</span>
+                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
+                              </div>
+                            )}
+                            {vehicleFees.length === 0 && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">No vehicles</span>
+                                <span className="text-lg font-bold text-foreground">0 MVR</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
               }
