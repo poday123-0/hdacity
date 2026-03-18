@@ -85,10 +85,21 @@ const AdminBilling = () => {
     }, 0);
   };
 
-  const toggleFeeFree = async (driverId: string, currentFee: number) => {
-    const newFee = currentFee === 0 ? 500 : 0;
-    await supabase.from("profiles").update({ monthly_fee: newFee } as any).eq("id", driverId);
-    toast({ title: newFee === 0 ? "Driver set to free" : "Monthly fee restored" });
+  // Toggle fee-free is now handled via fee_free_until or company setting
+  // The old toggle that set monthly_fee=0 on profile is no longer relevant
+  // since fees come from vehicle types. We keep the "Make Free" button to set fee_free_until far in the future.
+  const toggleFeeFree = async (driverId: string) => {
+    const driver = drivers.find(d => d.id === driverId);
+    const isFree = isFreeUntilActive(driver);
+    if (isFree) {
+      // Remove free period
+      await supabase.from("profiles").update({ fee_free_until: null } as any).eq("id", driverId);
+      toast({ title: "Free period removed" });
+    } else {
+      // Set free forever (year 2099)
+      await supabase.from("profiles").update({ fee_free_until: "2099-12-31T23:59:59Z" } as any).eq("id", driverId);
+      toast({ title: "Driver set to free (permanent)" });
+    }
     fetchDrivers();
   };
 
