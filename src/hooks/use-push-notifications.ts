@@ -154,6 +154,32 @@ export const usePushNotifications = (
             playTrackedSound(event.data.sound_url, shouldLoop);
           }
         });
+
+        // iOS fix: when PWA comes back to foreground, check for sounds
+        // that were queued while the app was suspended
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden && navigator.serviceWorker.controller) {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = (msgEvent) => {
+              const sounds = msgEvent.data?.sounds || [];
+              if (sounds.length > 0) {
+                const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+                // Play the most recent relevant sound
+                const recent = sounds.filter((s: any) => s.timestamp > fiveMinAgo);
+                if (recent.length > 0) {
+                  const latest = recent[recent.length - 1];
+                  console.log("Replaying pending sound from SW:", latest.notification_type);
+                  const shouldLoop = latest.notification_type === "trip_requested" || latest.notification_type === "sos_alert";
+                  playTrackedSound(latest.sound_url, shouldLoop);
+                }
+              }
+            };
+            navigator.serviceWorker.controller.postMessage(
+              { type: "GET_PENDING_SOUNDS" },
+              [channel.port2]
+            );
+          }
+        });
       }
     } catch (err) {
       console.error("Web push setup failed:", err);
