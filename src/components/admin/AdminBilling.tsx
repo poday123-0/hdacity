@@ -76,6 +76,15 @@ const AdminBilling = () => {
     return getDriverVehicleType(driverId)?.name || "—";
   };
 
+  // Calculate total monthly fee for a driver based on their vehicles' vehicle types
+  const getDriverFee = (driverId: string): number => {
+    const driverVehs = vehicles.filter(v => v.driver_id === driverId);
+    return driverVehs.reduce((sum, v) => {
+      const vt = vehicleTypes.find(t => t.id === v.vehicle_type_id);
+      return sum + (vt?.monthly_fee || 0);
+    }, 0);
+  };
+
   const toggleFeeFree = async (driverId: string, currentFee: number) => {
     const newFee = currentFee === 0 ? 500 : 0;
     await supabase.from("profiles").update({ monthly_fee: newFee } as any).eq("id", driverId);
