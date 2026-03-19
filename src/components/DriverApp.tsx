@@ -4701,7 +4701,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <DollarSign className="w-7 h-7 text-destructive" />
               </div>
               <h3 className="text-lg font-bold text-foreground">Monthly Fee Payment</h3>
-              <p className="text-3xl font-black text-foreground mt-1">{userProfile.monthly_fee || 0} MVR</p>
+              {(() => {
+                const vFees = driverVehicles.map((v: any) => {
+                  const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                  return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                });
+                const total = vFees.reduce((s: number, v: any) => s + v.fee, 0);
+                return (
+                  <div className="mt-2 space-y-1">
+                    {vFees.map((v: any, i: number) => (
+                      <p key={i} className="text-xs text-muted-foreground">{v.plate} ({v.typeName}): <span className="font-semibold text-foreground">{v.fee} MVR</span></p>
+                    ))}
+                    <p className="text-3xl font-black text-foreground mt-1">{total} MVR</p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="p-5 space-y-4">
