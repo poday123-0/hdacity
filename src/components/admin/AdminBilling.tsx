@@ -701,12 +701,12 @@ const AdminBilling = () => {
       {/* Payment review modal */}
       {selectedPayment && (
         <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedPayment(null)}>
-          <div className="bg-card border border-border rounded-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
               <h3 className="font-bold text-foreground">Review Payment</h3>
               <button onClick={() => setSelectedPayment(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 overflow-y-auto min-h-0">
               <div className="bg-surface rounded-xl p-3 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span className="font-medium text-foreground">{selectedPayment.driver?.first_name} {selectedPayment.driver?.last_name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span className="font-medium text-foreground">+960 {selectedPayment.driver?.phone_number}</span></div>
@@ -717,7 +717,7 @@ const AdminBilling = () => {
               {selectedPayment.slip_url && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">Payment Slip</p>
-                  <img src={selectedPayment.slip_url} alt="Payment slip" className="w-full rounded-xl border border-border" />
+                  <img src={selectedPayment.slip_url} alt="Payment slip" className="w-full max-h-64 object-contain rounded-xl border border-border bg-surface" />
                 </div>
               )}
 
