@@ -4830,7 +4830,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
 
               {/* Pay from wallet option */}
-              {driverWalletBalance >= Number(userProfile.monthly_fee || 0) && Number(userProfile.monthly_fee || 0) > 0 && (
+              {(() => { const vtTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0); return driverWalletBalance >= vtTotal && vtTotal > 0; })() && (
                 <button
                   onClick={() => {
                     setShowBillingPayPopup(false);
