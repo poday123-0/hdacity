@@ -4803,9 +4803,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const currentMonth = new Date().toISOString().slice(0, 7);
                   const now = new Date().toISOString();
 
+                  const totalVtFee = driverVehicles.reduce((s: number, v: any) => {
+                    const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                    return s + (vt?.monthly_fee || 0);
+                  }, 0);
+
                   await supabase.from("driver_payments").insert({
                     driver_id: userProfile.id,
-                    amount: Number(userProfile.monthly_fee || 0),
+                    amount: totalVtFee,
                     payment_month: currentMonth,
                     status: "submitted",
                     slip_url: billingSlipUrl,
