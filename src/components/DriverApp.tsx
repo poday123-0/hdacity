@@ -1355,6 +1355,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (data?.status === "Billing_hold") {
           setBillingHold(true);
           setScreen("offline");
+          // Auto-show payment popup so driver sees it immediately
+          setShowBillingPayPopup(true);
+          setBillingSlipUrl(null);
         } else {
           setBillingHold(false);
         }
@@ -2461,7 +2464,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <div className="space-y-1.5">
                   <h3 className="text-lg font-bold text-destructive">Payment Required</h3>
                   <p className="text-sm text-muted-foreground">Your monthly fee is overdue. Please submit payment to continue driving.</p>
-                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{userProfile?.monthly_fee || 0} MVR</span></p>
+                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0)} MVR</span></p>
                 </div>
                 <button
               onClick={() => { setShowBillingPayPopup(true); setBillingSlipUrl(null); }}
@@ -4635,26 +4638,27 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
 
       {/* Pay Fee from Wallet Modal */}
-      {showPayFeeModal &&
+      {showPayFeeModal && (() => {
+        const vtFeeTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0);
+        return (
       <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowPayFeeModal(false)}>
           <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-foreground">Pay Monthly Fee</h3>
             <p className="text-sm text-muted-foreground">Wallet: {driverWalletBalance.toFixed(2)} MVR</p>
             <div className="bg-surface rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{userProfile?.monthly_fee || 0} MVR</p>
+              <p className="text-2xl font-bold text-foreground">{vtFeeTotal} MVR</p>
               <p className="text-xs text-muted-foreground mt-1">Monthly center fee</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowPayFeeModal(false)} className="flex-1 py-3 rounded-xl bg-surface text-foreground font-semibold text-sm">Cancel</button>
               <button
-              disabled={driverWalletBalance < Number(userProfile?.monthly_fee || 0)}
+              disabled={driverWalletBalance < vtFeeTotal}
               onClick={async () => {
                 if (!driverWalletId || !userProfile?.id) return;
-                const fee = Number(userProfile?.monthly_fee || 0);
+                const fee = vtFeeTotal;
                 const now = new Date().toISOString();
                 const currentMonth = new Date().toISOString().slice(0, 7);
 
-                // Deduct from wallet
                 const newBalance = driverWalletBalance - fee;
                 await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", driverWalletId);
                 await supabase.from("wallet_transactions").insert({
@@ -4665,7 +4669,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   reason: `Monthly fee - ${currentMonth}`
                 } as any);
 
-                // Create driver_payment record as approved
                 await supabase.from("driver_payments").insert({
                   driver_id: userProfile.id,
                   amount: fee,
@@ -4681,13 +4684,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 setShowPayFeeModal(false);
               }}
               className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-40">
-
-                Pay {userProfile?.monthly_fee || 0} MVR
+                Pay {vtFeeTotal} MVR
               </button>
             </div>
           </div>
         </div>
-      }
+        );
+      })()}
 
       {/* Billing Payment Popup */}
       {showBillingPayPopup && userProfile &&
@@ -4698,7 +4701,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <DollarSign className="w-7 h-7 text-destructive" />
               </div>
               <h3 className="text-lg font-bold text-foreground">Monthly Fee Payment</h3>
-              <p className="text-3xl font-black text-foreground mt-1">{userProfile.monthly_fee || 0} MVR</p>
+              {(() => {
+                const vFees = driverVehicles.map((v: any) => {
+                  const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                  return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                });
+                const total = vFees.reduce((s: number, v: any) => s + v.fee, 0);
+                return (
+                  <div className="mt-2 space-y-1">
+                    {vFees.map((v: any, i: number) => (
+                      <p key={i} className="text-xs text-muted-foreground">{v.plate} ({v.typeName}): <span className="font-semibold text-foreground">{v.fee} MVR</span></p>
+                    ))}
+                    <p className="text-3xl font-black text-foreground mt-1">{total} MVR</p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="p-5 space-y-4">
@@ -4786,9 +4803,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const currentMonth = new Date().toISOString().slice(0, 7);
                   const now = new Date().toISOString();
 
+                  const totalVtFee = driverVehicles.reduce((s: number, v: any) => {
+                    const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                    return s + (vt?.monthly_fee || 0);
+                  }, 0);
+
                   await supabase.from("driver_payments").insert({
                     driver_id: userProfile.id,
-                    amount: Number(userProfile.monthly_fee || 0),
+                    amount: totalVtFee,
                     payment_month: currentMonth,
                     status: "submitted",
                     slip_url: billingSlipUrl,
@@ -4808,7 +4830,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
 
               {/* Pay from wallet option */}
-              {driverWalletBalance >= Number(userProfile.monthly_fee || 0) && Number(userProfile.monthly_fee || 0) > 0 && (
+              {(() => { const vtTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0); return driverWalletBalance >= vtTotal && vtTotal > 0; })() && (
                 <button
                   onClick={() => {
                     setShowBillingPayPopup(false);
