@@ -171,7 +171,7 @@ const Index = () => {
       .eq("user_type", "Driver")
       .single();
     
-    if (data && data.status === "Active") {
+    if (data && (data.status === "Active" || data.status === "Billing_hold")) {
       const dp: UserProfile = {
         id: data.id,
         first_name: data.first_name,
