@@ -74,6 +74,21 @@ const AdminBilling = () => {
     return vehicleTypes.find(vt => vt.id === vehicle.vehicle_type_id) || null;
   };
 
+  const toggleExpandDriver = async (driverId: string) => {
+    if (expandedDriver === driverId) {
+      setExpandedDriver(null);
+      setDriverPayments([]);
+      return;
+    }
+    setExpandedDriver(driverId);
+    const { data } = await supabase
+      .from("driver_payments")
+      .select("*")
+      .eq("driver_id", driverId)
+      .order("created_at", { ascending: false });
+    setDriverPayments((data as any[]) || []);
+  };
+
   const getDriverVehicleTypeName = (driverId: string) => {
     return getDriverVehicleType(driverId)?.name || "—";
   };
