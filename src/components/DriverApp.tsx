@@ -1355,6 +1355,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (data?.status === "Billing_hold") {
           setBillingHold(true);
           setScreen("offline");
+          // Auto-show payment popup so driver sees it immediately
+          setShowBillingPayPopup(true);
+          setBillingSlipUrl(null);
         } else {
           setBillingHold(false);
         }
