@@ -2464,7 +2464,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <div className="space-y-1.5">
                   <h3 className="text-lg font-bold text-destructive">Payment Required</h3>
                   <p className="text-sm text-muted-foreground">Your monthly fee is overdue. Please submit payment to continue driving.</p>
-                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{userProfile?.monthly_fee || 0} MVR</span></p>
+                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0)} MVR</span></p>
                 </div>
                 <button
               onClick={() => { setShowBillingPayPopup(true); setBillingSlipUrl(null); }}
