@@ -1059,11 +1059,60 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     }, 15000);
 
+    // Immediately check for pending trips when app becomes visible (e.g. after push notification sound)
+    const onVisibilityChange = async () => {
+      if (document.visibilityState !== "visible" || !isActive || screen !== "online") return;
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+      // Check broadcast trips
+      const { data } = await supabase
+        .from("trips")
+        .select("*")
+        .in("status", ["requested", "scheduled"])
+        .is("driver_id", null)
+        .gte("requested_at", fiveMinAgo)
+        .order("requested_at", { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const trip = data[0] as any;
+        if (!(trip.target_driver_id && trip.target_driver_id !== userProfile.id)) {
+          if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+            lastSeenTripRef.current = trip.id;
+            handleNewTrip(trip);
+            return;
+          }
+        }
+      }
+
+      // Check direct-assigned trips
+      const { data: assignedTrips } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("status", "accepted")
+        .eq("driver_id", userProfile.id)
+        .neq("booking_type", "scheduled")
+        .gte("created_at", fiveMinAgo)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (assignedTrips && assignedTrips.length > 0) {
+        const trip = assignedTrips[0] as any;
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          lastSeenTripRef.current = trip.id;
+          handleDirectAssignedTrip(trip);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       isActive = false;
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
       supabase.removeChannel(targetChannel);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
 
