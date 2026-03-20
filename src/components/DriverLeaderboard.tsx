@@ -311,51 +311,98 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {entries.map((entry, idx) => {
-                    const isMe = entry.driver_id === driverId;
-                    return (
-                      <motion.div
-                        key={entry.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.03 }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                          isMe ? "bg-primary/10 border border-primary/30" : idx < 3 ? "bg-surface" : ""
-                        }`}
-                      >
-                        <span className={`text-sm font-bold w-8 text-center ${
-                          idx === 0 ? "text-yellow-500" : idx === 1 ? "text-gray-400" : idx === 2 ? "text-amber-600" : "text-muted-foreground"
-                        }`}>
-                          {TIER_ICONS[idx + 1] || `#${idx + 1}`}
-                        </span>
+                  {(() => {
+                    // Group entries by trip_count to show ties
+                    const groups: Entry[][] = [];
+                    let currentGroup: Entry[] = [];
+                    entries.forEach((entry, idx) => {
+                      if (idx === 0 || entry.trip_count === entries[idx - 1].trip_count) {
+                        currentGroup.push(entry);
+                      } else {
+                        groups.push(currentGroup);
+                        currentGroup = [entry];
+                      }
+                    });
+                    if (currentGroup.length > 0) groups.push(currentGroup);
 
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                          {entry.avatar_url ? (
-                            <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs font-bold text-muted-foreground">
-                              {(entry.driver_name || "D").slice(0, 2).toUpperCase()}
-                            </span>
+                    let displayRank = 0;
+                    return groups.map((group, gIdx) => {
+                      displayRank += 1;
+                      const rank = displayRank;
+                      const isTie = group.length > 1;
+                      // After a tie group, skip ranks (e.g. if 2 drivers tie at #1, next is #3)
+                      if (isTie) displayRank += group.length - 1;
+
+                      return (
+                        <motion.div
+                          key={`group-${gIdx}`}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: gIdx * 0.04 }}
+                          className={`rounded-xl ${
+                            isTie ? "border border-border/50 bg-surface/50 p-1.5 space-y-1" : ""
+                          }`}
+                        >
+                          {isTie && (
+                            <div className="flex items-center gap-1.5 px-2 py-1">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                🤝 Tie — #{rank}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                ({group[0].trip_count} trips)
+                              </span>
+                            </div>
                           )}
-                        </div>
+                          {group.map((entry) => {
+                            const isMe = entry.driver_id === driverId;
+                            return (
+                              <div
+                                key={entry.id}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                                  isMe ? "bg-primary/10 border border-primary/30" : rank <= 3 && !isTie ? "bg-surface" : ""
+                                }`}
+                              >
+                                <span className={`text-sm font-bold w-8 text-center ${
+                                  rank === 1 ? "text-yellow-500" : rank === 2 ? "text-gray-400" : rank === 3 ? "text-amber-600" : "text-muted-foreground"
+                                }`}>
+                                  {TIER_ICONS[rank] || `#${rank}`}
+                                </span>
 
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${isMe ? "text-primary font-bold" : "text-foreground"}`}>
-                            {entry.driver_name}{isMe ? " (You)" : ""}
-                          </p>
-                        </div>
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                                  {entry.avatar_url ? (
+                                    <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-xs font-bold text-muted-foreground">
+                                      {(entry.driver_name || "D").slice(0, 2).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
 
-                        <span className={`text-sm font-bold ${isMe ? "text-primary" : "text-foreground"}`}>
-                          {entry.trip_count}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">trips</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium truncate ${isMe ? "text-primary font-bold" : "text-foreground"}`}>
+                                    {entry.driver_name}{isMe ? " (You)" : ""}
+                                  </p>
+                                </div>
 
-                        {entry.prize_awarded && (
-                          <span className="text-xs">🏆</span>
-                        )}
-                      </motion.div>
-                    );
-                  })}
+                                {!isTie && (
+                                  <>
+                                    <span className={`text-sm font-bold ${isMe ? "text-primary" : "text-foreground"}`}>
+                                      {entry.trip_count}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">trips</span>
+                                  </>
+                                )}
+
+                                {entry.prize_awarded && (
+                                  <span className="text-xs">🏆</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      );
+                    });
+                  })()}
                 </div>
               )}
             </div>
