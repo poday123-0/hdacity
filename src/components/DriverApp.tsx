@@ -930,6 +930,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Scheduled rides must only be started manually from the scheduled banner
     if (trip.booking_type === "scheduled") return;
 
+    // Skip trips outside driver's radius (fail-open if no GPS)
+    if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
+      const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
+      console.log(`[RADIUS CHECK - DISPATCH] Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
+      if (dist > tripRadiusRef.current) return;
+    }
+
     // Vibrate to alert driver
     try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
 
