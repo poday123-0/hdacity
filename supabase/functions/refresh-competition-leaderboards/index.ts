@@ -15,7 +15,6 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all active competitions that haven't ended
     const now = new Date().toISOString();
     const { data: competitions, error: compError } = await supabase
       .from("competitions")
@@ -32,23 +31,56 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Pre-fetch service locations with polygons for area filtering
+    const { data: serviceLocations } = await supabase
+      .from("service_locations")
+      .select("id, polygon")
+      .eq("is_active", true);
+
+    const locationPolygons = new Map<string, any[]>();
+    if (serviceLocations) {
+      for (const sl of serviceLocations) {
+        if (sl.polygon && Array.isArray(sl.polygon)) {
+          locationPolygons.set(sl.id, sl.polygon as any[]);
+        }
+      }
+    }
+
     let totalRefreshed = 0;
 
     for (const comp of competitions) {
-      // Count completed trips per driver in the competition date range
-      const { data: trips } = await supabase
+      // Build trip query filtered by competition start_date and end_date
+      let tripQuery = supabase
         .from("trips")
-        .select("driver_id")
+        .select("driver_id, pickup_lat, pickup_lng")
         .eq("status", "completed")
         .gte("completed_at", comp.start_date)
         .lte("completed_at", comp.end_date)
         .not("driver_id", "is", null);
 
+      // If competition has a vehicle_type_id filter, apply it
+      if (comp.vehicle_type_id) {
+        tripQuery = tripQuery.eq("vehicle_type_id", comp.vehicle_type_id);
+      }
+
+      const { data: trips } = await tripQuery;
       if (!trips) continue;
+
+      // If competition has a service_location_id, filter trips by polygon
+      let filteredTrips = trips;
+      if (comp.service_location_id) {
+        const polygon = locationPolygons.get(comp.service_location_id);
+        if (polygon && polygon.length >= 3) {
+          filteredTrips = trips.filter((t: any) => {
+            if (t.pickup_lat == null || t.pickup_lng == null) return false;
+            return pointInPolygon(Number(t.pickup_lat), Number(t.pickup_lng), polygon);
+          });
+        }
+      }
 
       // Count per driver
       const counts = new Map<string, number>();
-      trips.forEach((t: any) => {
+      filteredTrips.forEach((t: any) => {
         counts.set(t.driver_id, (counts.get(t.driver_id) || 0) + 1);
       });
 
@@ -67,7 +99,6 @@ Deno.serve(async (req) => {
           rank: idx + 1,
         }));
 
-        // Insert in batches of 500 to avoid limits
         for (let i = 0; i < inserts.length; i += 500) {
           await supabase.from("competition_entries").insert(inserts.slice(i, i + 500));
         }
@@ -76,7 +107,7 @@ Deno.serve(async (req) => {
       totalRefreshed++;
     }
 
-    // Also auto-complete competitions that have ended
+    // Auto-complete competitions that have ended
     const { data: ended } = await supabase
       .from("competitions")
       .update({ status: "completed" })
@@ -86,10 +117,7 @@ Deno.serve(async (req) => {
       .select("id");
 
     return new Response(
-      JSON.stringify({
-        refreshed: totalRefreshed,
-        auto_completed: ended?.length || 0,
-      }),
+      JSON.stringify({ refreshed: totalRefreshed, auto_completed: ended?.length || 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
@@ -99,3 +127,19 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/** Ray-casting point-in-polygon test */
+function pointInPolygon(lat: number, lng: number, polygon: any[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lat ?? polygon[i][0];
+    const yi = polygon[i].lng ?? polygon[i][1];
+    const xj = polygon[j].lat ?? polygon[j][0];
+    const yj = polygon[j].lng ?? polygon[j][1];
+
+    const intersect = ((yi > lng) !== (yj > lng)) &&
+      (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
