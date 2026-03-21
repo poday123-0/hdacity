@@ -10,6 +10,7 @@ import Driver from "./pages/Driver";
 import Dispatch from "./pages/Dispatch";
 import LiveMap from "./pages/LiveMap";
 import Install from "./pages/Install";
+import Track from "./pages/Track";
 import NotFound from "./pages/NotFound";
 import { useBranding } from "@/hooks/use-branding";
 
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="/install-passenger" element={<Install defaultTab="passenger" />} />
           <Route path="/install-driver" element={<Install defaultTab="driver" />} />
+          <Route path="/track/:tripId" element={<Track />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
