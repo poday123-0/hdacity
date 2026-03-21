@@ -3088,6 +3088,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   return;
                 }
 
+                // Send tracking SMS for broadcast trips (non-blocking)
+                if (currentTrip.dispatch_type === "dispatch_broadcast" || currentTrip.dispatch_type === "passenger") {
+                  supabase.functions.invoke("send-tracking-sms", { body: { trip_id: currentTrip.id } }).catch(console.warn);
+                }
+
                 // Notify other online drivers that this trip was taken
                 try {
                   const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
