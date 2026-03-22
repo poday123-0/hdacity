@@ -953,6 +953,20 @@ const Dispatch = () => {
                                   )}
                                   {t.status !== "cancelled" && !t.is_loss && (
                                     <>
+                                      {t.status !== "completed" && (
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await supabase.from("trips").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", t.id);
+                                            await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", t.driver_id);
+                                            toast({ title: "Trip marked as completed" });
+                                            refreshTrips();
+                                          }}
+                                          className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors"
+                                        >
+                                          Complete
+                                        </button>
+                                      )}
                                       <button onClick={(e) => { e.stopPropagation(); handleMarkLoss(t.id); }} disabled={markingLoss === t.id} className="h-6 px-2 rounded text-[10px] font-bold bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40">
                                         {markingLoss === t.id ? "..." : "LOSS"}
                                       </button>
