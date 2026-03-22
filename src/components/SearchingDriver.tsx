@@ -144,7 +144,7 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
     }
 
     return maxAutoDrivers > 0 ? limited.slice(0, maxAutoDrivers) : limited;
-  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers, dispatchMode]);
+  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers, dispatchMode, vehicleTypeId]);
 
   const isAutoMode = ["auto_nearest", "auto_rating", "auto_rating_nearest"].includes(dispatchMode);
 
