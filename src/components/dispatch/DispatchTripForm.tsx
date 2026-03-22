@@ -1025,9 +1025,15 @@ const DispatchTripForm = ({
                 }
 
                 const addEntry = (entry: CenterCodeIndexEntry) => {
-                  // Priority: 1) Loss vehicles first, 2) Rest — then sort by least recent trip (all-time)
+                  // Priority: 1) Loss + no trips today, 2) No trips today, 3) Loss + trips today, 4) Rest
+                  // Then sort by least recent trip date/time (all-time)
                   const getPriority = (e: CenterCodeIndexEntry) => {
-                    return e.has_loss ? 0 : 1;
+                    const hasLoss = !!e.has_loss;
+                    const tripsToday = e.today_trips || 0;
+                    if (hasLoss && tripsToday === 0) return 0;
+                    if (!hasLoss && tripsToday === 0) return 1;
+                    if (hasLoss && tripsToday > 0) return 2;
+                    return 3;
                   };
                   const updated = [...centerCodeResults, entry].sort((a, b) => {
                     const pa = getPriority(a);
@@ -1218,6 +1224,7 @@ const DispatchTripForm = ({
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type === 'Mini Pickup' ? 'MPickup' : info.vehicle_type === 'Big Pickup' ? 'BPickup' : info.vehicle_type}</span>}
                         {info.color && <span className="text-muted-foreground"> • {info.color}</span>}
                         <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
+                        {info.last_trip_date && <span className="text-muted-foreground/70 text-[9px]"> • {new Date(info.last_trip_date).toLocaleDateString([], { month: "short", day: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                       </span>
                       <div className="flex items-center gap-1 ml-2">
