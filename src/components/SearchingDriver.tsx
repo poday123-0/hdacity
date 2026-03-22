@@ -71,10 +71,24 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
   const findNearestDrivers = useCallback(async () => {
     if (!pickupLat || !pickupLng) return [];
     const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-    const { data: drivers } = await supabase
-      .from("driver_locations").select("driver_id, lat, lng")
+    let query = supabase
+      .from("driver_locations").select("driver_id, lat, lng, vehicle_type_id")
       .eq("is_online", true).eq("is_on_trip", false).gte("updated_at", twoMinAgo);
+    const { data: drivers } = await query;
     if (!drivers || drivers.length === 0) return [];
+
+    // Filter by vehicle type: include drivers whose active vehicle type matches OR who are eligible via driver_vehicle_types
+    let eligibleDriverIds: Set<string> | null = null;
+    if (vehicleTypeId) {
+      // Drivers currently broadcasting on this vehicle type
+      const directMatch = new Set(drivers.filter(d => d.vehicle_type_id === vehicleTypeId).map(d => d.driver_id));
+      // Also check driver_vehicle_types for drivers approved for this type
+      const { data: dvtData } = await supabase
+        .from("driver_vehicle_types").select("driver_id")
+        .eq("vehicle_type_id", vehicleTypeId).eq("status", "approved");
+      const dvtIds = new Set((dvtData || []).map((r: any) => r.driver_id));
+      eligibleDriverIds = new Set([...directMatch, ...dvtIds]);
+    }
 
     const withDistance = drivers.map(d => {
       const dlat = d.lat - pickupLat; const dlng = d.lng - pickupLng;
