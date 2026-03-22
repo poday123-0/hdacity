@@ -18,7 +18,7 @@ interface SearchingDriverProps {
   vehicleTypeId?: string | null;
 }
 
-const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng, isScheduled = false, scheduledAt }: SearchingDriverProps) => {
+const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng, isScheduled = false, scheduledAt, vehicleTypeId }: SearchingDriverProps) => {
   const [showNoDriver, setShowNoDriver] = useState(false);
   const [callCenterNumber, setCallCenterNumber] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
