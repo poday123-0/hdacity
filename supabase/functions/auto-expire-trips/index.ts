@@ -184,12 +184,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ========== 5. Auto-complete assigned trips after 1 hour ==========
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+
+    const { data: autoCompleted } = await supabase
+      .from("trips")
+      .update({ status: "completed", completed_at: nowISO })
+      .in("status", ["accepted", "started"])
+      .eq("dispatch_type", "operator")
+      .lt("created_at", oneHourAgo)
+      .select("id, driver_id");
+
+    // Free up drivers from auto-completed trips
+    if (autoCompleted && autoCompleted.length > 0) {
+      const driverIdsToFree = autoCompleted.map((t: any) => t.driver_id).filter(Boolean);
+      if (driverIdsToFree.length > 0) {
+        await supabase
+          .from("driver_locations")
+          .update({ is_on_trip: false })
+          .in("driver_id", driverIdsToFree);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         expired: (expired?.length || 0) + (expired2?.length || 0),
         expired_scheduled: expiredScheduled?.length || 0,
         pinged_scheduled: pingedCount,
         locked_drivers: lockedDrivers,
+        auto_completed: autoCompleted?.length || 0,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
