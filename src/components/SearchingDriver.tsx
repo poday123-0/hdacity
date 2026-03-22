@@ -90,10 +90,12 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
       eligibleDriverIds = new Set([...directMatch, ...dvtIds]);
     }
 
-    const withDistance = drivers.map(d => {
-      const dlat = d.lat - pickupLat; const dlng = d.lng - pickupLng;
-      return { driver_id: d.driver_id, distance: Math.sqrt(dlat * dlat + dlng * dlng) * 111, name: "", avg_rating: 0 };
-    }).filter(d => d.distance <= maxSearchRadius);
+    const withDistance = drivers
+      .filter(d => !eligibleDriverIds || eligibleDriverIds.has(d.driver_id))
+      .map(d => {
+        const dlat = d.lat - pickupLat; const dlng = d.lng - pickupLng;
+        return { driver_id: d.driver_id, distance: Math.sqrt(dlat * dlat + dlng * dlng) * 111, name: "", avg_rating: 0 };
+      }).filter(d => d.distance <= maxSearchRadius);
 
     const limited = maxAutoDrivers > 0 ? withDistance.slice(0, Math.max(maxAutoDrivers * 3, 30)) : withDistance;
     if (limited.length === 0) return [];
