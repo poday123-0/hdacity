@@ -15,6 +15,7 @@ interface SearchingDriverProps {
   pickupLng?: number;
   isScheduled?: boolean;
   scheduledAt?: string;
+  vehicleTypeId?: string | null;
 }
 
 const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng, isScheduled = false, scheduledAt }: SearchingDriverProps) => {
