@@ -15,9 +15,10 @@ interface SearchingDriverProps {
   pickupLng?: number;
   isScheduled?: boolean;
   scheduledAt?: string;
+  vehicleTypeId?: string | null;
 }
 
-const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng, isScheduled = false, scheduledAt }: SearchingDriverProps) => {
+const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName = "Destination", tripId, pickupLat, pickupLng, isScheduled = false, scheduledAt, vehicleTypeId }: SearchingDriverProps) => {
   const [showNoDriver, setShowNoDriver] = useState(false);
   const [callCenterNumber, setCallCenterNumber] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -70,15 +71,31 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
   const findNearestDrivers = useCallback(async () => {
     if (!pickupLat || !pickupLng) return [];
     const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-    const { data: drivers } = await supabase
-      .from("driver_locations").select("driver_id, lat, lng")
+    let query = supabase
+      .from("driver_locations").select("driver_id, lat, lng, vehicle_type_id")
       .eq("is_online", true).eq("is_on_trip", false).gte("updated_at", twoMinAgo);
+    const { data: drivers } = await query;
     if (!drivers || drivers.length === 0) return [];
 
-    const withDistance = drivers.map(d => {
-      const dlat = d.lat - pickupLat; const dlng = d.lng - pickupLng;
-      return { driver_id: d.driver_id, distance: Math.sqrt(dlat * dlat + dlng * dlng) * 111, name: "", avg_rating: 0 };
-    }).filter(d => d.distance <= maxSearchRadius);
+    // Filter by vehicle type: include drivers whose active vehicle type matches OR who are eligible via driver_vehicle_types
+    let eligibleDriverIds: Set<string> | null = null;
+    if (vehicleTypeId) {
+      // Drivers currently broadcasting on this vehicle type
+      const directMatch = new Set(drivers.filter(d => d.vehicle_type_id === vehicleTypeId).map(d => d.driver_id));
+      // Also check driver_vehicle_types for drivers approved for this type
+      const { data: dvtData } = await supabase
+        .from("driver_vehicle_types").select("driver_id")
+        .eq("vehicle_type_id", vehicleTypeId).eq("status", "approved");
+      const dvtIds = new Set((dvtData || []).map((r: any) => r.driver_id));
+      eligibleDriverIds = new Set([...directMatch, ...dvtIds]);
+    }
+
+    const withDistance = drivers
+      .filter(d => !eligibleDriverIds || eligibleDriverIds.has(d.driver_id))
+      .map(d => {
+        const dlat = d.lat - pickupLat; const dlng = d.lng - pickupLng;
+        return { driver_id: d.driver_id, distance: Math.sqrt(dlat * dlat + dlng * dlng) * 111, name: "", avg_rating: 0 };
+      }).filter(d => d.distance <= maxSearchRadius);
 
     const limited = maxAutoDrivers > 0 ? withDistance.slice(0, Math.max(maxAutoDrivers * 3, 30)) : withDistance;
     if (limited.length === 0) return [];
@@ -127,7 +144,7 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
     }
 
     return maxAutoDrivers > 0 ? limited.slice(0, maxAutoDrivers) : limited;
-  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers, dispatchMode]);
+  }, [pickupLat, pickupLng, maxSearchRadius, maxAutoDrivers, dispatchMode, vehicleTypeId]);
 
   const isAutoMode = ["auto_nearest", "auto_rating", "auto_rating_nearest"].includes(dispatchMode);
 

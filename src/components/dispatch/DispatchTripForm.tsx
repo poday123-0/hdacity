@@ -1025,20 +1025,15 @@ const DispatchTripForm = ({
                 }
 
                 const addEntry = (entry: CenterCodeIndexEntry) => {
-                  // Priority: 1) Loss only (no completed trips today), 2) No trips today, 3) Loss + completed trips today, 4) Rest
+                  // Priority: 1) Loss vehicles first, 2) Rest — then sort by least recent trip (all-time)
                   const getPriority = (e: CenterCodeIndexEntry) => {
-                    const hasLoss = !!e.has_loss;
-                    const tripsToday = e.today_trips || 0;
-                    if (hasLoss && tripsToday === 0) return 0; // Loss only
-                    if (!hasLoss && tripsToday === 0) return 1; // No trips today
-                    if (hasLoss && tripsToday > 0) return 2; // Loss + completed today
-                    return 3; // Rest
+                    return e.has_loss ? 0 : 1;
                   };
                   const updated = [...centerCodeResults, entry].sort((a, b) => {
                     const pa = getPriority(a);
                     const pb = getPriority(b);
                     if (pa !== pb) return pa - pb;
-                    // Within same priority, least recent trip first
+                    // Within same priority, least recent trip first (all-time)
                     if (!a.last_trip_date && !b.last_trip_date) return 0;
                     if (!a.last_trip_date) return -1;
                     if (!b.last_trip_date) return 1;

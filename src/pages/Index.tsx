@@ -1346,6 +1346,7 @@ const Index = () => {
           )}
           {passengerScreen === "searching" && (
             <SearchingDriver key="searching" tripId={currentTripId} pickupLat={pickup?.lat} pickupLng={pickup?.lng}
+              vehicleTypeId={selectedVehicleType?.id || null}
               isScheduled={bookingType === "scheduled"}
               scheduledAt={scheduledAt}
               onCancel={async () => {
