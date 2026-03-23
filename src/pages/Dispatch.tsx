@@ -216,7 +216,7 @@ const Dispatch = () => {
         const { data: vehicles } = await supabase
           .from("vehicles")
           .select(
-            "center_code, plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)"
+            "id, center_code, plate_number, color, vehicle_type_id, driver_id, vehicle_types:vehicle_type_id(name)"
           )
           .eq("is_active", true)
           .not("center_code", "is", null);
@@ -224,6 +224,8 @@ const Dispatch = () => {
         const driverIds = Array.from(
           new Set((vehicles || []).map((v: any) => v.driver_id).filter(Boolean))
         ) as string[];
+
+        const vehicleIds = (vehicles || []).map((v: any) => v.id).filter(Boolean) as string[];
 
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
@@ -235,19 +237,19 @@ const Dispatch = () => {
                 .select("id, first_name, last_name, phone_number")
                 .in("id", driverIds)
             : Promise.resolve({ data: [] as any[] }),
-          driverIds.length
+          vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("driver_id")
-                .in("driver_id", driverIds)
+                .select("vehicle_id")
+                .in("vehicle_id", vehicleIds)
                 .gte("created_at", todayStart.toISOString())
                 .in("status", ["requested", "accepted", "started", "completed"])
             : Promise.resolve({ data: [] as any[] }),
-          driverIds.length
+          vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("driver_id, completed_at")
-                .in("driver_id", driverIds)
+                .select("vehicle_id, completed_at")
+                .in("vehicle_id", vehicleIds)
                 .eq("status", "completed")
                 .order("completed_at", { ascending: false })
                 .limit(2000)
@@ -257,27 +259,29 @@ const Dispatch = () => {
         const profileMap = new Map<string, any>();
         (profilesRes.data || []).forEach((p: any) => profileMap.set(p.id, p));
 
+        // Per-vehicle last trip date
         const lastTripMap = new Map<string, string>();
         (completedTripsRes.data || []).forEach((t: any) => {
-          if (t?.driver_id && t?.completed_at && !lastTripMap.has(t.driver_id)) {
-            lastTripMap.set(t.driver_id, t.completed_at);
+          if (t?.vehicle_id && t?.completed_at && !lastTripMap.has(t.vehicle_id)) {
+            lastTripMap.set(t.vehicle_id, t.completed_at);
           }
         });
 
+        // Per-vehicle today trip counts
         const todayCounts = new Map<string, number>();
         (todayTripsRes.data || []).forEach((t: any) => {
-          if (!t?.driver_id) return;
-          todayCounts.set(t.driver_id, (todayCounts.get(t.driver_id) || 0) + 1);
+          if (!t?.vehicle_id) return;
+          todayCounts.set(t.vehicle_id, (todayCounts.get(t.vehicle_id) || 0) + 1);
         });
 
-        // Fetch loss driver IDs
+        // Fetch loss vehicle IDs (per vehicle, not per driver)
         const { data: lossTrips } = await supabase
           .from("trips")
-          .select("driver_id")
+          .select("vehicle_id")
           .eq("is_loss", true)
           .eq("dispatch_type", "operator")
-          .not("driver_id", "is", null);
-        const lossDriverIds = new Set((lossTrips || []).map((t: any) => t.driver_id));
+          .not("vehicle_id", "is", null);
+        const lossVehicleIds = new Set((lossTrips || []).map((t: any) => t.vehicle_id));
 
         const index: Record<string, any> = {};
         (vehicles || []).forEach((v: any) => {
@@ -294,9 +298,9 @@ const Dispatch = () => {
             driver_id: v.driver_id || null,
             driver_name: p ? `${p.first_name} ${p.last_name}`.trim() : null,
             driver_phone: p?.phone_number || null,
-            last_trip_date: v.driver_id ? lastTripMap.get(v.driver_id) || null : null,
-            today_trips: v.driver_id ? todayCounts.get(v.driver_id) || 0 : 0,
-            has_loss: v.driver_id ? lossDriverIds.has(v.driver_id) : false,
+            last_trip_date: lastTripMap.get(v.id) || null,
+            today_trips: todayCounts.get(v.id) || 0,
+            has_loss: lossVehicleIds.has(v.id),
           };
         });
 
