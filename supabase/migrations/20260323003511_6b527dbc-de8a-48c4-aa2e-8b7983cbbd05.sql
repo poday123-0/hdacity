@@ -1,0 +1,1 @@
+UPDATE vehicles SET driver_id = 'f2ade07d-f61d-480c-ad1c-44b2d9125bb6' WHERE center_code IS NOT NULL AND center_code != '' AND driver_id IS NULL AND is_active = true;
