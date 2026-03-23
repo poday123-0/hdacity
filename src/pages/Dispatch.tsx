@@ -248,10 +248,10 @@ const Dispatch = () => {
           vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("vehicle_id, completed_at")
+                .select("vehicle_id, created_at")
                 .in("vehicle_id", vehicleIds)
-                .eq("status", "completed")
-                .order("completed_at", { ascending: false })
+                .eq("dispatch_type", "operator")
+                .order("created_at", { ascending: false })
                 .limit(2000)
             : Promise.resolve({ data: [] as any[] }),
         ]);
@@ -259,11 +259,11 @@ const Dispatch = () => {
         const profileMap = new Map<string, any>();
         (profilesRes.data || []).forEach((p: any) => profileMap.set(p.id, p));
 
-        // Per-vehicle last trip date
+        // Per-vehicle last trip date (all-time, any status from dispatch)
         const lastTripMap = new Map<string, string>();
         (completedTripsRes.data || []).forEach((t: any) => {
-          if (t?.vehicle_id && t?.completed_at && !lastTripMap.has(t.vehicle_id)) {
-            lastTripMap.set(t.vehicle_id, t.completed_at);
+          if (t?.vehicle_id && t?.created_at && !lastTripMap.has(t.vehicle_id)) {
+            lastTripMap.set(t.vehicle_id, t.created_at);
           }
         });
 
