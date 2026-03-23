@@ -248,10 +248,10 @@ const Dispatch = () => {
           vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("vehicle_id, completed_at")
+                .select("vehicle_id, created_at")
                 .in("vehicle_id", vehicleIds)
-                .eq("status", "completed")
-                .order("completed_at", { ascending: false })
+                .eq("dispatch_type", "operator")
+                .order("created_at", { ascending: false })
                 .limit(2000)
             : Promise.resolve({ data: [] as any[] }),
         ]);
