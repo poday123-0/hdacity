@@ -539,17 +539,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       const upsertLocation = async (lat: number, lng: number) => {
         lastPosRef.current = { lat, lng };
-        const { error } = await supabase.from("driver_locations").upsert({
+        // Don't override is_on_trip — just update position + online status
+        const upsertPayload: any = {
           driver_id: userProfile.id,
           vehicle_id: vehicleId,
           vehicle_type_id: vehicleTypeId,
           lat,
           lng,
           is_online: true,
-          is_on_trip: false,
           updated_at: new Date().toISOString(),
           session_id: deviceSessionId.current
-        } as any, { onConflict: "driver_id" });
+        };
+        // Only set is_on_trip to false when on 'online' screen (not navigating/ride-request)
+        if (screen === "online") {
+          upsertPayload.is_on_trip = false;
+        }
+        const { error } = await supabase.from("driver_locations").upsert(
+          upsertPayload, { onConflict: "driver_id" }
+        );
         if (error) {
           console.error("Failed to upsert driver location:", error);
         }
