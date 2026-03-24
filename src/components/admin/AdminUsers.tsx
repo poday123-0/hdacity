@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, Plus, Trash2, Shield, Radio, X, UserCheck, Loader2 } from "lucide-react";
+import { Search, Plus, Trash2, Shield, Radio, X, UserCheck, Loader2, UserPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const AVAILABLE_PERMISSIONS = [
@@ -37,6 +37,9 @@ const AdminUsers = () => {
   const [lookingUp, setLookingUp] = useState(false);
   const [editingPermissions, setEditingPermissions] = useState<string | null>(null);
   const [editPermissions, setEditPermissions] = useState<string[]>([]);
+  const [notFound, setNotFound] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -58,44 +61,74 @@ const AdminUsers = () => {
     if (!addPhone || addPhone.length < 7) return;
     setLookingUp(true);
     setLookedUpProfile(null);
+    setNotFound(false);
     const { data, error } = await supabase.functions.invoke("lookup-profile", {
       body: { phone_number: addPhone },
     });
     if (error || !data || data.error || !data.found || !data.profile) {
       setLookedUpProfile(null);
-      toast({ title: "No user found", description: "No registered user with this phone number.", variant: "destructive" });
+      setNotFound(true);
     } else {
       setLookedUpProfile(data.profile);
+      setNotFound(false);
     }
     setLookingUp(false);
   };
 
   useEffect(() => {
     setLookedUpProfile(null);
+    setNotFound(false);
+    setNewFirstName("");
+    setNewLastName("");
     if (addPhone.length === 7) {
       lookupPhone();
     }
   }, [addPhone]);
 
+  const resetForm = () => {
+    setShowAdd(false);
+    setAddPhone("");
+    setLookedUpProfile(null);
+    setNotFound(false);
+    setNewFirstName("");
+    setNewLastName("");
+    setSelectedPermissions([]);
+  };
+
   const addUser = async () => {
-    if (!lookedUpProfile) {
+    // If no existing profile, require name fields
+    if (!lookedUpProfile && notFound) {
+      if (!newFirstName.trim() || !newLastName.trim()) {
+        toast({ title: "Enter first and last name", variant: "destructive" });
+        return;
+      }
+    } else if (!lookedUpProfile) {
       toast({ title: "Look up a user first", variant: "destructive" });
       return;
     }
+
     setAdding(true);
 
-    const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "add", phone_number: addPhone, role: addRole, permissions: selectedPermissions },
-    });
+    const body: any = {
+      action: "add",
+      phone_number: addPhone,
+      role: addRole,
+      permissions: selectedPermissions,
+    };
+
+    // If creating new user
+    if (!lookedUpProfile && notFound) {
+      body.first_name = newFirstName.trim();
+      body.last_name = newLastName.trim();
+    }
+
+    const { data, error } = await supabase.functions.invoke("manage-user-role", { body });
 
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
     } else {
       toast({ title: "User added!", description: `${data.profile.first_name} ${data.profile.last_name} is now a ${addRole}` });
-      setShowAdd(false);
-      setAddPhone("");
-      setLookedUpProfile(null);
-      setSelectedPermissions([]);
+      resetForm();
       fetchUsers();
     }
     setAdding(false);
@@ -144,6 +177,8 @@ const AdminUsers = () => {
     );
   });
 
+  const canAdd = lookedUpProfile || (notFound && newFirstName.trim() && newLastName.trim());
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -163,9 +198,9 @@ const AdminUsers = () => {
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Add Admin or Dispatcher</h3>
-            <button onClick={() => { setShowAdd(false); setLookedUpProfile(null); setAddPhone(""); setSelectedPermissions([]); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            <button onClick={resetForm} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
-          <p className="text-sm text-muted-foreground">The user must already have a registered profile (as driver or passenger).</p>
+          <p className="text-sm text-muted-foreground">Enter a phone number. If the user doesn't exist, you can create a new profile.</p>
 
           {/* Phone + Role row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -193,7 +228,7 @@ const AdminUsers = () => {
               </select>
             </div>
             <div className="flex items-end">
-              <button onClick={addUser} disabled={adding || !lookedUpProfile} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50">
+              <button onClick={addUser} disabled={adding || !canAdd} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold disabled:opacity-50">
                 {adding ? "Adding..." : "Add User"}
               </button>
             </div>
@@ -205,8 +240,39 @@ const AdminUsers = () => {
               <UserCheck className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-sm font-semibold text-foreground">{lookedUpProfile.first_name} {lookedUpProfile.last_name}</p>
-                <p className="text-xs text-muted-foreground">+960 {lookedUpProfile.phone_number} · {lookedUpProfile.user_type}</p>
+                <p className="text-xs text-muted-foreground">+960 {lookedUpProfile.phone_number} · Existing user</p>
               </div>
+            </div>
+          )}
+
+          {/* Not found — create new user form */}
+          {notFound && !lookedUpProfile && addPhone.length === 7 && (
+            <div className="p-4 bg-muted/50 border border-border rounded-lg space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <UserPlus className="w-4 h-4 text-primary" />
+                No user found — create a new profile
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">First Name</label>
+                  <input
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                    placeholder="First name"
+                    className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Last Name</label>
+                  <input
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                    placeholder="Last name"
+                    className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">A new account will be created with phone +960 {addPhone}</p>
             </div>
           )}
 
