@@ -47,7 +47,7 @@ export const invalidateBranding = () => {
 };
 
 export const useBranding = () => {
-  const [branding, setBranding] = useState<Branding>(cachedBranding || { logoUrl: null, shareImageUrl: null, faviconUrl: null, appName: null, pwaAppIconUrl: null });
+  const [branding, setBranding] = useState<Branding>(cachedBranding || { logoUrl: null, shareImageUrl: null, faviconUrl: null, appName: null, pwaAppIconUrl: null, _loaded: false });
 
   useEffect(() => {
     fetchBranding().then(setBranding);
