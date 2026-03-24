@@ -1287,9 +1287,10 @@ const Dispatch = () => {
                                             if (t.status !== "completed") setTrackingTripId(t.id);
                                           }}
                                           disabled={t.status === "completed"}
-                                          className="h-6 px-2 rounded text-[10px] font-bold bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                          className="h-6 w-6 rounded flex items-center justify-center bg-primary/15 text-primary hover:bg-primary/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                          title="Track Live"
                                         >
-                                          <Navigation className="w-3 h-3" /> Track Live
+                                          <Navigation className="w-3 h-3" />
                                         </button>
                                       )}
                                     </div>
