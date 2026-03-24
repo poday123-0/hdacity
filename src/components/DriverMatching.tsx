@@ -33,6 +33,7 @@ interface DriverInfo {
   avatar_url?: string | null;
   vehicle_color?: string;
   vehicle_image_url?: string | null;
+  map_icon_url?: string | null;
   bank_accounts?: BankAccountInfo[];
   favara_accounts?: FavaraAccountInfo[];
 }
