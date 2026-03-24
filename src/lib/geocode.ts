@@ -119,7 +119,7 @@ export const reverseGeocodeLocation = async (
   // 2. If Google Maps is loaded, use it
   if (g?.maps?.Geocoder) {
     try {
-      const result = await googleReverseGeocode(g, lat, lng);
+      const result = await googleReverseGeocode(g, lat, lng, options);
       if (result && result.name !== "Selected Location") return result;
     } catch {}
   }
