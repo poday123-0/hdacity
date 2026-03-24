@@ -1216,7 +1216,7 @@ const DispatchTripForm = ({
                       setDispatchMethod("specific");
                       setSelectedDriverId(info.driver_id);
                     }}
-                    className={`border rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-all ${
+                    className={`border rounded px-2 py-1 text-[10px] cursor-pointer transition-all ${
                       selectedCenterCode === info.code
                         ? "bg-primary/10 border-primary ring-1 ring-primary/30"
                         : info.has_loss
