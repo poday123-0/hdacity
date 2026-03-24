@@ -150,7 +150,7 @@ const DispatchTripForm = ({
       const [fzRes, scRes, slRes, nlRes, rbRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
-        supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
+        supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true),
         supabase.from("named_locations").select("id, name, address, lat, lng, suggested_by_type").eq("is_active", true).eq("status", "approved"),
         supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
       ]);
