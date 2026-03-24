@@ -716,7 +716,7 @@ const DispatchTripForm = ({
   const formLabels = ["Bid 1", "Bid 2", "Bid 3"];
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col min-w-[260px] max-w-[320px]">
+    <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col min-w-[260px] max-w-[320px] max-h-[calc(100vh-120px)]">
       {/* Form header */}
       <div className="border-b border-border px-2.5 py-1.5 flex items-center justify-between gap-2">
         <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-1.5 shrink-0">
@@ -749,7 +749,7 @@ const DispatchTripForm = ({
       </div>
 
       {!collapsed && (
-        <div className="p-2 space-y-2 overflow-y-auto flex-1">
+        <div className="p-2 space-y-1.5 overflow-y-auto flex-1 min-h-0">
           {/* Vehicle type - buttons with keyboard navigation */}
           <div className="space-y-1">
             <div
