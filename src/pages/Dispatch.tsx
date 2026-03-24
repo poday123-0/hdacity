@@ -118,6 +118,8 @@ type DispatchTab =
   | "drivers"
   | "passengers"
   | "vehicle_types"
+  | "vehicles"
+  | "named_locations"
   | "fares"
   | "billing"
   | "wallets"
