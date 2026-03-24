@@ -860,7 +860,7 @@ const Dispatch = () => {
   };
 
   const handleLogout = async () => {
-    await clockOut();
+    // Don't clock out on logout — duty session persists until explicit clock out
     setIsAuthed(false);
     setDispatcherProfile(null);
     localStorage.removeItem("hda_dispatcher");
