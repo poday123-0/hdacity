@@ -2971,7 +2971,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
             </div>
 
-            <div className="px-4 py-3 space-y-2.5">
+            <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1 min-h-0">
               {/* Customer/Passenger info */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0 overflow-hidden">
