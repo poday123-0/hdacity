@@ -457,8 +457,14 @@ const Dispatch = () => {
           }
         });
 
-        const todayStart = new Date();
+        // Use Maldives timezone (UTC+5) for "today"
+        const now = new Date();
+        const maldivesOffset = 5 * 60;
+        const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
+        const todayStart = new Date(maldivesNow);
         todayStart.setHours(0, 0, 0, 0);
+        const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
+        const todayISO = todayStartUTC.toISOString();
 
         const [profilesRes, todayTripsRes, completedTripsRes] = await Promise.all([
           driverIds.length
