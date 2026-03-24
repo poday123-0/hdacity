@@ -39,6 +39,8 @@ import {
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
+import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
+import AdminVehicles from "@/components/admin/AdminVehicles";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
