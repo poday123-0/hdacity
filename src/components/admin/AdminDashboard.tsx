@@ -59,7 +59,7 @@ const AdminDashboard = () => {
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }),
-        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "in_progress"]),
+        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
         supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStart.toISOString()),
@@ -82,8 +82,20 @@ const AdminDashboard = () => {
       });
     };
     fetchStats();
-    const interval = setInterval(fetchStats, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchStats, 10000);
+
+    // Realtime subscription so auto-completed / dispatch trips update instantly
+    const channel = supabase
+      .channel("admin-dashboard-trips")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "trips" }, () => {
+        fetchStats();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Fetch analytics data
