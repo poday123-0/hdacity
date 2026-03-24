@@ -200,6 +200,9 @@ const Dispatch = () => {
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
   const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
+  const [dutySessionId, setDutySessionId] = useState<string | null>(null);
+  const [dutyClockIn, setDutyClockIn] = useState<string | null>(null);
+  const [dutyElapsed, setDutyElapsed] = useState("");
 
   // Login state
   const [phone, setPhone] = useState("");
