@@ -1152,21 +1152,25 @@ const Dispatch = () => {
                                   </span>
                                 )}
                                 {(t.is_loss || t.status !== "completed") && (
-                                  <span
-                                    className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                      t.is_loss
-                                        ? "bg-destructive/20 text-destructive"
-                                        : t.status === "cancelled"
-                                          ? "bg-warning/20 text-warning"
-                                          : t.status === "started"
-                                            ? "bg-blue-500/15 text-blue-500"
-                                            : t.status === "accepted"
-                                              ? "bg-success/20 text-success"
-                                              : "bg-surface text-muted-foreground"
-                                    }`}
-                                  >
-                                    {t.is_loss ? "LOSS" : t.status}
-                                  </span>
+                                  t.status === "accepted" && t.dispatch_type === "operator" && t.accepted_at ? (
+                                    <DispatchTimer acceptedAt={t.accepted_at} />
+                                  ) : (
+                                    <span
+                                      className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                        t.is_loss
+                                          ? "bg-destructive/20 text-destructive"
+                                          : t.status === "cancelled"
+                                            ? "bg-warning/20 text-warning"
+                                            : t.status === "started"
+                                              ? "bg-blue-500/15 text-blue-500"
+                                              : t.status === "accepted"
+                                                ? "bg-success/20 text-success"
+                                                : "bg-surface text-muted-foreground"
+                                      }`}
+                                    >
+                                      {t.is_loss ? "LOSS" : t.status}
+                                    </span>
+                                  )
                                 )}
                                 <span className="text-foreground truncate flex-1">
                                   {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span>{" "}
