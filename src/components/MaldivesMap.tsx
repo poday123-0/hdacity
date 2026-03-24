@@ -283,12 +283,39 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     const map = mapInstance.current;
     const g = (window as any).google;
     if (!map || !g?.maps) return;
-    vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
-    vehicleMarkersRef.current = [];
-    if (rideData?.showRoute) return;
+    if (rideData?.showRoute) {
+      vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
+      vehicleMarkersRef.current = [];
+      return;
+    }
 
-    if (vehicleMarkers && vehicleMarkers.length > 0) {
-      vehicleMarkers.forEach(v => {
+    if (!vehicleMarkers || vehicleMarkers.length === 0) {
+      vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
+      vehicleMarkersRef.current = [];
+      return;
+    }
+
+    // Build a map of existing markers by id for reuse
+    const existingMap = new Map<string, any>();
+    vehicleMarkersRef.current.forEach((m: any) => {
+      if (m._vid) existingMap.set(m._vid, m);
+    });
+
+    const newMarkerRefs: any[] = [];
+    const seenIds = new Set<string>();
+
+    vehicleMarkers.forEach(v => {
+      seenIds.add(v.id || v.lat + "," + v.lng);
+      const vid = v.id || v.lat + "," + v.lng;
+      const existing = existingMap.get(vid);
+
+      if (existing) {
+        // Update position smoothly instead of recreating
+        existing.setPosition({ lat: v.lat, lng: v.lng });
+        newMarkerRefs.push(existing);
+        existingMap.delete(vid);
+      } else {
+        // Create new marker
         const markerOpts: any = {
           map, position: { lat: v.lat, lng: v.lng },
         };
@@ -302,9 +329,15 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
           };
         }
         const m = new g.maps.Marker(markerOpts);
-        vehicleMarkersRef.current.push(m);
-      });
-    }
+        (m as any)._vid = vid;
+        newMarkerRefs.push(m);
+      }
+    });
+
+    // Remove markers no longer in the list
+    existingMap.forEach((m: any) => m.setMap(null));
+
+    vehicleMarkersRef.current = newMarkerRefs;
   }, [vehicleMarkers, rideData?.showRoute]);
 
   // Trip routes rendering

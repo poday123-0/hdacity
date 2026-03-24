@@ -439,9 +439,9 @@ const Index = () => {
 
       const limited: typeof uniqueMarkers = [];
       Object.values(byType).forEach(group => {
-        // Shuffle then take up to MAX_PER_TYPE for variety
-        const shuffled = group.sort(() => Math.random() - 0.5);
-        limited.push(...shuffled.slice(0, MAX_PER_TYPE));
+        // Sort deterministically by driver_id to avoid flashing from random shuffle
+        const sorted = group.sort((a, b) => a.id.localeCompare(b.id));
+        limited.push(...sorted.slice(0, MAX_PER_TYPE));
       });
 
       setVehicleMarkers(limited);
