@@ -3251,7 +3251,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
         <ChevronUp className="w-4 h-4" />
         <span className="text-xs font-bold">{driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup" : "Trip in progress"}</span>
-        <span className="text-xs font-bold opacity-70">{(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} MVR</span>
+        <AnimatedTimer seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed} variant="badge" showIcon={false} className="bg-primary-foreground/20 text-primary-foreground [&_span]:text-primary-foreground" />
       </button>
       }
 
