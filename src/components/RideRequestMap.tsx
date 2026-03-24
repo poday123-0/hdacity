@@ -1,5 +1,6 @@
 import { useEffect, useRef, memo, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { selectShortestRoute } from "@/lib/shortest-route";
 
 interface RideRequestMapProps {
   pickupLat?: number | null;
