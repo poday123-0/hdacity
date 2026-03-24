@@ -7,10 +7,11 @@ import * as XLSX from "xlsx";
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
 type VehicleForm = typeof emptyForm;
 
-type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected";
+type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected" | "online";
 
 const statusChips: { value: VehicleStatusFilter; label: string; color: string }[] = [
   { value: "all", label: "All", color: "bg-surface text-foreground" },
+  { value: "online", label: "Online", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
   { value: "approved", label: "Approved", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
   { value: "pending", label: "Pending", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
   { value: "rejected", label: "Rejected", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
@@ -37,6 +38,7 @@ const AdminVehicles = () => {
   const [typeFilter, setTypeFilter] = useState("");
   const [importing, setImporting] = useState(false);
   const [driverSearch, setDriverSearch] = useState("");
+  const [onlineDriverIds, setOnlineDriverIds] = useState<Set<string>>(new Set());
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -58,16 +60,18 @@ const AdminVehicles = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [v, vt, d, c] = await Promise.all([
+    const [v, vt, d, c, ol] = await Promise.all([
       supabase.from("vehicles").select("*, vehicle_types(name), profiles!vehicles_driver_id_fkey(first_name, last_name, company_id, company_name)").order("created_at", { ascending: false }),
       supabase.from("vehicle_types").select("*").eq("is_active", true),
       supabase.from("profiles").select("id, first_name, last_name, phone_number, country_code").ilike("user_type", "%Driver%"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
+      supabase.from("driver_locations").select("driver_id").eq("is_online", true),
     ]);
     setVehicles(v.data || []);
     setVehicleTypes(vt.data || []);
     setDrivers(d.data || []);
     setCompanies(c.data || []);
+    setOnlineDriverIds(new Set((ol.data || []).map((d: any) => d.driver_id)));
     setLoading(false);
   };
 
@@ -326,7 +330,7 @@ const AdminVehicles = () => {
   const filtered = vehicles.filter(v => {
     const q = search.toLowerCase();
     const matchesSearch = !q || v.plate_number?.toLowerCase().includes(q) || v.make?.toLowerCase().includes(q) || v.model?.toLowerCase().includes(q) || (v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}`.toLowerCase().includes(q) : false) || v.center_code?.toLowerCase().includes(q);
-    const matchesStatus = statusFilter === "all" || v.vehicle_status === statusFilter;
+    const matchesStatus = statusFilter === "all" || (statusFilter === "online" ? (v.driver_id && onlineDriverIds.has(v.driver_id)) : v.vehicle_status === statusFilter);
     const matchesType = !typeFilter || v.vehicle_type_id === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
