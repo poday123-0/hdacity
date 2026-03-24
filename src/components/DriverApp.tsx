@@ -236,6 +236,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
+  const foregroundGpsCleanupRef = useRef<(() => void) | null>(null);
   const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
@@ -629,6 +630,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
         }
       }, driverIntervalMs);
+
+      // Force fresh GPS on foreground return (watchPosition may be suspended by OS)
+      const onForeground = () => {
+        if (document.visibilityState !== "visible") return;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setGpsEnabled(true);
+            setDriverLat(pos.coords.latitude);
+            setDriverLng(pos.coords.longitude);
+            upsertLocation(pos.coords.latitude, pos.coords.longitude);
+          },
+          () => {},
+          { enableHighAccuracy: gpsHighAccuracy, timeout: 10000, maximumAge: 0 }
+        );
+      };
+      document.addEventListener("visibilitychange", onForeground);
+      foregroundGpsCleanupRef.current = () => document.removeEventListener("visibilitychange", onForeground);
     };
 
     startTracking();
@@ -641,6 +659,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (locationIntervalRef.current) {
         clearInterval(locationIntervalRef.current);
         locationIntervalRef.current = null;
+      }
+      if (foregroundGpsCleanupRef.current) {
+        foregroundGpsCleanupRef.current();
+        foregroundGpsCleanupRef.current = null;
       }
     };
   }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch, goOfflineNow]);
