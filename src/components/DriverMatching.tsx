@@ -416,8 +416,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               {tripStatus === "in_progress" && (
                 <AnimatedTimer seconds={tripElapsed} label="Trip time" variant="default" />
               )}
-              {(tripStatus === "accepted" || tripStatus === "arrived") && (
-                <AnimatedTimer seconds={acceptedElapsed} label={tripStatus === "arrived" ? "Driver waiting" : "Since accepted"} variant="default" />
+              {tripStatus === "accepted" && (
+                <AnimatedTimer seconds={acceptedElapsed} label="Since accepted" variant="default" />
+              )}
+              {tripStatus === "arrived" && (
+                <AnimatedTimer seconds={arrivedElapsed} label="Driver waiting" variant="default" />
               )}
             </div>
 
