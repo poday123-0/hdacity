@@ -130,6 +130,7 @@ const DispatchTripForm = ({
   const [surcharges, setSurcharges] = useState<any[]>([]);
   const [serviceLocations, setServiceLocations] = useState<any[]>([]);
   const [namedLocations, setNamedLocations] = useState<any[]>([]);
+  const [recentBookings, setRecentBookings] = useState<any[]>([]);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
