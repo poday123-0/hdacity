@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can delete trips" ON public.trips FOR DELETE TO public USING (true);
