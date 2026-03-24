@@ -21,6 +21,11 @@ interface VehicleMarkerData {
   icon?: string;
   isOnTrip?: boolean;
   driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  plate?: string;
+  centerCode?: string;
+  vehicleInfo?: string;
 }
 
 interface TripRouteData {
