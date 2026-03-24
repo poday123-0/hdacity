@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, Image, Loader2, ArrowUp, ArrowDown, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Image, Loader2, ArrowUp, ArrowDown, ExternalLink, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
 
 const AdminAdBanners = () => {
   const [banners, setBanners] = useState<any[]>([]);
