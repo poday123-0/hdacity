@@ -383,7 +383,19 @@ const Dispatch = () => {
 
     refresh();
     const interval = window.setInterval(refresh, 30_000);
-    return () => window.clearInterval(interval);
+
+    // Realtime: auto-refresh center code index when trips change
+    const ccChannel = supabase
+      .channel("dispatch-center-code-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
+        refresh();
+      })
+      .subscribe();
+
+    return () => {
+      window.clearInterval(interval);
+      supabase.removeChannel(ccChannel);
+    };
   }, [isAuthed]);
 
   // Load vehicle types, drivers, recent trips
