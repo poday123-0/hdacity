@@ -3198,7 +3198,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   <CheckCircle className="w-4 h-4" />Accept
                 </button>
               </div>
-            </div>
+          </motion.div>
           </motion.div>
         </motion.div>
       }
