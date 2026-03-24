@@ -44,6 +44,7 @@ const AdminAdBanners = () => {
       target_audience: targetAudience,
     });
     setLinkUrl("");
+    setTargetAudience("both");
     setUploading(false);
     toast({ title: "Banner added ✅" });
     fetchAll();
