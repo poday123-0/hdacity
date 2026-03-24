@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import TripChat from "./TripChat";
+import AnimatedTimer from "./AnimatedTimer";
 
 interface BankAccountInfo {
   id: string;
