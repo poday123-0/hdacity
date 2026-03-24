@@ -49,7 +49,7 @@ const AdBanner = ({ className = "", audience = "passengers" }: AdBannerProps) =>
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="w-full h-full object-cover rounded-xl"
+      className="w-full h-full object-contain rounded-xl"
     />
   );
 
