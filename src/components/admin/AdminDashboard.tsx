@@ -52,8 +52,14 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const todayStart = new Date();
+      // Use Maldives timezone (UTC+5) for "today" calculations
+      const now = new Date();
+      const maldivesOffset = 5 * 60; // UTC+5 in minutes
+      const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
+      const todayStart = new Date(maldivesNow);
       todayStart.setHours(0, 0, 0, 0);
+      // Convert back to UTC for the query
+      const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
 
       const [drivers, vehicles, trips, activeTrips, passengers, onlineDrivers, completedToday, cancelledToday, todayRevenueData] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
