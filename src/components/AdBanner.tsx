@@ -18,7 +18,7 @@ const AdBanner = ({ className = "", audience = "passengers" }: AdBannerProps) =>
         supabase.from("ad_banners").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("system_settings").select("value").eq("key", "ad_banner_rotation_seconds").maybeSingle(),
       ]);
-      setBanners(ads || []);
+      setBanners((ads || []).filter((a: any) => a.target_audience === "both" || a.target_audience === audience));
       if (settings?.value) {
         const v = typeof settings.value === "number" ? settings.value : parseInt(String(settings.value));
         if (v > 0) setRotationSeconds(v);
