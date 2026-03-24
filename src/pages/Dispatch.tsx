@@ -144,7 +144,8 @@ type DispatchTab =
   | "sos_history"
   | "notifications"
   | "banks"
-  | "companies";
+  | "companies"
+  | "duty_hours";
 
 // Map each tab to the permission key required to access it
 const tabPermissionMap: Record<DispatchTab, string | null> = {
