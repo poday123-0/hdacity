@@ -274,7 +274,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       ds.route({
         origin, destination: { lat: dropoff.lat, lng: dropoff.lng },
         waypoints, travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => dr.setDirections(result))
+        provideRouteAlternatives: true,
+      }).then((raw: any) => dr.setDirections(selectShortestRoute(raw)))
         .catch((err: any) => console.error("Directions error:", err));
     } else if (pickup && dropoff && !userInteractingRef.current) {
       const bounds = new g.maps.LatLngBounds();
