@@ -2961,7 +2961,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </div>
 
             {/* Mini map preview */}
-            <div className="h-72 sm:h-56 w-full">
+            <div className="h-40 sm:h-56 w-full shrink-0">
               <RideRequestMap
               pickupLat={currentTrip.pickup_lat}
               pickupLng={currentTrip.pickup_lng}
