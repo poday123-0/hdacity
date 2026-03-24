@@ -133,7 +133,8 @@ export const reverseGeocodeLocation = async (
 async function googleReverseGeocode(
   g: any,
   lat: number,
-  lng: number
+  lng: number,
+  options?: { skipNearbyPlace?: boolean }
 ): Promise<ReverseGeocodeResult | null> {
   // Run geocoder + nearby places in parallel for speed
   const skipNearby = options?.skipNearbyPlace;
