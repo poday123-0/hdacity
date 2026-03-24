@@ -278,6 +278,33 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_duty_sessions: {
+        Row: {
+          clock_in: string
+          clock_out: string | null
+          created_at: string
+          dispatcher_id: string
+          id: string
+          ip_address: string | null
+        }
+        Insert: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          dispatcher_id: string
+          id?: string
+          ip_address?: string | null
+        }
+        Update: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          dispatcher_id?: string
+          id?: string
+          ip_address?: string | null
+        }
+        Relationships: []
+      }
       driver_bank_accounts: {
         Row: {
           account_name: string
