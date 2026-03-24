@@ -63,7 +63,9 @@ import {
   Bell as BellIcon,
   Trophy,
   XCircle,
-  Ban } from
+  Ban,
+  FileText,
+  Shield } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
