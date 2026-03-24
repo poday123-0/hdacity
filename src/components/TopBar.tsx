@@ -576,7 +576,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     </button>
                   )}
                   <button
-                      onClick={() => { setShowProfile(false); window.open("/terms", "_blank"); }}
+                      onClick={() => { setShowProfile(false); window.location.href = "/terms"; }}
                       className="flex flex-col items-center gap-1.5 bg-muted rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                     >
                       <FileText className="w-5 h-5 text-muted-foreground" />
