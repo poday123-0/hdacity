@@ -21,6 +21,11 @@ interface VehicleMarkerData {
   icon?: string;
   isOnTrip?: boolean;
   driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  plate?: string;
+  centerCode?: string;
+  vehicleInfo?: string;
 }
 
 interface TripRouteData {
@@ -51,6 +56,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   const driverMarkerRef = useRef<any>(null);
   const vehicleMarkersRef = useRef<any[]>([]);
   const directionsRendererRef = useRef<any>(null);
+  const vehicleInfoWindowRef = useRef<any>(null);
   const tripRenderersRef = useRef<any[]>([]);
   const tripMarkersRef = useRef<any[]>([]);
   const watchIdRef = useRef<number | null>(null);
@@ -310,18 +316,29 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     const newMarkerRefs: any[] = [];
     const seenIds = new Set<string>();
 
+    const buildInfoContent = (v: VehicleMarkerData) => {
+      const lines: string[] = [];
+      if (v.driverName) lines.push(`<div style="font-weight:700;font-size:12px">${v.driverName}</div>`);
+      if (v.driverPhone) lines.push(`<div style="font-size:11px;color:#666">📞 ${v.driverPhone}</div>`);
+      if (v.centerCode) lines.push(`<div style="font-size:11px;color:#666">🏷️ ${v.centerCode}</div>`);
+      if (v.plate) lines.push(`<div style="font-size:11px;color:#666">🚗 ${v.plate}</div>`);
+      if (v.vehicleInfo) lines.push(`<div style="font-size:10px;color:#999">${v.vehicleInfo}</div>`);
+      if (v.name) lines.push(`<div style="font-size:10px;color:#999">${v.name}</div>`);
+      lines.push(`<div style="font-size:10px;margin-top:2px;color:${v.isOnTrip ? '#f59e0b' : '#22c55e'};font-weight:600">${v.isOnTrip ? '● On Trip' : '● Available'}</div>`);
+      return `<div style="padding:4px;min-width:120px">${lines.join("")}</div>`;
+    };
+
     vehicleMarkers.forEach(v => {
       seenIds.add(v.id || v.lat + "," + v.lng);
       const vid = v.id || v.lat + "," + v.lng;
       const existing = existingMap.get(vid);
 
       if (existing) {
-        // Update position smoothly instead of recreating
         existing.setPosition({ lat: v.lat, lng: v.lng });
+        (existing as any)._vdata = v;
         newMarkerRefs.push(existing);
         existingMap.delete(vid);
       } else {
-        // Create new marker
         const markerOpts: any = {
           map, position: { lat: v.lat, lng: v.lng },
         };
@@ -336,6 +353,14 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
         }
         const m = new g.maps.Marker(markerOpts);
         (m as any)._vid = vid;
+        (m as any)._vdata = v;
+        m.addListener("click", () => {
+          if (vehicleInfoWindowRef.current) vehicleInfoWindowRef.current.close();
+          const data = (m as any)._vdata as VehicleMarkerData;
+          const iw = new g.maps.InfoWindow({ content: buildInfoContent(data) });
+          iw.open(map, m);
+          vehicleInfoWindowRef.current = iw;
+        });
         newMarkerRefs.push(m);
       }
     });

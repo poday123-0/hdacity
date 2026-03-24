@@ -174,15 +174,17 @@ const AdminDashboard = () => {
     fetchAnalytics();
   }, []);
 
-  // Fetch live driver locations
+  // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
     const fetchLocations = async () => {
       const { data } = await supabase
         .from("driver_locations")
-        .select("id, lat, lng, driver_id, is_on_trip, vehicle_type_id, vehicle_types:vehicle_type_id(name, image_url, icon, map_icon_url)")
+        .select("id, lat, lng, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, image_url, icon, map_icon_url), profiles:driver_id(first_name, last_name, phone_number), vehicles:vehicle_id(plate_number, center_code, make, model, color)")
         .eq("is_online", true);
       if (data) {
-        setVehicleMarkers(data.map((d: any) => ({
+        // Only show drivers linked to an active vehicle
+        const activeDrivers = data.filter((d: any) => d.vehicle_id && d.vehicles);
+        setVehicleMarkers(activeDrivers.map((d: any) => ({
           id: d.id,
           lat: d.lat,
           lng: d.lng,
@@ -190,6 +192,11 @@ const AdminDashboard = () => {
           imageUrl: d.vehicle_types?.map_icon_url || undefined,
           isOnTrip: d.is_on_trip,
           driverId: d.driver_id,
+          driverName: d.profiles ? `${(d.profiles as any).first_name} ${(d.profiles as any).last_name}` : undefined,
+          driverPhone: (d.profiles as any)?.phone_number || undefined,
+          plate: (d.vehicles as any)?.plate_number || undefined,
+          centerCode: (d.vehicles as any)?.center_code || undefined,
+          vehicleInfo: d.vehicles ? `${(d.vehicles as any).make || ""} ${(d.vehicles as any).model || ""}`.trim() || undefined : undefined,
         })));
       }
     };
