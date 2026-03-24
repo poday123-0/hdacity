@@ -484,7 +484,16 @@ const DispatchTripForm = ({
           };
         }),
     ];
-    setOsmResults(localMatches);
+    // Deduplicate: remove recent bookings that overlap with service/named locations
+    const coordSet = new Set(localMatches.filter(m => m.place_id >= 800000).map(m => `${parseFloat(m.lat).toFixed(4)},${parseFloat(m.lon).toFixed(4)}`));
+    const deduped = localMatches.filter(m => {
+      if (m.place_id < 700000) {
+        const key = `${parseFloat(m.lat).toFixed(4)},${parseFloat(m.lon).toFixed(4)}`;
+        return !coordSet.has(key);
+      }
+      return true;
+    });
+    setOsmResults(deduped);
 
     // Cancel previous external requests
     if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
