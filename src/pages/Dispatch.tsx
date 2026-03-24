@@ -475,7 +475,7 @@ const Dispatch = () => {
                 .from("trips")
                 .select("vehicle_id, booking_notes")
                 .in("vehicle_id", vehicleIds)
-                .gte("created_at", todayStart.toISOString())
+                .gte("created_at", todayISO)
                 .in("status", ["requested", "accepted", "started", "completed"])
             : Promise.resolve({ data: [] as any[] }),
           vehicleIds.length
