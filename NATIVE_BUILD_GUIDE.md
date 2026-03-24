@@ -490,9 +490,11 @@ defaultConfig {
 - [ ] `google-services.json` (Android) or `GoogleService-Info.plist` (iOS) added
 - [ ] All permissions declared
 - [ ] Tested on real device (not just emulator)
-- [ ] Push notifications working
+- [ ] Push notifications working (heads-up display on lock screen)
+- [ ] Notification channels created (trip_requests_v2, sos_alerts_v2, general_v2)
 - [ ] Location tracking working
 - [ ] App icon and splash screen configured
+- [ ] Full-screen intent permission granted (Settings → Apps → HDA TAXI → Notifications)
 
 ---
 
