@@ -164,25 +164,26 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
       }
       lastLocRef.current = { lat: loc.lat, lng: loc.lng, time: now };
 
-      // Use driver's Google Directions data if available, otherwise fallback to haversine
-      if (trip.distance_km && trip.duration_minutes) {
-        setDistanceKm(Number(trip.distance_km));
-        setEtaMinutes(Math.max(1, Number(trip.duration_minutes)));
-        // Set total distance for progress bar
-        if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng) {
-          const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
-          if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
-        }
-      } else if (trip.dropoff_lat && trip.dropoff_lng) {
-        // Fallback: haversine with road correction
-        if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng) {
-          const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
-          if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
-        }
-        const remaining = haversine(loc.lat, loc.lng, Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
+      // Determine target: before pickup use pickup coords, during trip use dropoff coords
+      const isPrePickup = tripStatus === "accepted" || tripStatus === "arrived";
+      const targetLat = isPrePickup ? (trip.pickup_lat ? Number(trip.pickup_lat) : null) : (trip.dropoff_lat ? Number(trip.dropoff_lat) : null);
+      const targetLng = isPrePickup ? (trip.pickup_lng ? Number(trip.pickup_lng) : null) : (trip.dropoff_lng ? Number(trip.dropoff_lng) : null);
+
+      // Set total distance for progress bar (always pickup→dropoff)
+      if (totalDistanceKm === null && trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng) {
+        const total = haversine(Number(trip.pickup_lat), Number(trip.pickup_lng), Number(trip.dropoff_lat), Number(trip.dropoff_lng)) * 1.4;
+        if (total > 0) setTotalDistanceKm(Math.round(total * 10) / 10);
+      }
+
+      if (targetLat !== null && targetLng !== null) {
+        const remaining = haversine(loc.lat, loc.lng, targetLat, targetLng) * 1.4;
         setDistanceKm(Math.round(remaining * 10) / 10);
         const avgSpeed = speed > 5 ? speed : 30;
         setEtaMinutes(Math.max(1, Math.round((remaining / avgSpeed) * 60)));
+      } else if (!isPrePickup && trip.distance_km && trip.duration_minutes) {
+        // Fallback to trip-level stored values for in-progress
+        setDistanceKm(Number(trip.distance_km));
+        setEtaMinutes(Math.max(1, Number(trip.duration_minutes)));
       }
     };
 
@@ -454,7 +455,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                   {tripStatus === "arrived" ? "—" : etaMinutes ? `${etaMinutes}` : "..."}
                 </motion.span>
                 <span className="text-[9px] text-muted-foreground mt-0.5">
-                  {tripStatus === "arrived" ? "Arrived" : "min ETA"}
+                  {tripStatus === "arrived" ? "Arrived" : tripStatus === "accepted" ? "to pickup" : "min ETA"}
                 </span>
               </motion.div>
 
@@ -474,7 +475,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 >
                   {distanceKm !== null ? distanceKm : "..."}
                 </motion.span>
-                <span className="text-[9px] text-muted-foreground mt-0.5">km left</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">{tripStatus === "in_progress" ? "km left" : "km away"}</span>
               </motion.div>
 
               {/* Speed */}
