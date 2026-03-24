@@ -1146,22 +1146,22 @@ const DispatchTripForm = ({
                         .maybeSingle(),
                       supabase
                         .from("trips")
-                        .select("completed_at")
-                        .eq("driver_id", vehicle.driver_id)
-                        .eq("status", "completed")
-                        .order("completed_at", { ascending: false })
+                        .select("created_at")
+                        .eq("vehicle_id", vehicle.id)
+                        .eq("dispatch_type", "operator")
+                        .order("created_at", { ascending: false })
                         .limit(1)
                         .maybeSingle(),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
-                        .eq("driver_id", vehicle.driver_id)
+                        .eq("vehicle_id", vehicle.id)
                         .gte("created_at", todayStart.toISOString())
                         .in("status", ["requested", "accepted", "started", "completed"]),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
-                        .eq("driver_id", vehicle.driver_id)
+                        .eq("vehicle_id", vehicle.id)
                         .eq("is_loss", true)
                         .eq("dispatch_type", "operator"),
                     ]);
@@ -1170,8 +1170,8 @@ const DispatchTripForm = ({
                       driverName = `${profile.first_name} ${profile.last_name}`.trim();
                       driverPhone = profile.phone_number;
                     }
-                    if (lastTrip?.completed_at) {
-                      lastTripDate = lastTrip.completed_at;
+                    if (lastTrip?.created_at) {
+                      lastTripDate = lastTrip.created_at;
                     }
                     todayTrips = todayCount || 0;
                     hasLoss = (lossCount || 0) > 0;
