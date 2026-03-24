@@ -1403,7 +1403,22 @@ const Dispatch = () => {
                                             Cancel Trip
                                           </button>
                                         </>
-                                      )}
+                                       )}
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (!confirm("Delete this booking permanently?")) return;
+                                          await supabase.from("trips").delete().eq("id", t.id);
+                                          if (t.driver_id) {
+                                            await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", t.driver_id);
+                                          }
+                                          toast({ title: "Booking deleted" });
+                                          refreshTrips();
+                                        }}
+                                        className="h-6 px-2 rounded text-[10px] font-bold bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors"
+                                      >
+                                        Delete
+                                      </button>
                                     </div>
                                   </div>
                                   </div>
