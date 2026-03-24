@@ -115,10 +115,10 @@ const AdminDriverInvoice = () => {
     setExporting(false);
   };
 
-  const billTo = selectedPassenger
+  const billTo = manualPassengerName
+    ? { name: manualPassengerName, phone: manualPassengerPhone, email: selectedPassenger?.email || "" }
+    : selectedPassenger
     ? { name: `${selectedPassenger.first_name} ${selectedPassenger.last_name}`, phone: selectedPassenger.phone_number, email: selectedPassenger.email }
-    : manualPassengerName
-    ? { name: manualPassengerName, phone: manualPassengerPhone, email: "" }
     : null;
 
   const tripDetails = {
