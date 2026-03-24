@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Star, Wallet } from "lucide-react";
+import { CheckCircle, Star, Wallet, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import TripInvoice from "@/components/TripInvoice";
 
 interface DriverCompleteScreenProps {
   completionFare: number;
