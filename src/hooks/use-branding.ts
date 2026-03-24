@@ -78,7 +78,11 @@ export const useBranding = () => {
     const iconUrl = branding.pwaAppIconUrl || branding.logoUrl;
     if (!iconUrl) return;
 
-    const upsertAppleIcon = (size: "192x192" | "512x512") => {
+    // Update all apple-touch-icon links (with and without sizes)
+    const allAppleIcons = document.querySelectorAll("link[rel='apple-touch-icon']") as NodeListOf<HTMLLinkElement>;
+    allAppleIcons.forEach(icon => { icon.href = iconUrl; });
+
+    const upsertAppleIcon = (size: string) => {
       let icon = document.querySelector(`link[rel='apple-touch-icon'][sizes='${size}']`) as HTMLLinkElement | null;
       if (!icon) {
         icon = document.createElement("link");
@@ -89,6 +93,7 @@ export const useBranding = () => {
       icon.href = iconUrl;
     };
 
+    upsertAppleIcon("180x180");
     upsertAppleIcon("192x192");
     upsertAppleIcon("512x512");
   }, [branding.pwaAppIconUrl, branding.logoUrl]);
