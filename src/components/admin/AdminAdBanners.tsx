@@ -78,6 +78,20 @@ const AdminAdBanners = () => {
     fetchAll();
   };
 
+  const startEdit = (b: any) => {
+    setEditingId(b.id);
+    setEditLink(b.link_url || "");
+    setEditAudience(b.target_audience || "both");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    await supabase.from("ad_banners").update({ link_url: editLink, target_audience: editAudience }).eq("id", editingId);
+    setEditingId(null);
+    toast({ title: "Banner updated ✅" });
+    fetchAll();
+  };
+
   const saveRotation = async () => {
     setSavingRotation(true);
     const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "ad_banner_rotation_seconds").maybeSingle();
