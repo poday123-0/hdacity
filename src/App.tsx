@@ -11,6 +11,8 @@ import Dispatch from "./pages/Dispatch";
 import LiveMap from "./pages/LiveMap";
 import Install from "./pages/Install";
 import Track from "./pages/Track";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import { useBranding } from "@/hooks/use-branding";
 
