@@ -106,7 +106,7 @@ export { getServiceLocations, haversineMeters, findAdminLocation };
 export const reverseGeocodeLocation = async (
   lat: number,
   lng: number,
-  options?: { skipAdminLocations?: boolean }
+  options?: { skipAdminLocations?: boolean; skipNearbyPlace?: boolean }
 ): Promise<ReverseGeocodeResult> => {
   // 1. Check admin-added locations first (unless skipped)
   if (!options?.skipAdminLocations) {
@@ -119,7 +119,7 @@ export const reverseGeocodeLocation = async (
   // 2. If Google Maps is loaded, use it
   if (g?.maps?.Geocoder) {
     try {
-      const result = await googleReverseGeocode(g, lat, lng);
+      const result = await googleReverseGeocode(g, lat, lng, options);
       if (result && result.name !== "Selected Location") return result;
     } catch {}
   }
@@ -133,12 +133,14 @@ export const reverseGeocodeLocation = async (
 async function googleReverseGeocode(
   g: any,
   lat: number,
-  lng: number
+  lng: number,
+  options?: { skipNearbyPlace?: boolean }
 ): Promise<ReverseGeocodeResult | null> {
   // Run geocoder + nearby places in parallel for speed
+  const skipNearby = options?.skipNearbyPlace;
   const [geocodeResult, nearbyResult] = await Promise.allSettled([
     googleGeocode(g, lat, lng),
-    googleNearbyPlace(g, lat, lng),
+    skipNearby ? Promise.resolve(null) : googleNearbyPlace(g, lat, lng),
   ]);
 
   const geo = geocodeResult.status === "fulfilled" ? geocodeResult.value : null;
