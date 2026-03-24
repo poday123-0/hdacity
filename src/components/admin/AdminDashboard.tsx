@@ -82,8 +82,20 @@ const AdminDashboard = () => {
       });
     };
     fetchStats();
-    const interval = setInterval(fetchStats, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchStats, 10000);
+
+    // Realtime subscription so auto-completed / dispatch trips update instantly
+    const channel = supabase
+      .channel("admin-dashboard-trips")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "trips" }, () => {
+        fetchStats();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Fetch analytics data
