@@ -731,6 +731,17 @@ const Dispatch = () => {
     setLoginLoading(true);
     setLoginError("");
     try {
+      // Check IP restriction first
+      try {
+        const { data: ipCheck } = await supabase.functions.invoke("check-dispatch-ip", { body: {} });
+        if (ipCheck && ipCheck.allowed === false) {
+          throw new Error(`Access denied. Your IP (${ipCheck.ip}) is not allowed.`);
+        }
+      } catch (ipErr: any) {
+        if (ipErr.message?.includes("Access denied")) throw ipErr;
+        // If IP check fails, allow through (edge function may not exist yet)
+      }
+
       const { data, error } = await supabase.functions.invoke("verify-otp", { body: { phone_number: phone, code } });
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || "Invalid code");
@@ -759,6 +770,9 @@ const Dispatch = () => {
       setDispatcherRole(role);
       setIsAuthed(true);
       localStorage.setItem("hda_dispatcher", JSON.stringify({ profile: matchedProfile, permissions, role }));
+
+      // Clock in duty session
+      await clockIn(matchedProfile.id);
     } catch (err: any) {
       setLoginError(err.message || "Verification failed");
       setOtp(["", "", "", "", "", ""]);
