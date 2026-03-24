@@ -83,6 +83,7 @@ import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { stopAllSounds, playTrackedSound, unlockAudioPool, stopHeartbeat } from "@/lib/sound-manager";
 import RideTypesTab from "@/components/RideTypesTab";
 import SuggestPlace from "@/components/SuggestPlace";
+import AnimatedTimer from "./AnimatedTimer";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
