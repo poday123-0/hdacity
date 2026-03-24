@@ -353,8 +353,39 @@ const DispatchTripForm = ({
     setTripVehicle(null);
   };
 
-  // Helper: find nearest service area name for a lat/lng
+  // Helper: find nearest service area name for a lat/lng — use polygon containment first
   const findNearestServiceAreaName = useCallback((lat: number, lng: number): string => {
+    const pointInPolygon = (plat: number, plng: number, polygon: { lat: number; lng: number }[]): boolean => {
+      if (!polygon || polygon.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].lat, yi = polygon[i].lng;
+        const xj = polygon[j].lat, yj = polygon[j].lng;
+        if ((yi > plng) !== (yj > plng) && plat < ((xj - xi) * (plng - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    const calcPolyArea = (polygon: { lat: number; lng: number }[]): number => {
+      if (!polygon || polygon.length < 3) return Infinity;
+      let area = 0;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        area += (polygon[j].lat + polygon[i].lat) * (polygon[j].lng - polygon[i].lng);
+      }
+      return Math.abs(area / 2);
+    };
+
+    // 1. Point-in-polygon — prefer smallest polygon (most specific area)
+    let bestMatch: any = null;
+    let smallestArea = Infinity;
+    for (const sl of serviceLocations) {
+      if (sl.polygon && pointInPolygon(lat, lng, sl.polygon as any)) {
+        const area = calcPolyArea(sl.polygon as any);
+        if (area < smallestArea) { smallestArea = area; bestMatch = sl; }
+      }
+    }
+    if (bestMatch) return bestMatch.name;
+
+    // 2. Fallback to nearest center point
     let best: string = "Location";
     let bestDist = Infinity;
     for (const sl of serviceLocations) {
@@ -473,7 +504,7 @@ const DispatchTripForm = ({
           mergeResults(googleResults);
         }).catch(() => {});
       }
-    }, 300);
+    }, 150);
 
     return () => { googleAbort.abort(); };
   }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName, isWithinServiceArea]);
