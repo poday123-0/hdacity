@@ -400,6 +400,7 @@ const Admin = () => {
           {activeTab === "device_tokens" && <AdminDeviceTokens />}
           {activeTab === "duty_hours" && <AdminDutyHours />}
           {activeTab === "ad_banners" && <AdminAdBanners />}
+          {activeTab === "driver_invoices" && <AdminDriverInvoice />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
