@@ -59,7 +59,7 @@ const AdminDashboard = () => {
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }),
-        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "in_progress"]),
+        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
         supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStart.toISOString()),
