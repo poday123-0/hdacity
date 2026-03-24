@@ -1,5 +1,6 @@
 import { useEffect, useRef, memo, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { selectShortestRoute } from "@/lib/shortest-route";
 
 interface RideRequestMapProps {
   pickupLat?: number | null;
@@ -100,7 +101,9 @@ const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, sto
         destination: { lat: dropoffLat, lng: dropoffLng },
         waypoints,
         travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => {
+        provideRouteAlternatives: true,
+      }).then((raw: any) => {
+        const result = selectShortestRoute(raw);
         if (mapInstance.current) {
           new g.maps.DirectionsRenderer({
             map: mapInstance.current,

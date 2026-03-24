@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { selectShortestRoute } from "@/lib/shortest-route";
 
 
 
@@ -273,7 +274,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       ds.route({
         origin, destination: { lat: dropoff.lat, lng: dropoff.lng },
         waypoints, travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => dr.setDirections(result))
+        provideRouteAlternatives: true,
+      }).then((raw: any) => dr.setDirections(selectShortestRoute(raw)))
         .catch((err: any) => console.error("Directions error:", err));
     } else if (pickup && dropoff && !userInteractingRef.current) {
       const bounds = new g.maps.LatLngBounds();
@@ -424,7 +426,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
         origin: { lat: trip.pickupLat, lng: trip.pickupLng },
         destination: { lat: trip.dropoffLat, lng: trip.dropoffLng },
         travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => dr.setDirections(result))
+        provideRouteAlternatives: true,
+      }).then((raw: any) => dr.setDirections(selectShortestRoute(raw)))
         .catch(() => {});
 
       // Info window on pickup

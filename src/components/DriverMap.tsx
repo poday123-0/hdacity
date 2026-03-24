@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { selectShortestRoute } from "@/lib/shortest-route";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
@@ -876,12 +877,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         origin,
         destination,
         travelMode: g.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: false,
+        provideRouteAlternatives: true,
         drivingOptions: {
           departureTime: new Date(),
           trafficModel: g.maps.TrafficModel?.BEST_GUESS || "bestguess",
         },
-      }).then((result: any) => {
+      }).then((raw: any) => {
+        const result = selectShortestRoute(raw);
         if (directionsRendererRef.current === dr && routeRequestSeqRef.current === requestSeq) {
           dr.setDirections(result);
           parseNavStepsRef.current(result);
