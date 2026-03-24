@@ -24,8 +24,9 @@ const AdminCompanies = () => {
 
   useEffect(() => { fetchCompanies(); }, [search]);
 
-  const uploadLogo = async (file: File) => {
+  const uploadLogo = async (rawFile: File) => {
     setUploading(true);
+    const file = await compressImage(rawFile);
     const ext = file.name.split(".").pop();
     const path = `company-logos/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("driver-documents").upload(path, file);
