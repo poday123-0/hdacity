@@ -827,7 +827,8 @@ const Dispatch = () => {
     refreshTrips();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await clockOut();
     setIsAuthed(false);
     setDispatcherProfile(null);
     localStorage.removeItem("hda_dispatcher");
