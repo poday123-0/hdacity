@@ -266,8 +266,25 @@ const Dispatch = () => {
     };
   };
 
-  // Clock in a new duty session
+  // Clock in a new duty session (or restore existing active one)
   const clockIn = async (profileId: string) => {
+    // Check for existing active session first
+    const { data: existing } = await supabase
+      .from("dispatch_duty_sessions")
+      .select("id, clock_in")
+      .eq("dispatcher_id", profileId)
+      .is("clock_out", null)
+      .order("clock_in", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existing) {
+      setDutySessionId(existing.id);
+      setDutyClockIn(existing.clock_in);
+      localStorage.setItem("hda_duty_session", JSON.stringify({ id: existing.id, clock_in: existing.clock_in }));
+      return;
+    }
+
     // Get IP via edge function
     let ip = "unknown";
     try {
