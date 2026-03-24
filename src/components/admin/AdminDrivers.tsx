@@ -58,15 +58,25 @@ const AdminDrivers = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [driversRes, banksRes, companiesRes, vtRes, vehiclesRes, settingsRes] = await Promise.all([
-      supabase.from("profiles").select("*").ilike("user_type", "%Driver%").order("created_at", { ascending: false }),
+    // Paginate drivers to avoid 1000-row limit
+    let allDrivers: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data } = await supabase.from("profiles").select("*").ilike("user_type", "%Driver%").order("created_at", { ascending: false }).range(from, from + pageSize - 1);
+      if (!data || data.length === 0) break;
+      allDrivers = allDrivers.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    const [banksRes, companiesRes, vtRes, vehiclesRes, settingsRes] = await Promise.all([
       supabase.from("banks").select("*").eq("is_active", true).order("name"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
       supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("*, vehicle_types(name, image_url)").order("created_at", { ascending: false }),
       supabase.from("system_settings").select("key, value").in("key", ["default_company_id", "blocked_center_codes"]),
     ]);
-    setDrivers(driversRes.data || []);
+    setDrivers(allDrivers);
     setBanks(banksRes.data || []);
     setCompanies(companiesRes.data || []);
     setVehicleTypes(vtRes.data || []);
