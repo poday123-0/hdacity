@@ -8,11 +8,13 @@ Complete step-by-step guide to build and publish the HDA TAXI app to Google Play
 
 1. [Prerequisites](#prerequisites)
 2. [Initial Setup](#initial-setup)
-3. [Custom Notification Sounds](#custom-notification-sounds)
-4. [Android Build & Publish](#android-build--publish)
-5. [iOS Build & Publish](#ios-build--publish)
-6. [Ongoing Updates](#ongoing-updates)
-7. [Troubleshooting](#troubleshooting)
+3. [Android Permissions & Config](#android-permissions--config)
+4. [iOS Permissions & Config](#ios-permissions--config)
+5. [Custom Notification Sounds](#custom-notification-sounds)
+6. [Android Build & Publish](#android-build--publish)
+7. [iOS Build & Publish](#ios-build--publish)
+8. [Ongoing Updates](#ongoing-updates)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -58,128 +60,234 @@ cd hdacity
 npm install
 ```
 
-### 4. Add Native Platforms
+### 4. Build Web Assets
+
+```bash
+npm run build
+```
+
+### 5. Add Native Platforms
 
 ```bash
 npx cap add android
 npx cap add ios
 ```
 
-### 5. Build & Sync
+### 6. Sync
 
 ```bash
-npm run build
 npx cap sync
 ```
 
-### 6. Verify Configuration
+---
 
-Your `capacitor.config.json` should contain:
+## Android Permissions & Config
 
-```json
-{
-  "appId": "app.lovable.2395a37356b54f26bbd1d3b6b03e71bd",
-  "appName": "hdacity",
-  "webDir": "dist",
-  "server": {
-    "url": "https://2395a373-56b5-4f26-bbd1-d3b6b03e71bd.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
-  }
+After running `npx cap add android`, you MUST add the following permissions to `android/app/src/main/AndroidManifest.xml`.
+
+Open the file and add these permissions **inside `<manifest>` but before `<application>`**:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Internet (already present) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Location permissions (required for GPS/maps) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Push Notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Vibration for notifications -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Camera (for QR scanner, profile photos) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Keep screen on during trip -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Foreground service for location tracking -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- Network state -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        ...
+```
+
+### Firebase Config for Push Notifications
+
+1. Go to [Firebase Console](https://console.firebase.google.com/) → Project **hda-taxi**
+2. Go to **Project Settings → General**
+3. Under **Your apps**, click **Add app → Android**
+4. Use package name: `app.lovable.2395a37356b54f26bbd1d3b6b03e71bd`
+5. Download `google-services.json`
+6. Place it in `android/app/google-services.json`
+
+### Add Google Services plugin
+
+In `android/build.gradle` (project-level), add:
+```gradle
+buildscript {
+    dependencies {
+        classpath 'com.google.gms:google-services:4.4.0'
+    }
 }
 ```
 
-> **Important**: The `server.url` enables live hot-reload during development. **Remove the entire `server` block before building a release version** so the app uses the bundled local files.
+In `android/app/build.gradle` (app-level), add at the top:
+```gradle
+apply plugin: 'com.google.gms.google-services'
+```
+
+And add the Firebase dependency:
+```gradle
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-messaging'
+}
+```
+
+### Minimum SDK & Target SDK
+
+In `android/app/build.gradle`, ensure:
+```gradle
+android {
+    compileSdkVersion 34
+    defaultConfig {
+        minSdkVersion 23
+        targetSdkVersion 34
+    }
+}
+```
+
+---
+
+## iOS Permissions & Config
+
+After running `npx cap add ios`, you MUST add usage descriptions to `ios/App/App/Info.plist`.
+
+Open the file and add these entries **inside the top-level `<dict>`**:
+
+```xml
+<!-- Location permissions -->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>HDA TAXI needs your location to find nearby drivers and show your position on the map.</string>
+
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>HDA TAXI needs your location to track your ride and provide accurate ETAs.</string>
+
+<key>NSLocationAlwaysUsageDescription</key>
+<string>HDA TAXI needs background location access to track active trips.</string>
+
+<!-- Camera permission (for QR scanner) -->
+<key>NSCameraUsageDescription</key>
+<string>HDA TAXI needs camera access to scan QR codes and take profile photos.</string>
+
+<!-- Photo library permission -->
+<key>NSPhotoLibraryUsageDescription</key>
+<string>HDA TAXI needs photo library access to upload documents and profile photos.</string>
+```
+
+### Enable Push Notifications in Xcode
+
+1. Open `ios/App/App.xcworkspace` in Xcode
+2. Select the **App** target
+3. Go to **Signing & Capabilities**
+4. Click **+ Capability** → **Push Notifications**
+5. Click **+ Capability** → **Background Modes** → Check **Remote notifications** and **Location updates**
+
+### Firebase Config for iOS Push
+
+1. In Firebase Console → Project Settings → **Add app → iOS**
+2. Use bundle ID: `app.lovable.2395a37356b54f26bbd1d3b6b03e71bd`
+3. Download `GoogleService-Info.plist`
+4. In Xcode, right-click **App** folder → **Add Files to "App"** → select `GoogleService-Info.plist`
+5. Ensure **"Copy items if needed"** and **"Add to targets: App"** are checked
+
+### APNs Key for Firebase
+
+1. Go to [Apple Developer](https://developer.apple.com/account/resources/authkeys/list)
+2. Create a new **Key** with **Apple Push Notifications service (APNs)** enabled
+3. Download the `.p8` file
+4. In Firebase Console → Project Settings → **Cloud Messaging** tab
+5. Under **Apple app configuration**, upload the APNs key
 
 ---
 
 ## Custom Notification Sounds
 
-Custom sounds allow notifications to play admin-uploaded audio even when the app is fully closed.
-
 ### Android Sounds
 
 1. Download your notification sound files (`.mp3` or `.ogg` format)
-2. Place them in:
-   ```
-   android/app/src/main/res/raw/
-   ```
+2. Place them in: `android/app/src/main/res/raw/`
 3. Name them to match categories:
    ```
-   android/app/src/main/res/raw/trip_request.mp3
-   android/app/src/main/res/raw/driver_arrived.mp3
-   android/app/src/main/res/raw/trip_accepted.mp3
-   android/app/src/main/res/raw/trip_started.mp3
-   android/app/src/main/res/raw/trip_completed.mp3
-   android/app/src/main/res/raw/trip_cancelled.mp3
-   android/app/src/main/res/raw/message_received.mp3
+   trip_request.mp3
+   driver_arrived.mp3
+   trip_accepted.mp3
+   trip_completed.mp3
+   trip_cancelled.mp3
+   message_received.mp3
    ```
 
-4. Create notification channels in `android/app/src/main/java/app/lovable/.../MainActivity.java`:
+4. Create notification channels in `android/app/src/main/java/.../MainActivity.java` inside `onCreate`:
 
-   Add this inside the `onCreate` method:
+```java
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.media.AudioAttributes;
+import android.net.Uri;
+import android.os.Build;
 
-   ```java
-   import android.app.NotificationChannel;
-   import android.app.NotificationManager;
-   import android.media.AudioAttributes;
-   import android.net.Uri;
-   import android.os.Build;
+@Override
+public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
 
-   @Override
-   public void onCreate(Bundle savedInstanceState) {
-       super.onCreate(savedInstanceState);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        AudioAttributes audioAttr = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build();
 
-       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-           NotificationManager manager = getSystemService(NotificationManager.class);
-           AudioAttributes audioAttr = new AudioAttributes.Builder()
-               .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-               .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-               .build();
+        NotificationChannel tripChannel = new NotificationChannel(
+            "trip_requests", "Trip Requests", NotificationManager.IMPORTANCE_HIGH);
+        tripChannel.setSound(
+            Uri.parse("android.resource://" + getPackageName() + "/raw/trip_request"), audioAttr);
+        tripChannel.setVibrationPattern(new long[]{0, 300, 100, 300, 100, 300});
+        tripChannel.enableVibration(true);
+        manager.createNotificationChannel(tripChannel);
 
-           // Trip Requests channel (high priority)
-           NotificationChannel tripChannel = new NotificationChannel(
-               "trip_requests", "Trip Requests", NotificationManager.IMPORTANCE_HIGH);
-           tripChannel.setSound(
-               Uri.parse("android.resource://" + getPackageName() + "/raw/trip_request"), audioAttr);
-           tripChannel.setVibrationPattern(new long[]{0, 300, 100, 300, 100, 300});
-           tripChannel.enableVibration(true);
-           manager.createNotificationChannel(tripChannel);
+        NotificationChannel sosChannel = new NotificationChannel(
+            "sos_alerts", "SOS Alerts", NotificationManager.IMPORTANCE_HIGH);
+        sosChannel.setVibrationPattern(new long[]{0, 500, 100, 500, 100, 500});
+        sosChannel.enableVibration(true);
+        manager.createNotificationChannel(sosChannel);
 
-           // SOS Alerts channel
-           NotificationChannel sosChannel = new NotificationChannel(
-               "sos_alerts", "SOS Alerts", NotificationManager.IMPORTANCE_HIGH);
-           sosChannel.setVibrationPattern(new long[]{0, 500, 100, 500, 100, 500});
-           sosChannel.enableVibration(true);
-           manager.createNotificationChannel(sosChannel);
-
-           // General notifications channel
-           NotificationChannel generalChannel = new NotificationChannel(
-               "general", "General", NotificationManager.IMPORTANCE_DEFAULT);
-           generalChannel.setSound(
-               Uri.parse("android.resource://" + getPackageName() + "/raw/message_received"), audioAttr);
-           manager.createNotificationChannel(generalChannel);
-       }
-   }
-   ```
+        NotificationChannel generalChannel = new NotificationChannel(
+            "general", "General", NotificationManager.IMPORTANCE_DEFAULT);
+        generalChannel.setSound(
+            Uri.parse("android.resource://" + getPackageName() + "/raw/message_received"), audioAttr);
+        manager.createNotificationChannel(generalChannel);
+    }
+}
+```
 
 ### iOS Sounds
 
 1. Convert sounds to `.caf` format:
    ```bash
    afconvert trip_request.mp3 trip_request.caf -d ima4 -f caff -v
-   afconvert driver_arrived.mp3 driver_arrived.caf -d ima4 -f caff -v
-   afconvert trip_completed.mp3 trip_completed.caf -d ima4 -f caff -v
-   afconvert trip_cancelled.mp3 trip_cancelled.caf -d ima4 -f caff -v
-   afconvert message_received.mp3 message_received.caf -d ima4 -f caff -v
    ```
-
-2. Add `.caf` files to Xcode:
-   - Open `ios/App/App.xcworkspace` in Xcode
-   - Right-click the **App** folder → **Add Files to "App"**
-   - Select all `.caf` files
-   - Ensure **"Copy items if needed"** and **"Add to targets: App"** are checked
-
-3. The edge function already sends `apns.payload.aps.sound` — just ensure the filename matches (e.g., `trip_request.caf`).
+2. Add `.caf` files to Xcode project under **App** folder
+3. Ensure **"Copy items if needed"** and **"Add to targets: App"** are checked
 
 ---
 
@@ -188,20 +296,24 @@ Custom sounds allow notifications to play admin-uploaded audio even when the app
 ### Development Testing
 
 ```bash
-# Build web assets and sync
 npm run build
 npx cap sync android
-
-# Open in Android Studio
-npx cap open android
-
-# Or run directly on connected device/emulator
 npx cap run android
 ```
 
 ### Release Build
 
-1. **Remove the `server` block** from `capacitor.config.json` (so the app uses bundled files, not the live URL)
+1. **IMPORTANT: Remove the `server` block** from `capacitor.config.json` so the app uses bundled files:
+   ```json
+   {
+     "appId": "app.lovable.2395a37356b54f26bbd1d3b6b03e71bd",
+     "appName": "HDA TAXI",
+     "webDir": "dist",
+     "plugins": { ... },
+     "android": { ... },
+     "ios": { ... }
+   }
+   ```
 
 2. Build:
    ```bash
@@ -214,7 +326,7 @@ npx cap run android
    keytool -genkey -v -keystore hdataxi-release.keystore \
      -alias hdataxi -keyalg RSA -keysize 2048 -validity 10000
    ```
-   > ⚠️ **Keep this keystore file safe!** You need it for every future update. If you lose it, you cannot update your app on Google Play.
+   > ⚠️ **Keep this keystore file safe!** You need it for every future update.
 
 4. **Configure signing** in `android/app/build.gradle`:
    ```gradle
@@ -237,189 +349,120 @@ npx cap run android
    }
    ```
 
-5. **Build AAB** (Android App Bundle — required by Google Play):
+5. **Build AAB** (required by Google Play):
    ```bash
    cd android
    ./gradlew bundleRelease
    ```
    Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
+6. **Build APK** (for direct install / testing):
+   ```bash
+   cd android
+   ./gradlew assembleRelease
+   ```
+   Output: `android/app/build/outputs/apk/release/app-release.apk`
+
 ### Publish to Google Play Store
 
 1. Go to [Google Play Console](https://play.google.com/console)
-2. Click **Create app**
-3. Fill in:
-   - App name: **HDA TAXI**
-   - Default language: **English**
-   - App or Game: **App**
-   - Free or Paid: Choose accordingly
-4. Complete the **Store listing**:
-   - Short description (80 chars max)
-   - Full description (4000 chars max)
-   - Screenshots: At least 2 phone screenshots (min 320px, max 3840px)
-   - Feature graphic: 1024 x 500 px
-   - App icon: 512 x 512 px
-5. Complete **Content rating** questionnaire
-6. Set up **Pricing & distribution**
-7. Go to **Production → Create new release**
-8. Upload the `.aab` file
-9. Add release notes
-10. Click **Review release → Start rollout to production**
-11. Wait for review (typically 1–3 days for first submission)
+2. Click **Create app** → fill in App name: **HDA TAXI**
+3. Complete **Store listing** (screenshots, descriptions, graphics)
+4. Complete **Content rating** questionnaire
+5. Go to **Production → Create new release** → Upload `.aab` file
+6. Click **Review release → Start rollout**
 
 ---
 
 ## iOS Build & Publish
 
-### Prerequisites (Mac only)
-
-```bash
-# Install CocoaPods if not installed
-sudo gem install cocoapods
-
-# Sync iOS project
-npm run build
-npx cap sync ios
-```
-
 ### Development Testing
 
 ```bash
-# Open in Xcode
+npm run build
+npx cap sync ios
 npx cap open ios
-
-# Or run on simulator
-npx cap run ios
 ```
-
-### Configure Xcode Project
-
-1. Open `ios/App/App.xcworkspace` in Xcode
-2. Select the **App** target
-3. Under **Signing & Capabilities**:
-   - Set Team to your Apple Developer account
-   - Set Bundle Identifier: `app.lovable.2395a37356b54f26bbd1d3b6b03e71bd`
-4. Under **General**:
-   - Set Display Name: **HDA TAXI**
-   - Set Version and Build number
-5. Add **Push Notifications** capability:
-   - Click **+ Capability** → **Push Notifications**
-6. Add **Background Modes** capability:
-   - Check **Remote notifications**
 
 ### Release Build
 
 1. **Remove the `server` block** from `capacitor.config.json`
-
 2. Build:
    ```bash
    npm run build
    npx cap sync ios
    ```
-
 3. In Xcode:
-   - Select **Any iOS Device** as the build target
-   - Go to **Product → Archive**
-   - Wait for archive to complete
-   - In the **Organizer** window, click **Distribute App**
-   - Choose **App Store Connect**
-   - Follow the prompts to upload
+   - Select **Any iOS Device** as build target
+   - **Product → Archive**
+   - In Organizer, click **Distribute App → App Store Connect**
 
 ### Publish to Apple App Store
 
 1. Go to [App Store Connect](https://appstoreconnect.apple.com)
 2. Click **My Apps → + (New App)**
-3. Fill in:
-   - Platform: **iOS**
-   - Name: **HDA TAXI**
-   - Primary Language: **English**
-   - Bundle ID: Select from dropdown
-   - SKU: `hdataxi` (any unique string)
-4. Complete the **App Information**:
-   - Privacy Policy URL (required)
-   - Category: **Travel** or **Transportation**
-5. Add **Screenshots** (required sizes):
-   - 6.7" display (iPhone 15 Pro Max): 1290 x 2796 px
-   - 6.5" display (iPhone 14 Plus): 1284 x 2778 px
-   - iPad Pro 12.9": 2048 x 2732 px (if supporting iPad)
-6. Fill in **Description**, **Keywords**, **Support URL**
-7. Under **Build**, select the uploaded build
-8. Complete the **App Review Information**:
-   - Contact info
-   - Demo account credentials (provide a test login)
-   - Notes for reviewer
-9. Click **Submit for Review**
-10. Wait for review (typically 1–2 days)
+3. Fill in app details, screenshots, descriptions
+4. Select the uploaded build
+5. **Submit for Review**
 
 ---
 
 ## Ongoing Updates
 
-After making changes in Lovable, the code auto-syncs to GitHub. To update your native apps:
-
-### Quick Update Workflow
-
 ```bash
-# 1. Pull latest changes
 git pull
-
-# 2. Install any new dependencies
 npm install
-
-# 3. Build web assets
 npm run build
-
-# 4. Sync to native platforms
 npx cap sync
-
-# 5. Test on device
 npx cap run android   # or ios
-
-# 6. Build release (when ready)
-cd android && ./gradlew bundleRelease   # Android
-# Or in Xcode: Product → Archive          # iOS
 ```
 
 ### Version Bumping
 
 **Android** — edit `android/app/build.gradle`:
 ```gradle
-android {
-    defaultConfig {
-        versionCode 2        // Increment for each upload
-        versionName "1.1.0"  // User-visible version
-    }
+defaultConfig {
+    versionCode 2        // Increment for each upload
+    versionName "1.1.0"
 }
 ```
 
-**iOS** — in Xcode under **General**:
-- Version: `1.1.0` (user-visible)
-- Build: `2` (increment for each upload)
+**iOS** — in Xcode under **General** → Version & Build
 
 ---
 
 ## Troubleshooting
 
+### App Keeps Crashing on Launch
+
+| Cause | Fix |
+|-------|-----|
+| Wrong `server.url` in config | Ensure URL matches your Lovable project, or remove `server` block for release |
+| Missing `google-services.json` | Download from Firebase Console and place in `android/app/` |
+| Missing permissions | Add all required permissions to `AndroidManifest.xml` |
+| SDK version mismatch | Set `minSdkVersion 23` and `targetSdkVersion 34` |
+| Missing `dist/` folder | Run `npm run build` before `npx cap sync` |
+
 ### Common Issues
 
 | Issue | Solution |
 |-------|----------|
-| `npx cap sync` fails | Run `npm run build` first — the `dist/` folder must exist |
-| Android build fails with SDK error | Open Android Studio → SDK Manager → Install required SDK |
-| iOS signing error | Ensure your Apple Developer account is configured in Xcode → Preferences → Accounts |
-| Push notifications not working on device | Ensure `google-services.json` (Android) or `GoogleService-Info.plist` (iOS) is added from Firebase Console |
-| App shows blank screen | Make sure you removed the `server` block from `capacitor.config.json` for release builds |
-| Sounds not playing when closed | Verify sound files are in `res/raw/` (Android) or added to Xcode target (iOS) |
+| Blank white screen | Remove `server` block from config for release builds |
+| Location not working | Check permissions in manifest/Info.plist |
+| Push notifications not arriving | Verify Firebase config files are in place |
+| Camera not working | Add camera permission to manifest/Info.plist |
+| App rejected by store | Ensure privacy policy URL is provided |
 
-### Firebase Setup for Native Push
+### Testing Checklist Before Store Submission
 
-1. Go to [Firebase Console](https://console.firebase.google.com/) → Project **hda-taxi**
-2. **Android**: Download `google-services.json` → place in `android/app/`
-3. **iOS**: Download `GoogleService-Info.plist` → add to Xcode project under `ios/App/App/`
-
-### Testing Push Notifications
-
-Use the Firebase Console → Cloud Messaging → Send test message, or use the admin panel's notification feature to test on a real device.
+- [ ] Remove `server` block from `capacitor.config.json`
+- [ ] `npm run build` → `npx cap sync` completed
+- [ ] `google-services.json` (Android) or `GoogleService-Info.plist` (iOS) added
+- [ ] All permissions declared
+- [ ] Tested on real device (not just emulator)
+- [ ] Push notifications working
+- [ ] Location tracking working
+- [ ] App icon and splash screen configured
 
 ---
 
@@ -428,31 +471,28 @@ Use the Firebase Console → Cloud Messaging → Send test message, or use the a
 ### Google Play Store
 - [ ] App icon: 512 x 512 px PNG
 - [ ] Feature graphic: 1024 x 500 px
-- [ ] Phone screenshots: Min 2, recommended 8 (16:9 or 9:16)
+- [ ] Phone screenshots: Min 2 (16:9 or 9:16)
 - [ ] Short description (80 chars)
 - [ ] Full description (4000 chars)
 - [ ] Privacy Policy URL
-- [ ] Content rating questionnaire completed
 
 ### Apple App Store
-- [ ] App icon: 1024 x 1024 px (no transparency, no rounded corners)
+- [ ] App icon: 1024 x 1024 px
 - [ ] 6.7" screenshots: 1290 x 2796 px
 - [ ] 6.5" screenshots: 1284 x 2778 px
-- [ ] iPad screenshots (if supporting iPad)
 - [ ] Description, keywords, support URL
 - [ ] Privacy Policy URL
 - [ ] Demo account for app review
-- [ ] App Review notes
 
 ---
 
 ## Important Notes
 
-- **Never commit your keystore password** to Git. Use environment variables or a local properties file.
-- **Keep your keystore file backed up** — losing it means you can never update your Android app.
-- **Test on real devices** before submitting to stores — emulators don't fully test push notifications.
-- **For development/testing**, keep the `server` block in `capacitor.config.json` to use hot-reload from Lovable's preview.
-- **For production/release builds**, always remove the `server` block so the app uses bundled local files.
+- **Never commit your keystore password** to Git
+- **Keep your keystore file backed up** — losing it means you can never update your Android app
+- **Test on real devices** before submitting to stores
+- **For development/testing**, keep the `server` block to use hot-reload from Lovable
+- **For production/release**, ALWAYS remove the `server` block
 
 ---
 
