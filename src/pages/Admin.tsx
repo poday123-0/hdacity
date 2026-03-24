@@ -91,6 +91,7 @@ const navGroups: NavGroup[] = [
       { id: "trips", label: "Trips", icon: MapPin },
       { id: "locations", label: "Service Areas", icon: Navigation },
       { id: "named_locations", label: "Named Locations", icon: MapPin },
+      { id: "duty_hours", label: "Duty Hours", icon: Clock },
       { id: "lost_items", label: "Lost Items", icon: PackageX },
       { id: "sos_history", label: "SOS Alerts", icon: Siren },
       { id: "notifications", label: "Notifications", icon: BellRing },
