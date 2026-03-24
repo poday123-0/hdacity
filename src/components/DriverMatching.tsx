@@ -475,7 +475,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 >
                   {distanceKm !== null ? distanceKm : "..."}
                 </motion.span>
-                <span className="text-[9px] text-muted-foreground mt-0.5">km left</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">{tripStatus === "in_progress" ? "km left" : "km away"}</span>
               </motion.div>
 
               {/* Speed */}
