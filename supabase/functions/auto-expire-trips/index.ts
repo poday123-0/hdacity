@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
       .update({ status: "completed", completed_at: nowISO })
       .in("status", ["accepted", "started"])
       .eq("dispatch_type", "operator")
-      .lt("created_at", oneHourAgo)
+      .lt("created_at", thirtyMinAgo)
       .select("id, driver_id");
 
     // Free up drivers from auto-completed trips
