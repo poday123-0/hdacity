@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy, Clock,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
