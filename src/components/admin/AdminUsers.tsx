@@ -61,11 +61,11 @@ const AdminUsers = () => {
     const { data, error } = await supabase.functions.invoke("lookup-profile", {
       body: { phone_number: addPhone },
     });
-    if (error || !data || data.error) {
+    if (error || !data || data.error || !data.found || !data.profile) {
       setLookedUpProfile(null);
       toast({ title: "No user found", description: "No registered user with this phone number.", variant: "destructive" });
     } else {
-      setLookedUpProfile(data);
+      setLookedUpProfile(data.profile);
     }
     setLookingUp(false);
   };
