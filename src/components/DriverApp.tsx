@@ -12,6 +12,7 @@ import DriverWallet from "@/components/DriverWallet";
 import DriverCompleteScreen from "@/components/DriverCompleteScreen";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/image-compress";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
 import {
@@ -1591,10 +1592,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !userProfile?.id) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile || !userProfile?.id) return;
 
     setUploading(uploadTarget);
+    const file = await compressImage(rawFile);
     const ext = file.name.split(".").pop();
     const path = `${userProfile.id}/${uploadTarget}-${Date.now()}.${ext}`;
 
