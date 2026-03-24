@@ -3199,7 +3199,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </button>
               </div>
           </motion.div>
-          </motion.div>
         </motion.div>
       }
 
