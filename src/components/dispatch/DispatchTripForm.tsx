@@ -144,19 +144,35 @@ const DispatchTripForm = ({
         setSurcharges(_locationsCache.surcharges);
         setServiceLocations(_locationsCache.serviceLocations);
         setNamedLocations(_locationsCache.namedLocations);
+        setRecentBookings(_locationsCache.recentBookings);
         return;
       }
-      const [fzRes, scRes, slRes, nlRes] = await Promise.all([
+      const [fzRes, scRes, slRes, nlRes, rbRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
         supabase.from("named_locations").select("id, name, address, lat, lng, suggested_by_type").eq("is_active", true).eq("status", "approved"),
+        supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
       ]);
+      // Deduplicate recent booking addresses
+      const seen = new Set<string>();
+      const bookingLocs: any[] = [];
+      for (const t of rbRes.data || []) {
+        if (t.pickup_address && t.pickup_lat && t.pickup_lng) {
+          const key = t.pickup_address.trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.pickup_address, lat: t.pickup_lat, lng: t.pickup_lng }); }
+        }
+        if (t.dropoff_address && t.dropoff_lat && t.dropoff_lng) {
+          const key = t.dropoff_address.trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
+        }
+      }
       const cache = {
         fareZones: fzRes.data || [],
         surcharges: scRes.data || [],
         serviceLocations: slRes.data || [],
         namedLocations: nlRes.data || [],
+        recentBookings: bookingLocs,
       };
       _locationsCache = cache;
       _locationsCacheTs = Date.now();
@@ -164,6 +180,7 @@ const DispatchTripForm = ({
       setSurcharges(cache.surcharges);
       setServiceLocations(cache.serviceLocations);
       setNamedLocations(cache.namedLocations);
+      setRecentBookings(cache.recentBookings);
     };
     load();
   }, []);
