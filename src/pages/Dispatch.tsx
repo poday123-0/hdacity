@@ -957,6 +957,12 @@ const Dispatch = () => {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {dutyElapsed && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success/10 border border-success/20">
+              <Clock className="w-3 h-3 text-success" />
+              <span className="text-[11px] font-mono font-bold text-success tabular-nums">{dutyElapsed}</span>
+            </div>
+          )}
           <button
             onClick={toggleTheme}
             className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -966,8 +972,16 @@ const Dispatch = () => {
           <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
             {dispatcherProfile?.first_name} {dispatcherProfile?.last_name}
           </span>
-          <button onClick={handleLogout} className="text-xs text-muted-foreground hover:text-destructive font-medium">
-            Logout
+          <button
+            onClick={async () => {
+              await clockOut();
+              handleLogout();
+            }}
+            title="Clock out & logout"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive font-medium px-2 py-1 rounded-lg hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Clock Out</span>
           </button>
         </div>
       </header>
