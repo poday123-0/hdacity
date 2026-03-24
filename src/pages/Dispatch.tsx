@@ -187,6 +187,7 @@ const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboa
   { id: "notifications", label: "Notifications", icon: BellRing },
   { id: "banks", label: "Banks", icon: Building2 },
   { id: "companies", label: "Companies", icon: Building },
+  { id: "duty_hours", label: "Duty Hours", icon: Clock },
 ];
 
 const Dispatch = () => {
