@@ -83,6 +83,7 @@ import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import { stopAllSounds, playTrackedSound, unlockAudioPool, stopHeartbeat } from "@/lib/sound-manager";
 import RideTypesTab from "@/components/RideTypesTab";
 import SuggestPlace from "@/components/SuggestPlace";
+import AnimatedTimer from "./AnimatedTimer";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
@@ -251,6 +252,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [blockCountdown, setBlockCountdown] = useState<string>("");
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const activeVehicleTypeIdRef = useRef<string | null>(null);
+  const [driverPhaseElapsed, setDriverPhaseElapsed] = useState(0);
+  const [driverTripElapsed, setDriverTripElapsed] = useState(0);
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
     if (sessionKickedRef.current) return;
@@ -1382,6 +1385,44 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (data?.value && typeof data.value === "string") setPassengerMapIconUrl(data.value);
     });
   }, []);
+
+  // Driver phase elapsed timer (waiting at pickup / heading time)
+  useEffect(() => {
+    if (!currentTrip?.id || driverTripPhase === "in_progress") { setDriverPhaseElapsed(0); return; }
+    let timer: ReturnType<typeof setInterval>;
+    const init = async () => {
+      const { data } = await supabase.from("trips").select("accepted_at").eq("id", currentTrip.id).single();
+      if (data?.accepted_at) {
+        const t = new Date(data.accepted_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setDriverPhaseElapsed(calc());
+        timer = setInterval(() => setDriverPhaseElapsed(calc()), 1000);
+      } else {
+        timer = setInterval(() => setDriverPhaseElapsed(p => p + 1), 1000);
+      }
+    };
+    init();
+    return () => { if (timer) clearInterval(timer); };
+  }, [currentTrip?.id, driverTripPhase]);
+
+  // Driver trip elapsed timer (from started_at)
+  useEffect(() => {
+    if (!currentTrip?.id || driverTripPhase !== "in_progress") { setDriverTripElapsed(0); return; }
+    let timer: ReturnType<typeof setInterval>;
+    const init = async () => {
+      const { data } = await supabase.from("trips").select("started_at").eq("id", currentTrip.id).single();
+      if (data?.started_at) {
+        const t = new Date(data.started_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setDriverTripElapsed(calc());
+        timer = setInterval(() => setDriverTripElapsed(calc()), 1000);
+      } else {
+        timer = setInterval(() => setDriverTripElapsed(p => p + 1), 1000);
+      }
+    };
+    init();
+    return () => { if (timer) clearInterval(timer); };
+  }, [currentTrip?.id, driverTripPhase]);
 
   // Lightweight stats-only refresh (called periodically + after trip completion)
   const refreshDriverStats = useCallback(async () => {
@@ -3210,7 +3251,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
         <ChevronUp className="w-4 h-4" />
         <span className="text-xs font-bold">{driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup" : "Trip in progress"}</span>
-        <span className="text-xs font-bold opacity-70">{(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} MVR</span>
+        <AnimatedTimer seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed} variant="badge" showIcon={false} className="bg-primary-foreground/20 text-primary-foreground [&_span]:text-primary-foreground" />
       </button>
       }
 
@@ -3251,9 +3292,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <ChevronDown className="w-3.5 h-3.5 text-primary-foreground" />
               </button>
             </div>
+            {/* Animated Timer Bar */}
+            <div className="px-3 pb-2 flex justify-center">
+              <AnimatedTimer
+                seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed}
+                label={driverTripPhase === "in_progress" ? "Trip" : driverTripPhase === "arrived" ? "Waiting" : "En route"}
+                variant="badge"
+                className="bg-primary-foreground/15 text-primary-foreground [&_span]:text-primary-foreground [&_svg]:text-primary-foreground/70"
+              />
+            </div>
           </div>
 
-          {/* Expandable content */}
           <AnimatePresence>
             {!navPanelMinimized &&
           <motion.div

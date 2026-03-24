@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
 import TripChat from "./TripChat";
+import AnimatedTimer from "./AnimatedTimer";
 
 interface BankAccountInfo {
   id: string;
@@ -72,6 +73,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripElapsed, setTripElapsed] = useState(0);
+  const [acceptedElapsed, setAcceptedElapsed] = useState(0);
   const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
@@ -218,6 +220,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     initTimer();
     return () => clearInterval(timer);
   }, [tripStatus, tripId]);
+
+  // Accepted elapsed timer - time since driver accepted
+  useEffect(() => {
+    if (!tripId || tripStatus === "in_progress") return;
+    if (tripStatus !== "accepted" && tripStatus !== "arrived") return;
+    let timer: ReturnType<typeof setInterval>;
+    const initTimer = async () => {
+      const { data } = await supabase.from("trips").select("accepted_at").eq("id", tripId).single();
+      if (data?.accepted_at) {
+        const acceptedAt = new Date(data.accepted_at).getTime();
+        const calcElapsed = () => Math.max(0, Math.floor((Date.now() - acceptedAt) / 1000));
+        setAcceptedElapsed(calcElapsed());
+        timer = setInterval(() => setAcceptedElapsed(calcElapsed()), 1000);
+      } else {
+        timer = setInterval(() => setAcceptedElapsed(prev => prev + 1), 1000);
+      }
+    };
+    initTimer();
+    return () => clearInterval(timer);
+  }, [tripStatus, tripId]);
+
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -370,7 +393,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             className="rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20"
           >
             {/* Status Header */}
-            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2 flex-wrap">
               <motion.div
                 animate={{ rotate: tripStatus === "in_progress" ? [0, 15, -15, 0] : 0 }}
                 transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
@@ -379,11 +402,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               </motion.div>
               <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
               {tripStatus === "in_progress" && (
-                <span className="ml-auto flex items-center gap-1.5 text-xs font-mono text-muted-foreground bg-surface px-2.5 py-0.5 rounded-full">
-                  <Clock className="w-3 h-3" />
-                  <span>Trip time:</span>
-                  <span className="font-bold text-foreground">{formatElapsed(tripElapsed)}</span>
-                </span>
+                <AnimatedTimer seconds={tripElapsed} label="Trip" variant="badge" className="ml-auto" />
+              )}
+              {(tripStatus === "accepted" || tripStatus === "arrived") && (
+                <AnimatedTimer seconds={acceptedElapsed} label={tripStatus === "arrived" ? "Waiting" : ""} variant="badge" className="ml-auto" />
               )}
             </div>
 
