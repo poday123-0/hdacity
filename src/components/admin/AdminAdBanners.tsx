@@ -11,6 +11,7 @@ const AdminAdBanners = () => {
   const [savingRotation, setSavingRotation] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [linkUrl, setLinkUrl] = useState("");
+  const [targetAudience, setTargetAudience] = useState("both");
 
   const fetchAll = async () => {
     setLoading(true);
@@ -40,8 +41,10 @@ const AdminAdBanners = () => {
       image_url: urlData.publicUrl,
       link_url: linkUrl || "",
       sort_order: maxOrder,
+      target_audience: targetAudience,
     });
     setLinkUrl("");
+    setTargetAudience("both");
     setUploading(false);
     toast({ title: "Banner added ✅" });
     fetchAll();
@@ -117,6 +120,12 @@ const AdminAdBanners = () => {
             onChange={e => setLinkUrl(e.target.value)}
             className="flex-1 min-w-[200px] px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
+          <select value={targetAudience} onChange={e => setTargetAudience(e.target.value)}
+            className="px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="both">Both</option>
+            <option value="passengers">Passengers Only</option>
+            <option value="drivers">Drivers Only</option>
+          </select>
           <input ref={fileRef} type="file" accept="image/*,.gif" className="hidden"
             onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); e.target.value = ""; }}
           />
@@ -144,7 +153,7 @@ const AdminAdBanners = () => {
                   </a>
                 ) : "No link"}
               </p>
-              <p className="text-[10px] text-muted-foreground">Order: {b.sort_order}</p>
+              <p className="text-[10px] text-muted-foreground">Order: {b.sort_order} · {b.target_audience === "both" ? "All" : b.target_audience === "passengers" ? "Passengers" : "Drivers"}</p>
             </div>
             <div className="flex items-center gap-1">
               <button onClick={() => moveOrder(b.id, "up")} disabled={idx === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>

@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface AdBannerProps {
   className?: string;
+  audience?: "passengers" | "drivers";
 }
 
-const AdBanner = ({ className = "" }: AdBannerProps) => {
+const AdBanner = ({ className = "", audience = "passengers" }: AdBannerProps) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [rotationSeconds, setRotationSeconds] = useState(5);
@@ -17,7 +18,7 @@ const AdBanner = ({ className = "" }: AdBannerProps) => {
         supabase.from("ad_banners").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("system_settings").select("value").eq("key", "ad_banner_rotation_seconds").maybeSingle(),
       ]);
-      setBanners(ads || []);
+      setBanners((ads || []).filter((a: any) => a.target_audience === "both" || a.target_audience === audience));
       if (settings?.value) {
         const v = typeof settings.value === "number" ? settings.value : parseInt(String(settings.value));
         if (v > 0) setRotationSeconds(v);
