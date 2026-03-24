@@ -455,7 +455,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                   {tripStatus === "arrived" ? "—" : etaMinutes ? `${etaMinutes}` : "..."}
                 </motion.span>
                 <span className="text-[9px] text-muted-foreground mt-0.5">
-                  {tripStatus === "arrived" ? "Arrived" : "min ETA"}
+                  {tripStatus === "arrived" ? "Arrived" : tripStatus === "accepted" ? "to pickup" : "min ETA"}
                 </span>
               </motion.div>
 
