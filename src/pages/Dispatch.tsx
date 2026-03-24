@@ -114,6 +114,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminLocations from "@/components/admin/AdminLocations";
 import AdminBanks from "@/components/admin/AdminBanks";
 import AdminCompanies from "@/components/admin/AdminCompanies";
+import AdminDutyHours from "@/components/admin/AdminDutyHours";
 
 interface OnlineDriver {
   driver_id: string;
