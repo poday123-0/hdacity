@@ -300,6 +300,34 @@ const Dispatch = () => {
     localStorage.removeItem("hda_duty_session");
   };
 
+  // Fetch personal duty history
+  const fetchDutyHistory = async () => {
+    if (!dispatcherProfile?.id) return;
+    setDutyHistoryLoading(true);
+    const now = new Date();
+    let startDate: Date;
+    if (dutyHistoryFilter === "today") {
+      startDate = startOfDay(now);
+    } else if (dutyHistoryFilter === "week") {
+      startDate = startOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      startDate = startOfMonth(now);
+    }
+    const { data } = await supabase
+      .from("dispatch_duty_sessions")
+      .select("*")
+      .eq("dispatcher_id", dispatcherProfile.id)
+      .gte("clock_in", startDate.toISOString())
+      .order("clock_in", { ascending: false })
+      .limit(100);
+    setDutyHistory(data || []);
+    setDutyHistoryLoading(false);
+  };
+
+  useEffect(() => {
+    if (showDutyHistory) fetchDutyHistory();
+  }, [showDutyHistory, dutyHistoryFilter]);
+
   // Duty timer tick
   useEffect(() => {
     if (!dutyClockIn) return;
