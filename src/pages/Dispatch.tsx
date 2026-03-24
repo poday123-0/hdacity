@@ -1201,29 +1201,6 @@ const Dispatch = () => {
                                   {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span>{" "}
                                   {(t.dropoff_address || "").split(",")[0]}
                                 </span>
-                                {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
-                                  <>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setTrackingTripId(t.id);
-                                      }}
-                                      className="text-[9px] font-bold text-primary hover:text-primary/90 shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors"
-                                      title="Track on Live Map"
-                                    >
-                                      <Navigation className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDispatchCancel(t.id);
-                                      }}
-                                      className="text-[9px] font-bold text-warning hover:text-warning/90 shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors"
-                                    >
-                                      CANCEL
-                                    </button>
-                                  </>
-                                )}
                                 {!t.is_loss && t.status !== "cancelled" && (
                                   <button
                                     onClick={(e) => {
