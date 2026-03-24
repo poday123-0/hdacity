@@ -908,9 +908,10 @@ const Dispatch = () => {
                               <div><span className="text-muted-foreground">From:</span> <span className="text-foreground">{t.pickup_address || "—"}</span></div>
                               <div><span className="text-muted-foreground">To:</span> <span className="text-foreground">{t.dropoff_address || "—"}</span></div>
                               <div><span className="text-muted-foreground">Customer Phone:</span> <span className="text-foreground">{t.customer_phone || "—"}</span></div>
+                              <div><span className="text-muted-foreground">Vehicle:</span> <span className="text-foreground">{(() => {
                               <div><span className="text-muted-foreground">Driver:</span> <span className="text-foreground">{t.driver ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}` : "—"}</span></div>
                               <div><span className="text-muted-foreground">Driver Phone:</span> <span className="text-foreground">{t.driver ? (t.driver as any).phone_number || "—" : "—"}</span></div>
-                              <div><span className="text-muted-foreground">Vehicle:</span> <span className="text-foreground">{(() => {
+                              
                                 const assigned = getAssignedVehicleDetails(t);
                                 const vehicleText = [assigned.color, assigned.plateNumber].filter(Boolean).join(" • ");
                                 return assigned.centerCode ? `${assigned.centerCode}${vehicleText ? ` • ${vehicleText}` : ""}` : "—";
