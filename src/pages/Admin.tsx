@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy, Clock,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -35,8 +35,9 @@ import AdminDeviceTokens from "@/components/admin/AdminDeviceTokens";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
 import AdminSMS from "@/components/admin/AdminSMS";
 import AdminCompetitions from "@/components/admin/AdminCompetitions";
+import AdminDutyHours from "@/components/admin/AdminDutyHours";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "settings";
 
 type NavGroup = {
   label: string;
@@ -90,6 +91,7 @@ const navGroups: NavGroup[] = [
       { id: "trips", label: "Trips", icon: MapPin },
       { id: "locations", label: "Service Areas", icon: Navigation },
       { id: "named_locations", label: "Named Locations", icon: MapPin },
+      { id: "duty_hours", label: "Duty Hours", icon: Clock },
       { id: "lost_items", label: "Lost Items", icon: PackageX },
       { id: "sos_history", label: "SOS Alerts", icon: Siren },
       { id: "notifications", label: "Notifications", icon: BellRing },
@@ -392,6 +394,7 @@ const Admin = () => {
           {activeTab === "notifications" && <AdminNotifications />}
           {activeTab === "sms" && <AdminSMS />}
           {activeTab === "device_tokens" && <AdminDeviceTokens />}
+          {activeTab === "duty_hours" && <AdminDutyHours />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
