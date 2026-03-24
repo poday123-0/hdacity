@@ -443,7 +443,7 @@ const DispatchTripForm = ({
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
 
-    // 1. Instant local matches from DB
+    // 1. Instant local matches from DB + recent bookings
     const localMatches: NominatimResult[] = [
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
@@ -466,6 +466,21 @@ const DispatchTripForm = ({
             lon: String(nl.lng),
             name: nl.name,
             tag: areaName,
+          };
+        }),
+      ...recentBookings
+        .filter((rb: any) => rb.name.toLowerCase().includes(q))
+        .slice(0, 8)
+        .map((rb: any, i: number) => {
+          const areaName = findNearestServiceAreaName(Number(rb.lat), Number(rb.lng));
+          return {
+            place_id: 600000 + i,
+            display_name: `${rb.name} — ${areaName}`,
+            lat: String(rb.lat),
+            lon: String(rb.lng),
+            name: rb.name,
+            tag: areaName,
+            road: "Recent",
           };
         }),
     ];
