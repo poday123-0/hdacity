@@ -179,24 +179,52 @@ const AdminDriverInvoice = () => {
             showList={showDriverList} setShowList={setShowDriverList} list={driverProfiles} />
 
           {/* Bill To (Passenger) */}
-          <PersonPicker label="Bill To (Passenger)" search={passengerSearch} setSearch={setPassengerSearch}
-            selected={selectedPassenger} setSelected={setSelectedPassenger}
-            showList={showPassengerList} setShowList={setShowPassengerList} list={passengerProfiles} />
-
-          {/* Or manual passenger */}
-          {!selectedPassenger && (
-            <div className="bg-card rounded-xl border border-border p-4 space-y-3">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Or Enter Passenger Manually</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input value={manualPassengerName} onChange={e => setManualPassengerName(e.target.value)}
+          <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Bill To (Passenger / Customer)</label>
+            {/* Search existing */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input value={passengerSearch}
+                onChange={e => { setPassengerSearch(e.target.value); setShowPassengerList(true); }}
+                onFocus={() => setShowPassengerList(true)}
+                placeholder="Search existing passenger..."
+                className="w-full pl-9 pr-3 py-2.5 bg-surface rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              {showPassengerList && passengerSearch && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                  {filterList(passengerProfiles, passengerSearch).slice(0, 20).map((d: any) => (
+                    <button key={d.id} onClick={() => {
+                      setSelectedPassenger(d);
+                      setManualPassengerName(`${d.first_name} ${d.last_name}`);
+                      setManualPassengerPhone(d.phone_number || "");
+                      setShowPassengerList(false);
+                      setPassengerSearch("");
+                    }} className="w-full text-left px-3 py-2 hover:bg-surface transition-colors">
+                      <p className="text-xs font-semibold text-foreground">{d.first_name} {d.last_name}</p>
+                      <p className="text-[10px] text-muted-foreground">+960 {d.phone_number}</p>
+                    </button>
+                  ))}
+                  {filterList(passengerProfiles, passengerSearch).length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-3">No results</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Editable name + phone (always visible) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-muted-foreground font-medium">Name</label>
+                <input value={manualPassengerName} onChange={e => { setManualPassengerName(e.target.value); setSelectedPassenger(null); }}
                   placeholder="Customer name"
-                  className="bg-surface rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                <input value={manualPassengerPhone} onChange={e => setManualPassengerPhone(e.target.value)}
+                  className="w-full bg-surface rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground font-medium">Phone</label>
+                <input value={manualPassengerPhone} onChange={e => { setManualPassengerPhone(e.target.value); setSelectedPassenger(null); }}
                   placeholder="Phone number"
-                  className="bg-surface rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  className="w-full bg-surface rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30" />
               </div>
             </div>
-          )}
+          </div>
 
           {/* Trip details */}
           <div className="bg-card rounded-xl border border-border p-4 space-y-3">
