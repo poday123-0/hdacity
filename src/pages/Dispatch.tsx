@@ -93,7 +93,7 @@ function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
   }, [acceptedAt]);
   return (
     <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tabular-nums ${phase === "done" ? "bg-success/20 text-success" : phase === "autocomplete" ? "bg-blue-500/15 text-blue-500" : "bg-orange-500/15 text-orange-500"}`} title={phase === "autocomplete" ? "Auto-completes when timer ends" : phase === "done" ? "Completed" : "Assignment timer"}>
-      {phase === "done" ? <CheckCircle2 className="w-3 h-3" /> : remaining}
+      {phase === "done" ? <CheckCircle className="w-3 h-3" /> : remaining}
     </span>
   );
 }
