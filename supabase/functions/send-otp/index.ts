@@ -38,6 +38,15 @@ serve(async (req) => {
     }
 
     const fullNumber = phone_number.startsWith("960") ? phone_number : `960${phone_number}`;
+
+    // Demo/test credential bypass for app store review — skip SMS
+    if (fullNumber === "9607000000") {
+      return new Response(
+        JSON.stringify({ success: true, message: "Demo mode: use code 123456" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const code = generateCode();
 
     // Store the OTP code in database (with retry for transient SSL errors)
