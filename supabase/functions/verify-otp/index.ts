@@ -27,6 +27,14 @@ serve(async (req) => {
 
     const fullNumber = phone_number.startsWith("960") ? phone_number : `960${phone_number}`;
 
+    // Demo/test credential bypass for app store review
+    if (fullNumber === "9607000000" && code === "123456") {
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Find the latest unexpired, unverified OTP for this number
     const { data: otpRecord, error: dbError } = await supabase
       .from("otp_codes")
