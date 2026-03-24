@@ -1460,7 +1460,7 @@ const Dispatch = () => {
                                   {driver.first_name}
                                 </span>
                               )}
-                              {t.status === "requested" && (
+                              {(t.status === "requested" || t.status === "accepted" || t.status === "started") && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
