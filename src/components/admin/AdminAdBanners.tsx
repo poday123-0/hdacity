@@ -120,6 +120,12 @@ const AdminAdBanners = () => {
             onChange={e => setLinkUrl(e.target.value)}
             className="flex-1 min-w-[200px] px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
+          <select value={targetAudience} onChange={e => setTargetAudience(e.target.value)}
+            className="px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="both">Both</option>
+            <option value="passengers">Passengers Only</option>
+            <option value="drivers">Drivers Only</option>
+          </select>
           <input ref={fileRef} type="file" accept="image/*,.gif" className="hidden"
             onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); e.target.value = ""; }}
           />
