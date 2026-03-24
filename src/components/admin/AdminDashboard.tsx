@@ -68,9 +68,9 @@ const AdminDashboard = () => {
         supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStart.toISOString()),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayStart.toISOString()),
-        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayStart.toISOString()),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStartUTC.toISOString()),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayStartUTC.toISOString()),
+        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayStartUTC.toISOString()),
       ]);
 
       const revenue = (todayRevenueData.data || []).reduce((sum: number, t: any) => sum + (t.actual_fare || 0), 0);
