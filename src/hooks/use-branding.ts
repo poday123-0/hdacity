@@ -29,6 +29,7 @@ const fetchBranding = (): Promise<Branding> => {
         faviconUrl: (typeof map.system_favicon_url === "string" ? map.system_favicon_url : null),
         appName: (typeof map.system_app_name === "string" ? map.system_app_name : null),
         pwaAppIconUrl: (typeof map.pwa_app_icon_url === "string" ? map.pwa_app_icon_url : null),
+        _loaded: true,
       };
       return cachedBranding;
     })();
