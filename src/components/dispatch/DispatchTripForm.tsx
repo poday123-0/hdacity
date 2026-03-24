@@ -1025,25 +1025,25 @@ const DispatchTripForm = ({
                 }
 
                 const addEntry = (entry: CenterCodeIndexEntry) => {
-                  // Priority: 1) Loss + no trips today, 2) No trips today, 3) Loss + trips today, 4) Rest
-                  // Then sort by least recent trip date/time (all-time)
-                  const getPriority = (e: CenterCodeIndexEntry) => {
-                    const hasLoss = !!e.has_loss;
-                    const tripsToday = e.today_trips || 0;
-                    if (hasLoss && tripsToday === 0) return 0;
-                    if (!hasLoss && tripsToday === 0) return 1;
-                    if (hasLoss && tripsToday > 0) return 2;
-                    return 3;
-                  };
+                  // Priority: Loss vehicles always on top, then sort by last trip date ascending (oldest first)
+                  // Vehicles with no trip data go to bottom
                   const updated = [...centerCodeResults, entry].sort((a, b) => {
-                    const pa = getPriority(a);
-                    const pb = getPriority(b);
-                    if (pa !== pb) return pa - pb;
-                    // Within same priority, least recent trip first (all-time)
-                    if (!a.last_trip_date && !b.last_trip_date) return 0;
-                    if (!a.last_trip_date) return -1;
-                    if (!b.last_trip_date) return 1;
-                    return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+                    try {
+                      // First priority: Vehicles with LOSS always on top
+                      if (a.has_loss && !b.has_loss) return -1;
+                      if (!a.has_loss && b.has_loss) return 1;
+
+                      // Second priority: Sort by last trip date/time - oldest first
+                      if (!a.last_trip_date && !b.last_trip_date) return 0;
+                      if (!a.last_trip_date) return 1; // No trip data goes to bottom
+                      if (!b.last_trip_date) return -1; // No trip data goes to bottom
+
+                      // Sort ascending (oldest/least recent first)
+                      return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+                    } catch (error) {
+                      console.error("Vehicle sorting error:", error);
+                      return 0;
+                    }
                   });
 
                   setCenterCodeResults(updated);
