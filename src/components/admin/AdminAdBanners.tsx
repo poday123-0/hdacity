@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, Image, Loader2, ArrowUp, ArrowDown, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Image, Loader2, ArrowUp, ArrowDown, ExternalLink, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
 
 const AdminAdBanners = () => {
   const [banners, setBanners] = useState<any[]>([]);
@@ -12,6 +12,9 @@ const AdminAdBanners = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [linkUrl, setLinkUrl] = useState("");
   const [targetAudience, setTargetAudience] = useState("both");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLink, setEditLink] = useState("");
+  const [editAudience, setEditAudience] = useState("both");
 
   const fetchAll = async () => {
     setLoading(true);
@@ -72,6 +75,20 @@ const AdminAdBanners = () => {
       supabase.from("ad_banners").update({ sort_order: b.sort_order }).eq("id", a.id),
       supabase.from("ad_banners").update({ sort_order: a.sort_order }).eq("id", b.id),
     ]);
+    fetchAll();
+  };
+
+  const startEdit = (b: any) => {
+    setEditingId(b.id);
+    setEditLink(b.link_url || "");
+    setEditAudience(b.target_audience || "both");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    await supabase.from("ad_banners").update({ link_url: editLink, target_audience: editAudience }).eq("id", editingId);
+    setEditingId(null);
+    toast({ title: "Banner updated ✅" });
     fetchAll();
   };
 
@@ -141,27 +158,48 @@ const AdminAdBanners = () => {
       {/* Banner list */}
       <div className="space-y-2">
         {banners.map((b, idx) => (
-          <div key={b.id} className={`bg-card border border-border rounded-xl p-3 flex items-center gap-3 ${!b.is_active ? "opacity-50" : ""}`}>
-            <div className="w-[120px] h-[44px] rounded-lg overflow-hidden border border-border bg-muted shrink-0">
-              <img src={b.image_url} alt="Banner" className="w-full h-full object-cover" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground truncate">
-                {b.link_url ? (
-                  <a href={b.link_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-                    <ExternalLink className="w-3 h-3" /> {b.link_url}
-                  </a>
-                ) : "No link"}
-              </p>
-              <p className="text-[10px] text-muted-foreground">Order: {b.sort_order} · {b.target_audience === "both" ? "All" : b.target_audience === "passengers" ? "Passengers" : "Drivers"}</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <button onClick={() => moveOrder(b.id, "up")} disabled={idx === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>
-              <button onClick={() => moveOrder(b.id, "down")} disabled={idx === banners.length - 1} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5" /></button>
-              <button onClick={() => toggleActive(b.id, b.is_active)} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface">
-                {b.is_active ? <Eye className="w-3.5 h-3.5 text-primary" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-              <button onClick={() => handleDelete(b.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></button>
+          <div key={b.id} className={`bg-card border border-border rounded-xl p-3 space-y-2 ${!b.is_active ? "opacity-50" : ""}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-[120px] h-[44px] rounded-lg overflow-hidden border border-border bg-muted shrink-0">
+                <img src={b.image_url} alt="Banner" className="w-full h-full object-cover" />
+              </div>
+              {editingId === b.id ? (
+                <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                  <input
+                    type="text" placeholder="Link URL" value={editLink}
+                    onChange={e => setEditLink(e.target.value)}
+                    className="flex-1 min-w-[150px] px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <select value={editAudience} onChange={e => setEditAudience(e.target.value)}
+                    className="px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="both">Both</option>
+                    <option value="passengers">Passengers</option>
+                    <option value="drivers">Drivers</option>
+                  </select>
+                  <button onClick={saveEdit} className="w-7 h-7 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10"><Check className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setEditingId(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ) : (
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground truncate">
+                    {b.link_url ? (
+                      <a href={b.link_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                        <ExternalLink className="w-3 h-3" /> {b.link_url}
+                      </a>
+                    ) : "No link"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Order: {b.sort_order} · {b.target_audience === "both" ? "All" : b.target_audience === "passengers" ? "Passengers" : "Drivers"}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <button onClick={() => startEdit(b)} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => moveOrder(b.id, "up")} disabled={idx === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>
+                <button onClick={() => moveOrder(b.id, "down")} disabled={idx === banners.length - 1} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5" /></button>
+                <button onClick={() => toggleActive(b.id, b.is_active)} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface">
+                  {b.is_active ? <Eye className="w-3.5 h-3.5 text-primary" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+                <button onClick={() => handleDelete(b.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
             </div>
           </div>
         ))}
