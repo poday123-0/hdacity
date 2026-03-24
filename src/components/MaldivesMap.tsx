@@ -146,9 +146,15 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       }
     });
 
-    // Detect user interaction to stop auto-panning
+    // Detect user interaction to stop auto-panning/zooming
+    let programmaticAction = false;
+    const origFitBounds = map.fitBounds.bind(map);
+    map.fitBounds = (...args: any[]) => { programmaticAction = true; origFitBounds(...args); setTimeout(() => { programmaticAction = false; }, 500); };
+    const origPanTo = map.panTo.bind(map);
+    map.panTo = (...args: any[]) => { programmaticAction = true; origPanTo(...args); setTimeout(() => { programmaticAction = false; }, 500); };
+    
     map.addListener("dragstart", () => { userInteractingRef.current = true; });
-    map.addListener("zoom_changed", () => { userInteractingRef.current = true; });
+    map.addListener("zoom_changed", () => { if (!programmaticAction) userInteractingRef.current = true; });
 
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
