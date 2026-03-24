@@ -69,6 +69,7 @@ import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
+import AdBanner from "./AdBanner";
 import DriverLeaderboard from "./DriverLeaderboard";
 
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
@@ -2342,6 +2343,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           userLng={driverLng}
           mapInstance={driverMapInstance}
         />
+      )}
+      {/* Ad Banner for drivers */}
+      {screen === "online" && (
+        <div className="absolute top-16 left-3 right-3 z-[600] pointer-events-auto">
+          <AdBanner />
+        </div>
       )}
 
       {/* Map action buttons — right side, positioned for thumb reach */}

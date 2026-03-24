@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import MaldivesMap from "@/components/MaldivesMap";
 import WatermelonMapOverlay from "@/components/WatermelonMapOverlay";
+import AdBanner from "@/components/AdBanner";
 import SplashScreen from "@/components/SplashScreen";
 import OnboardingScreens, { ONBOARDING_KEY } from "@/components/OnboardingScreens";
 import AuthScreen, { UserProfile } from "@/components/AuthScreen";
@@ -1298,6 +1299,11 @@ const Index = () => {
             userLng={pickup?.lng ?? null}
             mapInstance={passengerMapInstance}
           />
+        )}
+        {passengerScreen === "home" && (
+          <div className="absolute top-16 left-3 right-3 z-[600] pointer-events-auto">
+            <AdBanner />
+          </div>
         )}
       </div>
 
