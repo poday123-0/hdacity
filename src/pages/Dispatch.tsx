@@ -2610,5 +2610,6 @@ const Dispatch = () => {
       </Dialog>
     </div>
   );
+};
 
 export default Dispatch;
