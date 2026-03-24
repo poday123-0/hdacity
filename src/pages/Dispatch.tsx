@@ -1191,8 +1191,8 @@ const Dispatch = () => {
                         type="text"
                         value={bookingSearch}
                         onChange={(e) => setBookingSearch(e.target.value)}
-                        placeholder="Search..."
-                        className="h-6 w-28 px-2 text-[10px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="Code, plate, from, to..."
+                        className="h-6 w-36 px-2 text-[10px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
                   </div>
