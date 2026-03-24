@@ -27,8 +27,17 @@ const AdminPassengers = () => {
 
   const fetchPassengers = async () => {
     setLoading(true);
-    const { data } = await supabase.from("profiles").select("*").eq("user_type", "Rider").order("created_at", { ascending: false });
-    setPassengers(data || []);
+    let all: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data } = await supabase.from("profiles").select("*").eq("user_type", "Rider").order("created_at", { ascending: false }).range(from, from + pageSize - 1);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    setPassengers(all);
     setLoading(false);
   };
 
