@@ -681,8 +681,18 @@ const DispatchTripForm = ({
       if (error) throw error;
 
       if (broadcastData) {
-        const [driversRes, timeoutRes] = broadcastData as any;
-        broadcastDriversCache = driversRes?.data || [];
+        const [driversRes, timeoutRes, dvtRes] = broadcastData as any;
+        let allDrivers = driversRes?.data || [];
+        
+        // Filter drivers by vehicle type eligibility
+        if (selectedVehicleType && allDrivers.length > 0) {
+          const dvtDriverIds = new Set((dvtRes?.data || []).map((r: any) => r.driver_id));
+          allDrivers = allDrivers.filter((d: any) => 
+            d.vehicle_type_id === selectedVehicleType || dvtDriverIds.has(d.driver_id)
+          );
+        }
+        
+        broadcastDriversCache = allDrivers;
         if (timeoutRes?.data?.value) {
           const secs = typeof timeoutRes.data.value === "number" ? timeoutRes.data.value : parseInt(String(timeoutRes.data.value)) || 60;
           broadcastTimeoutMsCache = secs * 1000;
