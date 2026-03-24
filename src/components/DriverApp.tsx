@@ -4629,6 +4629,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
 
               <div className="p-4 pt-2 border-t border-border space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowProfile(false); window.open("/terms", "_blank"); }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-muted text-muted-foreground font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition-transform"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Terms
+                  </button>
+                  <button
+                    onClick={() => { setShowProfile(false); window.open("/privacy", "_blank"); }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-muted text-muted-foreground font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition-transform"
+                  >
+                    <Shield className="w-3.5 h-3.5" />
+                    Privacy
+                  </button>
+                </div>
                 {onLogout &&
               <button
                 onClick={() => {setShowProfile(false);onLogout();}}
