@@ -74,7 +74,7 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 };
 
 // Local cache for locations data shared across form instances
-let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[] } | null = null;
+let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[]; recentBookings: any[] } | null = null;
 let _locationsCacheTs = 0;
 const LOC_CACHE_TTL = 120_000; // 2 min
 
