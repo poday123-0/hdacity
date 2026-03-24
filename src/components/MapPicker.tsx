@@ -157,42 +157,23 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [center.lat, center.lng]);
 
-  // Fetch nearby places — debounce longer to reduce API calls
+  // Use pre-loaded named/service locations for nearby chips instead of deprecated PlacesService
   useEffect(() => {
-    if (nearbyRef.current) clearTimeout(nearbyRef.current);
-    nearbyRef.current = setTimeout(() => {
-      const g = (window as any).google;
-      if (!g?.maps?.places?.PlacesService) {
-        setNearbyPlaces([]);
-        return;
-      }
-      const mapDiv = document.createElement("div");
-      const service = new g.maps.places.PlacesService(mapDiv);
-      service.nearbySearch(
-        { location: new g.maps.LatLng(center.lat, center.lng), radius: 80 },
-        (results: any[], status: string) => {
-          if (status !== "OK" || !results?.length) {
-            setNearbyPlaces([]);
-            return;
-          }
-          const places: NearbyPlace[] = [];
-          for (const r of results) {
-            if (!r.name || !r.geometry?.location) continue;
-            if (r.name === placeName) continue;
-            places.push({
-              name: r.name,
-              vicinity: r.vicinity || "",
-              lat: r.geometry.location.lat(),
-              lng: r.geometry.location.lng(),
-            });
-            if (places.length >= 3) break;
-          }
-          setNearbyPlaces(places);
-        }
-      );
-    }, 700);
-    return () => { if (nearbyRef.current) clearTimeout(nearbyRef.current); };
-  }, [center.lat, center.lng, placeName]);
+    if (!searchLocations.length) { setNearbyPlaces([]); return; }
+    const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      const R = 6371000;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+    const nearby = searchLocations
+      .map(l => ({ name: l.name, vicinity: l.address || "", lat: Number(l.lat), lng: Number(l.lng), dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
+      .filter(l => l.dist <= 300 && l.name !== placeName)
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+    setNearbyPlaces(nearby);
+  }, [center.lat, center.lng, searchLocations, placeName]);
 
   const handleRecenter = () => {
     if (!navigator.geolocation || !mapInstance.current) return;
