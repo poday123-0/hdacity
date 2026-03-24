@@ -1592,10 +1592,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !userProfile?.id) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile || !userProfile?.id) return;
 
     setUploading(uploadTarget);
+    const file = await compressImage(rawFile);
     const ext = file.name.split(".").pop();
     const path = `${userProfile.id}/${uploadTarget}-${Date.now()}.${ext}`;
 
