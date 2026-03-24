@@ -34,8 +34,6 @@ const TripInvoice = ({ trip, driverProfile, passengerProfile, onClose }: TripInv
       }
     };
     load();
-    };
-    load();
   }, [trip]);
 
   const handleExport = async () => {
