@@ -504,7 +504,7 @@ const DispatchTripForm = ({
           mergeResults(googleResults);
         }).catch(() => {});
       }
-    }, 300);
+    }, 150);
 
     return () => { googleAbort.abort(); };
   }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName, isWithinServiceArea]);
