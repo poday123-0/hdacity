@@ -795,10 +795,11 @@ const DispatchTripForm = ({
                   key={vt.id}
                   tabIndex={-1}
                   onClick={() => setSelectedVehicleType(vt.id)}
-                  className={`px-2 py-1 rounded text-[9px] font-medium transition-all border ${
+                  className={`px-2 py-1 rounded text-[9px] font-medium transition-all border flex items-center gap-1 ${
                     selectedVehicleType === vt.id ? "bg-primary text-primary-foreground border-primary" : i === vehicleTypeFocusIndex ? "bg-muted border-primary/50" : "bg-surface border-border text-foreground hover:bg-muted"
                   }`}
                 >
+                  {vt.image_url && <img src={vt.image_url} alt="" className="w-4 h-3 object-contain" />}
                   {vt.name}
                 </button>
               ))}
