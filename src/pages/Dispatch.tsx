@@ -1751,6 +1751,16 @@ const Dispatch = () => {
             <AdminCompanies />
           </div>
         )}
+        {activeTab === "vehicles" && (
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            <AdminVehicles />
+          </div>
+        )}
+        {activeTab === "named_locations" && (
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            <AdminNamedLocations />
+          </div>
+        )}
       </div>
 
       {/* Chat history modal */}
