@@ -7,7 +7,7 @@ interface AdBannerProps {
   audience?: "passengers" | "drivers";
 }
 
-const AdBanner = ({ className = "" }: AdBannerProps) => {
+const AdBanner = ({ className = "", audience = "passengers" }: AdBannerProps) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [rotationSeconds, setRotationSeconds] = useState(5);
