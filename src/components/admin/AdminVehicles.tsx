@@ -60,16 +60,18 @@ const AdminVehicles = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [v, vt, d, c] = await Promise.all([
+    const [v, vt, d, c, ol] = await Promise.all([
       supabase.from("vehicles").select("*, vehicle_types(name), profiles!vehicles_driver_id_fkey(first_name, last_name, company_id, company_name)").order("created_at", { ascending: false }),
       supabase.from("vehicle_types").select("*").eq("is_active", true),
       supabase.from("profiles").select("id, first_name, last_name, phone_number, country_code").ilike("user_type", "%Driver%"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
+      supabase.from("driver_locations").select("driver_id").eq("is_online", true),
     ]);
     setVehicles(v.data || []);
     setVehicleTypes(vt.data || []);
     setDrivers(d.data || []);
     setCompanies(c.data || []);
+    setOnlineDriverIds(new Set((ol.data || []).map((d: any) => d.driver_id)));
     setLoading(false);
   };
 
