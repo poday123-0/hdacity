@@ -7,6 +7,7 @@ interface Branding {
   faviconUrl: string | null;
   appName: string | null;
   pwaAppIconUrl: string | null;
+  _loaded: boolean;
 }
 
 let cachedBranding: Branding | null = null;
@@ -28,6 +29,7 @@ const fetchBranding = (): Promise<Branding> => {
         faviconUrl: (typeof map.system_favicon_url === "string" ? map.system_favicon_url : null),
         appName: (typeof map.system_app_name === "string" ? map.system_app_name : null),
         pwaAppIconUrl: (typeof map.pwa_app_icon_url === "string" ? map.pwa_app_icon_url : null),
+        _loaded: true,
       };
       return cachedBranding;
     })();
@@ -45,7 +47,7 @@ export const invalidateBranding = () => {
 };
 
 export const useBranding = () => {
-  const [branding, setBranding] = useState<Branding>(cachedBranding || { logoUrl: null, shareImageUrl: null, faviconUrl: null, appName: null, pwaAppIconUrl: null });
+  const [branding, setBranding] = useState<Branding>(cachedBranding || { logoUrl: null, shareImageUrl: null, faviconUrl: null, appName: null, pwaAppIconUrl: null, _loaded: false });
 
   useEffect(() => {
     fetchBranding().then(setBranding);
