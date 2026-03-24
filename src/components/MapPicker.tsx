@@ -42,7 +42,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   const [mapReady, setMapReady] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const nearbyRef = useRef<ReturnType<typeof setTimeout>>();
+  const nearbyRef = useRef<ReturnType<typeof setTimeout>>(); // kept for potential future use
   const { isLoaded } = useGoogleMaps();
   const [isPanning, setIsPanning] = useState(false);
 
