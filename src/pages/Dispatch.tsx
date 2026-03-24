@@ -203,6 +203,10 @@ const Dispatch = () => {
   const [dutySessionId, setDutySessionId] = useState<string | null>(null);
   const [dutyClockIn, setDutyClockIn] = useState<string | null>(null);
   const [dutyElapsed, setDutyElapsed] = useState("");
+  const [showDutyHistory, setShowDutyHistory] = useState(false);
+  const [dutyHistoryFilter, setDutyHistoryFilter] = useState<"today" | "week" | "month">("today");
+  const [dutyHistory, setDutyHistory] = useState<any[]>([]);
+  const [dutyHistoryLoading, setDutyHistoryLoading] = useState(false);
 
   // Login state
   const [phone, setPhone] = useState("");
