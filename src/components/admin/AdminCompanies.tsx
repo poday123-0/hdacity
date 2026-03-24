@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, Plus, Pencil, Trash2, X, Upload, Building } from "lucide-react";
+import { compressImage } from "@/lib/image-compress";
 
 const AdminCompanies = () => {
   const [companies, setCompanies] = useState<any[]>([]);
