@@ -1201,16 +1201,6 @@ const Dispatch = () => {
                                   {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span>{" "}
                                   {(t.dropoff_address || "").split(",")[0]}
                                 </span>
-                                {!t.is_loss && (t.status === "accepted" || t.status === "started") && t.driver && (
-                                  <a
-                                    href={`tel:${(t.driver as any).phone_number}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="text-[9px] font-bold text-success shrink-0 px-1.5 py-0.5 rounded bg-success/15 hover:bg-success/25 transition-colors"
-                                    title={`Call ${(t.driver as any).first_name}`}
-                                  >
-                                    <Phone className="w-3 h-3" />
-                                  </a>
-                                )}
                                 {!t.is_loss && t.status !== "completed" && t.status !== "cancelled" && (
                                   <>
                                     <button
