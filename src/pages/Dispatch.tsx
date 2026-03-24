@@ -383,7 +383,19 @@ const Dispatch = () => {
 
     refresh();
     const interval = window.setInterval(refresh, 30_000);
-    return () => window.clearInterval(interval);
+
+    // Realtime: auto-refresh center code index when trips change
+    const ccChannel = supabase
+      .channel("dispatch-center-code-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
+        refresh();
+      })
+      .subscribe();
+
+    return () => {
+      window.clearInterval(interval);
+      supabase.removeChannel(ccChannel);
+    };
   }, [isAuthed]);
 
   // Load vehicle types, drivers, recent trips
@@ -1262,8 +1274,6 @@ const Dispatch = () => {
 
                                   <div className="col-span-2 flex items-center justify-between pt-1">
                                     <div className="flex items-center gap-2">
-                                      {t.driver && (t.status === "accepted" || t.status === "started") && (
-                                      )}
                                       {t.status !== "cancelled" && !t.is_loss && (
                                         <button
                                           onClick={(e) => {
@@ -1462,7 +1472,7 @@ const Dispatch = () => {
                                   {driver.first_name}
                                 </span>
                               )}
-                              {t.status === "requested" && (
+                              {(t.status === "requested" || t.status === "accepted" || t.status === "started") && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();

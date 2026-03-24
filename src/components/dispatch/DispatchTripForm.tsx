@@ -1300,10 +1300,58 @@ const DispatchTripForm = ({
 
       {/* Submit */}
       {!collapsed && (
-        <div className="p-3 pt-0">
-          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || (dispatchMethod === "broadcast" && !customerPhone)} className={`w-full font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm ${dispatchMethod === "broadcast" ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground"}`}>
+        <div className="p-3 pt-0 flex gap-2">
+          <button onClick={handleSubmit} disabled={submitting || !pickup || !dropoff || (dispatchMethod === "broadcast" && !customerPhone)} className={`flex-1 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 text-sm ${dispatchMethod === "broadcast" ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground"}`}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> {dispatchMethod === "broadcast" ? "Send to App" : "Assign"}</>}
           </button>
+          {dispatchMethod === "specific" && (
+            <button
+              onClick={async () => {
+                if (!pickup || !dropoff) {
+                  toast({ title: "Select pickup and dropoff", variant: "destructive" });
+                  return;
+                }
+                setSubmitting(true);
+                try {
+                  const tripPayload: any = {
+                    pickup_address: pickup.address,
+                    pickup_lat: pickup.lat,
+                    pickup_lng: pickup.lng,
+                    dropoff_address: dropoff.address,
+                    dropoff_lat: dropoff.lat,
+                    dropoff_lng: dropoff.lng,
+                    passenger_count: passengerCount,
+                    luggage_count: luggageCount,
+                    customer_name: "Dispatch",
+                    customer_phone: customerPhone.trim(),
+                    created_by: dispatcherProfile?.id || null,
+                    dispatch_type: "operator",
+                    vehicle_type_id: selectedVehicleType || null,
+                    status: "cancelled",
+                    cancel_reason: "No vehicle available",
+                    cancelled_at: new Date().toISOString(),
+                    fare_type: "distance",
+                    estimated_fare: estimatedFare || null,
+                    booking_notes: (centerCodeResults.length > 0) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : "No Vehicle",
+                    is_loss: true,
+                  };
+                  const { error } = await supabase.from("trips").insert(tripPayload);
+                  if (error) throw error;
+                  toast({ title: "Recorded as No Vehicle", description: "Booking saved as loss" });
+                  clearForm();
+                  onTripCreated();
+                } catch (err: any) {
+                  toast({ title: "Error", description: err.message, variant: "destructive" });
+                }
+                setSubmitting(false);
+              }}
+              disabled={submitting || !pickup || !dropoff}
+              className="px-3 py-3 rounded-xl font-semibold text-sm bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <ShieldOff className="w-4 h-4" />
+              No Vehicle
+            </button>
+          )}
         </div>
       )}
 
