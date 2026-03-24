@@ -1402,7 +1402,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (userProfile?.id) {
         const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason").eq("id", userProfile.id).single();
-        const radius = data?.trip_radius_km ?? defaultRadius;
+        // Use admin default if driver hasn't customized (still at DB default of 10)
+        const dbDefault = 10;
+        const driverRadius = data?.trip_radius_km;
+        const radius = (driverRadius === dbDefault || driverRadius == null) ? defaultRadius : driverRadius;
         setTripRadius(radius);
         tripRadiusRef.current = radius;
         setAvatarUrl(data?.avatar_url || null);
