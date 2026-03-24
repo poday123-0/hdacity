@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Loader2, X, Check, Crosshair, Navigation, Search } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { reverseGeocodeLocation } from "@/lib/geocode";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NearbyPlace {
   name: string;
@@ -44,6 +45,39 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   const nearbyRef = useRef<ReturnType<typeof setTimeout>>();
   const { isLoaded } = useGoogleMaps();
   const [isPanning, setIsPanning] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number; tag?: string }[]>([]);
+  const [searchLocations, setSearchLocations] = useState<any[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Load named + service locations once
+  useEffect(() => {
+    const load = async () => {
+      const [nlRes, slRes] = await Promise.all([
+        supabase.from("named_locations").select("name, lat, lng, address").eq("is_active", true).eq("status", "approved"),
+        supabase.from("service_locations").select("name, lat, lng").eq("is_active", true),
+      ]);
+      setSearchLocations([
+        ...(slRes.data || []).map((s: any) => ({ ...s, tag: "Area" })),
+        ...(nlRes.data || []).map((n: any) => ({ ...n, tag: "Place" })),
+      ]);
+    };
+    load();
+  }, []);
+
+  // Filter search results
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    const q = searchQuery.toLowerCase();
+    const matches = searchLocations
+      .filter(l => l.name.toLowerCase().includes(q) || (l.address || "").toLowerCase().includes(q))
+      .slice(0, 8)
+      .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
+    setSearchResults(matches);
+  }, [searchQuery, searchLocations]);
 
   // Get user location on mount
   useEffect(() => {
@@ -210,7 +244,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
           </div>
         </div>
 
-        {/* Top bar — close + instruction */}
+        {/* Top bar — close + search */}
         <div className="absolute top-0 left-0 right-0 z-20 p-3 pt-safe">
           <div className="flex items-center gap-2">
             <button
@@ -219,9 +253,46 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
             >
               <X className="w-5 h-5 text-foreground" />
             </button>
-            <div className="flex-1 bg-card/95 backdrop-blur-lg border border-border rounded-full shadow-lg px-4 py-2.5 flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <p className="text-xs text-muted-foreground">Drag map to set location</p>
+            <div className="flex-1 relative">
+              <div className="bg-card/95 backdrop-blur-lg border border-border rounded-full shadow-lg px-4 py-2.5 flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search locations..."
+                  className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
+                />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="shrink-0">
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+              {searchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-card/95 backdrop-blur-lg border border-border rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                  {searchResults.map((r, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        if (mapInstance.current) {
+                          mapInstance.current.panTo({ lat: r.lat, lng: r.lng });
+                          mapInstance.current.setZoom(17);
+                          setCenter({ lat: r.lat, lng: r.lng });
+                          setPlaceName(r.name);
+                        }
+                        setSearchQuery("");
+                        setSearchResults([]);
+                      }}
+                      className="flex items-center gap-2.5 w-full px-3.5 py-2.5 hover:bg-primary/5 text-left transition-colors border-b border-border/50 last:border-0"
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="text-xs font-medium text-foreground truncate flex-1">{r.name}</span>
+                      {r.tag && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">{r.tag}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
