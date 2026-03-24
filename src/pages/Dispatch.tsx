@@ -61,27 +61,39 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-// 5-minute countdown timer for operator-assigned trips
+// 5-minute countdown timer for operator-assigned trips, then 30-min auto-complete countdown
 function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
   const [remaining, setRemaining] = useState("");
+  const [phase, setPhase] = useState<"countdown" | "autocomplete" | "done">("countdown");
   useEffect(() => {
     const update = () => {
       const elapsed = Date.now() - new Date(acceptedAt).getTime();
-      const totalSec = 5 * 60; // 5 minutes
-      const left = Math.max(0, totalSec - Math.floor(elapsed / 1000));
-      const m = Math.floor(left / 60);
-      const s = left % 60;
-      setRemaining(left > 0 ? `${m}:${s.toString().padStart(2, "0")}` : "✓");
+      const fiveMin = 5 * 60 * 1000;
+      const thirtyMin = 30 * 60 * 1000;
+      if (elapsed < fiveMin) {
+        const left = Math.max(0, 5 * 60 - Math.floor(elapsed / 1000));
+        const m = Math.floor(left / 60);
+        const s = left % 60;
+        setRemaining(`${m}:${s.toString().padStart(2, "0")}`);
+        setPhase("countdown");
+      } else if (elapsed < thirtyMin) {
+        const left = Math.max(0, 30 * 60 - Math.floor(elapsed / 1000));
+        const m = Math.floor(left / 60);
+        const s = left % 60;
+        setRemaining(`${m}:${s.toString().padStart(2, "0")}`);
+        setPhase("autocomplete");
+      } else {
+        setRemaining("");
+        setPhase("done");
+      }
     };
     update();
     const iv = setInterval(update, 1000);
     return () => clearInterval(iv);
   }, [acceptedAt]);
-  const elapsed = Date.now() - new Date(acceptedAt).getTime();
-  const done = elapsed >= 5 * 60 * 1000;
   return (
-    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tabular-nums ${done ? "bg-success/20 text-success" : "bg-orange-500/15 text-orange-500"}`}>
-      {remaining}
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tabular-nums ${phase === "done" ? "bg-success/20 text-success" : phase === "autocomplete" ? "bg-blue-500/15 text-blue-500" : "bg-orange-500/15 text-orange-500"}`} title={phase === "autocomplete" ? "Auto-completes when timer ends" : phase === "done" ? "Completed" : "Assignment timer"}>
+      {phase === "done" ? <CheckCircle2 className="w-3 h-3" /> : remaining}
     </span>
   );
 }
