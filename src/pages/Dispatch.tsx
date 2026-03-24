@@ -266,8 +266,25 @@ const Dispatch = () => {
     };
   };
 
-  // Clock in a new duty session
+  // Clock in a new duty session (or restore existing active one)
   const clockIn = async (profileId: string) => {
+    // Check for existing active session first
+    const { data: existing } = await supabase
+      .from("dispatch_duty_sessions")
+      .select("id, clock_in")
+      .eq("dispatcher_id", profileId)
+      .is("clock_out", null)
+      .order("clock_in", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existing) {
+      setDutySessionId(existing.id);
+      setDutyClockIn(existing.clock_in);
+      localStorage.setItem("hda_duty_session", JSON.stringify({ id: existing.id, clock_in: existing.clock_in }));
+      return;
+    }
+
     // Get IP via edge function
     let ip = "unknown";
     try {
@@ -860,7 +877,7 @@ const Dispatch = () => {
   };
 
   const handleLogout = async () => {
-    await clockOut();
+    // Don't clock out on logout — duty session persists until explicit clock out
     setIsAuthed(false);
     setDispatcherProfile(null);
     localStorage.removeItem("hda_dispatcher");
@@ -1008,16 +1025,24 @@ const Dispatch = () => {
           <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
             {dispatcherProfile?.first_name} {dispatcherProfile?.last_name}
           </span>
+          {dutySessionId && (
+            <button
+              onClick={async () => {
+                await clockOut();
+              }}
+              title="Clock out (end duty session)"
+              className="flex items-center gap-1 text-xs text-warning hover:text-warning font-medium px-2 py-1 rounded-lg hover:bg-warning/10 transition-colors"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clock Out</span>
+            </button>
+          )}
           <button
-            onClick={async () => {
-              await clockOut();
-              handleLogout();
-            }}
-            title="Clock out & logout"
+            onClick={handleLogout}
+            title="Logout"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive font-medium px-2 py-1 rounded-lg hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Clock Out</span>
           </button>
         </div>
       </header>
