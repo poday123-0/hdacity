@@ -1870,6 +1870,11 @@ const Dispatch = () => {
             <AdminNamedLocations />
           </div>
         )}
+        {activeTab === "duty_hours" && (
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            <AdminDutyHours />
+          </div>
+        )}
       </div>
 
       {/* Chat history modal */}
