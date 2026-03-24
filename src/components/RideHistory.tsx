@@ -35,6 +35,7 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [chatTripId, setChatTripId] = useState<string | null>(null);
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  const [invoiceTrip, setInvoiceTrip] = useState<TripRecord | null>(null);
 
   useEffect(() => {
     const fetchTrips = async () => {
