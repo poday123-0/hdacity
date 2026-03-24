@@ -52,8 +52,14 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const todayStart = new Date();
+      // Use Maldives timezone (UTC+5) for "today" calculations
+      const now = new Date();
+      const maldivesOffset = 5 * 60; // UTC+5 in minutes
+      const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
+      const todayStart = new Date(maldivesNow);
       todayStart.setHours(0, 0, 0, 0);
+      // Convert back to UTC for the query
+      const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
 
       const [drivers, vehicles, trips, activeTrips, passengers, onlineDrivers, completedToday, cancelledToday, todayRevenueData] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
@@ -62,9 +68,9 @@ const AdminDashboard = () => {
         supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStart.toISOString()),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayStart.toISOString()),
-        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayStart.toISOString()),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayStartUTC.toISOString()),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayStartUTC.toISOString()),
+        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayStartUTC.toISOString()),
       ]);
 
       const revenue = (todayRevenueData.data || []).reduce((sum: number, t: any) => sum + (t.actual_fare || 0), 0);
