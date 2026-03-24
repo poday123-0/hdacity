@@ -37,8 +37,9 @@ import AdminSMS from "@/components/admin/AdminSMS";
 import AdminCompetitions from "@/components/admin/AdminCompetitions";
 import AdminDutyHours from "@/components/admin/AdminDutyHours";
 import AdminAdBanners from "@/components/admin/AdminAdBanners";
+import AdminDriverInvoice from "@/components/admin/AdminDriverInvoice";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "settings";
 
 type NavGroup = {
   label: string;
@@ -73,6 +74,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "fares", label: "Fares", icon: DollarSign },
       { id: "billing", label: "Billing", icon: Receipt },
+      { id: "driver_invoices", label: "Driver Invoices", icon: Receipt },
       { id: "wallets", label: "Wallets", icon: Wallet },
       { id: "topup_cards", label: "Topup Cards", icon: CreditCard },
       { id: "banks", label: "Banks", icon: Building2 },
@@ -398,6 +400,7 @@ const Admin = () => {
           {activeTab === "device_tokens" && <AdminDeviceTokens />}
           {activeTab === "duty_hours" && <AdminDutyHours />}
           {activeTab === "ad_banners" && <AdminAdBanners />}
+          {activeTab === "driver_invoices" && <AdminDriverInvoice />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
