@@ -30,6 +30,7 @@ import {
   Search,
   CalendarIcon,
   Send,
+  Copy,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
@@ -1219,22 +1220,23 @@ const Dispatch = () => {
                               </div>
                               {expandedTripId === `booking-${t.id}` && (
                                 <div className="px-2.5 pb-2 pt-1 border-t border-border text-[10px]">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const assigned = getAssignedVehicleDetails(t);
-                                      const vehicleInfo = assigned.centerCode
-                                        ? `${assigned.centerCode}${assigned.color ? ` • ${assigned.color}` : ""}${assigned.plateNumber ? ` • ${assigned.plateNumber}` : ""}`
-                                        : "—";
-                                      const text = `From: ${t.pickup_address || "—"}\nTo: ${t.dropoff_address || "—"}\nCustomer Phone: ${t.customer_phone || "—"}\nVehicle: ${vehicleInfo}`;
-                                      navigator.clipboard.writeText(text);
-                                      toast({ title: "Copied to clipboard!" });
-                                    }}
-                                    className="mb-1.5 text-[9px] font-medium text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    📋 Copy Details
-                                  </button>
-                                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 relative">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const assigned = getAssignedVehicleDetails(t);
+                                        const vehicleInfo = assigned.centerCode
+                                          ? `${assigned.centerCode}${assigned.color ? ` • ${assigned.color}` : ""}${assigned.plateNumber ? ` • ${assigned.plateNumber}` : ""}`
+                                          : "—";
+                                        const text = `From: ${t.pickup_address || "—"}\nTo: ${t.dropoff_address || "—"}\nCustomer Phone: ${t.customer_phone || "—"}\nVehicle: ${vehicleInfo}`;
+                                        navigator.clipboard.writeText(text);
+                                        toast({ title: "Copied!" });
+                                      }}
+                                      className="absolute top-0 right-0 p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                                      title="Copy details"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </button>
                                   <div>
                                     <span className="text-muted-foreground">From:</span>{" "}
                                     <span className="text-foreground">{t.pickup_address || "—"}</span>
