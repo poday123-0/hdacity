@@ -117,6 +117,9 @@ Open the file and add these permissions **inside `<manifest>` but before `<appli
     <!-- Network state -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Full-screen intent for heads-up trip notifications on lock screen -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
     <application
         ...
 ```
