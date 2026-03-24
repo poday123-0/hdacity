@@ -394,7 +394,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             className="rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20"
           >
             {/* Status Header */}
-            <div className="px-4 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+            <div className="px-4 pt-4 pb-1 flex items-center gap-2">
               <motion.div
                 animate={{ rotate: tripStatus === "in_progress" ? [0, 15, -15, 0] : 0 }}
                 transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
@@ -402,11 +402,14 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 <StatusIcon className={`w-5 h-5 ${status.color}`} />
               </motion.div>
               <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
+            </div>
+            {/* Timer row */}
+            <div className="px-4 pb-2 flex justify-center">
               {tripStatus === "in_progress" && (
-                <AnimatedTimer seconds={tripElapsed} label="Trip" variant="badge" className="ml-auto" />
+                <AnimatedTimer seconds={tripElapsed} label="Trip time" variant="default" />
               )}
               {(tripStatus === "accepted" || tripStatus === "arrived") && (
-                <AnimatedTimer seconds={acceptedElapsed} label={tripStatus === "arrived" ? "Waiting" : ""} variant="badge" className="ml-auto" />
+                <AnimatedTimer seconds={acceptedElapsed} label={tripStatus === "arrived" ? "Driver waiting" : "Since accepted"} variant="default" />
               )}
             </div>
 
