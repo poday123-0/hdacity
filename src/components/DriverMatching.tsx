@@ -74,6 +74,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripElapsed, setTripElapsed] = useState(0);
   const [acceptedElapsed, setAcceptedElapsed] = useState(0);
+  const [arrivedElapsed, setArrivedElapsed] = useState(0);
   const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
@@ -222,23 +223,30 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     return () => clearInterval(timer);
   }, [tripStatus, tripId]);
 
-  // Accepted elapsed timer - time since driver accepted
+  // Accepted elapsed timer - time since driver accepted (only for "accepted" phase)
   useEffect(() => {
-    if (!tripId || tripStatus === "in_progress") return;
-    if (tripStatus !== "accepted" && tripStatus !== "arrived") return;
+    if (!tripId || tripStatus !== "accepted") { setAcceptedElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("accepted_at").eq("id", tripId).single();
       if (data?.accepted_at) {
-        const acceptedAt = new Date(data.accepted_at).getTime();
-        const calcElapsed = () => Math.max(0, Math.floor((Date.now() - acceptedAt) / 1000));
-        setAcceptedElapsed(calcElapsed());
-        timer = setInterval(() => setAcceptedElapsed(calcElapsed()), 1000);
+        const t = new Date(data.accepted_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setAcceptedElapsed(calc());
+        timer = setInterval(() => setAcceptedElapsed(calc()), 1000);
       } else {
         timer = setInterval(() => setAcceptedElapsed(prev => prev + 1), 1000);
       }
     };
     initTimer();
+    return () => clearInterval(timer);
+  }, [tripStatus, tripId]);
+
+  // Arrived waiting timer - starts from 0 when driver arrives
+  useEffect(() => {
+    if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); return; }
+    setArrivedElapsed(0);
+    const timer = setInterval(() => setArrivedElapsed(prev => prev + 1), 1000);
     return () => clearInterval(timer);
   }, [tripStatus, tripId]);
 
@@ -408,8 +416,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               {tripStatus === "in_progress" && (
                 <AnimatedTimer seconds={tripElapsed} label="Trip time" variant="default" />
               )}
-              {(tripStatus === "accepted" || tripStatus === "arrived") && (
-                <AnimatedTimer seconds={acceptedElapsed} label={tripStatus === "arrived" ? "Driver waiting" : "Since accepted"} variant="default" />
+              {tripStatus === "accepted" && (
+                <AnimatedTimer seconds={acceptedElapsed} label="Since accepted" variant="default" />
+              )}
+              {tripStatus === "arrived" && (
+                <AnimatedTimer seconds={arrivedElapsed} label="Driver waiting" variant="default" />
               )}
             </div>
 
