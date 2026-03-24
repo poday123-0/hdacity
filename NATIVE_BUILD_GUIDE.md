@@ -257,28 +257,55 @@ public void onCreate(Bundle savedInstanceState) {
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build();
 
+        // Trip Requests — IMPORTANCE_MAX for heads-up / full-screen display
         NotificationChannel tripChannel = new NotificationChannel(
-            "trip_requests", "Trip Requests", NotificationManager.IMPORTANCE_HIGH);
+            "trip_requests_v2", "Trip Requests", NotificationManager.IMPORTANCE_MAX);
+        tripChannel.setDescription("Incoming trip requests that require immediate attention");
         tripChannel.setSound(
             Uri.parse("android.resource://" + getPackageName() + "/raw/trip_request"), audioAttr);
-        tripChannel.setVibrationPattern(new long[]{0, 300, 100, 300, 100, 300});
+        tripChannel.setVibrationPattern(new long[]{0, 300, 100, 300, 100, 300, 100, 300});
         tripChannel.enableVibration(true);
+        tripChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+        tripChannel.setBypassDnd(true);
         manager.createNotificationChannel(tripChannel);
 
+        // SOS Alerts — IMPORTANCE_MAX for emergency visibility
         NotificationChannel sosChannel = new NotificationChannel(
-            "sos_alerts", "SOS Alerts", NotificationManager.IMPORTANCE_HIGH);
-        sosChannel.setVibrationPattern(new long[]{0, 500, 100, 500, 100, 500});
+            "sos_alerts_v2", "SOS Alerts", NotificationManager.IMPORTANCE_MAX);
+        sosChannel.setDescription("Emergency SOS alerts requiring immediate response");
+        sosChannel.setVibrationPattern(new long[]{0, 500, 100, 500, 100, 500, 100, 500});
         sosChannel.enableVibration(true);
+        sosChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+        sosChannel.setBypassDnd(true);
         manager.createNotificationChannel(sosChannel);
 
+        // General notifications
         NotificationChannel generalChannel = new NotificationChannel(
-            "general", "General", NotificationManager.IMPORTANCE_DEFAULT);
+            "general_v2", "General", NotificationManager.IMPORTANCE_HIGH);
+        generalChannel.setDescription("General app notifications");
         generalChannel.setSound(
             Uri.parse("android.resource://" + getPackageName() + "/raw/message_received"), audioAttr);
         manager.createNotificationChannel(generalChannel);
+
+        // Delete old channels if upgrading
+        manager.deleteNotificationChannel("trip_requests");
+        manager.deleteNotificationChannel("sos_alerts");
+        manager.deleteNotificationChannel("general");
     }
 }
 ```
+
+> **Why `IMPORTANCE_MAX`?** This is what makes notifications appear as **heads-up banners** that pop up over other apps and show on the lock screen — just like Uber, Grab, and other ride-hailing apps. Without this, notifications only appear in the notification shade and drivers may miss trip requests.
+
+### Full-Screen Intent (Optional — Show app on lock screen)
+
+To make the app open automatically when a trip request arrives (even on the lock screen), add this permission to `AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+```
+
+> **Note:** Starting from Android 14 (API 34), apps need to request `USE_FULL_SCREEN_INTENT` permission. Apps targeting Android 14+ may need users to grant this manually in Settings → Apps → HDA TAXI → Notifications → Allow full screen.
 
 ### iOS Sounds
 
