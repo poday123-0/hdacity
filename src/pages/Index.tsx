@@ -798,13 +798,14 @@ const Index = () => {
       // Send push notification to online drivers
       if (data.status === "requested") {
         try {
-          const { data: onlineDrivers } = await supabase
-            .from("driver_locations")
-            .select("driver_id")
-            .eq("is_online", true)
-            .eq("is_on_trip", false);
-          if (onlineDrivers && onlineDrivers.length > 0) {
-            const driverIds = onlineDrivers.map((d: any) => d.driver_id);
+          const [locRes, dvtRes] = await Promise.all([
+            supabase.from("driver_locations").select("driver_id, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
+            supabase.from("driver_vehicle_types").select("driver_id").eq("vehicle_type_id", selectedVehicleType.id).eq("status", "approved"),
+          ]);
+          const dvtIds = new Set((dvtRes.data || []).map((r: any) => r.driver_id));
+          const eligible = (locRes.data || []).filter((d: any) => d.vehicle_type_id === selectedVehicleType.id || dvtIds.has(d.driver_id));
+          if (eligible.length > 0) {
+            const driverIds = eligible.map((d: any) => d.driver_id);
             await notifyTripRequested(driverIds, data.id, pickup.name);
           }
         } catch (pushErr) {
