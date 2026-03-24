@@ -136,9 +136,10 @@ async function googleReverseGeocode(
   lng: number
 ): Promise<ReverseGeocodeResult | null> {
   // Run geocoder + nearby places in parallel for speed
+  const skipNearby = options?.skipNearbyPlace;
   const [geocodeResult, nearbyResult] = await Promise.allSettled([
     googleGeocode(g, lat, lng),
-    googleNearbyPlace(g, lat, lng),
+    skipNearby ? Promise.resolve(null) : googleNearbyPlace(g, lat, lng),
   ]);
 
   const geo = geocodeResult.status === "fulfilled" ? geocodeResult.value : null;
