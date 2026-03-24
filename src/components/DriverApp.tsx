@@ -3292,9 +3292,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <ChevronDown className="w-3.5 h-3.5 text-primary-foreground" />
               </button>
             </div>
+            {/* Animated Timer Bar */}
+            <div className="px-3 pb-2 flex justify-center">
+              <AnimatedTimer
+                seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed}
+                label={driverTripPhase === "in_progress" ? "Trip" : driverTripPhase === "arrived" ? "Waiting" : "En route"}
+                variant="badge"
+                className="bg-primary-foreground/15 text-primary-foreground [&_span]:text-primary-foreground [&_svg]:text-primary-foreground/70"
+              />
+            </div>
           </div>
 
-          {/* Expandable content */}
           <AnimatePresence>
             {!navPanelMinimized &&
           <motion.div
