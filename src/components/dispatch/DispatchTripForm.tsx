@@ -1327,17 +1327,16 @@ const DispatchTripForm = ({
                     created_by: dispatcherProfile?.id || null,
                     dispatch_type: "operator",
                     vehicle_type_id: selectedVehicleType || null,
-                    status: "cancelled",
-                    cancel_reason: "No vehicle available",
-                    cancelled_at: new Date().toISOString(),
+                    status: "completed",
+                    completed_at: new Date().toISOString(),
                     fare_type: "distance",
                     estimated_fare: estimatedFare || null,
-                    booking_notes: (centerCodeResults.length > 0) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : "No Vehicle",
-                    is_loss: true,
+                    booking_notes: (centerCodeResults.length > 0) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")} — No Vehicle` : "No Vehicle",
+                    is_loss: false,
                   };
                   const { error } = await supabase.from("trips").insert(tripPayload);
                   if (error) throw error;
-                  toast({ title: "Recorded as No Vehicle", description: "Booking saved as loss" });
+                  toast({ title: "Recorded as No Vehicle", description: "Booking saved" });
                   clearForm();
                   onTripCreated();
                 } catch (err: any) {
