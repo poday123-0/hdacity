@@ -1229,12 +1229,12 @@ const DispatchTripForm = ({
                         {selectedCenterCode === info.code && <CheckCircle2 className="w-3 h-3 inline mr-1 text-primary" />}
                         {info.has_loss && <span className="text-[9px] font-bold text-destructive mr-1">LOSS</span>}
                         <span className="font-bold">{info.code}</span>
-                        {info.last_trip_date && <span className="text-muted-foreground/70 text-[9px]"> • {new Date(info.last_trip_date).toLocaleDateString([], { month: "short", day: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type === 'Mini Pickup' ? 'MPickup' : info.vehicle_type === 'Big Pickup' ? 'BPickup' : info.vehicle_type}</span>}
                         {info.color && <span className="text-muted-foreground"> • {info.color}</span>}
                         <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
+                        {info.last_trip_date && <span className="text-muted-foreground/70 text-[9px]"> • {new Date(info.last_trip_date).toLocaleDateString([], { month: "short", day: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                       </span>
                       <div className="flex items-center gap-1 ml-2">
                         <button onClick={(e) => {
