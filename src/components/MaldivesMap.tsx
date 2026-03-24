@@ -56,6 +56,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   const driverMarkerRef = useRef<any>(null);
   const vehicleMarkersRef = useRef<any[]>([]);
   const directionsRendererRef = useRef<any>(null);
+  const vehicleInfoWindowRef = useRef<any>(null);
   const tripRenderersRef = useRef<any[]>([]);
   const tripMarkersRef = useRef<any[]>([]);
   const watchIdRef = useRef<number | null>(null);
