@@ -1414,9 +1414,9 @@ const Dispatch = () => {
                                         const vehicleText = [assigned.color, assigned.plateNumber]
                                           .filter(Boolean)
                                           .join(" • ");
-                                        return assigned.centerCode
-                                          ? `${assigned.centerCode}${vehicleText ? ` • ${vehicleText}` : ""}`
-                                          : "—";
+                                        return assigned.centerCode || assigned.plateNumber
+                                          ? `${assigned.centerCode || ""}${vehicleText ? `${assigned.centerCode ? " • " : ""}${vehicleText}` : ""}`
+                                          : "No Vehicle";
                                       })()}
                                     </span>
                                   </div>
