@@ -946,13 +946,14 @@ const Dispatch = () => {
                               {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </span>
                             <span
-                              className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              className={`inline-flex items-center justify-center w-5 h-5 rounded ${
                                 t.status === "cancelled"
                                   ? "bg-warning/20 text-warning"
                                   : "bg-destructive/15 text-destructive"
                               }`}
+                              title={t.status === "cancelled" ? "Cancelled" : "Loss"}
                             >
-                              LOSS STATUS
+                              <AlertTriangle className="w-3 h-3" />
                             </span>
                             {t.vehicle ? (
                               <>
