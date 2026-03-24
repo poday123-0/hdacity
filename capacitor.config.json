@@ -1,9 +1,25 @@
 {
-  "appId": "app.lovable.8e370f055df142beabbfef376d3b58b5",
-  "appName": "apphdataxi",
+  "appId": "app.lovable.2395a37356b54f26bbd1d3b6b03e71bd",
+  "appName": "HDA TAXI",
   "webDir": "dist",
   "server": {
-    "url": "https://8e370f05-5df1-42be-abbf-ef376d3b58b5.lovableproject.com?forceHideBadge=true",
+    "url": "https://2395a373-56b5-4f26-bbd1-d3b6b03e71bd.lovableproject.com?forceHideBadge=true",
     "cleartext": true
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0f172a"
+    }
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "ios": {
+    "contentInset": "automatic"
   }
 }
