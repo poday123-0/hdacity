@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface AdBannerProps {
   className?: string;
+  audience?: "passengers" | "drivers";
 }
 
 const AdBanner = ({ className = "" }: AdBannerProps) => {
