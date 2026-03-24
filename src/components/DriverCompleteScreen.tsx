@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Star, Wallet } from "lucide-react";
+import { CheckCircle, Star, Wallet, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import TripInvoice from "@/components/TripInvoice";
 
 interface DriverCompleteScreenProps {
   completionFare: number;
@@ -23,6 +24,7 @@ const DriverCompleteScreen = ({
   const [driverRating, setDriverRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [companyName, setCompanyName] = useState("HDA TAXI");
+  const [showInvoice, setShowInvoice] = useState(false);
 
   useEffect(() => {
     const fetchCompany = async () => {
@@ -168,6 +170,14 @@ const DriverCompleteScreen = ({
         </div>
 
         <button
+          onClick={() => setShowInvoice(true)}
+          className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+        >
+          <FileText className="w-4 h-4 text-primary" />
+          <span className="text-sm">Generate Invoice</span>
+        </button>
+
+        <button
           onClick={handleContinue}
           disabled={submittingRating}
           className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-60"
@@ -175,6 +185,14 @@ const DriverCompleteScreen = ({
           {submittingRating ? "Saving..." : "Continue"}
         </button>
       </motion.div>
+      {showInvoice && (
+        <TripInvoice
+          trip={currentTrip}
+          driverProfile={userProfile as any}
+          passengerProfile={passengerProfile as any}
+          onClose={() => setShowInvoice(false)}
+        />
+      )}
     </motion.div>
   );
 };

@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare } from "lucide-react";
+import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare, FileText } from "lucide-react";
 import { format } from "date-fns";
 import TripChat from "@/components/TripChat";
+import TripInvoice from "@/components/TripInvoice";
 
 interface RideHistoryProps {
   userId?: string;
@@ -34,6 +35,7 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [chatTripId, setChatTripId] = useState<string | null>(null);
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  const [invoiceTrip, setInvoiceTrip] = useState<TripRecord | null>(null);
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -170,12 +172,25 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
               </button>
             )}
 
+            {selectedTrip.status === "completed" && (
+              <button
+                onClick={() => setInvoiceTrip(selectedTrip)}
+                className="w-full py-2.5 rounded-xl bg-primary/10 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              >
+                <FileText className="w-4 h-4 text-primary" />
+                <span className="text-xs font-semibold text-primary">Generate Invoice</span>
+              </button>
+            )}
+
             <p className="text-center text-[10px] text-muted-foreground">Trip ID: {selectedTrip.id.slice(0, 8)}</p>
           </div>
         </motion.div>
       </motion.div>
       {chatTripId && (
         <TripChat tripId={chatTripId} senderId={userId} senderType={userType} isOpen={true} onClose={() => setChatTripId(null)} readOnly />
+      )}
+      {invoiceTrip && (
+        <TripInvoice trip={invoiceTrip} onClose={() => setInvoiceTrip(null)} />
       )}
       </>
     );
