@@ -397,6 +397,7 @@ const Admin = () => {
           {activeTab === "sms" && <AdminSMS />}
           {activeTab === "device_tokens" && <AdminDeviceTokens />}
           {activeTab === "duty_hours" && <AdminDutyHours />}
+          {activeTab === "ad_banners" && <AdminAdBanners />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
