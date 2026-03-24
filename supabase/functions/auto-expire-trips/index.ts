@@ -184,15 +184,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ========== 5. Auto-complete assigned trips after 1 hour ==========
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    // ========== 5. Auto-complete assigned trips after 30 minutes ==========
+    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
 
     const { data: autoCompleted } = await supabase
       .from("trips")
       .update({ status: "completed", completed_at: nowISO })
       .in("status", ["accepted", "started"])
       .eq("dispatch_type", "operator")
-      .lt("created_at", oneHourAgo)
+      .lt("created_at", thirtyMinAgo)
       .select("id, driver_id");
 
     // Free up drivers from auto-completed trips
