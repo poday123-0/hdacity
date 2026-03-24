@@ -74,7 +74,7 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 };
 
 // Local cache for locations data shared across form instances
-let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[] } | null = null;
+let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[]; recentBookings: any[] } | null = null;
 let _locationsCacheTs = 0;
 const LOC_CACHE_TTL = 120_000; // 2 min
 
@@ -130,6 +130,7 @@ const DispatchTripForm = ({
   const [surcharges, setSurcharges] = useState<any[]>([]);
   const [serviceLocations, setServiceLocations] = useState<any[]>([]);
   const [namedLocations, setNamedLocations] = useState<any[]>([]);
+  const [recentBookings, setRecentBookings] = useState<any[]>([]);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
@@ -143,19 +144,35 @@ const DispatchTripForm = ({
         setSurcharges(_locationsCache.surcharges);
         setServiceLocations(_locationsCache.serviceLocations);
         setNamedLocations(_locationsCache.namedLocations);
+        setRecentBookings(_locationsCache.recentBookings);
         return;
       }
-      const [fzRes, scRes, slRes, nlRes] = await Promise.all([
+      const [fzRes, scRes, slRes, nlRes, rbRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("service_locations").select("id, name, lat, lng").eq("is_active", true),
         supabase.from("named_locations").select("id, name, address, lat, lng, suggested_by_type").eq("is_active", true).eq("status", "approved"),
+        supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
       ]);
+      // Deduplicate recent booking addresses
+      const seen = new Set<string>();
+      const bookingLocs: any[] = [];
+      for (const t of rbRes.data || []) {
+        if (t.pickup_address && t.pickup_lat && t.pickup_lng) {
+          const key = t.pickup_address.trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.pickup_address, lat: t.pickup_lat, lng: t.pickup_lng }); }
+        }
+        if (t.dropoff_address && t.dropoff_lat && t.dropoff_lng) {
+          const key = t.dropoff_address.trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
+        }
+      }
       const cache = {
         fareZones: fzRes.data || [],
         surcharges: scRes.data || [],
         serviceLocations: slRes.data || [],
         namedLocations: nlRes.data || [],
+        recentBookings: bookingLocs,
       };
       _locationsCache = cache;
       _locationsCacheTs = Date.now();
@@ -163,6 +180,7 @@ const DispatchTripForm = ({
       setSurcharges(cache.surcharges);
       setServiceLocations(cache.serviceLocations);
       setNamedLocations(cache.namedLocations);
+      setRecentBookings(cache.recentBookings);
     };
     load();
   }, []);
@@ -425,7 +443,7 @@ const DispatchTripForm = ({
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
     const q = searchQuery.toLowerCase();
 
-    // 1. Instant local matches from DB
+    // 1. Instant local matches from DB + recent bookings
     const localMatches: NominatimResult[] = [
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
@@ -450,8 +468,32 @@ const DispatchTripForm = ({
             tag: areaName,
           };
         }),
+      ...recentBookings
+        .filter((rb: any) => rb.name.toLowerCase().includes(q))
+        .slice(0, 8)
+        .map((rb: any, i: number) => {
+          const areaName = findNearestServiceAreaName(Number(rb.lat), Number(rb.lng));
+          return {
+            place_id: 600000 + i,
+            display_name: `${rb.name} — ${areaName}`,
+            lat: String(rb.lat),
+            lon: String(rb.lng),
+            name: rb.name,
+            tag: areaName,
+            road: "Recent",
+          };
+        }),
     ];
-    setOsmResults(localMatches);
+    // Deduplicate: remove recent bookings that overlap with service/named locations
+    const coordSet = new Set(localMatches.filter(m => m.place_id >= 800000).map(m => `${parseFloat(m.lat).toFixed(4)},${parseFloat(m.lon).toFixed(4)}`));
+    const deduped = localMatches.filter(m => {
+      if (m.place_id < 700000) {
+        const key = `${parseFloat(m.lat).toFixed(4)},${parseFloat(m.lon).toFixed(4)}`;
+        return !coordSet.has(key);
+      }
+      return true;
+    });
+    setOsmResults(deduped);
 
     // Cancel previous external requests
     if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
@@ -507,7 +549,7 @@ const DispatchTripForm = ({
     }, 150);
 
     return () => { googleAbort.abort(); };
-  }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName, isWithinServiceArea]);
+  }, [searchQuery, serviceLocations, namedLocations, recentBookings, findNearestServiceAreaName, isWithinServiceArea]);
 
   const selectLocation = (result: NominatimResult) => {
     const loc: StopLocation = {
