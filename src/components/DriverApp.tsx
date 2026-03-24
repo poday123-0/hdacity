@@ -3044,8 +3044,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </div>
             }
 
-              {/* Accept / Decline buttons */}
-              <div className="flex gap-2">
+
+            </div>
+
+              {/* Accept / Decline buttons - sticky at bottom */}
+              <div className="flex gap-2 px-4 py-3 border-t border-border/30 shrink-0 bg-card">
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 stopAllSounds(); tripSoundRef.current = null;
