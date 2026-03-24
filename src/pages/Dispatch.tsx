@@ -54,6 +54,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
+// 5-minute countdown timer for operator-assigned trips
+function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
+  const [remaining, setRemaining] = useState("");
+  useEffect(() => {
+    const update = () => {
+      const elapsed = Date.now() - new Date(acceptedAt).getTime();
+      const totalSec = 5 * 60; // 5 minutes
+      const left = Math.max(0, totalSec - Math.floor(elapsed / 1000));
+      const m = Math.floor(left / 60);
+      const s = left % 60;
+      setRemaining(left > 0 ? `${m}:${s.toString().padStart(2, "0")}` : "✓");
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [acceptedAt]);
+  const elapsed = Date.now() - new Date(acceptedAt).getTime();
+  const done = elapsed >= 5 * 60 * 1000;
+  return (
+    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tabular-nums ${done ? "bg-success/20 text-success" : "bg-orange-500/15 text-orange-500"}`}>
+      {remaining}
+    </span>
+  );
+}
+
 // Admin area imports
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminDrivers from "@/components/admin/AdminDrivers";
