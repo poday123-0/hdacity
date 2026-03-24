@@ -629,6 +629,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng);
         }
       }, driverIntervalMs);
+
+      // Force fresh GPS on foreground return (watchPosition may be suspended by OS)
+      const onForeground = () => {
+        if (document.visibilityState !== "visible") return;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setGpsEnabled(true);
+            setDriverLat(pos.coords.latitude);
+            setDriverLng(pos.coords.longitude);
+            upsertLocation(pos.coords.latitude, pos.coords.longitude);
+          },
+          () => {},
+          { enableHighAccuracy: gpsHighAccuracy, timeout: 10000, maximumAge: 0 }
+        );
+      };
+      document.addEventListener("visibilitychange", onForeground);
+      foregroundGpsCleanupRef.current = () => document.removeEventListener("visibilitychange", onForeground);
     };
 
     startTracking();
@@ -641,6 +658,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (locationIntervalRef.current) {
         clearInterval(locationIntervalRef.current);
         locationIntervalRef.current = null;
+      }
+      if (foregroundGpsCleanupRef.current) {
+        foregroundGpsCleanupRef.current();
+        foregroundGpsCleanupRef.current = null;
       }
     };
   }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch, goOfflineNow]);
