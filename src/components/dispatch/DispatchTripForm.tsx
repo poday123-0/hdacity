@@ -716,7 +716,7 @@ const DispatchTripForm = ({
   const formLabels = ["Bid 1", "Bid 2", "Bid 3"];
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col min-w-[260px] max-w-[320px] max-h-[calc(100vh-120px)]">
+    <div className={`bg-card border border-border rounded-lg overflow-hidden flex flex-col min-w-[260px] max-w-[320px] ${centerCodeResults.length > 0 ? "" : "max-h-[calc(100vh-120px)]"}`}>
       {/* Form header */}
       <div className="border-b border-border px-2.5 py-1.5 flex items-center justify-between gap-2">
         <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-1.5 shrink-0">
@@ -1205,7 +1205,7 @@ const DispatchTripForm = ({
               }}
             />
             {centerCodeResults.length > 0 && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {centerCodeResults.map((info) => (
                   <div
                     key={info.code}
@@ -1216,7 +1216,7 @@ const DispatchTripForm = ({
                       setDispatchMethod("specific");
                       setSelectedDriverId(info.driver_id);
                     }}
-                    className={`border rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-all ${
+                    className={`border rounded px-2 py-1 text-[10px] cursor-pointer transition-all ${
                       selectedCenterCode === info.code
                         ? "bg-primary/10 border-primary ring-1 ring-primary/30"
                         : info.has_loss
