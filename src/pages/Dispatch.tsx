@@ -166,6 +166,7 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   companies: "manage_companies",
   vehicles: "manage_vehicles",
   named_locations: "manage_locations",
+  duty_hours: "manage_dispatchers",
 };
 
 const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboard }[] = [
