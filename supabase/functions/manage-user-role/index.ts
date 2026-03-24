@@ -17,23 +17,67 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { action, phone_number, user_id, role, role_id, permissions } = await req.json();
+    const { action, phone_number, user_id, role, role_id, permissions, first_name, last_name } = await req.json();
 
     if (action === "add") {
+      // Try to find existing profile
       const { data: profiles, error: pErr } = await supabaseAdmin
         .from("profiles")
         .select("id, first_name, last_name")
         .eq("phone_number", phone_number);
 
-      if (pErr || !profiles || profiles.length === 0) {
-        return new Response(JSON.stringify({ error: "No user found with this phone number. They need to register first." }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      let profile: any = null;
+
+      if (!pErr && profiles && profiles.length > 0) {
+        profile = profiles[0];
+      } else {
+        // No existing profile — create one if name is provided
+        if (!first_name || !last_name) {
+          return new Response(JSON.stringify({ error: "No user found with this phone number. Provide first_name and last_name to create one." }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Create auth user first
+        const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+          phone: `+960${phone_number}`,
+          phone_confirm: true,
+          user_metadata: { first_name, last_name },
         });
+
+        if (authErr) {
+          return new Response(JSON.stringify({ error: `Failed to create user: ${authErr.message}` }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Create profile
+        const { data: newProfile, error: profileErr } = await supabaseAdmin
+          .from("profiles")
+          .insert({
+            id: authUser.user.id,
+            first_name,
+            last_name,
+            phone_number,
+            user_type: "Rider",
+            status: "approved",
+          })
+          .select("id, first_name, last_name")
+          .single();
+
+        if (profileErr) {
+          return new Response(JSON.stringify({ error: `Profile created but error saving: ${profileErr.message}` }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        profile = newProfile;
       }
 
-      const profile = profiles[0];
-
+      // Check for existing role
       const { data: existing } = await supabaseAdmin
         .from("user_roles")
         .select("id")
