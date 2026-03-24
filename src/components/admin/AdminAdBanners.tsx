@@ -40,6 +40,7 @@ const AdminAdBanners = () => {
       image_url: urlData.publicUrl,
       link_url: linkUrl || "",
       sort_order: maxOrder,
+      target_audience: targetAudience,
     });
     setLinkUrl("");
     setUploading(false);
