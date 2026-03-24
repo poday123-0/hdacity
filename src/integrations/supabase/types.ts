@@ -22,6 +22,7 @@ export type Database = {
           is_active: boolean
           link_url: string | null
           sort_order: number
+          target_audience: string
         }
         Insert: {
           created_at?: string
@@ -30,6 +31,7 @@ export type Database = {
           is_active?: boolean
           link_url?: string | null
           sort_order?: number
+          target_audience?: string
         }
         Update: {
           created_at?: string
@@ -38,6 +40,7 @@ export type Database = {
           is_active?: boolean
           link_url?: string | null
           sort_order?: number
+          target_audience?: string
         }
         Relationships: []
       }

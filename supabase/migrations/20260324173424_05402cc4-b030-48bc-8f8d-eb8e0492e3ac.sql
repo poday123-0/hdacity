@@ -1,0 +1,1 @@
+ALTER TABLE public.ad_banners ADD COLUMN target_audience text NOT NULL DEFAULT 'both';
