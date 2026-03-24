@@ -36,6 +36,8 @@ import {
   XCircle,
   Trash2,
   Car,
+  Clock,
+  LogOut,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
@@ -112,6 +114,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminLocations from "@/components/admin/AdminLocations";
 import AdminBanks from "@/components/admin/AdminBanks";
 import AdminCompanies from "@/components/admin/AdminCompanies";
+import AdminDutyHours from "@/components/admin/AdminDutyHours";
 
 interface OnlineDriver {
   driver_id: string;
@@ -141,7 +144,8 @@ type DispatchTab =
   | "sos_history"
   | "notifications"
   | "banks"
-  | "companies";
+  | "companies"
+  | "duty_hours";
 
 // Map each tab to the permission key required to access it
 const tabPermissionMap: Record<DispatchTab, string | null> = {
@@ -162,6 +166,7 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   companies: "manage_companies",
   vehicles: "manage_vehicles",
   named_locations: "manage_locations",
+  duty_hours: "manage_dispatchers",
 };
 
 const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -182,6 +187,7 @@ const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboa
   { id: "notifications", label: "Notifications", icon: BellRing },
   { id: "banks", label: "Banks", icon: Building2 },
   { id: "companies", label: "Companies", icon: Building },
+  { id: "duty_hours", label: "Duty Hours", icon: Clock },
 ];
 
 const Dispatch = () => {
@@ -194,6 +200,9 @@ const Dispatch = () => {
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
   const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
+  const [dutySessionId, setDutySessionId] = useState<string | null>(null);
+  const [dutyClockIn, setDutyClockIn] = useState<string | null>(null);
+  const [dutyElapsed, setDutyElapsed] = useState("");
 
   // Login state
   const [phone, setPhone] = useState("");
@@ -253,6 +262,55 @@ const Dispatch = () => {
     };
   };
 
+  // Clock in a new duty session
+  const clockIn = async (profileId: string) => {
+    // Get IP via edge function
+    let ip = "unknown";
+    try {
+      const { data: ipData } = await supabase.functions.invoke("check-dispatch-ip", { body: {} });
+      ip = ipData?.ip || "unknown";
+    } catch {}
+
+    const { data } = await supabase
+      .from("dispatch_duty_sessions")
+      .insert({ dispatcher_id: profileId, ip_address: ip } as any)
+      .select("id, clock_in")
+      .single();
+    if (data) {
+      setDutySessionId(data.id);
+      setDutyClockIn(data.clock_in);
+      localStorage.setItem("hda_duty_session", JSON.stringify({ id: data.id, clock_in: data.clock_in }));
+    }
+  };
+
+  // Clock out
+  const clockOut = async () => {
+    if (!dutySessionId) return;
+    await supabase
+      .from("dispatch_duty_sessions")
+      .update({ clock_out: new Date().toISOString() } as any)
+      .eq("id", dutySessionId);
+    setDutySessionId(null);
+    setDutyClockIn(null);
+    setDutyElapsed("");
+    localStorage.removeItem("hda_duty_session");
+  };
+
+  // Duty timer tick
+  useEffect(() => {
+    if (!dutyClockIn) return;
+    const update = () => {
+      const diff = Date.now() - new Date(dutyClockIn).getTime();
+      const hrs = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setDutyElapsed(`${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [dutyClockIn]);
+
   useEffect(() => {
     const stored = localStorage.getItem("hda_dispatcher");
     if (stored) {
@@ -263,6 +321,16 @@ const Dispatch = () => {
         setDispatcherPermissions(parsed.permissions || []);
         setDispatcherRole(parsed.role || "dispatcher");
         setIsAuthed(true);
+
+        // Restore duty session
+        const dutyStored = localStorage.getItem("hda_duty_session");
+        if (dutyStored) {
+          try {
+            const dutyParsed = JSON.parse(dutyStored);
+            setDutySessionId(dutyParsed.id);
+            setDutyClockIn(dutyParsed.clock_in);
+          } catch {}
+        }
 
         // Refresh permissions from DB to avoid stale cache
         if (profile?.id) {
@@ -663,6 +731,17 @@ const Dispatch = () => {
     setLoginLoading(true);
     setLoginError("");
     try {
+      // Check IP restriction first
+      try {
+        const { data: ipCheck } = await supabase.functions.invoke("check-dispatch-ip", { body: {} });
+        if (ipCheck && ipCheck.allowed === false) {
+          throw new Error(`Access denied. Your IP (${ipCheck.ip}) is not allowed.`);
+        }
+      } catch (ipErr: any) {
+        if (ipErr.message?.includes("Access denied")) throw ipErr;
+        // If IP check fails, allow through (edge function may not exist yet)
+      }
+
       const { data, error } = await supabase.functions.invoke("verify-otp", { body: { phone_number: phone, code } });
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || "Invalid code");
@@ -691,6 +770,9 @@ const Dispatch = () => {
       setDispatcherRole(role);
       setIsAuthed(true);
       localStorage.setItem("hda_dispatcher", JSON.stringify({ profile: matchedProfile, permissions, role }));
+
+      // Clock in duty session
+      await clockIn(matchedProfile.id);
     } catch (err: any) {
       setLoginError(err.message || "Verification failed");
       setOtp(["", "", "", "", "", ""]);
@@ -745,7 +827,8 @@ const Dispatch = () => {
     refreshTrips();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await clockOut();
     setIsAuthed(false);
     setDispatcherProfile(null);
     localStorage.removeItem("hda_dispatcher");
@@ -874,6 +957,12 @@ const Dispatch = () => {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {dutyElapsed && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success/10 border border-success/20">
+              <Clock className="w-3 h-3 text-success" />
+              <span className="text-[11px] font-mono font-bold text-success tabular-nums">{dutyElapsed}</span>
+            </div>
+          )}
           <button
             onClick={toggleTheme}
             className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -883,8 +972,16 @@ const Dispatch = () => {
           <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
             {dispatcherProfile?.first_name} {dispatcherProfile?.last_name}
           </span>
-          <button onClick={handleLogout} className="text-xs text-muted-foreground hover:text-destructive font-medium">
-            Logout
+          <button
+            onClick={async () => {
+              await clockOut();
+              handleLogout();
+            }}
+            title="Clock out & logout"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive font-medium px-2 py-1 rounded-lg hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Clock Out</span>
           </button>
         </div>
       </header>
@@ -1771,6 +1868,11 @@ const Dispatch = () => {
         {activeTab === "named_locations" && (
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
             <AdminNamedLocations />
+          </div>
+        )}
+        {activeTab === "duty_hours" && (
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            <AdminDutyHours />
           </div>
         )}
       </div>
