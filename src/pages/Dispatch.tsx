@@ -2527,8 +2527,90 @@ const Dispatch = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Duty History Dialog */}
+      <Dialog open={showDutyHistory} onOpenChange={setShowDutyHistory}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle className="flex items-center gap-2 text-sm font-bold">
+            <Clock className="w-4 h-4 text-primary" />
+            My Duty History
+          </DialogTitle>
+          <div className="space-y-3">
+            <div className="flex gap-1">
+              {(["today", "week", "month"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setDutyHistoryFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    dutyHistoryFilter === f
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f === "today" ? "Today" : f === "week" ? "This Week" : "This Month"}
+                </button>
+              ))}
+            </div>
+
+            {/* Summary */}
+            {!dutyHistoryLoading && dutyHistory.length > 0 && (() => {
+              const totalMs = dutyHistory.reduce((acc, s) => {
+                const start = new Date(s.clock_in).getTime();
+                const end = s.clock_out ? new Date(s.clock_out).getTime() : Date.now();
+                return acc + (end - start);
+              }, 0);
+              const hrs = Math.floor(totalMs / 3600000);
+              const mins = Math.floor((totalMs % 3600000) / 60000);
+              return (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-primary">{hrs}h {mins}m</p>
+                    <p className="text-[10px] text-muted-foreground">Total Hours</p>
+                  </div>
+                  <div className="text-center ml-auto">
+                    <p className="text-lg font-bold text-foreground">{dutyHistory.length}</p>
+                    <p className="text-[10px] text-muted-foreground">Sessions</p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Sessions list */}
+            <div className="max-h-[300px] overflow-y-auto space-y-1">
+              {dutyHistoryLoading ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Loading...</p>
+              ) : dutyHistory.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">No sessions found</p>
+              ) : dutyHistory.map((s: any) => {
+                const start = new Date(s.clock_in).getTime();
+                const end = s.clock_out ? new Date(s.clock_out).getTime() : Date.now();
+                const diffMs = end - start;
+                const hrs = Math.floor(diffMs / 3600000);
+                const mins = Math.floor((diffMs % 3600000) / 60000);
+                return (
+                  <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface border border-border text-xs">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {format(new Date(s.clock_in), "MMM d, yyyy")}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(s.clock_in), "hh:mm a")}
+                        {" → "}
+                        {s.clock_out ? format(new Date(s.clock_out), "hh:mm a") : (
+                          <span className="text-success font-semibold">Active</span>
+                        )}
+                      </p>
+                    </div>
+                    <span className="font-bold text-foreground">{hrs}h {mins}m</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+};
 };
 
 export default Dispatch;
