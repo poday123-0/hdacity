@@ -22,21 +22,18 @@ const TripInvoice = ({ trip, driverProfile, passengerProfile, onClose }: TripInv
 
   useEffect(() => {
     const load = async () => {
-      const promises: Promise<any>[] = [];
       if (trip.vehicle_type_id) {
-        promises.push(supabase.from("vehicle_types").select("name").eq("id", trip.vehicle_type_id).maybeSingle());
-      } else {
-        promises.push(Promise.resolve({ data: null }));
+        const { data } = await supabase.from("vehicle_types").select("name").eq("id", trip.vehicle_type_id).maybeSingle();
+        if (data?.name) setVehicleTypeName(data.name);
+      } else if (trip.vehicle_type?.name) {
+        setVehicleTypeName(trip.vehicle_type.name);
       }
       if (trip.vehicle_id) {
-        promises.push(supabase.from("vehicles").select("plate_number, make, model").eq("id", trip.vehicle_id).maybeSingle());
-      } else {
-        promises.push(Promise.resolve({ data: null }));
+        const { data } = await supabase.from("vehicles").select("plate_number, make, model").eq("id", trip.vehicle_id).maybeSingle();
+        if (data?.plate_number) setVehiclePlate(data.plate_number);
       }
-      const [vtRes, vRes] = await Promise.all(promises);
-      if (vtRes.data?.name) setVehicleTypeName(vtRes.data.name);
-      else if (trip.vehicle_type?.name) setVehicleTypeName(trip.vehicle_type.name);
-      if (vRes.data?.plate_number) setVehiclePlate(vRes.data.plate_number);
+    };
+    load();
     };
     load();
   }, [trip]);
