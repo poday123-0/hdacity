@@ -8,7 +8,7 @@ interface SystemLogoProps {
 }
 
 const SystemLogo = ({ className = "w-full h-full object-contain", alt = "Logo" }: SystemLogoProps) => {
-  const { logoUrl } = useBranding();
+  const { logoUrl, _loaded } = useBranding();
   const [imgError, setImgError] = useState(false);
   const src = imgError ? hdaLogoFallback : (logoUrl || hdaLogoFallback);
 
@@ -18,7 +18,7 @@ const SystemLogo = ({ className = "w-full h-full object-contain", alt = "Logo" }
       alt={alt}
       className={className}
       onError={() => setImgError(true)}
-      style={{ opacity: logoUrl === null && !imgError ? 0.01 : 1, transition: "opacity 0.3s ease" }}
+      style={{ opacity: _loaded ? 1 : 0, transition: "opacity 0.3s ease" }}
     />
   );
 };

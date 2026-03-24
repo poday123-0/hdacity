@@ -7,6 +7,7 @@ interface Branding {
   faviconUrl: string | null;
   appName: string | null;
   pwaAppIconUrl: string | null;
+  _loaded: boolean;
 }
 
 let cachedBranding: Branding | null = null;
