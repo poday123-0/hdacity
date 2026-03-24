@@ -24,6 +24,7 @@ const DriverCompleteScreen = ({
   const [driverRating, setDriverRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [companyName, setCompanyName] = useState("HDA TAXI");
+  const [showInvoice, setShowInvoice] = useState(false);
 
   useEffect(() => {
     const fetchCompany = async () => {
