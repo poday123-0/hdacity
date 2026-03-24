@@ -1262,8 +1262,6 @@ const Dispatch = () => {
 
                                   <div className="col-span-2 flex items-center justify-between pt-1">
                                     <div className="flex items-center gap-2">
-                                      {t.driver && (t.status === "accepted" || t.status === "started") && (
-                                      )}
                                       {t.status !== "cancelled" && !t.is_loss && (
                                         <button
                                           onClick={(e) => {
