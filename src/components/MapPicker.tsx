@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Loader2, X, Check, Crosshair, Navigation, Search } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { reverseGeocodeLocation } from "@/lib/geocode";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NearbyPlace {
   name: string;
