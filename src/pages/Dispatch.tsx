@@ -187,7 +187,7 @@ const Dispatch = () => {
   useEffect(() => {
     if (!isAuthed) return;
 
-    const CACHE_KEY = "hda_center_code_index_v2";
+    const CACHE_KEY = "hda_center_code_index_v1";
     const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
     const loadFromCache = () => {
@@ -226,13 +226,6 @@ const Dispatch = () => {
         ) as string[];
 
         const vehicleIds = (vehicles || []).map((v: any) => v.id).filter(Boolean) as string[];
-        const vehicleCodeMap = new Map<string, string>();
-        (vehicles || []).forEach((v: any) => {
-          const code = (v.center_code || "").toUpperCase();
-          if (v?.id && code) {
-            vehicleCodeMap.set(v.id, code);
-          }
-        });
 
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
@@ -247,7 +240,7 @@ const Dispatch = () => {
           vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("vehicle_id, booking_notes")
+                .select("vehicle_id")
                 .in("vehicle_id", vehicleIds)
                 .gte("created_at", todayStart.toISOString())
                 .in("status", ["requested", "accepted", "started", "completed"])
@@ -255,7 +248,7 @@ const Dispatch = () => {
           vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("vehicle_id, created_at, booking_notes")
+                .select("vehicle_id, created_at")
                 .in("vehicle_id", vehicleIds)
                 .eq("dispatch_type", "operator")
                 .order("created_at", { ascending: false })
@@ -266,43 +259,29 @@ const Dispatch = () => {
         const profileMap = new Map<string, any>();
         (profilesRes.data || []).forEach((p: any) => profileMap.set(p.id, p));
 
-        const resolveTripCode = (trip: any) => {
-          if (trip?.vehicle_id && vehicleCodeMap.has(trip.vehicle_id)) {
-            return vehicleCodeMap.get(trip.vehicle_id) || null;
-          }
-
-          const fallbackCode = getAssignedCenterCode(trip?.booking_notes);
-          return fallbackCode ? fallbackCode.toUpperCase() : null;
-        };
-
-        // Per-center-code last trip date (all-time, any status from dispatch)
+        // Per-vehicle last trip date (all-time, any status from dispatch)
         const lastTripMap = new Map<string, string>();
         (completedTripsRes.data || []).forEach((t: any) => {
-          const tripCode = resolveTripCode(t);
-          if (tripCode && t?.created_at && !lastTripMap.has(tripCode)) {
-            lastTripMap.set(tripCode, t.created_at);
+          if (t?.vehicle_id && t?.created_at && !lastTripMap.has(t.vehicle_id)) {
+            lastTripMap.set(t.vehicle_id, t.created_at);
           }
         });
 
-        // Per-center-code today trip counts
+        // Per-vehicle today trip counts
         const todayCounts = new Map<string, number>();
         (todayTripsRes.data || []).forEach((t: any) => {
-          const tripCode = resolveTripCode(t);
-          if (!tripCode) return;
-          todayCounts.set(tripCode, (todayCounts.get(tripCode) || 0) + 1);
+          if (!t?.vehicle_id) return;
+          todayCounts.set(t.vehicle_id, (todayCounts.get(t.vehicle_id) || 0) + 1);
         });
 
-        // Fetch loss center codes (prefer vehicle_id, fall back to saved center code in notes)
+        // Fetch loss vehicle IDs (per vehicle, not per driver)
         const { data: lossTrips } = await supabase
           .from("trips")
-          .select("vehicle_id, booking_notes")
+          .select("vehicle_id")
           .eq("is_loss", true)
-          .eq("dispatch_type", "operator");
-        const lossCenterCodes = new Set(
-          (lossTrips || [])
-            .map((t: any) => resolveTripCode(t))
-            .filter(Boolean)
-        );
+          .eq("dispatch_type", "operator")
+          .not("vehicle_id", "is", null);
+        const lossVehicleIds = new Set((lossTrips || []).map((t: any) => t.vehicle_id));
 
         const index: Record<string, any> = {};
         (vehicles || []).forEach((v: any) => {
@@ -312,7 +291,6 @@ const Dispatch = () => {
           const p = v.driver_id ? profileMap.get(v.driver_id) : null;
           index[code] = {
             code,
-            vehicle_id: v.id,
             color: v.color || null,
             plate_number: v.plate_number,
             vehicle_type: (v.vehicle_types as any)?.name || null,
@@ -320,9 +298,9 @@ const Dispatch = () => {
             driver_id: v.driver_id || null,
             driver_name: p ? `${p.first_name} ${p.last_name}`.trim() : null,
             driver_phone: p?.phone_number || null,
-            last_trip_date: lastTripMap.get(code) || null,
-            today_trips: todayCounts.get(code) || 0,
-            has_loss: lossCenterCodes.has(code),
+            last_trip_date: lastTripMap.get(v.id) || null,
+            today_trips: todayCounts.get(v.id) || 0,
+            has_loss: lossVehicleIds.has(v.id),
           };
         });
 
@@ -944,13 +922,6 @@ const Dispatch = () => {
                               <div className="col-span-2 flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-2">
                                   {t.driver && (t.status === "accepted" || t.status === "started") && (
-                                    <a
-                                      href={`tel:${(t.driver as any).phone_number}`}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors flex items-center gap-1"
-                                    >
-                                      <Phone className="w-3 h-3" /> Call Driver
-                                    </a>
                                   )}
                                   {t.status !== "cancelled" && !t.is_loss && (
                                     <button
