@@ -1025,16 +1025,24 @@ const Dispatch = () => {
           <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
             {dispatcherProfile?.first_name} {dispatcherProfile?.last_name}
           </span>
+          {dutySessionId && (
+            <button
+              onClick={async () => {
+                await clockOut();
+              }}
+              title="Clock out (end duty session)"
+              className="flex items-center gap-1 text-xs text-warning hover:text-warning font-medium px-2 py-1 rounded-lg hover:bg-warning/10 transition-colors"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clock Out</span>
+            </button>
+          )}
           <button
-            onClick={async () => {
-              await clockOut();
-              handleLogout();
-            }}
-            title="Clock out & logout"
+            onClick={handleLogout}
+            title="Logout"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive font-medium px-2 py-1 rounded-lg hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Clock Out</span>
           </button>
         </div>
       </header>
