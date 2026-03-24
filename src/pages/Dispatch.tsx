@@ -31,6 +31,10 @@ import {
   CalendarIcon,
   Send,
   Copy,
+  RotateCcw,
+  CheckCircle,
+  XCircle,
+  Trash2,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
