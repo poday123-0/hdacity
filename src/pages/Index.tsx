@@ -1300,6 +1300,11 @@ const Index = () => {
             mapInstance={passengerMapInstance}
           />
         )}
+        {passengerScreen === "home" && (
+          <div className="absolute top-16 left-3 right-3 z-[600] pointer-events-auto">
+            <AdBanner />
+          </div>
+        )}
       </div>
 
       <TopBar 
