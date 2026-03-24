@@ -1386,6 +1386,44 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, []);
 
+  // Driver phase elapsed timer (waiting at pickup / heading time)
+  useEffect(() => {
+    if (!currentTrip?.id || driverTripPhase === "in_progress") { setDriverPhaseElapsed(0); return; }
+    let timer: ReturnType<typeof setInterval>;
+    const init = async () => {
+      const { data } = await supabase.from("trips").select("accepted_at").eq("id", currentTrip.id).single();
+      if (data?.accepted_at) {
+        const t = new Date(data.accepted_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setDriverPhaseElapsed(calc());
+        timer = setInterval(() => setDriverPhaseElapsed(calc()), 1000);
+      } else {
+        timer = setInterval(() => setDriverPhaseElapsed(p => p + 1), 1000);
+      }
+    };
+    init();
+    return () => { if (timer) clearInterval(timer); };
+  }, [currentTrip?.id, driverTripPhase]);
+
+  // Driver trip elapsed timer (from started_at)
+  useEffect(() => {
+    if (!currentTrip?.id || driverTripPhase !== "in_progress") { setDriverTripElapsed(0); return; }
+    let timer: ReturnType<typeof setInterval>;
+    const init = async () => {
+      const { data } = await supabase.from("trips").select("started_at").eq("id", currentTrip.id).single();
+      if (data?.started_at) {
+        const t = new Date(data.started_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setDriverTripElapsed(calc());
+        timer = setInterval(() => setDriverTripElapsed(calc()), 1000);
+      } else {
+        timer = setInterval(() => setDriverTripElapsed(p => p + 1), 1000);
+      }
+    };
+    init();
+    return () => { if (timer) clearInterval(timer); };
+  }, [currentTrip?.id, driverTripPhase]);
+
   // Lightweight stats-only refresh (called periodically + after trip completion)
   const refreshDriverStats = useCallback(async () => {
     if (!userProfile?.id) return;
