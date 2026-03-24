@@ -1025,25 +1025,25 @@ const DispatchTripForm = ({
                 }
 
                 const addEntry = (entry: CenterCodeIndexEntry) => {
-                  // Priority: 1) Loss + no trips today, 2) No trips today, 3) Loss + trips today, 4) Rest
-                  // Then sort by least recent trip date/time (all-time)
-                  const getPriority = (e: CenterCodeIndexEntry) => {
-                    const hasLoss = !!e.has_loss;
-                    const tripsToday = e.today_trips || 0;
-                    if (hasLoss && tripsToday === 0) return 0;
-                    if (!hasLoss && tripsToday === 0) return 1;
-                    if (hasLoss && tripsToday > 0) return 2;
-                    return 3;
-                  };
+                  // Priority: Loss vehicles always on top, then sort by last trip date ascending (oldest first)
+                  // Vehicles with no trip data go to bottom
                   const updated = [...centerCodeResults, entry].sort((a, b) => {
-                    const pa = getPriority(a);
-                    const pb = getPriority(b);
-                    if (pa !== pb) return pa - pb;
-                    // Within same priority, least recent trip first (all-time)
-                    if (!a.last_trip_date && !b.last_trip_date) return 0;
-                    if (!a.last_trip_date) return -1;
-                    if (!b.last_trip_date) return 1;
-                    return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+                    try {
+                      // First priority: Vehicles with LOSS always on top
+                      if (a.has_loss && !b.has_loss) return -1;
+                      if (!a.has_loss && b.has_loss) return 1;
+
+                      // Second priority: Sort by last trip date/time - oldest first
+                      if (!a.last_trip_date && !b.last_trip_date) return 0;
+                      if (!a.last_trip_date) return 1; // No trip data goes to bottom
+                      if (!b.last_trip_date) return -1; // No trip data goes to bottom
+
+                      // Sort ascending (oldest/least recent first)
+                      return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+                    } catch (error) {
+                      console.error("Vehicle sorting error:", error);
+                      return 0;
+                    }
                   });
 
                   setCenterCodeResults(updated);
@@ -1094,7 +1094,7 @@ const DispatchTripForm = ({
                 try {
                   const { data: vehicle } = await supabase
                     .from("vehicles")
-                    .select("plate_number, color, vehicle_type_id, driver_id, blocked_until, vehicle_types:vehicle_type_id(name)")
+                    .select("id, plate_number, color, vehicle_type_id, driver_id, blocked_until, vehicle_types:vehicle_type_id(name)")
                     .eq("center_code", code)
                     .eq("is_active", true)
                     .limit(1)
@@ -1146,22 +1146,22 @@ const DispatchTripForm = ({
                         .maybeSingle(),
                       supabase
                         .from("trips")
-                        .select("completed_at")
-                        .eq("driver_id", vehicle.driver_id)
-                        .eq("status", "completed")
-                        .order("completed_at", { ascending: false })
+                        .select("created_at")
+                        .eq("vehicle_id", vehicle.id)
+                        .eq("dispatch_type", "operator")
+                        .order("created_at", { ascending: false })
                         .limit(1)
                         .maybeSingle(),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
-                        .eq("driver_id", vehicle.driver_id)
+                        .eq("vehicle_id", vehicle.id)
                         .gte("created_at", todayStart.toISOString())
                         .in("status", ["requested", "accepted", "started", "completed"]),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
-                        .eq("driver_id", vehicle.driver_id)
+                        .eq("vehicle_id", vehicle.id)
                         .eq("is_loss", true)
                         .eq("dispatch_type", "operator"),
                     ]);
@@ -1170,8 +1170,8 @@ const DispatchTripForm = ({
                       driverName = `${profile.first_name} ${profile.last_name}`.trim();
                       driverPhone = profile.phone_number;
                     }
-                    if (lastTrip?.completed_at) {
-                      lastTripDate = lastTrip.completed_at;
+                    if (lastTrip?.created_at) {
+                      lastTripDate = lastTrip.created_at;
                     }
                     todayTrips = todayCount || 0;
                     hasLoss = (lossCount || 0) > 0;
