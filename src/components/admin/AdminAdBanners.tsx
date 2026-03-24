@@ -153,7 +153,7 @@ const AdminAdBanners = () => {
                   </a>
                 ) : "No link"}
               </p>
-              <p className="text-[10px] text-muted-foreground">Order: {b.sort_order}</p>
+              <p className="text-[10px] text-muted-foreground">Order: {b.sort_order} · {b.target_audience === "both" ? "All" : b.target_audience === "passengers" ? "Passengers" : "Drivers"}</p>
             </div>
             <div className="flex items-center gap-1">
               <button onClick={() => moveOrder(b.id, "up")} disabled={idx === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-surface disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>
