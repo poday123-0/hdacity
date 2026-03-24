@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
@@ -667,6 +667,22 @@ const AdminVehicles = () => {
                         {v.vehicle_status === "pending" && (
                           <button onClick={() => { setRejectingId(v.id); setRejectReason(""); }} className="text-[11px] font-medium text-destructive hover:underline">Reject</button>
                         )}
+                        <button
+                          title="Block vehicle for 3 hours"
+                          onClick={async () => {
+                            const blockedUntil = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+                            const { error } = await supabase.from("vehicles").update({ blocked_until: blockedUntil } as any).eq("id", v.id);
+                            if (!error) {
+                              toast({ title: "Vehicle blocked", description: `${v.center_code || v.plate_number} blocked for 3 hours` });
+                              fetchAll();
+                            } else {
+                              toast({ title: "Block failed", variant: "destructive" });
+                            }
+                          }}
+                          className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-warning"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                        </button>
                         <button onClick={() => openEdit(v)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-primary"><Pencil className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleDelete(v.id)} className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
