@@ -170,6 +170,14 @@ const DriverCompleteScreen = ({
         </div>
 
         <button
+          onClick={() => setShowInvoice(true)}
+          className="w-full bg-surface text-foreground font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+        >
+          <FileText className="w-4 h-4 text-primary" />
+          <span className="text-sm">Generate Invoice</span>
+        </button>
+
+        <button
           onClick={handleContinue}
           disabled={submittingRating}
           className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-60"
@@ -177,6 +185,14 @@ const DriverCompleteScreen = ({
           {submittingRating ? "Saving..." : "Continue"}
         </button>
       </motion.div>
+      {showInvoice && (
+        <TripInvoice
+          trip={currentTrip}
+          driverProfile={userProfile as any}
+          passengerProfile={passengerProfile as any}
+          onClose={() => setShowInvoice(false)}
+        />
+      )}
     </motion.div>
   );
 };
