@@ -1324,9 +1324,9 @@ const DispatchTripForm = ({
                 setSubmitting(false);
               }}
               disabled={submitting || !pickup || !dropoff}
-              className="px-3 py-3 rounded-xl font-semibold text-sm bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+              className="px-2.5 py-2 rounded-lg font-semibold text-xs bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40 flex items-center gap-1"
             >
-              <ShieldOff className="w-4 h-4" />
+              <ShieldOff className="w-3.5 h-3.5" />
               No Vehicle
             </button>
           )}
