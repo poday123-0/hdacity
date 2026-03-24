@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare } from "lucide-react";
+import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare, FileText } from "lucide-react";
 import { format } from "date-fns";
 import TripChat from "@/components/TripChat";
+import TripInvoice from "@/components/TripInvoice";
 
 interface RideHistoryProps {
   userId?: string;
