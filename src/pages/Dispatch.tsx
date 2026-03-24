@@ -203,6 +203,10 @@ const Dispatch = () => {
   const [dutySessionId, setDutySessionId] = useState<string | null>(null);
   const [dutyClockIn, setDutyClockIn] = useState<string | null>(null);
   const [dutyElapsed, setDutyElapsed] = useState("");
+  const [showDutyHistory, setShowDutyHistory] = useState(false);
+  const [dutyHistoryFilter, setDutyHistoryFilter] = useState<"today" | "week" | "month">("today");
+  const [dutyHistory, setDutyHistory] = useState<any[]>([]);
+  const [dutyHistoryLoading, setDutyHistoryLoading] = useState(false);
 
   // Login state
   const [phone, setPhone] = useState("");
@@ -295,6 +299,34 @@ const Dispatch = () => {
     setDutyElapsed("");
     localStorage.removeItem("hda_duty_session");
   };
+
+  // Fetch personal duty history
+  const fetchDutyHistory = async () => {
+    if (!dispatcherProfile?.id) return;
+    setDutyHistoryLoading(true);
+    const now = new Date();
+    let startDate: Date;
+    if (dutyHistoryFilter === "today") {
+      startDate = startOfDay(now);
+    } else if (dutyHistoryFilter === "week") {
+      startDate = startOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      startDate = startOfMonth(now);
+    }
+    const { data } = await supabase
+      .from("dispatch_duty_sessions")
+      .select("*")
+      .eq("dispatcher_id", dispatcherProfile.id)
+      .gte("clock_in", startDate.toISOString())
+      .order("clock_in", { ascending: false })
+      .limit(100);
+    setDutyHistory(data || []);
+    setDutyHistoryLoading(false);
+  };
+
+  useEffect(() => {
+    if (showDutyHistory) fetchDutyHistory();
+  }, [showDutyHistory, dutyHistoryFilter]);
 
   // Duty timer tick
   useEffect(() => {
@@ -958,10 +990,14 @@ const Dispatch = () => {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {dutyElapsed && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success/10 border border-success/20">
+            <button
+              onClick={() => setShowDutyHistory(true)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success/10 border border-success/20 hover:bg-success/20 transition-colors cursor-pointer"
+              title="View my duty history"
+            >
               <Clock className="w-3 h-3 text-success" />
               <span className="text-[11px] font-mono font-bold text-success tabular-nums">{dutyElapsed}</span>
-            </div>
+            </button>
           )}
           <button
             onClick={toggleTheme}
@@ -2488,6 +2524,87 @@ const Dispatch = () => {
                 </>
               );
             })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Duty History Dialog */}
+      <Dialog open={showDutyHistory} onOpenChange={setShowDutyHistory}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle className="flex items-center gap-2 text-sm font-bold">
+            <Clock className="w-4 h-4 text-primary" />
+            My Duty History
+          </DialogTitle>
+          <div className="space-y-3">
+            <div className="flex gap-1">
+              {(["today", "week", "month"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setDutyHistoryFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    dutyHistoryFilter === f
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f === "today" ? "Today" : f === "week" ? "This Week" : "This Month"}
+                </button>
+              ))}
+            </div>
+
+            {/* Summary */}
+            {!dutyHistoryLoading && dutyHistory.length > 0 && (() => {
+              const totalMs = dutyHistory.reduce((acc, s) => {
+                const start = new Date(s.clock_in).getTime();
+                const end = s.clock_out ? new Date(s.clock_out).getTime() : Date.now();
+                return acc + (end - start);
+              }, 0);
+              const hrs = Math.floor(totalMs / 3600000);
+              const mins = Math.floor((totalMs % 3600000) / 60000);
+              return (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-primary">{hrs}h {mins}m</p>
+                    <p className="text-[10px] text-muted-foreground">Total Hours</p>
+                  </div>
+                  <div className="text-center ml-auto">
+                    <p className="text-lg font-bold text-foreground">{dutyHistory.length}</p>
+                    <p className="text-[10px] text-muted-foreground">Sessions</p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Sessions list */}
+            <div className="max-h-[300px] overflow-y-auto space-y-1">
+              {dutyHistoryLoading ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Loading...</p>
+              ) : dutyHistory.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">No sessions found</p>
+              ) : dutyHistory.map((s: any) => {
+                const start = new Date(s.clock_in).getTime();
+                const end = s.clock_out ? new Date(s.clock_out).getTime() : Date.now();
+                const diffMs = end - start;
+                const hrs = Math.floor(diffMs / 3600000);
+                const mins = Math.floor((diffMs % 3600000) / 60000);
+                return (
+                  <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface border border-border text-xs">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {format(new Date(s.clock_in), "MMM d, yyyy")}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(s.clock_in), "hh:mm a")}
+                        {" → "}
+                        {s.clock_out ? format(new Date(s.clock_out), "hh:mm a") : (
+                          <span className="text-success font-semibold">Active</span>
+                        )}
+                      </p>
+                    </div>
+                    <span className="font-bold text-foreground">{hrs}h {mins}m</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
