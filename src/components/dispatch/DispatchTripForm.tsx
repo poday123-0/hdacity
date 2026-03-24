@@ -540,7 +540,7 @@ const DispatchTripForm = ({
     }, 150);
 
     return () => { googleAbort.abort(); };
-  }, [searchQuery, serviceLocations, namedLocations, findNearestServiceAreaName, isWithinServiceArea]);
+  }, [searchQuery, serviceLocations, namedLocations, recentBookings, findNearestServiceAreaName, isWithinServiceArea]);
 
   const selectLocation = (result: NominatimResult) => {
     const loc: StopLocation = {
