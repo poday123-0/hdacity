@@ -262,6 +262,55 @@ const Dispatch = () => {
     };
   };
 
+  // Clock in a new duty session
+  const clockIn = async (profileId: string) => {
+    // Get IP via edge function
+    let ip = "unknown";
+    try {
+      const { data: ipData } = await supabase.functions.invoke("check-dispatch-ip", { body: {} });
+      ip = ipData?.ip || "unknown";
+    } catch {}
+
+    const { data } = await supabase
+      .from("dispatch_duty_sessions")
+      .insert({ dispatcher_id: profileId, ip_address: ip } as any)
+      .select("id, clock_in")
+      .single();
+    if (data) {
+      setDutySessionId(data.id);
+      setDutyClockIn(data.clock_in);
+      localStorage.setItem("hda_duty_session", JSON.stringify({ id: data.id, clock_in: data.clock_in }));
+    }
+  };
+
+  // Clock out
+  const clockOut = async () => {
+    if (!dutySessionId) return;
+    await supabase
+      .from("dispatch_duty_sessions")
+      .update({ clock_out: new Date().toISOString() } as any)
+      .eq("id", dutySessionId);
+    setDutySessionId(null);
+    setDutyClockIn(null);
+    setDutyElapsed("");
+    localStorage.removeItem("hda_duty_session");
+  };
+
+  // Duty timer tick
+  useEffect(() => {
+    if (!dutyClockIn) return;
+    const update = () => {
+      const diff = Date.now() - new Date(dutyClockIn).getTime();
+      const hrs = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setDutyElapsed(`${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [dutyClockIn]);
+
   useEffect(() => {
     const stored = localStorage.getItem("hda_dispatcher");
     if (stored) {
@@ -272,6 +321,16 @@ const Dispatch = () => {
         setDispatcherPermissions(parsed.permissions || []);
         setDispatcherRole(parsed.role || "dispatcher");
         setIsAuthed(true);
+
+        // Restore duty session
+        const dutyStored = localStorage.getItem("hda_duty_session");
+        if (dutyStored) {
+          try {
+            const dutyParsed = JSON.parse(dutyStored);
+            setDutySessionId(dutyParsed.id);
+            setDutyClockIn(dutyParsed.clock_in);
+          } catch {}
+        }
 
         // Refresh permissions from DB to avoid stale cache
         if (profile?.id) {
