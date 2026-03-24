@@ -36,6 +36,8 @@ import {
   XCircle,
   Trash2,
   Car,
+  Clock,
+  LogOut,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
