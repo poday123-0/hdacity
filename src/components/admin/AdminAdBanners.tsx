@@ -12,6 +12,9 @@ const AdminAdBanners = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [linkUrl, setLinkUrl] = useState("");
   const [targetAudience, setTargetAudience] = useState("both");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLink, setEditLink] = useState("");
+  const [editAudience, setEditAudience] = useState("both");
 
   const fetchAll = async () => {
     setLoading(true);
