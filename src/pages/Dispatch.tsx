@@ -35,10 +35,13 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
+  Car,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
+import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
+import AdminVehicles from "@/components/admin/AdminVehicles";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
@@ -116,6 +119,8 @@ type DispatchTab =
   | "drivers"
   | "passengers"
   | "vehicle_types"
+  | "vehicles"
+  | "named_locations"
   | "fares"
   | "billing"
   | "wallets"
@@ -143,6 +148,8 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   notifications: "manage_notifications",
   banks: "manage_banks",
   companies: "manage_companies",
+  vehicles: "manage_vehicles",
+  named_locations: "manage_locations",
 };
 
 const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -161,6 +168,8 @@ const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboa
   { id: "notifications", label: "Notifications", icon: BellRing },
   { id: "banks", label: "Banks", icon: Building2 },
   { id: "companies", label: "Companies", icon: Building },
+  { id: "vehicles", label: "Vehicles", icon: Car },
+  { id: "named_locations", label: "Named Locations", icon: MapPin },
 ];
 
 const Dispatch = () => {
@@ -1740,6 +1749,16 @@ const Dispatch = () => {
         {activeTab === "companies" && (
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
             <AdminCompanies />
+          </div>
+        )}
+        {activeTab === "vehicles" && (
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            <AdminVehicles />
+          </div>
+        )}
+        {activeTab === "named_locations" && (
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            <AdminNamedLocations />
           </div>
         )}
       </div>
