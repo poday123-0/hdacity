@@ -12,6 +12,7 @@ import DriverWallet from "@/components/DriverWallet";
 import DriverCompleteScreen from "@/components/DriverCompleteScreen";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/image-compress";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
 import {
