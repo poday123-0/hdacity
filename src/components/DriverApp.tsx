@@ -2910,7 +2910,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       {/* Ride Request */}
       {screen === "ride-request" && currentTrip &&
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[500] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm ride-request-overlay">
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden max-h-[90vh] overflow-y-auto">
+          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden max-h-[90dvh] flex flex-col">
             {/* Header with countdown */}
             <div className="bg-gradient-to-b from-primary to-primary/90 px-5 py-5 text-center relative overflow-hidden">
               {/* Decorative circles */}
@@ -2961,7 +2961,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </div>
 
             {/* Mini map preview */}
-            <div className="h-72 sm:h-56 w-full">
+            <div className="h-40 sm:h-56 w-full shrink-0">
               <RideRequestMap
               pickupLat={currentTrip.pickup_lat}
               pickupLng={currentTrip.pickup_lng}
@@ -2971,7 +2971,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
             </div>
 
-            <div className="px-4 py-3 space-y-2.5">
+            <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1 min-h-0">
               {/* Customer/Passenger info */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0 overflow-hidden">
@@ -3044,8 +3044,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 </div>
             }
 
-              {/* Accept / Decline buttons */}
-              <div className="flex gap-2">
+
+            </div>
+
+              {/* Accept / Decline buttons - sticky at bottom */}
+              <div className="flex gap-2 px-4 py-3 border-t border-border/30 shrink-0 bg-card">
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 stopAllSounds(); tripSoundRef.current = null;
@@ -3195,7 +3198,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   <CheckCircle className="w-4 h-4" />Accept
                 </button>
               </div>
-            </div>
           </motion.div>
         </motion.div>
       }
