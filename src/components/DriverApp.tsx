@@ -236,6 +236,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
+  const foregroundGpsCleanupRef = useRef<(() => void) | null>(null);
   const tripRadiusRef = useRef(10);
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
