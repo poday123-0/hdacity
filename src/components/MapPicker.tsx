@@ -46,6 +46,39 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   const { isLoaded } = useGoogleMaps();
   const [isPanning, setIsPanning] = useState(false);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number; tag?: string }[]>([]);
+  const [searchLocations, setSearchLocations] = useState<any[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Load named + service locations once
+  useEffect(() => {
+    const load = async () => {
+      const [nlRes, slRes] = await Promise.all([
+        supabase.from("named_locations").select("name, lat, lng, address").eq("is_active", true).eq("status", "approved"),
+        supabase.from("service_locations").select("name, lat, lng").eq("is_active", true),
+      ]);
+      setSearchLocations([
+        ...(slRes.data || []).map((s: any) => ({ ...s, tag: "Area" })),
+        ...(nlRes.data || []).map((n: any) => ({ ...n, tag: "Place" })),
+      ]);
+    };
+    load();
+  }, []);
+
+  // Filter search results
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    const q = searchQuery.toLowerCase();
+    const matches = searchLocations
+      .filter(l => l.name.toLowerCase().includes(q) || (l.address || "").toLowerCase().includes(q))
+      .slice(0, 8)
+      .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
+    setSearchResults(matches);
+  }, [searchQuery, searchLocations]);
+
   // Get user location on mount
   useEffect(() => {
     if (initialLat && initialLng) return;
