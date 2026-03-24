@@ -7,10 +7,11 @@ import * as XLSX from "xlsx";
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
 type VehicleForm = typeof emptyForm;
 
-type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected";
+type VehicleStatusFilter = "all" | "approved" | "pending" | "rejected" | "online";
 
 const statusChips: { value: VehicleStatusFilter; label: string; color: string }[] = [
   { value: "all", label: "All", color: "bg-surface text-foreground" },
+  { value: "online", label: "Online", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
   { value: "approved", label: "Approved", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
   { value: "pending", label: "Pending", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
   { value: "rejected", label: "Rejected", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
