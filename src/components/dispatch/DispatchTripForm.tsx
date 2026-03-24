@@ -39,6 +39,7 @@ interface OnlineDriver {
 
 type CenterCodeIndexEntry = {
   code: string;
+  vehicle_id: string;
   color: string | null;
   plate_number: string;
   vehicle_type: string | null;
@@ -585,6 +586,7 @@ const DispatchTripForm = ({
         vehicle_type_id: selectedVehicleType || null,
         status: isAssigned ? "accepted" : "requested",
         driver_id: assignedDriverId || null,
+        vehicle_id: assignedEntry?.vehicle_id || null,
         accepted_at: isAssigned ? new Date().toISOString() : null,
         fare_type: "distance",
         estimated_fare: estimatedFare || null,
@@ -1025,20 +1027,25 @@ const DispatchTripForm = ({
                 }
 
                 const addEntry = (entry: CenterCodeIndexEntry) => {
-                  // Priority: Loss vehicles always on top, then sort by last trip date ascending (oldest first)
-                  // Vehicles with no trip data go to bottom
                   const updated = [...centerCodeResults, entry].sort((a, b) => {
                     try {
-                      // First priority: Vehicles with LOSS always on top
-                      if (a.has_loss && !b.has_loss) return -1;
-                      if (!a.has_loss && b.has_loss) return 1;
+                      const getPriority = (item: CenterCodeIndexEntry) => {
+                        const hasLoss = !!item.has_loss;
+                        const hasTripsToday = (item.today_trips || 0) > 0;
 
-                      // Second priority: Sort by last trip date/time - oldest first
+                        if (hasLoss && !hasTripsToday) return 0;
+                        if (!hasLoss && !hasTripsToday) return 1;
+                        if (hasLoss && hasTripsToday) return 2;
+                        return 3;
+                      };
+
+                      const priorityDiff = getPriority(a) - getPriority(b);
+                      if (priorityDiff !== 0) return priorityDiff;
+
                       if (!a.last_trip_date && !b.last_trip_date) return 0;
                       if (!a.last_trip_date) return 1; // No trip data goes to bottom
                       if (!b.last_trip_date) return -1; // No trip data goes to bottom
 
-                      // Sort ascending (oldest/least recent first)
                       return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
                     } catch (error) {
                       console.error("Vehicle sorting error:", error);
@@ -1179,6 +1186,7 @@ const DispatchTripForm = ({
 
                   addEntry({
                     code,
+                    vehicle_id: vehicle.id,
                     color: vehicle.color,
                     plate_number: vehicle.plate_number,
                     vehicle_type: (vehicle.vehicle_types as any)?.name || null,
