@@ -876,12 +876,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         origin,
         destination,
         travelMode: g.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: false,
+        provideRouteAlternatives: true,
         drivingOptions: {
           departureTime: new Date(),
           trafficModel: g.maps.TrafficModel?.BEST_GUESS || "bestguess",
         },
-      }).then((result: any) => {
+      }).then((raw: any) => {
+        const result = selectShortestRoute(raw);
         if (directionsRendererRef.current === dr && routeRequestSeqRef.current === requestSeq) {
           dr.setDirections(result);
           parseNavStepsRef.current(result);
