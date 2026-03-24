@@ -11,6 +11,7 @@ const AdminAdBanners = () => {
   const [savingRotation, setSavingRotation] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [linkUrl, setLinkUrl] = useState("");
+  const [targetAudience, setTargetAudience] = useState("both");
 
   const fetchAll = async () => {
     setLoading(true);
