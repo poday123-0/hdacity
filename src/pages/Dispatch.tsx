@@ -31,6 +31,10 @@ import {
   CalendarIcon,
   Send,
   Copy,
+  RotateCcw,
+  CheckCircle,
+  XCircle,
+  Trash2,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
@@ -1308,9 +1312,10 @@ const Dispatch = () => {
                                                 refreshTrips();
                                               });
                                           }}
-                                          className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors"
+                                          className="h-6 w-6 rounded flex items-center justify-center bg-success/15 text-success hover:bg-success/25 transition-colors"
+                                          title="Restore Trip"
                                         >
-                                          Restore Trip
+                                          <RotateCcw className="w-3 h-3" />
                                         </button>
                                       )}
                                       {t.status !== "cancelled" && !t.is_loss && (
@@ -1333,9 +1338,10 @@ const Dispatch = () => {
                                                 toast({ title: "Trip marked as completed" });
                                                 refreshTrips();
                                               }}
-                                              className="h-6 px-2 rounded text-[10px] font-bold bg-success/15 text-success hover:bg-success/25 transition-colors"
+                                              className="h-6 w-6 rounded flex items-center justify-center bg-success/15 text-success hover:bg-success/25 transition-colors"
+                                              title="Complete"
                                             >
-                                              Complete
+                                              <CheckCircle className="w-3 h-3" />
                                             </button>
                                           )}
                                           <button
@@ -1344,18 +1350,20 @@ const Dispatch = () => {
                                               handleMarkLoss(t.id);
                                             }}
                                             disabled={markingLoss === t.id}
-                                            className="h-6 px-2 rounded text-[10px] font-bold bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40"
+                                            className="h-6 w-6 rounded flex items-center justify-center bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40"
+                                            title="Mark as Loss"
                                           >
-                                            {markingLoss === t.id ? "..." : "LOSS"}
+                                            <AlertTriangle className="w-3 h-3" />
                                           </button>
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               handleDispatchCancel(t.id);
                                             }}
-                                            className="h-6 px-2 rounded text-[10px] font-bold bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
+                                            className="h-6 w-6 rounded flex items-center justify-center bg-warning/15 text-warning hover:bg-warning/25 transition-colors"
+                                            title="Cancel Trip"
                                           >
-                                            Cancel Trip
+                                            <XCircle className="w-3 h-3" />
                                           </button>
                                         </>
                                        )}
@@ -1370,9 +1378,10 @@ const Dispatch = () => {
                                           toast({ title: "Booking deleted" });
                                           refreshTrips();
                                         }}
-                                        className="h-6 px-2 rounded text-[10px] font-bold bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors"
+                                        className="h-6 w-6 rounded flex items-center justify-center bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors"
+                                        title="Delete"
                                       >
-                                        Delete
+                                        <Trash2 className="w-3 h-3" />
                                       </button>
                                     </div>
                                   </div>
