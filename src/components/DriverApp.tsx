@@ -69,6 +69,7 @@ import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./RideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
+import AdBanner from "./AdBanner";
 import DriverLeaderboard from "./DriverLeaderboard";
 
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
