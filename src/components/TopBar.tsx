@@ -583,7 +583,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                       <span className="text-[10px] font-semibold text-muted-foreground">Terms</span>
                     </button>
                   <button
-                      onClick={() => { setShowProfile(false); window.open("/privacy", "_blank"); }}
+                      onClick={() => { setShowProfile(false); window.location.href = "/privacy"; }}
                       className="flex flex-col items-center gap-1.5 bg-muted rounded-xl px-2 py-3 active:scale-[0.98] transition-transform"
                     >
                       <Shield className="w-5 h-5 text-muted-foreground" />
