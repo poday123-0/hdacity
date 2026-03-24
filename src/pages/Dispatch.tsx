@@ -990,10 +990,14 @@ const Dispatch = () => {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {dutyElapsed && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success/10 border border-success/20">
+            <button
+              onClick={() => setShowDutyHistory(true)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success/10 border border-success/20 hover:bg-success/20 transition-colors cursor-pointer"
+              title="View my duty history"
+            >
               <Clock className="w-3 h-3 text-success" />
               <span className="text-[11px] font-mono font-bold text-success tabular-nums">{dutyElapsed}</span>
-            </div>
+            </button>
           )}
           <button
             onClick={toggleTheme}
