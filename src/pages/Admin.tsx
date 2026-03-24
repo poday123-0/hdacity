@@ -85,7 +85,7 @@ const navGroups: NavGroup[] = [
     label: "Promotions",
     items: [
       { id: "ad_banners", label: "Ad Banners", icon: CreditCard },
-      { id: "watermelons", label: "🍉 Ramadan Promos", icon: Cherry },
+      { id: "watermelons", label: "🍉 Map Promos", icon: Cherry },
       { id: "competitions", label: "🏆 Competitions", icon: Trophy },
     ],
   },
