@@ -670,8 +670,9 @@ const DispatchTripForm = ({
       const tripInsertPromise = supabase.from("trips").insert(tripPayload).select("*").single();
 
       const broadcastPreFetchPromise = isBroadcast ? Promise.all([
-        supabase.from("driver_locations").select("driver_id, lat, lng").eq("is_online", true).eq("is_on_trip", false),
+        supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single()).catch(() => ({ data: null })),
+        selectedVehicleType ? supabase.from("driver_vehicle_types").select("driver_id").eq("vehicle_type_id", selectedVehicleType).eq("status", "approved") : Promise.resolve({ data: null }),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
@@ -680,8 +681,18 @@ const DispatchTripForm = ({
       if (error) throw error;
 
       if (broadcastData) {
-        const [driversRes, timeoutRes] = broadcastData as any;
-        broadcastDriversCache = driversRes?.data || [];
+        const [driversRes, timeoutRes, dvtRes] = broadcastData as any;
+        let allDrivers = driversRes?.data || [];
+        
+        // Filter drivers by vehicle type eligibility
+        if (selectedVehicleType && allDrivers.length > 0) {
+          const dvtDriverIds = new Set((dvtRes?.data || []).map((r: any) => r.driver_id));
+          allDrivers = allDrivers.filter((d: any) => 
+            d.vehicle_type_id === selectedVehicleType || dvtDriverIds.has(d.driver_id)
+          );
+        }
+        
+        broadcastDriversCache = allDrivers;
         if (timeoutRes?.data?.value) {
           const secs = typeof timeoutRes.data.value === "number" ? timeoutRes.data.value : parseInt(String(timeoutRes.data.value)) || 60;
           broadcastTimeoutMsCache = secs * 1000;
