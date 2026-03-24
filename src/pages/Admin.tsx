@@ -74,6 +74,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "fares", label: "Fares", icon: DollarSign },
       { id: "billing", label: "Billing", icon: Receipt },
+      { id: "driver_invoices", label: "Driver Invoices", icon: Receipt },
       { id: "wallets", label: "Wallets", icon: Wallet },
       { id: "topup_cards", label: "Topup Cards", icon: CreditCard },
       { id: "banks", label: "Banks", icon: Building2 },
