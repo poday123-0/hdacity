@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
+import { selectShortestRoute } from "@/lib/shortest-route";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)

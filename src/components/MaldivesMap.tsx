@@ -426,7 +426,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
         origin: { lat: trip.pickupLat, lng: trip.pickupLng },
         destination: { lat: trip.dropoffLat, lng: trip.dropoffLng },
         travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => dr.setDirections(result))
+        provideRouteAlternatives: true,
+      }).then((raw: any) => dr.setDirections(selectShortestRoute(raw)))
         .catch(() => {});
 
       // Info window on pickup
