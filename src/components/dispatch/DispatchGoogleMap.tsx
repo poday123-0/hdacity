@@ -446,6 +446,7 @@ const DispatchGoogleMap = () => {
             ref={inputRef}
             type="text"
             placeholder="Search service areas & named locations..."
+            autoComplete="off"
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-background/95 backdrop-blur-sm border border-border shadow-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
