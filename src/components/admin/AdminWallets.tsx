@@ -53,6 +53,9 @@ const AdminWallets = () => {
   const [activeView, setActiveView] = useState<"wallets" | "withdrawals" | "topups">("wallets");
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [topUpProfiles, setTopUpProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string }>>(new Map());
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyTransactions, setHistoryTransactions] = useState<TransactionRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchWallets = async () => {
     setLoading(true);
@@ -105,6 +108,28 @@ const AdminWallets = () => {
   const fetchTransactions = async (walletId: string) => {
     const { data } = await supabase.from("wallet_transactions").select("*").eq("wallet_id", walletId).order("created_at", { ascending: false }).limit(50);
     setTransactions((data || []).map(t => ({ ...t, amount: Number(t.amount) })));
+  };
+
+  const fetchFullHistory = async (walletId: string) => {
+    setHistoryLoading(true);
+    let all: any[] = [];
+    let from = 0;
+    const pageSize = 500;
+    while (true) {
+      const { data } = await supabase
+        .from("wallet_transactions")
+        .select("*")
+        .eq("wallet_id", walletId)
+        .order("created_at", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    setHistoryTransactions(all.map(t => ({ ...t, amount: Number(t.amount) })).reverse());
+    setHistoryLoading(false);
+    setShowHistory(true);
   };
 
   useEffect(() => { fetchWallets(); fetchWithdrawals(); fetchPendingTopUps(); }, []);
@@ -253,6 +278,9 @@ const AdminWallets = () => {
                     <p className="text-[10px] text-muted-foreground">MVR</p>
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={e => { e.stopPropagation(); setSelectedWallet(w); fetchFullHistory(w.id); }} className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20" title="View full history">
+                      <History className="w-4 h-4" />
+                    </button>
                     <button onClick={e => { e.stopPropagation(); setSelectedWallet(w); setAdjustType("credit"); setShowAdjust(true); }} className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-600 hover:bg-green-500/20">
                       <Plus className="w-4 h-4" />
                     </button>
@@ -448,7 +476,7 @@ const AdminWallets = () => {
 
       {/* Proof Preview Modal */}
       {proofPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-sm" onClick={() => setProofPreview(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/60 backdrop-blur-sm" onClick={() => setProofPreview(null)}>
           <div className="relative max-w-lg w-full mx-4">
             <button
               onClick={() => setProofPreview(null)}
@@ -457,6 +485,101 @@ const AdminWallets = () => {
               <X className="w-4 h-4 text-foreground" />
             </button>
             <img src={proofPreview} alt="Transfer proof" className="w-full rounded-xl shadow-2xl" />
+          </div>
+        </div>
+      )}
+
+      {/* Full History Modal */}
+      {showHistory && selectedWallet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowHistory(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-5 border-b border-border flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Wallet History</h3>
+                <p className="text-xs text-muted-foreground">
+                  {selectedWallet.profile?.first_name} {selectedWallet.profile?.last_name} • {selectedWallet.profile?.phone_number}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Current balance: <span className="font-bold text-foreground">{selectedWallet.balance.toFixed(2)} MVR</span> • {historyTransactions.length} transactions
+                </p>
+              </div>
+              <button onClick={() => setShowHistory(false)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-destructive/10">
+                <X className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
+
+            {/* Transaction list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
+              {historyLoading ? (
+                <div className="text-center py-12 text-muted-foreground">Loading transactions...</div>
+              ) : historyTransactions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No transactions found</div>
+              ) : (
+                (() => {
+                  // Calculate running balance (transactions are newest-first, so reverse to compute)
+                  const reversed = [...historyTransactions].reverse();
+                  const runningBalances: number[] = [];
+                  let bal = 0;
+                  reversed.forEach(t => {
+                    if (t.status === "rejected") {
+                      runningBalances.push(bal);
+                    } else if (t.type === "credit") {
+                      bal += t.amount;
+                      runningBalances.push(bal);
+                    } else {
+                      bal -= t.amount;
+                      runningBalances.push(bal);
+                    }
+                  });
+                  runningBalances.reverse();
+
+                  return historyTransactions.map((t, idx) => (
+                    <div key={t.id} className="flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        t.status === "pending" ? "bg-amber-500/10 text-amber-600" :
+                        t.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                        t.type === "credit" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"
+                      }`}>
+                        {t.status === "pending" ? <Clock className="w-3.5 h-3.5" /> :
+                         t.type === "credit" ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground">{t.reason || t.type}</p>
+                        {t.notes && <p className="text-[10px] text-muted-foreground truncate">{t.notes}</p>}
+                        {t.trip_id && <p className="text-[9px] text-muted-foreground font-mono">Trip: {t.trip_id.slice(0, 8)}…</p>}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString()}</p>
+                          {t.status !== "completed" && (
+                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
+                              t.status === "pending" ? "bg-amber-500/10 text-amber-600" :
+                              "bg-destructive/10 text-destructive"
+                            }`}>{t.status}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`text-sm font-bold ${
+                          t.status === "rejected" ? "text-muted-foreground line-through" :
+                          t.status === "pending" ? "text-amber-600" :
+                          t.type === "credit" ? "text-green-600" : "text-red-500"
+                        }`}>
+                          {t.type === "credit" ? "+" : "-"}{t.amount.toFixed(2)}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground font-mono">
+                          Bal: {runningBalances[idx]?.toFixed(2) ?? "—"}
+                        </p>
+                        {t.proof_url && (
+                          <button onClick={() => setProofPreview(t.proof_url)} className="mt-0.5 text-[9px] text-primary underline">
+                            View slip
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ));
+                })()
+              )}
+            </div>
           </div>
         </div>
       )}
