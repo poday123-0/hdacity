@@ -164,7 +164,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
     } catch {}
   };
-  const [showEarnings, setShowEarnings] = useState(true);
+  const [showEarnings, setShowEarnings] = useState(() => {
+    try { return localStorage.getItem("hda_driver_show_earnings") !== "false"; } catch { return true; }
+  });
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
   const [driverWalletBalance, setDriverWalletBalance] = useState(0);
