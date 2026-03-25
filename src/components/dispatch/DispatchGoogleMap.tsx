@@ -435,9 +435,8 @@ const DispatchGoogleMap = () => {
   }
 
   return (
-    <div className="relative w-full h-full dispatch-map-container">
-      {/* Global style to hide Google Places autocomplete dropdown on this input */}
-      <style>{`.pac-container { display: none !important; }`}</style>
+    <div className="relative w-full h-full">
+      <div ref={mapRef} className="w-full h-full" />
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Search bar */}
