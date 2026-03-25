@@ -149,6 +149,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
+  const getStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at") => {
+    if (!tripId) return null;
+    try {
+      return localStorage.getItem(`hda_trip_timer:${tripId}:${field}`);
+    } catch {
+      return null;
+    }
+  };
+  const setStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at", value?: string | null) => {
+    if (!tripId || !value) return;
+    try {
+      localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
+    } catch {}
+  };
   const [showEarnings, setShowEarnings] = useState(true);
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
