@@ -912,8 +912,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   });
 
   // Route when navigating — use refs for volatile values to avoid re-triggering
-  const currentPosRef = useRef(currentPos);
-  currentPosRef.current = currentPos;
+  // (currentPosRef is defined earlier, near free navigation)
 
   useEffect(() => {
     const map = mapInstance.current;
