@@ -235,6 +235,7 @@ const Dispatch = () => {
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const [showAllBookings, setShowAllBookings] = useState(false);
+  const [showAllLoss, setShowAllLoss] = useState(false);
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
@@ -621,6 +622,7 @@ const Dispatch = () => {
           )
           .eq("dispatch_type", "operator")
           .eq("is_loss", true)
+          .gte("created_at", startOfDay(new Date()).toISOString())
           .order("created_at", { ascending: false })
           .limit(200),
       ]);
@@ -765,6 +767,7 @@ const Dispatch = () => {
         )
         .eq("dispatch_type", "operator")
         .eq("is_loss", true)
+        .gte("created_at", startOfDay(new Date()).toISOString())
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
@@ -1128,7 +1131,7 @@ const Dispatch = () => {
                     {lostTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
                     ) : (
-                      lostTrips.map((t: any) => (
+                      (showAllLoss ? lostTrips : lostTrips.slice(0, 2)).map((t: any) => (
                         <div
                           key={t.id}
                           className={`rounded-md overflow-hidden ${
@@ -1261,6 +1264,22 @@ const Dispatch = () => {
                           )}
                         </div>
                       ))
+                    )}
+                    {!showAllLoss && lostTrips.length > 2 && (
+                      <button
+                        onClick={() => setShowAllLoss(true)}
+                        className="w-full py-1.5 text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors"
+                      >
+                        View All ({lostTrips.length})
+                      </button>
+                    )}
+                    {showAllLoss && lostTrips.length > 2 && (
+                      <button
+                        onClick={() => setShowAllLoss(false)}
+                        className="w-full py-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Show Less
+                      </button>
                     )}
                   </div>
                 </div>
