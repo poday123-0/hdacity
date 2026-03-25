@@ -5007,7 +5007,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Persistent banner when driver is online but notifications not granted */}
       {screen === "online" && notifPermissionDenied && (
-        <div className="fixed top-14 left-2 right-2 z-[999] mx-auto max-w-md">
+        <div className="fixed top-14 left-2 right-2 z-[9990] mx-auto max-w-md">
           <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 flex items-center gap-3 shadow-lg">
             <BellIcon className="w-5 h-5 text-destructive shrink-0 animate-pulse" />
             <div className="flex-1 min-w-0">
