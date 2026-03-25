@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock } from "lucide-react";
+import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 // Waze-inspired map style
@@ -64,12 +64,12 @@ const EXPIRY_OPTIONS = [
 const DispatchGoogleMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
-  const searchBoxRef = useRef<google.maps.places.SearchBox | null>(null);
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [namedLocations, setNamedLocations] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number }>>([]);
-  const [filteredLocations, setFilteredLocations] = useState<typeof namedLocations>([]);
+  const [namedLocations, setNamedLocations] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" }>>([]);
+  const [serviceAreas, setServiceAreas] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "service" }>>([]);
+  const [filteredResults, setFilteredResults] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" | "service" }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const { isLoaded, error } = useGoogleMaps();
 
@@ -123,7 +123,7 @@ const DispatchGoogleMap = () => {
     };
   }, [isLoaded]);
 
-  // Load named locations
+  // Load named locations & service areas
   useEffect(() => {
     supabase
       .from("named_locations")
@@ -131,26 +131,37 @@ const DispatchGoogleMap = () => {
       .eq("is_active", true)
       .eq("status", "approved")
       .then(({ data }) => {
-        if (data) setNamedLocations(data);
+        if (data) setNamedLocations(data.map((d) => ({ ...d, type: "named" as const })));
+      });
+    supabase
+      .from("service_locations")
+      .select("id, name, address, lat, lng")
+      .eq("is_active", true)
+      .then(({ data }) => {
+        if (data) setServiceAreas(data.map((d) => ({ ...d, lat: Number(d.lat), lng: Number(d.lng), type: "service" as const })));
       });
   }, []);
 
-  // Filter named locations on search
+  // Filter on search
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2) {
-      setFilteredLocations([]);
+    if (!searchQuery || searchQuery.length < 1) {
+      setFilteredResults([]);
       setShowSuggestions(false);
       return;
     }
     const q = searchQuery.toLowerCase();
-    const matches = namedLocations.filter(
+    const namedMatches = namedLocations.filter(
       (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
-    ).slice(0, 6);
-    setFilteredLocations(matches);
-    setShowSuggestions(matches.length > 0);
-  }, [searchQuery, namedLocations]);
+    ).slice(0, 5);
+    const serviceMatches = serviceAreas.filter(
+      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
+    ).slice(0, 3);
+    const combined = [...serviceMatches, ...namedMatches];
+    setFilteredResults(combined);
+    setShowSuggestions(combined.length > 0);
+  }, [searchQuery, namedLocations, serviceAreas]);
 
-  const selectNamedLocation = useCallback((loc: typeof namedLocations[0]) => {
+  const selectNamedLocation = useCallback((loc: { id: string; name: string; address: string; lat: number; lng: number; type: string }) => {
     const g = (window as any).google;
     if (!g?.maps || !mapInstance.current) return;
 
@@ -180,47 +191,6 @@ const DispatchGoogleMap = () => {
     setShowSuggestions(false);
   }, []);
 
-  // SearchBox
-  useEffect(() => {
-    if (!isLoaded || !mapInstance.current || !inputRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps?.places) return;
-
-    const searchBox = new g.maps.places.SearchBox(inputRef.current, {
-      bounds: mapInstance.current.getBounds(),
-    });
-    searchBoxRef.current = searchBox;
-
-    searchBox.addListener("places_changed", () => {
-      const places = searchBox.getPlaces();
-      if (!places || places.length === 0) return;
-      const place = places[0];
-      if (!place.geometry?.location) return;
-
-      if (searchMarkerRef.current) searchMarkerRef.current.setMap(null);
-      mapInstance.current?.panTo(place.geometry.location);
-      mapInstance.current?.setZoom(18);
-
-      searchMarkerRef.current = new g.maps.Marker({
-        map: mapInstance.current,
-        position: place.geometry.location,
-        title: place.name || place.formatted_address,
-        animation: g.maps.Animation.DROP,
-        icon: {
-          path: g.maps.SymbolPath.CIRCLE,
-          scale: 12, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3,
-        },
-      });
-
-      const iw = new g.maps.InfoWindow({
-        content: `<div style="font-size:12px;font-weight:600;padding:4px">${place.name || ""}<br/><span style="font-weight:400;color:#666">${place.formatted_address || ""}</span></div>`,
-      });
-      iw.open(mapInstance.current, searchMarkerRef.current);
-      setSearchQuery(place.name || place.formatted_address || "");
-    });
-
-    return () => { g.maps.event.clearInstanceListeners(searchBox); };
-  }, [isLoaded, !!mapInstance.current]);
 
   // Draw mode click listener
   useEffect(() => {
@@ -475,11 +445,11 @@ const DispatchGoogleMap = () => {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search places or named locations..."
+            placeholder="Search service areas & named locations..."
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-background/95 backdrop-blur-sm border border-border shadow-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            defaultValue={searchQuery}
+            value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => { if (filteredLocations.length > 0) setShowSuggestions(true); }}
+            onFocus={() => { if (filteredResults.length > 0) setShowSuggestions(true); }}
           />
           {searchQuery && (
             <button onClick={() => { clearSearch(); setShowSuggestions(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -487,13 +457,33 @@ const DispatchGoogleMap = () => {
             </button>
           )}
         </div>
-        {/* Named locations dropdown */}
-        {showSuggestions && filteredLocations.length > 0 && (
+        {/* Suggestions dropdown */}
+        {showSuggestions && filteredResults.length > 0 && (
           <div className="mt-1 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
-            <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
-              Named Locations
-            </div>
-            {filteredLocations.map((loc) => (
+            {filteredResults.some((r) => r.type === "service") && (
+              <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
+                Service Areas
+              </div>
+            )}
+            {filteredResults.filter((r) => r.type === "service").map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => selectNamedLocation(loc)}
+                className="w-full px-3 py-2 text-left hover:bg-accent flex items-start gap-2 border-b border-border/50 last:border-0"
+              >
+                <Layers className="w-3.5 h-3.5 text-chart-2 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-foreground truncate">{loc.name}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{loc.address}</div>
+                </div>
+              </button>
+            ))}
+            {filteredResults.some((r) => r.type === "named") && (
+              <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
+                Named Locations
+              </div>
+            )}
+            {filteredResults.filter((r) => r.type === "named").map((loc) => (
               <button
                 key={loc.id}
                 onClick={() => selectNamedLocation(loc)}
