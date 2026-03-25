@@ -286,6 +286,7 @@ const Index = () => {
         .select("*")
         .eq("passenger_id", userProfile.id)
         .in("status", ["requested", "scheduled", "accepted", "arrived", "in_progress"])
+        .or("status.in.(requested,scheduled,accepted,arrived,started,in_progress)")
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -299,9 +300,13 @@ const Index = () => {
       setCurrentTripId(activeTrip.id);
       setTripStatus(restoredStatus);
       setEstimatedFare(activeTrip.estimated_fare || 0);
-      persistTripTimerTimestamp(activeTrip.id, "accepted_at", activeTrip.accepted_at);
-      persistTripTimerTimestamp(activeTrip.id, "arrived_at", activeTrip.arrived_at);
-      persistTripTimerTimestamp(activeTrip.id, "started_at", activeTrip.started_at);
+      // Use updated_at as fallback for missing timestamps
+      const pFallbackAccepted = activeTrip.accepted_at || activeTrip.updated_at;
+      const pFallbackArrived = activeTrip.arrived_at || (["arrived", "in_progress"].includes(restoredStatus) ? (activeTrip.started_at || activeTrip.updated_at) : null);
+      const pFallbackStarted = activeTrip.started_at || (restoredStatus === "in_progress" ? activeTrip.updated_at : null);
+      persistTripTimerTimestamp(activeTrip.id, "accepted_at", pFallbackAccepted);
+      if (pFallbackArrived) persistTripTimerTimestamp(activeTrip.id, "arrived_at", pFallbackArrived);
+      if (pFallbackStarted) persistTripTimerTimestamp(activeTrip.id, "started_at", pFallbackStarted);
 
       // Restore pickup/dropoff locations
       if (activeTrip.pickup_lat && activeTrip.pickup_lng) {
