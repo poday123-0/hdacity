@@ -64,7 +64,6 @@ const EXPIRY_OPTIONS = [
 const DispatchGoogleMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
-  const searchBoxRef = useRef<google.maps.places.SearchBox | null>(null);
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
