@@ -1053,6 +1053,16 @@ const Dispatch = () => {
             </button>
           )}
           <button
+            onClick={() => {
+              if (document.fullscreenElement) document.exitFullscreen();
+              else document.documentElement.requestFullscreen();
+            }}
+            title="Toggle fullscreen"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-lg hover:bg-accent transition-colors"
+          >
+            {document.fullscreenElement ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          </button>
+          <button
             onClick={handleLogout}
             title="Logout"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive font-medium px-2 py-1 rounded-lg hover:bg-destructive/10 transition-colors"
