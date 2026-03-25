@@ -324,6 +324,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
         setStoredTripTimestamp("arrived_at", (data as any).arrived_at);
         startTimer((data as any).arrived_at);
       } else if (!storedArrivedAt) {
+        const nowStr = new Date().toISOString();
+        setStoredTripTimestamp("arrived_at", nowStr);
+        setArrivedTimeStr(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
         timer = setInterval(() => setArrivedElapsed(prev => prev + 1), 1000);
       }
     };
