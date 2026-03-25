@@ -1405,62 +1405,83 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, []);
 
-  // Driver accepted elapsed timer (only heading_to_pickup phase)
+  // Driver accepted elapsed timer (resumes from current trip data or persisted storage on refresh)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "heading_to_pickup") { setDriverPhaseElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setDriverPhaseElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setDriverPhaseElapsed(calc()), 1000);
+    };
+    const fallbackAcceptedAt = currentTrip.accepted_at || getStoredTripTimer(currentTrip.id, "accepted_at");
+    if (fallbackAcceptedAt) startTimer(fallbackAcceptedAt);
     const init = async () => {
       const { data } = await supabase.from("trips").select("accepted_at").eq("id", currentTrip.id).single();
       if (data?.accepted_at) {
-        const t = new Date(data.accepted_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setDriverPhaseElapsed(calc());
-        timer = setInterval(() => setDriverPhaseElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimer(currentTrip.id, "accepted_at", data.accepted_at);
+        startTimer(data.accepted_at);
+      } else if (!fallbackAcceptedAt) {
         timer = setInterval(() => setDriverPhaseElapsed(p => p + 1), 1000);
       }
     };
     init();
     return () => { if (timer) clearInterval(timer); };
-  }, [currentTrip?.id, driverTripPhase]);
+  }, [currentTrip?.id, currentTrip?.accepted_at, driverTripPhase]);
 
-  // Driver arrived waiting timer (based on arrived_at from DB - persists across refreshes)
+  // Driver arrived waiting timer (resumes from current trip data or persisted storage on refresh)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "arrived") { setDriverArrivedElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setDriverArrivedElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setDriverArrivedElapsed(calc()), 1000);
+    };
+    const fallbackArrivedAt = currentTrip.arrived_at || getStoredTripTimer(currentTrip.id, "arrived_at");
+    if (fallbackArrivedAt) startTimer(fallbackArrivedAt);
     const init = async () => {
       const { data } = await supabase.from("trips").select("arrived_at").eq("id", currentTrip.id).single();
       if ((data as any)?.arrived_at) {
-        const t = new Date((data as any).arrived_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setDriverArrivedElapsed(calc());
-        timer = setInterval(() => setDriverArrivedElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimer(currentTrip.id, "arrived_at", (data as any).arrived_at);
+        startTimer((data as any).arrived_at);
+      } else if (!fallbackArrivedAt) {
         timer = setInterval(() => setDriverArrivedElapsed(p => p + 1), 1000);
       }
     };
     init();
     return () => { if (timer) clearInterval(timer); };
-  }, [currentTrip?.id, driverTripPhase]);
+  }, [currentTrip?.id, currentTrip?.arrived_at, driverTripPhase]);
 
-  // Driver trip elapsed timer (resets to 0 when trip starts)
+  // Driver trip elapsed timer (resumes from current trip data or persisted storage on refresh)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "in_progress") { setDriverTripElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setDriverTripElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setDriverTripElapsed(calc()), 1000);
+    };
+    const fallbackStartedAt = currentTrip.started_at || getStoredTripTimer(currentTrip.id, "started_at");
+    if (fallbackStartedAt) startTimer(fallbackStartedAt);
     const init = async () => {
       const { data } = await supabase.from("trips").select("started_at").eq("id", currentTrip.id).single();
       if (data?.started_at) {
-        const t = new Date(data.started_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setDriverTripElapsed(calc());
-        timer = setInterval(() => setDriverTripElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimer(currentTrip.id, "started_at", data.started_at);
+        startTimer(data.started_at);
+      } else if (!fallbackStartedAt) {
         timer = setInterval(() => setDriverTripElapsed(p => p + 1), 1000);
       }
     };
     init();
     return () => { if (timer) clearInterval(timer); };
-  }, [currentTrip?.id, driverTripPhase]);
+  }, [currentTrip?.id, currentTrip?.started_at, driverTripPhase]);
 
   // Lightweight stats-only refresh (called periodically + after trip completion)
   const refreshDriverStats = useCallback(async () => {
