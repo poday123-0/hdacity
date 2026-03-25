@@ -466,6 +466,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           return;
         }
 
+        setStoredTripTimer(trip.id, "accepted_at", trip.accepted_at);
+        setStoredTripTimer(trip.id, "arrived_at", trip.arrived_at);
+        setStoredTripTimer(trip.id, "started_at", trip.started_at);
         setCurrentTrip(trip);
 
         // Determine trip phase from status
