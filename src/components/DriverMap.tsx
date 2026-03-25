@@ -200,6 +200,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const { closures: roadClosures } = useRoadClosures();
   const roadClosureMarkersRef = useRef<any[]>([]);
   const roadClosureLinesRef = useRef<any[]>([]);
+  const [closureWarning, setClosureWarning] = useState<string | null>(null);
+  const closureWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
