@@ -426,23 +426,44 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               )}
             </div>
 
-            {/* Animated Progress Bar */}
+            {/* Animated Progress Bar with Vehicle Icon */}
             <div className="px-4 pb-3">
-              <div className="h-1.5 bg-surface rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-primary rounded-full"
-                  initial={{ width: "5%" }}
-                  animate={{
-                    width: tripStatus === "arrived" ? "33%" 
-                      : tripStatus === "in_progress" && totalDistanceKm && distanceKm !== null 
-                        ? `${Math.min(95, Math.max(5, ((totalDistanceKm - distanceKm) / totalDistanceKm) * 100))}%`
-                        : tripStatus === "in_progress" ? "50%" 
-                        : "15%",
-                  }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                />
-              </div>
-              <div className="flex justify-between mt-1.5">
+              {(() => {
+                const progressPct = tripStatus === "arrived" ? 33
+                  : tripStatus === "in_progress" && totalDistanceKm && distanceKm !== null
+                    ? Math.min(95, Math.max(5, ((totalDistanceKm - distanceKm) / totalDistanceKm) * 100))
+                    : tripStatus === "in_progress" ? 50
+                    : 15;
+                return (
+                  <div className="relative">
+                    <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-primary rounded-full"
+                        initial={{ width: "5%" }}
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                      />
+                    </div>
+                    {/* Vehicle icon riding on the progress bar */}
+                    <motion.div
+                      className="absolute -top-3.5 z-10"
+                      initial={{ left: "5%" }}
+                      animate={{ left: `${progressPct}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      style={{ transform: "translateX(-50%)" }}
+                    >
+                      {mapIconUrl ? (
+                        <img src={mapIconUrl} alt="" className="w-7 h-7 object-contain drop-shadow-md" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
+                          <Navigation className="w-3 h-3 text-primary-foreground" />
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+                );
+              })()}
+              <div className="flex justify-between mt-2.5">
                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 max-w-[45%] truncate">
                   <MapPin className="w-3 h-3 shrink-0" /> {tripPickupName || "Pickup"}
                 </span>
