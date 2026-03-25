@@ -766,6 +766,7 @@ const Dispatch = () => {
         )
         .eq("dispatch_type", "operator")
         .eq("is_loss", true)
+        .gte("created_at", startOfDay(new Date()).toISOString())
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
