@@ -2687,11 +2687,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             onClick={() => setShowLocationSearch(false)}
           >
             <motion.div
-              initial={{ y: "100%" }}
+              initial={{ y: "-100%" }}
               animate={{ y: 0 }}
-              exit={{ y: "100%" }}
+              exit={{ y: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 max-h-[80vh] bg-card rounded-t-3xl shadow-2xl border-t border-border overflow-hidden"
+              className="absolute top-0 left-0 right-0 max-h-[100vh] bg-card shadow-2xl border-b border-border overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
