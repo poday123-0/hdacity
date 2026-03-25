@@ -335,7 +335,14 @@ const AdminDriverInvoice = () => {
           {/* Line items */}
           <div className="bg-card rounded-xl border border-border p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fare / Line Items</label>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fare / Line Items</label>
+                <select value={currency} onChange={e => setCurrency(e.target.value as "MVR" | "USD")}
+                  className="bg-surface border border-border rounded-lg px-2 py-1 text-[10px] font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="MVR">MVR</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
               <button onClick={() => setLineItems(prev => [...prev, newLine()])}
                 className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
                 <Plus className="w-3 h-3" /> Add
