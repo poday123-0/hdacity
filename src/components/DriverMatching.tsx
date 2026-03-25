@@ -467,8 +467,25 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                     : tripStatus === "in_progress" ? 50
                     : 15;
                 return (
-                  <div className="relative">
-                    <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+                  <div className="relative mt-2 mb-1">
+                    {/* Vehicle icon riding on the progress bar */}
+                    <motion.div
+                      className="absolute -top-4 z-10 flex items-center justify-center"
+                      initial={{ left: "5%" }}
+                      animate={{ left: `${progressPct}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      style={{ transform: "translateX(-50%)" }}
+                    >
+                      {resolvedMapIconUrl ? (
+                        <img src={resolvedMapIconUrl} alt="" className="w-8 h-8 object-contain drop-shadow-md rotate-90" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
+                          <Navigation className="w-3.5 h-3.5 text-primary-foreground" />
+                        </div>
+                      )}
+                    </motion.div>
+                    {/* Progress track */}
+                    <div className="h-1.5 bg-surface rounded-full overflow-hidden mt-5">
                       <motion.div
                         className="h-full bg-primary rounded-full"
                         initial={{ width: "5%" }}
@@ -476,22 +493,6 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                         transition={{ duration: 1, ease: "easeOut" }}
                       />
                     </div>
-                    {/* Vehicle icon riding on the progress bar */}
-                    <motion.div
-                      className="absolute -top-3.5 z-10"
-                      initial={{ left: "5%" }}
-                      animate={{ left: `${progressPct}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      style={{ transform: "translateX(-50%)" }}
-                    >
-                      {resolvedMapIconUrl ? (
-                        <img src={resolvedMapIconUrl} alt="" className="w-7 h-7 object-contain drop-shadow-md rotate-90" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
-                          <Navigation className="w-3 h-3 text-primary-foreground" />
-                        </div>
-                      )}
-                    </motion.div>
                   </div>
                 );
               })()}
