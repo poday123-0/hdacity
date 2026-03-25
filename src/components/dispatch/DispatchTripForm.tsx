@@ -989,8 +989,8 @@ const DispatchTripForm = ({
             )}
           </div>
 
-          {/* TO - Service area buttons with keyboard navigation */}
-          <div className="space-y-1.5">
+          {/* TO - Service area buttons + search */}
+          <div className="space-y-1.5 relative">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">To*</p>
             <div className="flex items-start gap-1">
               <div
@@ -1038,6 +1038,50 @@ const DispatchTripForm = ({
                 <Crosshair className="w-4 h-4 text-primary" />
               </button>
             </div>
+            {/* Dropoff search input */}
+            <div className="relative flex gap-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={selecting === "dropoff" ? searchQuery : (dropoff?.address || "")}
+                  onChange={e => { setSelecting("dropoff"); setSearchQuery(e.target.value); }}
+                  onFocus={() => { setSelecting("dropoff"); setSearchQuery(""); }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (osmResults.length > 0 && !dropoff) {
+                        selectLocation(osmResults[0]);
+                      }
+                      setTimeout(() => phoneInputRef.current?.focus(), 50);
+                    }
+                  }}
+                  placeholder="Or search a location..."
+                  className="w-full pl-8 pr-8 py-1.5 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {dropoff && (
+                  <button tabIndex={-1} onClick={() => { setDropoff(null); setSearchQuery(""); setSelecting("dropoff"); }} className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                  </button>
+                )}
+              </div>
+            </div>
+            {selecting === "dropoff" && osmResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {osmResults.map(r => (
+                  <button key={r.place_id} onClick={() => { selectLocation(r); setTimeout(() => phoneInputRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                    <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{r.road ? `${r.road} • ${r.tag || r.display_name.split("—").slice(1).join("—").trim()}` : (r.tag || r.display_name.split("—").slice(1).join("—").trim())}</p>
+                    </div>
+                    {r.tag && (
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
             {distanceKm != null && (
               <p className="text-[10px] text-muted-foreground">Distance: <span className="font-semibold text-foreground">{distanceKm.toFixed(1)} km</span></p>
             )}
