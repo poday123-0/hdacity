@@ -220,9 +220,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [freeNavTarget, setFreeNavTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [freeNavEta, setFreeNavEta] = useState("");
   const [freeNavDist, setFreeNavDist] = useState("");
+  const [freeNavSteps, setFreeNavSteps] = useState<NavStep[]>([]);
+  const [freeNavStepIndex, setFreeNavStepIndex] = useState(0);
   const freeNavPolylineRef = useRef<any>(null);
   const freeNavMarkerRef = useRef<any>(null);
   const freeNavIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const freeNavPathRef = useRef<{ lat: number; lng: number }[]>([]);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
