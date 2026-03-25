@@ -61,6 +61,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const vehicleColor = driver?.vehicle_color || "";
   const vehicleImageUrl = driver?.vehicle_image_url;
   const [resolvedMapIconUrl, setResolvedMapIconUrl] = useState<string | null>(driver?.map_icon_url || null);
+  useEffect(() => { if (driver?.map_icon_url) setResolvedMapIconUrl(driver.map_icon_url); }, [driver?.map_icon_url]);
   const bankAccounts = driver?.bank_accounts || [];
   const favaraAccounts = driver?.favara_accounts || [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
