@@ -448,11 +448,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       { enableHighAccuracy: true, maximumAge: 2000 }
     );
     return () => { if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; } };
-  }, [isNavigating]);
+  }, [isNavigating, freeNavTarget]);
 
-  // When not navigating, use external position from parent (DriverApp's GPS watcher)
+  // When not navigating/free-nav, use external position from parent
   useEffect(() => {
-    if (isNavigating || !externalPosition) return;
+    if (isNavigating || freeNavTarget || !externalPosition) return;
     setCurrentPos(prev => {
       if (!prev && mapInstance.current) {
         mapInstance.current.panTo(externalPosition);
