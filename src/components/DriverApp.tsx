@@ -218,6 +218,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
   const [driverStats, setDriverStats] = useState({ rides: 0, earnings: 0, hours: "0h", avgRating: 0, totalRatings: 0, declinedToday: 0 });
+  const [onlineTimeDisplay, setOnlineTimeDisplay] = useState("0m");
   const [acceptTimeoutSeconds, setAcceptTimeoutSeconds] = useState(30);
   const [rideRequestCountdown, setRideRequestCountdown] = useState(0);
   const rideRequestTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -263,6 +264,70 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverLat, setDriverLat] = useState<number | null>(null);
   const [driverLng, setDriverLng] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+
+  // --- Online time tracking ---
+  const onlineTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onlineStorageKey = userProfile?.id ? `hda_online_since_${userProfile.id}` : null;
+
+  const formatOnlineTime = (ms: number) => {
+    const totalMin = Math.floor(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, "0") : ""}` : `${m}m`;
+  };
+
+  // Start / resume online timer when screen goes online
+  useEffect(() => {
+    if (onlineTimerRef.current) { clearInterval(onlineTimerRef.current); onlineTimerRef.current = null; }
+
+    const isOnline = screen === "online" || screen === "navigating" || screen === "ride-request";
+    if (!isOnline || !onlineStorageKey) { return; }
+
+    // Persist "went online" timestamp (only set if not already set today)
+    let onlineSince: number;
+    const stored = localStorage.getItem(onlineStorageKey);
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    if (stored) {
+      const ts = parseInt(stored, 10);
+      if (ts >= todayStart.getTime()) {
+        onlineSince = ts;
+      } else {
+        // Reset for new day
+        onlineSince = Date.now();
+        localStorage.setItem(onlineStorageKey, String(onlineSince));
+      }
+    } else {
+      onlineSince = Date.now();
+      localStorage.setItem(onlineStorageKey, String(onlineSince));
+    }
+
+    // Also accumulate any previous offline gaps today
+    const accKey = `${onlineStorageKey}_acc`;
+    const accumulated = parseInt(localStorage.getItem(accKey) || "0", 10);
+
+    const tick = () => {
+      const elapsed = accumulated + (Date.now() - onlineSince);
+      setOnlineTimeDisplay(formatOnlineTime(elapsed));
+    };
+    tick();
+    onlineTimerRef.current = setInterval(tick, 1000);
+
+    return () => { if (onlineTimerRef.current) clearInterval(onlineTimerRef.current); };
+  }, [screen, onlineStorageKey]);
+
+  // When going offline, accumulate the elapsed online time
+  useEffect(() => {
+    if (screen !== "offline" || !onlineStorageKey) return;
+    const accKey = `${onlineStorageKey}_acc`;
+    const stored = localStorage.getItem(onlineStorageKey);
+    if (stored) {
+      const onlineSince = parseInt(stored, 10);
+      const prev = parseInt(localStorage.getItem(accKey) || "0", 10);
+      const sessionMs = Date.now() - onlineSince;
+      localStorage.setItem(accKey, String(prev + sessionMs));
+      localStorage.removeItem(onlineStorageKey);
+    }
+  }, [screen, onlineStorageKey]);
   const [vehicleBlockedUntil, setVehicleBlockedUntil] = useState<Date | null>(null);
   const [blockCountdown, setBlockCountdown] = useState<string>("");
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
@@ -2839,8 +2904,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                        </div>
                        <div className="w-px h-7 bg-border/40 shrink-0" />
                        <div className="text-center min-w-0 shrink-0">
-                         <p className="text-sm sm:text-lg font-bold text-foreground tabular-nums leading-none">{driverStats.hours}</p>
-                         <p className="text-[8px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">Time</p>
+                          <p className="text-sm sm:text-lg font-bold text-foreground tabular-nums leading-none">{onlineTimeDisplay}</p>
+                          <p className="text-[8px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">Online</p>
                        </div>
                        {driverStats.declinedToday > 0 &&
                      <>
