@@ -741,6 +741,9 @@ const DispatchTripForm = ({
             cancel_reason: "No drivers available",
           }).eq("id", tripId);
           toast({ title: "No online drivers", description: "Trip cancelled — no drivers available", variant: "destructive" });
+          if (customerPhone.trim()) {
+            supabase.functions.invoke("send-no-vehicle-sms", { body: { phone: customerPhone.trim() } }).catch(console.warn);
+          }
           onTripCreated();
         } else {
           const nearbyDrivers = broadcastDriversCache
@@ -757,6 +760,9 @@ const DispatchTripForm = ({
               cancel_reason: "No drivers available in area",
             }).eq("id", tripId);
             toast({ title: "No drivers within 2km", description: "Trip cancelled — no nearby drivers", variant: "destructive" });
+            if (customerPhone.trim()) {
+              supabase.functions.invoke("send-no-vehicle-sms", { body: { phone: customerPhone.trim() } }).catch(console.warn);
+            }
             onTripCreated();
           } else {
             // Send push notification immediately — no awaits needed
@@ -773,6 +779,10 @@ const DispatchTripForm = ({
                   cancelled_at: new Date().toISOString(),
                   cancel_reason: "No driver available - auto cancelled",
                 }).eq("id", tripId);
+                // SMS passenger that no driver accepted
+                if (customerPhone.trim()) {
+                  supabase.functions.invoke("send-no-vehicle-sms", { body: { phone: customerPhone.trim() } }).catch(console.warn);
+                }
                 onTripCreated();
               }
             }, timeoutMs);
@@ -1451,6 +1461,12 @@ const DispatchTripForm = ({
                   const { error } = await supabase.from("trips").insert(tripPayload);
                   if (error) throw error;
                   toast({ title: "Recorded as No Vehicle", description: "Booking saved" });
+                  // Send SMS to passenger if phone provided
+                  if (customerPhone.trim()) {
+                    supabase.functions.invoke("send-no-vehicle-sms", {
+                      body: { phone: customerPhone.trim() },
+                    }).then(() => toast({ title: "SMS sent to passenger" })).catch(console.warn);
+                  }
                   clearForm();
                   onTripCreated();
                 } catch (err: any) {
