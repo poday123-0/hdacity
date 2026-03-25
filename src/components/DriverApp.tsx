@@ -3304,7 +3304,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {/* Animated Timer Bar */}
             <div className="px-3 pb-2 flex justify-center">
               <AnimatedTimer
-                seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed}
+                seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed}
                 label={driverTripPhase === "in_progress" ? "Trip" : driverTripPhase === "arrived" ? "Waiting" : "En route"}
                 variant="badge"
                 className="bg-primary-foreground/15 text-primary-foreground [&_span]:text-primary-foreground [&_svg]:text-primary-foreground/70"
