@@ -760,6 +760,9 @@ const DispatchTripForm = ({
               cancel_reason: "No drivers available in area",
             }).eq("id", tripId);
             toast({ title: "No drivers within 2km", description: "Trip cancelled — no nearby drivers", variant: "destructive" });
+            if (customerPhone.trim()) {
+              supabase.functions.invoke("send-no-vehicle-sms", { body: { phone: customerPhone.trim() } }).catch(console.warn);
+            }
             onTripCreated();
           } else {
             // Send push notification immediately — no awaits needed
