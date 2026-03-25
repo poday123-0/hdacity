@@ -1110,7 +1110,10 @@ export type Database = {
           id: string
           is_active: boolean
           notes: string | null
+          reported_by: string | null
+          reported_by_type: string | null
           severity: string
+          status: string
           updated_at: string
         }
         Insert: {
@@ -1122,7 +1125,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          reported_by?: string | null
+          reported_by_type?: string | null
           severity?: string
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -1134,7 +1140,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          reported_by?: string | null
+          reported_by_type?: string | null
           severity?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
