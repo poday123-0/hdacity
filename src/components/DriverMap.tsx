@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { selectShortestRoute } from "@/lib/shortest-route";
 import { useRoadClosures } from "@/hooks/use-road-closures";
-import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle, MapPin, Construction, Car, TriangleAlert } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
 const createRotatedIcon = (
@@ -197,13 +199,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error, mapId } = useGoogleMaps();
-  const { closures: roadClosures } = useRoadClosures();
+  const { closures: roadClosures, addClosure } = useRoadClosures();
   const roadClosureMarkersRef = useRef<any[]>([]);
   const roadClosureLinesRef = useRef<any[]>([]);
   const [closureWarning, setClosureWarning] = useState<string | null>(null);
   const closureWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  // Driver closure reporting state
+  const [reportMenuPos, setReportMenuPos] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [reportSeverity, setReportSeverity] = useState("closed");
+  const [reportNotes, setReportNotes] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
@@ -403,6 +414,40 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
     map.addListener("zoom_changed", () => {
       if (programmaticZoom) return;
+    });
+
+    // Long-press to report closure
+    const mapDiv = map.getDiv();
+    map.addListener("rightclick", (e: any) => {
+      if (!e.latLng) return;
+      const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+      const bounds = map.getBounds();
+      const proj = map.getProjection();
+      if (bounds && proj) {
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+        const topRight = proj.fromLatLngToPoint(ne);
+        const bottomLeft = proj.fromLatLngToPoint(sw);
+        const point = proj.fromLatLngToPoint(e.latLng);
+        if (topRight && bottomLeft && point) {
+          const scale = Math.pow(2, map.getZoom() || 16);
+          const px = (point.x - bottomLeft.x) * scale;
+          const py = (point.y - topRight.y) * scale;
+          const rect = mapDiv.getBoundingClientRect();
+          setReportMenuPos({
+            lat: coords.lat,
+            lng: coords.lng,
+            x: Math.min(px, rect.width - 180),
+            y: Math.min(py, rect.height - 160),
+          });
+        }
+      }
+    });
+
+    // Also support tap-and-hold via click (single tap shows menu)
+    map.addListener("click", (e: any) => {
+      // Dismiss any open menu on normal tap
+      setReportMenuPos(null);
     });
 
     return () => { mapInstance.current = null; };
@@ -1279,6 +1324,156 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
             <button onClick={() => setClosureWarning(null)} className="shrink-0 mt-0.5 opacity-70 hover:opacity-100">
               <X className="w-3.5 h-3.5" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Context menu on map tap/long-press */}
+      {reportMenuPos && !showReportForm && (
+        <div
+          className="absolute z-[600]"
+          style={{ left: reportMenuPos.x, top: reportMenuPos.y }}
+        >
+          <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-1 min-w-[170px] animate-in zoom-in-95 fade-in">
+            <button
+              onClick={() => {
+                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                setShowReportForm(true);
+                setReportMenuPos(null);
+                setReportSeverity("closed");
+                setReportNotes("");
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              Report Road Closed
+            </button>
+            <button
+              onClick={() => {
+                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                setShowReportForm(true);
+                setReportMenuPos(null);
+                setReportSeverity("lane_closed");
+                setReportNotes("");
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              <Construction className="w-4 h-4 text-warning" />
+              Report Lane Closed
+            </button>
+            <button
+              onClick={() => {
+                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                setShowReportForm(true);
+                setReportMenuPos(null);
+                setReportSeverity("cones");
+                setReportNotes("");
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              <TriangleAlert className="w-4 h-4 text-warning" />
+              Report Cones
+            </button>
+            <button
+              onClick={() => {
+                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                setShowReportForm(true);
+                setReportMenuPos(null);
+                setReportSeverity("accident");
+                setReportNotes("");
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              <Car className="w-4 h-4 text-destructive" />
+              Report Accident
+            </button>
+            <div className="border-t border-border my-0.5" />
+            <button
+              onClick={() => setReportMenuPos(null)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:bg-accent transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Report closure form */}
+      {showReportForm && reportCoords && (
+        <div className="absolute inset-0 z-[700] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-80 max-w-[90vw] space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              Report Closure
+            </h3>
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                { value: "closed", label: "Road Closed" },
+                { value: "lane_closed", label: "Lane Closed" },
+                { value: "cones", label: "Cones" },
+                { value: "accident", label: "Accident" },
+                { value: "hazard", label: "Hazard" },
+              ].map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setReportSeverity(s.value)}
+                  className={`text-xs py-1.5 px-2.5 rounded-lg border transition-all ${
+                    reportSeverity === s.value
+                      ? "border-primary bg-primary/10 text-primary font-medium"
+                      : "border-border hover:bg-accent/50 text-foreground"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              placeholder="Add details (optional)"
+              value={reportNotes}
+              onChange={(e) => setReportNotes(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setShowReportForm(false); setReportCoords(null); }}
+                className="flex-1 py-2 text-xs rounded-lg border border-border text-muted-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={reportSubmitting}
+                onClick={async () => {
+                  if (!reportCoords) return;
+                  setReportSubmitting(true);
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    await addClosure({
+                      closure_type: "point",
+                      coordinates: [reportCoords],
+                      notes: reportNotes,
+                      severity: reportSeverity,
+                      expires_at: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+                      status: "pending",
+                      reported_by: user?.id,
+                      reported_by_type: "driver",
+                    });
+                    toast({ title: "Report submitted", description: "Dispatch will review your report" });
+                    setShowReportForm(false);
+                    setReportCoords(null);
+                  } catch {
+                    toast({ title: "Failed to submit", variant: "destructive" });
+                  } finally {
+                    setReportSubmitting(false);
+                  }
+                }}
+                className="flex-1 py-2 text-xs rounded-lg bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {reportSubmitting ? "Submitting…" : "Submit Report"}
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">Report will be reviewed by dispatch before going live</p>
           </div>
         </div>
       )}

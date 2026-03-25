@@ -50,6 +50,8 @@ type DrawMode = null | "point" | "line";
 const SEVERITY_OPTIONS = [
   { value: "closed", label: "Road Closed", color: "#ef4444" },
   { value: "lane_closed", label: "Lane Closed", color: "#f59e0b" },
+  { value: "cones", label: "Cones", color: "#eab308" },
+  { value: "accident", label: "Accident", color: "#dc2626" },
   { value: "hazard", label: "Hazard", color: "#f97316" },
 ];
 
@@ -74,7 +76,7 @@ const DispatchGoogleMap = () => {
   const { isLoaded, error } = useGoogleMaps();
 
   // Road closure state
-  const { closures, addClosure, removeClosure } = useRoadClosures();
+  const { closures, pendingClosures, addClosure, removeClosure, approveClosure, rejectClosure } = useRoadClosures();
   const [drawMode, setDrawMode] = useState<DrawMode>(null);
   const [linePoints, setLinePoints] = useState<Array<{ lat: number; lng: number }>>([]);
   const [showClosureForm, setShowClosureForm] = useState(false);
@@ -362,14 +364,74 @@ const DispatchGoogleMap = () => {
     });
   }, [closures, isLoaded]);
 
-  // Global remove handler
+  // Render pending (driver-reported) closures with pulsing markers
+  const pendingMarkersRef = useRef<any[]>([]);
+  useEffect(() => {
+    if (!mapInstance.current || !isLoaded) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    pendingMarkersRef.current.forEach((m) => m.setMap(null));
+    pendingMarkersRef.current = [];
+
+    pendingClosures.forEach((c) => {
+      const coords = c.coordinates;
+      if (coords.length === 0) return;
+      const sev = SEVERITY_OPTIONS.find((s) => s.value === c.severity) || SEVERITY_OPTIONS[0];
+      const pos = coords[0];
+
+      const marker = new g.maps.Marker({
+        map: mapInstance.current,
+        position: pos,
+        icon: {
+          path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
+          fillColor: "#3b82f6",
+          fillOpacity: 0.8,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+          scale: 1.5,
+          anchor: new g.maps.Point(12, 12),
+        },
+        zIndex: 2100,
+        animation: g.maps.Animation.BOUNCE,
+      });
+
+      const iw = new g.maps.InfoWindow({
+        content: `<div style="font-size:12px;padding:4px;max-width:220px">
+          <div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">📋 DRIVER REPORT (pending)</div>
+          <strong style="color:${sev.color}">${sev.label}</strong>
+          ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button onclick="window.__approveClosure__('${c.id}')" style="font-size:11px;color:#22c55e;cursor:pointer;background:none;border:1px solid #22c55e;border-radius:4px;padding:2px 8px;font-weight:600">✓ Approve</button>
+            <button onclick="window.__rejectClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Reject</button>
+          </div>
+        </div>`,
+      });
+      marker.addListener("click", () => iw.open(mapInstance.current, marker));
+      pendingMarkersRef.current.push(marker);
+    });
+  }, [pendingClosures, isLoaded]);
+
+  // Global remove/approve/reject handlers
   useEffect(() => {
     (window as any).__removeClosure__ = async (id: string) => {
       await removeClosure(id);
       toast({ title: "Closure removed" });
     };
-    return () => { delete (window as any).__removeClosure__; };
-  }, [removeClosure]);
+    (window as any).__approveClosure__ = async (id: string) => {
+      await approveClosure(id);
+      toast({ title: "Closure approved — now visible to drivers" });
+    };
+    (window as any).__rejectClosure__ = async (id: string) => {
+      await rejectClosure(id);
+      toast({ title: "Report rejected" });
+    };
+    return () => {
+      delete (window as any).__removeClosure__;
+      delete (window as any).__approveClosure__;
+      delete (window as any).__rejectClosure__;
+    };
+  }, [removeClosure, approveClosure, rejectClosure]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
@@ -515,8 +577,13 @@ const DispatchGoogleMap = () => {
       {/* Road closure toolbar */}
       <div className="absolute top-3 right-3 sm:right-4 z-10 flex flex-col gap-2">
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-1.5 flex flex-col gap-1">
-          <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             Road Closures
+            {pendingClosures.length > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground text-[8px] font-bold animate-pulse">
+                {pendingClosures.length}
+              </span>
+            )}
           </div>
           <button
             onClick={() => { if (drawMode === "point") cancelDraw(); else { cancelDraw(); setDrawMode("point"); } }}
