@@ -902,7 +902,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
 
-    const interval = setInterval(checkTakeover, 15000);
+    const interval = setInterval(checkTakeover, 60000); // 60s — realtime handles most cases
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         checkTakeover();
