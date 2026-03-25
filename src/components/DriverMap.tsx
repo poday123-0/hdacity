@@ -1542,7 +1542,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         <>
           {/* Top: current maneuver step */}
           {freeNavSteps.length > 0 && (
-            <div className="absolute top-3 left-3 right-3 z-[500]">
+            <div className="absolute top-3 left-3 right-3 z-[9980]">
               <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden">
                 <div className="flex items-center gap-3 px-4 py-3">
                   {/* Maneuver icon */}
@@ -1576,7 +1576,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           )}
 
           {/* Bottom: ETA + distance + stop button */}
-          <div className="absolute bottom-4 left-3 right-3 z-[500]">
+          <div className="absolute bottom-4 left-3 right-3 z-[9980]">
             <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Route className="w-5 h-5 text-primary" />
