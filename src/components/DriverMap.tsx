@@ -416,6 +416,39 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (programmaticZoom) return;
     });
 
+    // Long-press to report closure
+    map.addListener("rightclick", (e: any) => {
+      if (!e.latLng) return;
+      const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+      const bounds = map.getBounds();
+      const proj = map.getProjection();
+      if (bounds && proj) {
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+        const topRight = proj.fromLatLngToPoint(ne);
+        const bottomLeft = proj.fromLatLngToPoint(sw);
+        const point = proj.fromLatLngToPoint(e.latLng);
+        if (topRight && bottomLeft && point) {
+          const scale = Math.pow(2, map.getZoom() || 16);
+          const px = (point.x - bottomLeft.x) * scale;
+          const py = (point.y - topRight.y) * scale;
+          const rect = mapDiv.getBoundingClientRect();
+          setReportMenuPos({
+            lat: coords.lat,
+            lng: coords.lng,
+            x: Math.min(px, rect.width - 180),
+            y: Math.min(py, rect.height - 160),
+          });
+        }
+      }
+    });
+
+    // Also support tap-and-hold via click (single tap shows menu)
+    map.addListener("click", (e: any) => {
+      // Dismiss any open menu on normal tap
+      setReportMenuPos(null);
+    });
+
     return () => { mapInstance.current = null; };
   }, [isLoaded, !!initialCenterRef.current, mapId]);
 
