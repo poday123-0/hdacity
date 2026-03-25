@@ -454,7 +454,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       from("trips").
       select("*").
       eq("driver_id", userProfile.id).
-      in("status", ["accepted", "arrived", "in_progress"]).
+      in("status", ["accepted", "arrived", "started", "in_progress"]).
       order("accepted_at", { ascending: false }).
       limit(1);
 
