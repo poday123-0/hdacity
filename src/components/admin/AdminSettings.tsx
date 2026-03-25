@@ -460,6 +460,10 @@ const AdminSettings = () => {
         </div>
       </SectionCard>
 
+      <SectionCard title="No Vehicle SMS" description="SMS sent to passenger when no driver is available" icon={MessageSquare}>
+        <SettingField label="SMS Message Text" settingKey="no_vehicle_sms_text" placeholder="HDA: No drivers available right now. Book directly & find available drivers at https://hda.taxi" />
+      </SectionCard>
+
       <SectionCard title="Emergency Numbers" description="Shown in SOS dialog for passengers and drivers" icon={Phone}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <SettingField label="Call Center Phone Number" settingKey="call_center_number" placeholder="e.g. 3001234" />
