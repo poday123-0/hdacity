@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
