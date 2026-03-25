@@ -2782,6 +2782,43 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       // Show service areas first, then named locations
                       (svcData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "service" }));
                       (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
+
+                      // If few DB results, also search Google Places as fallback
+                      if (results.length < 5) {
+                        const g = (window as any).google;
+                        if (g?.maps?.places?.AutocompleteService) {
+                          try {
+                            const autoSvc = new g.maps.places.AutocompleteService();
+                            const predictions = await new Promise<any[]>((resolve) => {
+                              autoSvc.getPlacePredictions(
+                                { input: q, componentRestrictions: { country: "mv" } },
+                                (res: any[] | null, status: string) => resolve(status === "OK" && res ? res : [])
+                              );
+                            });
+                            const mapDiv = document.createElement("div");
+                            const placesSvc = new g.maps.places.PlacesService(mapDiv);
+                            const existingNames = new Set(results.map(r => r.name.toLowerCase()));
+                            for (const pred of predictions.slice(0, 5)) {
+                              const detail = await new Promise<any>((resolve) => {
+                                placesSvc.getDetails(
+                                  { placeId: pred.place_id, fields: ["geometry", "name", "formatted_address"] },
+                                  (place: any, st: string) => resolve(st === "OK" ? place : null)
+                                );
+                              });
+                              if (detail?.geometry?.location && !existingNames.has((detail.name || "").toLowerCase())) {
+                                results.push({
+                                  name: detail.name || pred.structured_formatting?.main_text || "",
+                                  address: detail.formatted_address || pred.description || "",
+                                  lat: detail.geometry.location.lat(),
+                                  lng: detail.geometry.location.lng(),
+                                  type: "google",
+                                });
+                                existingNames.add((detail.name || "").toLowerCase());
+                              }
+                            }
+                          } catch {}
+                        }
+                      }
                       setLocationSearchResults(results);
                     }}
                   />
