@@ -367,7 +367,7 @@ const AdminDriverInvoice = () => {
               ))}
             </div>
             <div className="flex justify-end pt-2 border-t border-border">
-              <span className="text-sm font-bold text-foreground">Total: {subtotal.toFixed(2)} MVR</span>
+              <span className="text-sm font-bold text-foreground">Total: {subtotal.toFixed(2)} {currency}</span>
             </div>
           </div>
 
