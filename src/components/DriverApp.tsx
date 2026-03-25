@@ -2994,7 +2994,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           }
         </AnimatePresence>
 
-        <AnimatePresence>{!showProfile && !panelMinimized && <motion.div
+        <AnimatePresence>{!showProfile && !panelMinimized && !isFreeNavigating && <motion.div
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
