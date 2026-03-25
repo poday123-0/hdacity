@@ -180,7 +180,7 @@ interface DriverMapProps {
   startFreeNavRef?: React.MutableRefObject<((target: { lat: number; lng: number }) => void) | null>;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, startFreeNavRef }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
