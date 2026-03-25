@@ -776,12 +776,12 @@ const Dispatch = () => {
       supabase.removeChannel(closureChannel);
     };
   }, [isAuthed]);
-  // Polling fallback: refresh every 5s for fast dispatch updates
+  // Polling fallback: refresh every 15s (realtime handles instant updates)
   useEffect(() => {
     if (!isAuthed) return;
     const interval = setInterval(() => {
       refreshTrips();
-    }, 5_000);
+    }, 15_000);
     return () => clearInterval(interval);
   }, [isAuthed]);
 
