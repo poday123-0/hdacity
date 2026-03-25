@@ -1459,7 +1459,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           className="absolute z-[600]"
           style={{ left: reportMenuPos.x, top: reportMenuPos.y }}
         >
-          <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-1 min-w-[170px] animate-in zoom-in-95 fade-in">
+          <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-1 min-w-[180px] animate-in zoom-in-95 fade-in">
+            {/* Navigate Here */}
+            <button
+              onClick={() => {
+                startFreeNav({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                setReportMenuPos(null);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Route className="w-4 h-4" />
+              Navigate Here
+            </button>
+            <div className="border-t border-border my-0.5" />
             <button
               onClick={() => {
                 setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
