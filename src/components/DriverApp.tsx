@@ -318,7 +318,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setOnlineTimeDisplay(formatOnlineTime(elapsed));
     };
     tick();
-    onlineTimerRef.current = setInterval(tick, 1000);
+    onlineTimerRef.current = setInterval(tick, 30000); // Every 30s — display only shows minutes
 
     return () => { if (onlineTimerRef.current) clearInterval(onlineTimerRef.current); };
   }, [screen, onlineStorageKey]);
