@@ -513,31 +513,42 @@ const DispatchGoogleMap = () => {
       </div>
 
       {/* Road closure toolbar */}
-      <div className="absolute top-3 right-3 sm:right-4 z-10 flex flex-col gap-1.5">
-        <button
-          onClick={() => { if (drawMode === "point") cancelDraw(); else { cancelDraw(); setDrawMode("point"); } }}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-lg text-xs font-medium transition-all ${
-            drawMode === "point"
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-background/95 backdrop-blur-sm border border-border text-foreground hover:bg-accent"
-          }`}
-          title="Mark point closure"
-        >
-          <MapPin className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Point</span>
-        </button>
-        <button
-          onClick={() => { if (drawMode === "line") cancelDraw(); else { cancelDraw(); setDrawMode("line"); } }}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-lg text-xs font-medium transition-all ${
-            drawMode === "line"
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-background/95 backdrop-blur-sm border border-border text-foreground hover:bg-accent"
-          }`}
-          title="Draw line closure"
-        >
-          <Minus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Line</span>
-        </button>
+      <div className="absolute top-3 right-3 sm:right-4 z-10 flex flex-col gap-2">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-1.5 flex flex-col gap-1">
+          <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Road Closures
+          </div>
+          <button
+            onClick={() => { if (drawMode === "point") cancelDraw(); else { cancelDraw(); setDrawMode("point"); } }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+              drawMode === "point"
+                ? "bg-destructive text-destructive-foreground shadow-md"
+                : "text-foreground hover:bg-accent"
+            }`}
+            title="Tap the map to mark a single point as closed"
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <div className="text-left">
+              <div>Point Closure</div>
+              <div className={`text-[10px] ${drawMode === "point" ? "opacity-80" : "text-muted-foreground"}`}>Tap to mark a spot</div>
+            </div>
+          </button>
+          <button
+            onClick={() => { if (drawMode === "line") cancelDraw(); else { cancelDraw(); setDrawMode("line"); } }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+              drawMode === "line"
+                ? "bg-destructive text-destructive-foreground shadow-md"
+                : "text-foreground hover:bg-accent"
+            }`}
+            title="Draw a line along the closed road segment"
+          >
+            <Minus className="w-3.5 h-3.5" />
+            <div className="text-left">
+              <div>Line Closure</div>
+              <div className={`text-[10px] ${drawMode === "line" ? "opacity-80" : "text-muted-foreground"}`}>Draw a closed stretch</div>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Drawing mode indicator */}
