@@ -566,18 +566,21 @@ const Dispatch = () => {
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 30_000);
+    const interval = window.setInterval(refresh, 60_000); // refresh every 60s instead of 30s
 
-    // Realtime: auto-refresh center code index when trips change
+    // Realtime: debounced auto-refresh center code index when trips change
+    let ccDebounce: ReturnType<typeof setTimeout> | null = null;
     const ccChannel = supabase
       .channel("dispatch-center-code-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
-        refresh();
+        if (ccDebounce) clearTimeout(ccDebounce);
+        ccDebounce = setTimeout(() => refresh(), 5_000);
       })
       .subscribe();
 
     return () => {
       window.clearInterval(interval);
+      if (ccDebounce) clearTimeout(ccDebounce);
       supabase.removeChannel(ccChannel);
     };
   }, [isAuthed]);
