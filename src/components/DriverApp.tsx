@@ -3207,10 +3207,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
 
                 // Accept trip in database
+                const acceptedNow = new Date().toISOString();
                 const { error, count } = await supabase.from("trips").update({
                   status: "accepted",
                   driver_id: userProfile.id,
-                  accepted_at: new Date().toISOString(),
+                  accepted_at: acceptedNow,
                   vehicle_id: selectedVehicleId || null
                 }).eq("id", currentTrip.id).in("status", ["requested", "scheduled"]);
 
