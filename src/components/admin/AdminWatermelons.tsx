@@ -279,7 +279,22 @@ const AdminWatermelons = () => {
       .from("promo_watermelons")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setItems(data as any);
+    if (data) {
+      setItems(data as any);
+      // Fetch profiles for claimed items
+      const claimedUserIds = [...new Set((data as any[]).filter(d => d.claimed_by).map(d => d.claimed_by))];
+      if (claimedUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, phone_number, user_type")
+          .in("id", claimedUserIds);
+        if (profiles) {
+          const map = new Map<string, any>();
+          profiles.forEach(p => map.set(p.id, p));
+          setClaimerProfiles(map);
+        }
+      }
+    }
   };
 
   const fetchLocations = async () => {
