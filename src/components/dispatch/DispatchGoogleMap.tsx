@@ -162,7 +162,7 @@ const DispatchGoogleMap = () => {
     setShowSuggestions(combined.length > 0);
   }, [searchQuery, namedLocations, serviceAreas]);
 
-  const selectNamedLocation = useCallback((loc: typeof namedLocations[0]) => {
+  const selectNamedLocation = useCallback((loc: { id: string; name: string; address: string; lat: number; lng: number; type: string }) => {
     const g = (window as any).google;
     if (!g?.maps || !mapInstance.current) return;
 
