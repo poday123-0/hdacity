@@ -212,6 +212,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [reportSeverity, setReportSeverity] = useState("closed");
+  const [reportLaneSide, setReportLaneSide] = useState<"right" | "left" | null>(null);
   const [reportNotes, setReportNotes] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
