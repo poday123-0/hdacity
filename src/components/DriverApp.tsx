@@ -78,6 +78,7 @@ import DriverLeaderboard from "./DriverLeaderboard";
 
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { startBackgroundLocation, stopBackgroundLocation } from "@/lib/background-location";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
 import { fetchSoundUrl, playSound, playFallbackBeep } from "@/lib/sound-utils";
@@ -389,6 +390,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.geolocation.clearWatch(locationWatchRef.current);
       locationWatchRef.current = null;
     }
+    stopBackgroundLocation();
     try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -620,6 +622,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.geolocation.clearWatch(locationWatchRef.current);
       locationWatchRef.current = null;
     }
+    // Stop native background location tracking
+    stopBackgroundLocation();
     // Clear heartbeat interval
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current);
@@ -765,6 +769,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
       }
 
+      // Start native background location tracking (no-op on web)
+      startBackgroundLocation(
+        (lat, lng) => {
+          setGpsEnabled(true);
+          setDriverLat(lat);
+          setDriverLng(lng);
+          upsertLocation(lat, lng);
+        },
+        { distanceFilter: MIN_MOVE_METERS }
+      );
+
       // Heartbeat — use admin-configured interval or default 30s (reduced from 10s to save battery)
       let driverIntervalMs = 30000;
       try {
@@ -846,6 +861,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         foregroundGpsCleanupRef.current();
         foregroundGpsCleanupRef.current = null;
       }
+      stopBackgroundLocation();
     };
   }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch, goOfflineNow]);
 
