@@ -220,9 +220,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [freeNavTarget, setFreeNavTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [freeNavEta, setFreeNavEta] = useState("");
   const [freeNavDist, setFreeNavDist] = useState("");
+  const [freeNavSteps, setFreeNavSteps] = useState<NavStep[]>([]);
+  const [freeNavStepIndex, setFreeNavStepIndex] = useState(0);
   const freeNavPolylineRef = useRef<any>(null);
   const freeNavMarkerRef = useRef<any>(null);
   const freeNavIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const freeNavPathRef = useRef<{ lat: number; lng: number }[]>([]);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
@@ -278,32 +281,44 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Clear previous free nav
     stopFreeNav();
     setFreeNavTarget(target);
+    setFreeNavSteps([]);
+    setFreeNavStepIndex(0);
+    freeNavPathRef.current = [];
 
-    // Place destination marker
+    // Place destination marker with pulse
     const marker = new g.maps.Marker({
       map,
       position: target,
       icon: {
         path: g.maps.SymbolPath.CIRCLE,
-        scale: 10,
+        scale: 16,
         fillColor: "#6366f1",
         fillOpacity: 1,
         strokeColor: "#fff",
         strokeWeight: 3,
       },
+      label: { text: "📍", fontSize: "14px" },
       zIndex: 3000,
     });
     freeNavMarkerRef.current = marker;
 
-    // Create polyline
+    // Create polyline matching in-trip style
     const polyline = new g.maps.Polyline({
       map,
       strokeColor: "#6366f1",
-      strokeWeight: 6,
-      strokeOpacity: 0.8,
-      zIndex: 99,
+      strokeWeight: 7,
+      strokeOpacity: 0.85,
+      zIndex: 100,
     });
     freeNavPolylineRef.current = polyline;
+
+    // Switch to nav camera mode
+    map.setTilt(0);
+    if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+    map.setZoom(18);
+    setFollowDriver(true);
+    userInteractingRef.current = false;
+    setUserPannedAway(false);
 
     const fetchFreeRoute = () => {
       const driverPos = currentPosRef.current;
@@ -320,30 +335,68 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         const leg = result.routes?.[0]?.legs?.[0];
         if (!leg) return;
 
-        // Extract path
+        // Extract road-snapped path from individual steps
         const pathCoords: { lat: number; lng: number }[] = [];
         for (const step of leg.steps) {
           for (const p of (step.path || [])) {
             pathCoords.push({ lat: p.lat(), lng: p.lng() });
           }
         }
+        freeNavPathRef.current = pathCoords;
         if (freeNavPolylineRef.current) freeNavPolylineRef.current.setPath(pathCoords);
         setFreeNavEta(leg.duration?.text || "");
         setFreeNavDist(leg.distance?.text || "");
+
+        // Extract turn-by-turn steps
+        const steps: NavStep[] = leg.steps.map((step: any) => ({
+          instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
+          distance: step.distance?.text || '',
+          maneuver: step.maneuver || undefined,
+          endLat: step.end_location?.lat?.() ?? undefined,
+          endLng: step.end_location?.lng?.() ?? undefined,
+        }));
+        setFreeNavSteps(steps);
+
+        // Auto-advance step based on proximity
+        if (driverPos && steps.length > 0) {
+          let closestIdx = 0;
+          let closestDist = Infinity;
+          for (let idx = 0; idx < leg.steps.length; idx++) {
+            const step = leg.steps[idx];
+            const endLat = step.end_location.lat();
+            const endLng = step.end_location.lng();
+            const dist = getDistanceMeters(driverPos, { lat: endLat, lng: endLng });
+            if (dist < closestDist) { closestDist = dist; closestIdx = idx; }
+          }
+          setFreeNavStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
+        }
       }).catch(() => {});
     };
 
     fetchFreeRoute();
-    freeNavIntervalRef.current = setInterval(fetchFreeRoute, 10000);
+    freeNavIntervalRef.current = setInterval(fetchFreeRoute, 8000);
   }, [currentPos]);
 
   const stopFreeNav = useCallback(() => {
     setFreeNavTarget(null);
     setFreeNavEta("");
     setFreeNavDist("");
+    setFreeNavSteps([]);
+    setFreeNavStepIndex(0);
+    freeNavPathRef.current = [];
     if (freeNavPolylineRef.current) { freeNavPolylineRef.current.setMap(null); freeNavPolylineRef.current = null; }
     if (freeNavMarkerRef.current) { freeNavMarkerRef.current.setMap(null); freeNavMarkerRef.current = null; }
     if (freeNavIntervalRef.current) { clearInterval(freeNavIntervalRef.current); freeNavIntervalRef.current = null; }
+    // Reset camera to non-nav mode
+    const map = mapInstance.current;
+    if (map) {
+      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+      map.setZoom(16);
+      if (typeof map.setHeading === "function") {
+        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
+        map.setHeading(0);
+      }
+    }
   }, []);
 
   // Cleanup free nav on unmount
@@ -354,8 +407,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
   // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
   useEffect(() => {
-    // If navigating, we need our own high-accuracy GPS for heading/speed
-    if (!isNavigating) {
+    // If navigating or free-nav, we need our own high-accuracy GPS for heading/speed
+    const needsOwnGps = isNavigating || !!freeNavTarget;
+    if (!needsOwnGps) {
       // Clean up any existing watcher when not navigating
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
@@ -394,11 +448,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       { enableHighAccuracy: true, maximumAge: 2000 }
     );
     return () => { if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; } };
-  }, [isNavigating]);
+  }, [isNavigating, freeNavTarget]);
 
-  // When not navigating, use external position from parent (DriverApp's GPS watcher)
+  // When not navigating/free-nav, use external position from parent
   useEffect(() => {
-    if (isNavigating || !externalPosition) return;
+    if (isNavigating || freeNavTarget || !externalPosition) return;
     setCurrentPos(prev => {
       if (!prev && mapInstance.current) {
         mapInstance.current.panTo(externalPosition);
@@ -797,7 +851,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
         lastCameraUpdateAtRef.current = now;
 
-        if (isNavigating) {
+        if (isNavigating || freeNavTarget) {
           if (typeof map.setHeading === "function") {
             if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
             map.setHeading(heading);
@@ -821,7 +875,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         }
       }
     }
-  }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
+  }, [currentPos, isNavigating, freeNavTarget, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
 
   // Trim route polyline behind driver — remove passed segments
   useEffect(() => {
@@ -838,6 +892,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       routePolylineRef.current.setPath(trimmedPath);
     }
   }, [currentPos, isNavigating]);
+
+  // Trim free nav polyline behind driver
+  useEffect(() => {
+    if (!freeNavTarget || !currentPos || !freeNavPolylineRef.current || freeNavPathRef.current.length < 2) return;
+    const fullPath = freeNavPathRef.current;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < fullPath.length; i++) {
+      const d = getDistanceMeters(currentPos, fullPath[i]);
+      if (d < closestDist) { closestDist = d; closestIdx = i; }
+    }
+    if (closestIdx > 0) {
+      const trimmedPath = [{ lat: currentPos.lat, lng: currentPos.lng }, ...fullPath.slice(closestIdx)];
+      freeNavPolylineRef.current.setPath(trimmedPath);
+    }
+  }, [currentPos, freeNavTarget]);
 
   // Apply exact admin map icon when it becomes available
   useEffect(() => {
@@ -1458,27 +1528,70 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
-      {/* Free navigation banner */}
+      {/* Free navigation — turn-by-turn UI (same as in-trip) */}
       {freeNavTarget && (
-        <div className="absolute bottom-4 left-3 right-3 z-[500]">
-          <div className="bg-primary/95 backdrop-blur-sm text-primary-foreground rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center shrink-0">
-              <Route className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold">Navigating to location</div>
-              <div className="text-sm font-bold mt-0.5">
-                {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
+        <>
+          {/* Top: current maneuver step */}
+          {freeNavSteps.length > 0 && (
+            <div className="absolute top-3 left-3 right-3 z-[500]">
+              <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  {/* Maneuver icon */}
+                  <div className={`w-12 h-12 rounded-xl ${getManeuverColor(freeNavSteps[freeNavStepIndex]?.maneuver)} text-white flex items-center justify-center shrink-0 shadow-md`}>
+                    <span className="text-2xl font-bold">{getManeuverIcon(freeNavSteps[freeNavStepIndex]?.maneuver)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-foreground leading-tight truncate">
+                      {freeNavSteps[freeNavStepIndex]?.instruction || "Continue straight"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {freeNavSteps[freeNavStepIndex]?.distance || ""}
+                    </div>
+                  </div>
+                </div>
+                {/* Next step preview */}
+                {freeNavStepIndex + 1 < freeNavSteps.length && (
+                  <div className="border-t border-border px-4 py-2 flex items-center gap-2 bg-muted/30">
+                    <span className="text-xs text-muted-foreground">Then</span>
+                    <span className="text-sm">{getManeuverIcon(freeNavSteps[freeNavStepIndex + 1]?.maneuver)}</span>
+                    <span className="text-xs text-muted-foreground truncate flex-1">
+                      {freeNavSteps[freeNavStepIndex + 1]?.instruction}
+                    </span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {freeNavSteps[freeNavStepIndex + 1]?.distance}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-            <button
-              onClick={stopFreeNav}
-              className="shrink-0 w-9 h-9 rounded-xl bg-primary-foreground/20 hover:bg-primary-foreground/30 flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          )}
+
+          {/* Bottom: ETA + distance + stop button */}
+          <div className="absolute bottom-4 left-3 right-3 z-[500]">
+            <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Route className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground font-medium">Navigating to location</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">
+                  {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
+                </div>
+              </div>
+              {/* Speed */}
+              <div className="w-12 h-12 rounded-full bg-muted/60 border-2 border-border flex flex-col items-center justify-center shrink-0">
+                <span className="text-sm font-black text-foreground leading-none">{currentSpeed}</span>
+                <span className="text-[7px] text-muted-foreground font-medium">km/h</span>
+              </div>
+              <button
+                onClick={stopFreeNav}
+                className="shrink-0 w-10 h-10 rounded-xl bg-destructive text-destructive-foreground flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Context menu on map tap/long-press — bottom sheet style */}
