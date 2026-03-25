@@ -2763,22 +2763,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       const q = e.target.value;
                       setLocationSearchQuery(q);
                       if (q.trim().length < 1) { setLocationSearchResults([]); return; }
-                      const { data: svcData } = await supabase
-                        .from("service_locations")
-                        .select("name, address, lat, lng")
-                        .eq("is_active", true)
-                        .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
-                        .limit(10);
-                      const { data: namedData } = await supabase
-                        .from("named_locations")
-                        .select("name, address, lat, lng")
-                        .eq("is_active", true)
-                        .eq("status", "approved")
-                        .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
-                        .limit(10);
+                      const [{ data: svcData }, { data: namedData }] = await Promise.all([
+                        supabase
+                          .from("service_locations")
+                          .select("name, address, lat, lng")
+                          .eq("is_active", true)
+                          .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
+                          .limit(10),
+                        supabase
+                          .from("named_locations")
+                          .select("name, address, lat, lng")
+                          .eq("is_active", true)
+                          .eq("status", "approved")
+                          .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
+                          .limit(20),
+                      ]);
                       const results: { name: string; address: string; lat: number; lng: number; type: string }[] = [];
-                      (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
+                      // Show service areas first, then named locations
                       (svcData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "service" }));
+                      (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
                       setLocationSearchResults(results);
                     }}
                   />
