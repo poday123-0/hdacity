@@ -1201,7 +1201,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 10s for new requested/scheduled trips AND direct-assigned trips
+    // Fallback: Poll every 30s for new requested/scheduled trips AND direct-assigned trips
+    // Realtime handles most cases — this is just a safety net
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -1243,7 +1244,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 15000);
+    }, 30000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification sound)
     const onVisibilityChange = async () => {
