@@ -145,7 +145,8 @@ type DispatchTab =
   | "notifications"
   | "banks"
   | "companies"
-  | "duty_hours";
+  | "duty_hours"
+  | "hdc_map";
 
 // Map each tab to the permission key required to access it
 const tabPermissionMap: Record<DispatchTab, string | null> = {
@@ -167,6 +168,7 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   vehicles: "manage_vehicles",
   named_locations: "manage_locations",
   duty_hours: "manage_dispatchers",
+  hdc_map: null,
 };
 
 const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -188,6 +190,7 @@ const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboa
   { id: "banks", label: "Banks", icon: Building2 },
   { id: "companies", label: "Companies", icon: Building },
   { id: "duty_hours", label: "Duty Hours", icon: Clock },
+  { id: "hdc_map", label: "HDC Map", icon: MapPinIcon },
 ];
 
 const Dispatch = () => {
@@ -1940,6 +1943,16 @@ const Dispatch = () => {
         {activeTab === "duty_hours" && (
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
             <AdminDutyHours />
+          </div>
+        )}
+        {activeTab === "hdc_map" && (
+          <div className="w-full h-full">
+            <iframe
+              src="https://hulhumale.maps.arcgis.com/apps/webappviewer/index.html?id=18781129603f429799a7f94292d2f67f"
+              className="w-full h-full border-0"
+              title="HDC Map"
+              allow="geolocation"
+            />
           </div>
         )}
       </div>
