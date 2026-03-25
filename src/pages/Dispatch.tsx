@@ -648,7 +648,13 @@ const Dispatch = () => {
     load();
   }, [isAuthed]);
 
-  // Realtime: auto-refresh trips table on any change — instant status update + full refetch
+  // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
+  const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedRefreshTrips = useCallback(() => {
+    if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
+    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), 1_500);
+  }, []);
+
   useEffect(() => {
     if (!isAuthed) return;
     const channel = supabase
@@ -681,8 +687,8 @@ const Dispatch = () => {
           setRecentTrips((prev) => patchTrip(prev));
           setAppRequestTrips((prev) => patchTrip(prev));
           setLostTrips((prev) => patchTrip(prev));
-          // Full refetch for joined data (driver/vehicle details)
-          refreshTrips();
+          // Debounced full refetch for joined data (driver/vehicle details)
+          debouncedRefreshTrips();
         },
       )
       .on(
@@ -693,14 +699,15 @@ const Dispatch = () => {
           table: "trips",
         },
         () => {
-          refreshTrips();
+          debouncedRefreshTrips();
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
+      if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
     };
-  }, [isAuthed]);
+  }, [isAuthed, debouncedRefreshTrips]);
 
   // Realtime: driver locations for online driver count updates
   useEffect(() => {
