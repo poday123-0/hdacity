@@ -346,8 +346,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   // Cleanup free nav on unmount
   useEffect(() => () => { stopFreeNav(); }, [stopFreeNav]);
 
-  const currentPosRef = useRef(currentPos);
-  currentPosRef.current = currentPos;
+
 
   // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
   // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
