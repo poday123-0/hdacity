@@ -265,12 +265,23 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     return () => clearInterval(timer);
   }, [tripStatus, tripId]);
 
-  // Arrived waiting timer - starts from 0 when driver arrives
+  // Arrived waiting timer - based on arrived_at from DB so it persists across refreshes
   useEffect(() => {
     if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); return; }
-    setArrivedElapsed(0);
-    const timer = setInterval(() => setArrivedElapsed(prev => prev + 1), 1000);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setInterval>;
+    const initTimer = async () => {
+      const { data } = await supabase.from("trips").select("arrived_at").eq("id", tripId).single();
+      if ((data as any)?.arrived_at) {
+        const t = new Date((data as any).arrived_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setArrivedElapsed(calc());
+        timer = setInterval(() => setArrivedElapsed(calc()), 1000);
+      } else {
+        timer = setInterval(() => setArrivedElapsed(prev => prev + 1), 1000);
+      }
+    };
+    initTimer();
+    return () => { if (timer) clearInterval(timer); };
   }, [tripStatus, tripId]);
 
 

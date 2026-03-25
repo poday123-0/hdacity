@@ -1434,6 +1434,7 @@ export type Database = {
         Row: {
           accepted_at: string | null
           actual_fare: number | null
+          arrived_at: string | null
           booking_notes: string | null
           booking_type: string
           cancel_reason: string | null
@@ -1484,6 +1485,7 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           actual_fare?: number | null
+          arrived_at?: string | null
           booking_notes?: string | null
           booking_type?: string
           cancel_reason?: string | null
@@ -1534,6 +1536,7 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           actual_fare?: number | null
+          arrived_at?: string | null
           booking_notes?: string | null
           booking_type?: string
           cancel_reason?: string | null
