@@ -3319,7 +3319,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
         <ChevronUp className="w-4 h-4" />
         <span className="text-xs font-bold">{driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup" : "Trip in progress"}</span>
-        <AnimatedTimer seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed} variant="badge" showIcon={false} className="bg-primary-foreground/20 text-primary-foreground [&_span]:text-primary-foreground" />
+        <AnimatedTimer seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed} variant="badge" showIcon={false} className="bg-primary-foreground/20" />
       </button>
       }
 
@@ -3366,7 +3366,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed}
                 label={driverTripPhase === "in_progress" ? "Trip" : driverTripPhase === "arrived" ? "Waiting" : "En route"}
                 variant="badge"
-                className="bg-primary-foreground/15 text-primary-foreground [&_span]:text-primary-foreground [&_svg]:text-primary-foreground/70"
+                className="bg-primary-foreground/15"
               />
             </div>
           </div>
