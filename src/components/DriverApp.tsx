@@ -1387,9 +1387,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, []);
 
-  // Driver phase elapsed timer (waiting at pickup / heading time)
+  // Driver accepted elapsed timer (only heading_to_pickup phase)
   useEffect(() => {
-    if (!currentTrip?.id || driverTripPhase === "in_progress") { setDriverPhaseElapsed(0); return; }
+    if (!currentTrip?.id || driverTripPhase !== "heading_to_pickup") { setDriverPhaseElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
     const init = async () => {
       const { data } = await supabase.from("trips").select("accepted_at").eq("id", currentTrip.id).single();
@@ -1406,7 +1406,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => { if (timer) clearInterval(timer); };
   }, [currentTrip?.id, driverTripPhase]);
 
-  // Driver trip elapsed timer (from started_at)
+  // Driver arrived waiting timer (resets to 0 when arrived)
+  useEffect(() => {
+    if (!currentTrip?.id || driverTripPhase !== "arrived") { setDriverArrivedElapsed(0); return; }
+    setDriverArrivedElapsed(0);
+    const timer = setInterval(() => setDriverArrivedElapsed(p => p + 1), 1000);
+    return () => clearInterval(timer);
+  }, [currentTrip?.id, driverTripPhase]);
+
+  // Driver trip elapsed timer (resets to 0 when trip starts)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "in_progress") { setDriverTripElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
