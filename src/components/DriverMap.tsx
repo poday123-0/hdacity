@@ -1528,27 +1528,70 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
-      {/* Free navigation banner */}
+      {/* Free navigation — turn-by-turn UI (same as in-trip) */}
       {freeNavTarget && (
-        <div className="absolute bottom-4 left-3 right-3 z-[500]">
-          <div className="bg-primary/95 backdrop-blur-sm text-primary-foreground rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center shrink-0">
-              <Route className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold">Navigating to location</div>
-              <div className="text-sm font-bold mt-0.5">
-                {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
+        <>
+          {/* Top: current maneuver step */}
+          {freeNavSteps.length > 0 && (
+            <div className="absolute top-3 left-3 right-3 z-[500]">
+              <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  {/* Maneuver icon */}
+                  <div className={`w-12 h-12 rounded-xl ${getManeuverColor(freeNavSteps[freeNavStepIndex]?.maneuver)} text-white flex items-center justify-center shrink-0 shadow-md`}>
+                    <span className="text-2xl font-bold">{getManeuverIcon(freeNavSteps[freeNavStepIndex]?.maneuver)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-foreground leading-tight truncate">
+                      {freeNavSteps[freeNavStepIndex]?.instruction || "Continue straight"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {freeNavSteps[freeNavStepIndex]?.distance || ""}
+                    </div>
+                  </div>
+                </div>
+                {/* Next step preview */}
+                {freeNavStepIndex + 1 < freeNavSteps.length && (
+                  <div className="border-t border-border px-4 py-2 flex items-center gap-2 bg-muted/30">
+                    <span className="text-xs text-muted-foreground">Then</span>
+                    <span className="text-sm">{getManeuverIcon(freeNavSteps[freeNavStepIndex + 1]?.maneuver)}</span>
+                    <span className="text-xs text-muted-foreground truncate flex-1">
+                      {freeNavSteps[freeNavStepIndex + 1]?.instruction}
+                    </span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {freeNavSteps[freeNavStepIndex + 1]?.distance}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-            <button
-              onClick={stopFreeNav}
-              className="shrink-0 w-9 h-9 rounded-xl bg-primary-foreground/20 hover:bg-primary-foreground/30 flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          )}
+
+          {/* Bottom: ETA + distance + stop button */}
+          <div className="absolute bottom-4 left-3 right-3 z-[500]">
+            <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Route className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground font-medium">Navigating to location</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">
+                  {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
+                </div>
+              </div>
+              {/* Speed */}
+              <div className="w-12 h-12 rounded-full bg-muted/60 border-2 border-border flex flex-col items-center justify-center shrink-0">
+                <span className="text-sm font-black text-foreground leading-none">{currentSpeed}</span>
+                <span className="text-[7px] text-muted-foreground font-medium">km/h</span>
+              </div>
+              <button
+                onClick={stopFreeNav}
+                className="shrink-0 w-10 h-10 rounded-xl bg-destructive text-destructive-foreground flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Context menu on map tap/long-press — bottom sheet style */}
