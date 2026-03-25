@@ -5038,7 +5038,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Vehicle blocked banner */}
       {screen === "online" && vehicleBlockedUntil && blockCountdown && (
-        <div className="fixed top-14 left-2 right-2 z-[1000] mx-auto max-w-md">
+        <div className="fixed top-14 left-2 right-2 z-[9990] mx-auto max-w-md">
           <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 flex items-center gap-3 shadow-lg backdrop-blur-sm">
             <Ban className="w-5 h-5 text-destructive shrink-0" />
             <div className="flex-1 min-w-0">
