@@ -40,10 +40,10 @@ const AnimatedTimer = ({ seconds, label, variant = "default", showIcon = true, c
 
   if (variant === "badge") {
     return (
-      <span className={`inline-flex items-center gap-1.5 font-mono text-xs bg-surface px-2.5 py-1 rounded-full ${className}`}>
+       <span className={`inline-flex items-center gap-1.5 font-mono text-xs bg-surface text-surface-foreground px-2.5 py-1 rounded-full ${className}`}>
         {showIcon && <Clock className="w-3 h-3 text-primary" />}
         {label && <span className="text-muted-foreground text-[10px]">{label}</span>}
-        <span className="flex items-center text-foreground font-bold">
+        <span className="flex items-center font-bold">
           {showHours && (
             <>
               <FlipDigit digit={hh[0]} id="h0" />
@@ -66,7 +66,7 @@ const AnimatedTimer = ({ seconds, label, variant = "default", showIcon = true, c
       <div className={`flex items-center gap-1.5 ${className}`}>
         {showIcon && <Clock className="w-3.5 h-3.5 text-primary" />}
         {label && <span className="text-[10px] text-muted-foreground">{label}</span>}
-        <div className="flex items-center text-sm font-bold text-foreground">
+        <div className="flex items-center text-sm font-bold">
           {showHours && (
             <>
               <FlipDigit digit={hh[0]} id="h0" />
@@ -93,7 +93,7 @@ const AnimatedTimer = ({ seconds, label, variant = "default", showIcon = true, c
           {label}
         </span>
       )}
-      <div className="flex items-center text-xl font-bold text-foreground bg-surface rounded-xl px-3 py-1.5">
+      <div className="flex items-center text-xl font-bold text-surface-foreground bg-surface rounded-xl px-3 py-1.5">
         {showHours && (
           <>
             <FlipDigit digit={hh[0]} id="h0" />
