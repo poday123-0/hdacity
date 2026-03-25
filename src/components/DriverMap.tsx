@@ -1570,7 +1570,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
       {/* Report closure form */}
       {showReportForm && reportCoords && (
-        <div className="absolute inset-0 z-[700] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9992] flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-80 max-w-[90vw] space-y-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-destructive" />
