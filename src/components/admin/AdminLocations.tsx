@@ -249,6 +249,24 @@ const AdminLocations = () => {
     setDrawingMode(false);
   };
 
+  const fetchPlacesForArea = async (locationId: string) => {
+    setFetchingPlaces(locationId);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-area-places", {
+        body: { service_location_id: locationId },
+      });
+      if (error) throw error;
+      toast({
+        title: "Places fetched!",
+        description: `Found ${data.total_found} places, ${data.inserted} new added (${data.duplicates_skipped} duplicates skipped)`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error fetching places", description: err.message, variant: "destructive" });
+    } finally {
+      setFetchingPlaces(null);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.name || !form.lat || !form.lng) {
       toast({ title: "Please provide name and set center point on the map", variant: "destructive" });
@@ -262,16 +280,30 @@ const AdminLocations = () => {
       lng: parseFloat(form.lng),
       polygon: polygonPoints.length >= 3 ? polygonPoints : null,
     };
-    const { error } = editingId
-      ? await supabase.from("service_locations").update(payload).eq("id", editingId)
-      : await supabase.from("service_locations").insert(payload);
 
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    let savedId = editingId;
+    if (editingId) {
+      const { error } = await supabase.from("service_locations").update(payload).eq("id", editingId);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
     } else {
-      toast({ title: editingId ? "Service area updated!" : "Service area added!" });
-      resetForm();
-      fetchLocations();
+      const { data: inserted, error } = await supabase.from("service_locations").insert(payload).select("id").single();
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      savedId = inserted.id;
+    }
+
+    toast({ title: editingId ? "Service area updated!" : "Service area added!" });
+    resetForm();
+    fetchLocations();
+
+    // Auto-fetch Google Places for this area
+    if (savedId && polygonPoints.length >= 3) {
+      fetchPlacesForArea(savedId);
     }
   };
 
