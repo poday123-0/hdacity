@@ -1491,7 +1491,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="absolute inset-0 z-[590] bg-black/20"
+              className="fixed inset-0 z-[9990] bg-black/20"
               onClick={() => setReportMenuPos(null)}
             />
             {/* Menu sheet */}
