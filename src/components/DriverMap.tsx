@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { selectShortestRoute } from "@/lib/shortest-route";
 import { useRoadClosures } from "@/hooks/use-road-closures";
-import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
+import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle } from "lucide-react";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
 const createRotatedIcon = (
@@ -200,6 +200,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const { closures: roadClosures } = useRoadClosures();
   const roadClosureMarkersRef = useRef<any[]>([]);
   const roadClosureLinesRef = useRef<any[]>([]);
+  const [closureWarning, setClosureWarning] = useState<string | null>(null);
+  const closureWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -910,6 +912,27 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
             if (routePolylineRef.current) {
               routePolylineRef.current.setPath(pathCoords);
             }
+
+            // Check if route passes near any road closure
+            const PROXIMITY_M = 100; // warn if route is within 100m of a closure
+            const nearbyClosures = roadClosures.filter((c) => {
+              return c.coordinates.some((cp) =>
+                pathCoords.some((rp) => getDistanceMeters(rp, cp) < PROXIMITY_M)
+              );
+            });
+
+            if (nearbyClosures.length > 0) {
+              const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard" };
+              const labels = nearbyClosures.map((c) => {
+                const label = sevLabels[c.severity] || "Closure";
+                return c.notes ? `${label}: ${c.notes}` : label;
+              });
+              setClosureWarning(labels.join(" • "));
+              if (closureWarningTimeoutRef.current) clearTimeout(closureWarningTimeoutRef.current);
+              closureWarningTimeoutRef.current = setTimeout(() => setClosureWarning(null), 15000);
+            } else {
+              setClosureWarning(null);
+            }
           } catch {}
         }
       }).catch((err: any) => console.error("Directions error:", err))
@@ -1244,6 +1267,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
+      {/* Road closure warning banner */}
+      {isNavigating && closureWarning && (
+        <div className="absolute top-3 left-3 right-3 z-[500]">
+          <div className="bg-destructive/95 backdrop-blur-sm text-destructive-foreground rounded-xl px-4 py-2.5 shadow-lg flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold">⚠ Road Closure Ahead</div>
+              <div className="text-[11px] opacity-90 mt-0.5 leading-tight">{closureWarning}</div>
+            </div>
+            <button onClick={() => setClosureWarning(null)} className="shrink-0 mt-0.5 opacity-70 hover:opacity-100">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
     </>
   );
