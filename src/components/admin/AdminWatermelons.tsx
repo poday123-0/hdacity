@@ -255,6 +255,7 @@ const AdminWatermelons = () => {
   const [editLat, setEditLat] = useState("");
   const [editLng, setEditLng] = useState("");
   const [showBulkMove, setShowBulkMove] = useState(false);
+  const [claimedFilter, setClaimedFilter] = useState("all");
 
   // Form state
   const [promoType, setPromoType] = useState("wallet_amount");
@@ -556,6 +557,72 @@ const AdminWatermelons = () => {
           </div>
         ))}
       </div>
+
+      {/* Claimed Rewards Summary */}
+      {claimedItems.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            ✅ Claimed Rewards ({claimedItems.length})
+          </h3>
+          <div className="flex gap-2 flex-wrap text-[10px]">
+            {["all", "fee_free", "wallet_amount", "free_trip"].map(filter => {
+              const count = filter === "all" ? claimedItems.length : claimedItems.filter(c => c.promo_type === filter).length;
+              if (count === 0 && filter !== "all") return null;
+              return (
+                <button key={filter} className={`px-2.5 py-1 rounded-full font-semibold border transition-colors ${
+                  claimedFilter === filter ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-muted-foreground hover:text-foreground"
+                }`} onClick={() => setClaimedFilter(filter)}>
+                  {filter === "all" ? "All" : filter === "fee_free" ? "🏷️ Free Fee" : filter === "wallet_amount" ? "💰 Wallet" : "🚗 Free Trip"} ({count})
+                </button>
+              );
+            })}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="text-left py-2 px-2 font-medium">User</th>
+                  <th className="text-left py-2 px-2 font-medium">Type</th>
+                  <th className="text-left py-2 px-2 font-medium">Reward</th>
+                  <th className="text-left py-2 px-2 font-medium">Claimed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {claimedItems
+                  .filter(c => claimedFilter === "all" || c.promo_type === claimedFilter)
+                  .map(c => {
+                    const claimer = claimerProfiles.get(c.claimed_by || "");
+                    return (
+                      <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
+                        <td className="py-2 px-2">
+                          {claimer ? (
+                            <div>
+                              <p className="font-semibold text-foreground">{claimer.first_name} {claimer.last_name}</p>
+                              <p className="text-[10px] text-muted-foreground">{claimer.phone_number} • {claimer.user_type}</p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground font-mono">{c.claimed_by?.slice(0, 8)}…</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            c.promo_type === "fee_free" ? "bg-primary/10 text-primary" :
+                            c.promo_type === "wallet_amount" ? "bg-green-500/10 text-green-600" :
+                            "bg-amber-500/10 text-amber-600"
+                          }`}>
+                            {c.promo_type === "fee_free" ? "Free Fee" : c.promo_type === "wallet_amount" ? "Wallet" : "Free Trip"}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 font-semibold text-foreground">{promoLabel(c)}</td>
+                        <td className="py-2 px-2 text-muted-foreground">{c.claimed_at ? new Date(c.claimed_at).toLocaleString() : "—"}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Create Form */}
       {showCreate && (
