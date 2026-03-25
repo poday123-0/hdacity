@@ -456,6 +456,19 @@ const AdminLocations = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => fetchPlacesForArea(loc.id)}
+                          disabled={fetchingPlaces === loc.id}
+                          className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1"
+                          title="Fetch all Google Places within this area"
+                        >
+                          {fetchingPlaces === loc.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Download className="w-3 h-3" />
+                          )}
+                          {fetchingPlaces === loc.id ? "Fetching…" : "Fetch Places"}
+                        </button>
                         <button onClick={() => toggleActive(loc.id, loc.is_active)} className="text-xs font-medium text-primary hover:underline">
                           {loc.is_active ? "Deactivate" : "Activate"}
                         </button>
