@@ -1277,7 +1277,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               <div className="text-[11px] opacity-90 mt-0.5 leading-tight">{closureWarning}</div>
             </div>
             <button onClick={() => setClosureWarning(null)} className="shrink-0 mt-0.5 opacity-70 hover:opacity-100">
-              <XIcon className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
