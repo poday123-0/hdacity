@@ -446,11 +446,11 @@ const DispatchGoogleMap = () => {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search places or named locations..."
+            placeholder="Search service areas & named locations..."
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-background/95 backdrop-blur-sm border border-border shadow-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            defaultValue={searchQuery}
+            value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => { if (filteredLocations.length > 0) setShowSuggestions(true); }}
+            onFocus={() => { if (filteredResults.length > 0) setShowSuggestions(true); }}
           />
           {searchQuery && (
             <button onClick={() => { clearSearch(); setShowSuggestions(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -458,13 +458,33 @@ const DispatchGoogleMap = () => {
             </button>
           )}
         </div>
-        {/* Named locations dropdown */}
-        {showSuggestions && filteredLocations.length > 0 && (
+        {/* Suggestions dropdown */}
+        {showSuggestions && filteredResults.length > 0 && (
           <div className="mt-1 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
-            <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
-              Named Locations
-            </div>
-            {filteredLocations.map((loc) => (
+            {filteredResults.some((r) => r.type === "service") && (
+              <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
+                Service Areas
+              </div>
+            )}
+            {filteredResults.filter((r) => r.type === "service").map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => selectNamedLocation(loc)}
+                className="w-full px-3 py-2 text-left hover:bg-accent flex items-start gap-2 border-b border-border/50 last:border-0"
+              >
+                <Layers className="w-3.5 h-3.5 text-chart-2 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-foreground truncate">{loc.name}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{loc.address}</div>
+                </div>
+              </button>
+            ))}
+            {filteredResults.some((r) => r.type === "named") && (
+              <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
+                Named Locations
+              </div>
+            )}
+            {filteredResults.filter((r) => r.type === "named").map((loc) => (
               <button
                 key={loc.id}
                 onClick={() => selectNamedLocation(loc)}
