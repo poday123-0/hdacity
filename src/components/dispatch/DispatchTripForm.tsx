@@ -167,10 +167,16 @@ const DispatchTripForm = ({
           if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
         }
       }
+      const slOrder = ["P1", "P2", "MLE", "VIA", "Sterminal"];
+      const sortedSl = [...(slRes.data || [])].sort((a, b) => {
+        const ai = slOrder.indexOf(a.name);
+        const bi = slOrder.indexOf(b.name);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
       const cache = {
         fareZones: fzRes.data || [],
         surcharges: scRes.data || [],
-        serviceLocations: slRes.data || [],
+        serviceLocations: sortedSl,
         namedLocations: nlRes.data || [],
         recentBookings: bookingLocs,
       };
