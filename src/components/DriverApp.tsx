@@ -254,6 +254,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverNavSettings, setDriverNavSettings] = useState<NavSettings>(loadNavSettings);
   const [mapHeading, setMapHeading] = useState(0);
   const resetNorthRef = useRef<(() => void) | null>(null);
+  const startFreeNavRef = useRef<((target: { lat: number; lng: number }) => void) | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
@@ -264,6 +265,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
   const [driverLat, setDriverLat] = useState<number | null>(null);
   const [driverLng, setDriverLng] = useState<number | null>(null);
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState("");
+  const [locationSearchResults, setLocationSearchResults] = useState<{ name: string; address: string; lat: number; lng: number; type: string }[]>([]);
   const [sessionReady, setSessionReady] = useState(false);
 
   // --- Online time tracking ---
