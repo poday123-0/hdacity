@@ -246,6 +246,7 @@ async function generateRoadPoint(baseLat: number, baseLng: number, maxRetries = 
 
 const AdminWatermelons = () => {
   const [items, setItems] = useState<PromoItem[]>([]);
+  const [claimerProfiles, setClaimerProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string; user_type: string }>>(new Map());
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
