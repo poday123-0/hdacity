@@ -1451,6 +1451,12 @@ const DispatchTripForm = ({
                   const { error } = await supabase.from("trips").insert(tripPayload);
                   if (error) throw error;
                   toast({ title: "Recorded as No Vehicle", description: "Booking saved" });
+                  // Send SMS to passenger if phone provided
+                  if (customerPhone.trim()) {
+                    supabase.functions.invoke("send-no-vehicle-sms", {
+                      body: { phone: customerPhone.trim() },
+                    }).then(() => toast({ title: "SMS sent to passenger" })).catch(console.warn);
+                  }
                   clearForm();
                   onTripCreated();
                 } catch (err: any) {
