@@ -3235,6 +3235,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   return;
                 }
 
+                setStoredTripTimer(currentTrip.id, "accepted_at", acceptedNow);
+                setCurrentTrip({ ...currentTrip, accepted_at: acceptedNow, driver_id: userProfile.id, vehicle_id: selectedVehicleId || null } as any);
+
                 // Send tracking SMS for broadcast trips (non-blocking)
                 if (currentTrip.dispatch_type === "dispatch_broadcast" || currentTrip.dispatch_type === "passenger") {
                   supabase.functions.invoke("send-tracking-sms", { body: { trip_id: currentTrip.id } }).catch(console.warn);
