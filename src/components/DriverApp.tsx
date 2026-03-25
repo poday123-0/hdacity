@@ -467,10 +467,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
 
         const normalizedStatus = trip.status === "started" ? "in_progress" : trip.status;
-        setStoredTripTimer(trip.id, "accepted_at", trip.accepted_at);
-        setStoredTripTimer(trip.id, "arrived_at", trip.arrived_at);
-        setStoredTripTimer(trip.id, "started_at", trip.started_at);
-        setCurrentTrip({ ...trip, status: normalizedStatus } as any);
+        // Use updated_at as fallback for missing timestamps based on status
+        const fallbackAccepted = trip.accepted_at || trip.updated_at;
+        const fallbackArrived = trip.arrived_at || (["arrived", "in_progress"].includes(normalizedStatus) ? (trip.started_at || trip.updated_at) : null);
+        const fallbackStarted = trip.started_at || (normalizedStatus === "in_progress" ? trip.updated_at : null);
+        setStoredTripTimer(trip.id, "accepted_at", fallbackAccepted);
+        if (fallbackArrived) setStoredTripTimer(trip.id, "arrived_at", fallbackArrived);
+        if (fallbackStarted) setStoredTripTimer(trip.id, "started_at", fallbackStarted);
+        setCurrentTrip({ ...trip, status: normalizedStatus, accepted_at: fallbackAccepted, arrived_at: fallbackArrived, started_at: fallbackStarted } as any);
 
         // Determine trip phase from status
         if (normalizedStatus === "in_progress") {
@@ -3510,7 +3514,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           <button onClick={async () => {
             if (!currentTrip) return;
             const arrivedNow = new Date().toISOString();
-            await supabase.from("trips").update({ status: "arrived", arrived_at: arrivedNow } as any).eq("id", currentTrip.id);
+            const { error: arrErr } = await supabase.from("trips").update({ status: "arrived", arrived_at: arrivedNow } as any).eq("id", currentTrip.id);
+            if (arrErr) { console.error("Arrived update failed:", arrErr); await supabase.from("trips").update({ status: "arrived", arrived_at: arrivedNow } as any).eq("id", currentTrip.id); }
             setStoredTripTimer(currentTrip.id, "arrived_at", arrivedNow);
             setCurrentTrip({ ...currentTrip, status: "arrived", arrived_at: arrivedNow } as any);
             setDriverTripPhase("arrived");
@@ -3529,7 +3534,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           <button onClick={async () => {
             if (!currentTrip) return;
             const now = new Date().toISOString();
-            await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
+            const { error: startErr } = await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
+            if (startErr) { console.error("Start update failed:", startErr); await supabase.from("trips").update({ status: "in_progress", started_at: now } as any).eq("id", currentTrip.id); }
             setStoredTripTimer(currentTrip.id, "started_at", now);
             setCurrentTrip({ ...currentTrip, status: "in_progress", started_at: now } as any);
             setDriverTripPhase("in_progress");
