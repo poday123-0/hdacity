@@ -1957,6 +1957,9 @@ const Dispatch = () => {
             allow="geolocation"
           />
         </div>
+        <div className={`w-full h-full ${activeTab === "google_map" ? "" : "hidden"}`}>
+          <DispatchGoogleMap />
+        </div>
       </div>
 
       {/* Chat history modal */}
