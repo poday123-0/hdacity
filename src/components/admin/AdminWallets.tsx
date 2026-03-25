@@ -263,7 +263,7 @@ const AdminWallets = () => {
           ) : (
             <div className="grid gap-3">
               {filtered.map(w => (
-                <div key={w.id} className={`bg-card rounded-xl border p-4 flex items-center gap-4 cursor-pointer transition-all ${selectedWallet?.id === w.id ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/30"}`} onClick={() => { setSelectedWallet(w); fetchTransactions(w.id); }}>
+                <div key={w.id} className={`bg-card rounded-xl border p-4 flex items-center gap-4 cursor-pointer transition-all ${selectedWallet?.id === w.id ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/30"}`} onClick={() => { setSelectedWallet(w); fetchFullHistory(w.id); }}>
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                     <Wallet className="w-5 h-5 text-primary" />
                   </div>
