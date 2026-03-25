@@ -124,7 +124,7 @@ const DispatchGoogleMap = () => {
     };
   }, [isLoaded]);
 
-  // Load named locations
+  // Load named locations & service areas
   useEffect(() => {
     supabase
       .from("named_locations")
@@ -132,24 +132,35 @@ const DispatchGoogleMap = () => {
       .eq("is_active", true)
       .eq("status", "approved")
       .then(({ data }) => {
-        if (data) setNamedLocations(data);
+        if (data) setNamedLocations(data.map((d) => ({ ...d, type: "named" as const })));
+      });
+    supabase
+      .from("service_locations")
+      .select("id, name, address, lat, lng")
+      .eq("is_active", true)
+      .then(({ data }) => {
+        if (data) setServiceAreas(data.map((d) => ({ ...d, lat: Number(d.lat), lng: Number(d.lng), type: "service" as const })));
       });
   }, []);
 
-  // Filter named locations on search
+  // Filter on search
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2) {
-      setFilteredLocations([]);
+    if (!searchQuery || searchQuery.length < 1) {
+      setFilteredResults([]);
       setShowSuggestions(false);
       return;
     }
     const q = searchQuery.toLowerCase();
-    const matches = namedLocations.filter(
+    const namedMatches = namedLocations.filter(
       (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
-    ).slice(0, 6);
-    setFilteredLocations(matches);
-    setShowSuggestions(matches.length > 0);
-  }, [searchQuery, namedLocations]);
+    ).slice(0, 5);
+    const serviceMatches = serviceAreas.filter(
+      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
+    ).slice(0, 3);
+    const combined = [...serviceMatches, ...namedMatches];
+    setFilteredResults(combined);
+    setShowSuggestions(combined.length > 0);
+  }, [searchQuery, namedLocations, serviceAreas]);
 
   const selectNamedLocation = useCallback((loc: typeof namedLocations[0]) => {
     const g = (window as any).google;
