@@ -1,12 +1,22 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Eye } from "lucide-react";
+import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
 const emptyForm = { name: "", address: "", description: "", lat: "", lng: "" };
+
+type BatchPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  address: string;
+  description: string;
+  marker?: any;
+};
 
 const AdminNamedLocations = () => {
   const [locations, setLocations] = useState<any[]>([]);
@@ -21,6 +31,17 @@ const AdminNamedLocations = () => {
   const mapInstance = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const locationMarkersRef = useRef<any[]>([]);
+
+  // Batch mode state
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchPins, setBatchPins] = useState<BatchPin[]>([]);
+  const [savingBatch, setSavingBatch] = useState(false);
+  const batchMapRef = useRef<HTMLDivElement>(null);
+  const batchMapInstance = useRef<any>(null);
+  const batchPinsRef = useRef<BatchPin[]>([]);
+
+  // Keep ref in sync
+  useEffect(() => { batchPinsRef.current = batchPins; }, [batchPins]);
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -66,9 +87,112 @@ const AdminNamedLocations = () => {
 
   useEffect(() => { renderMarkers(); }, [locations, renderMarkers, isLoaded]);
 
+  // -- Batch map init --
+  useEffect(() => {
+    if (!isLoaded || !batchMode || !batchMapRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+    if (batchMapInstance.current) return;
+    batchMapInstance.current = new g.maps.Map(batchMapRef.current, {
+      center: MALE_CENTER, zoom: 14, mapId: "hda_batch_loc_map",
+    });
+  }, [isLoaded, batchMode]);
+
+  // -- Batch map click listener --
+  useEffect(() => {
+    const g = (window as any).google;
+    if (!batchMapInstance.current || !batchMode || !g?.maps) return;
+
+    const listener = batchMapInstance.current.addListener("click", async (e: any) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      const pinId = crypto.randomUUID();
+
+      // Create marker
+      const el = document.createElement("div");
+      el.innerHTML = `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);color:white;font-size:11px;font-weight:bold;">${batchPinsRef.current.length + 1}</div>`;
+      const marker = new g.maps.marker.AdvancedMarkerElement({
+        map: batchMapInstance.current, position: { lat, lng }, content: el,
+      });
+
+      // Auto-fetch address
+      let roadName = "";
+      try {
+        if (g?.maps?.Geocoder) {
+          const geocoder = new g.maps.Geocoder();
+          const res = await new Promise<any[]>((resolve) => {
+            geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
+              resolve(status === "OK" ? results || [] : []);
+            });
+          });
+          for (const r of res) {
+            const types: string[] = r.types || [];
+            if (types.includes("route") || types.includes("street_address")) {
+              const route = (r.address_components || []).find((c: any) => c.types?.includes("route"));
+              if (route) { roadName = route.long_name; break; }
+            }
+          }
+          if (!roadName && res.length > 0) {
+            const route = (res[0].address_components || []).find((c: any) => c.types?.includes("route"));
+            if (route) roadName = route.long_name;
+          }
+        }
+        if (!roadName) {
+          const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
+          roadName = result?.address?.split(",")[0] || result?.name || "";
+        }
+      } catch {}
+
+      const newPin: BatchPin = { id: pinId, lat, lng, name: "", address: roadName, description: "", marker };
+      setBatchPins(prev => [...prev, newPin]);
+    });
+
+    return () => { if (listener) (window as any).google?.maps?.event?.removeListener(listener); };
+  }, [batchMode]);
+
+  const removeBatchPin = (id: string) => {
+    setBatchPins(prev => {
+      const pin = prev.find(p => p.id === id);
+      if (pin?.marker) pin.marker.map = null;
+      return prev.filter(p => p.id !== id);
+    });
+  };
+
+  const updateBatchPin = (id: string, field: string, value: string) => {
+    setBatchPins(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const saveBatch = async () => {
+    const valid = batchPins.filter(p => p.name.trim());
+    if (valid.length === 0) {
+      toast({ title: "Please name at least one location", variant: "destructive" });
+      return;
+    }
+    setSavingBatch(true);
+    const payload = valid.map(p => ({
+      name: p.name.trim(), address: p.address, description: p.description,
+      lat: p.lat, lng: p.lng, status: "approved", suggested_by_type: "admin",
+    }));
+    const { error } = await supabase.from("named_locations").insert(payload);
+    setSavingBatch(false);
+    if (error) {
+      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${valid.length} location${valid.length > 1 ? "s" : ""} added!` });
+      closeBatchMode();
+      fetchLocations();
+    }
+  };
+
+  const closeBatchMode = () => {
+    batchPins.forEach(p => { if (p.marker) p.marker.map = null; });
+    setBatchPins([]);
+    setBatchMode(false);
+    batchMapInstance.current = null;
+  };
+
   const autoFetchAddress = useCallback(async (lat: number, lng: number) => {
     try {
-      // Use Google geocoder directly for road name only
       const g = (window as any).google;
       let roadName = "";
       if (g?.maps?.Geocoder) {
@@ -78,7 +202,6 @@ const AdminNamedLocations = () => {
             resolve(status === "OK" ? results || [] : []);
           });
         });
-        // Find the route/street_address result
         for (const r of res) {
           const types: string[] = r.types || [];
           if (types.includes("route") || types.includes("street_address")) {
@@ -86,21 +209,16 @@ const AdminNamedLocations = () => {
             if (route) { roadName = route.long_name; break; }
           }
         }
-        // Fallback: first result's route component
         if (!roadName && res.length > 0) {
           const route = (res[0].address_components || []).find((c: any) => c.types?.includes("route"));
           if (route) roadName = route.long_name;
         }
       }
-      // If no road found via Google, fall back to general geocode
       if (!roadName) {
         const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
         roadName = result?.address?.split(",")[0] || result?.name || "";
       }
-      setForm(prev => ({
-        ...prev,
-        address: roadName,
-      }));
+      setForm(prev => ({ ...prev, address: roadName }));
     } catch {}
   }, []);
 
@@ -195,13 +313,81 @@ const AdminNamedLocations = () => {
           <h2 className="text-2xl font-extrabold text-foreground">Named Locations</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} of {locations.length} locations{pendingCount > 0 && ` · ${pendingCount} pending approval`}</p>
         </div>
-        <button onClick={() => showForm ? resetForm() : setShowForm(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? "Cancel" : "Add Location"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+            {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
+            {batchMode ? "Cancel Batch" : "Batch Add"}
+          </button>
+          {!batchMode && (
+            <button onClick={() => showForm ? resetForm() : setShowForm(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+              {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showForm ? "Cancel" : "Add Location"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {showForm && (
+      {/* Batch mode */}
+      {batchMode && (
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-foreground">Batch Add Locations</h3>
+              <p className="text-xs text-muted-foreground">Click the map to drop multiple pins, then name each one</p>
+            </div>
+            <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">{batchPins.length} pin{batchPins.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
+            {isLoaded ? <div ref={batchMapRef} style={{ width: "100%", height: "100%" }} /> : (
+              <div className="w-full h-full bg-surface flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+
+          {batchPins.length > 0 && (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {batchPins.map((pin, idx) => (
+                <div key={pin.id} className="flex items-start gap-3 bg-surface border border-border rounded-xl p-3">
+                  <div className="w-7 h-7 rounded-full bg-destructive text-white flex items-center justify-center text-xs font-bold shrink-0 mt-1">{idx + 1}</div>
+                  <div className="flex-1 grid grid-cols-3 gap-2">
+                    <input
+                      value={pin.name}
+                      onChange={(e) => updateBatchPin(pin.id, "name", e.target.value)}
+                      placeholder="Name *"
+                      className="px-3 py-1.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      value={pin.address}
+                      onChange={(e) => updateBatchPin(pin.id, "address", e.target.value)}
+                      placeholder="Address"
+                      className="px-3 py-1.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      value={pin.description}
+                      onChange={(e) => updateBatchPin(pin.id, "description", e.target.value)}
+                      placeholder="Description"
+                      className="px-3 py-1.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <button onClick={() => removeBatchPin(pin.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 mt-1">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {batchPins.length > 0 && (
+            <button onClick={saveBatch} disabled={savingBatch} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
+              {savingBatch ? "Saving..." : `Save ${batchPins.filter(p => p.name.trim()).length} Location${batchPins.filter(p => p.name.trim()).length !== 1 ? "s" : ""}`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Single add form */}
+      {showForm && !batchMode && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Location" : "New Named Location"}</h3>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
