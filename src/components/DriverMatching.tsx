@@ -78,6 +78,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [tripElapsed, setTripElapsed] = useState(0);
   const [acceptedElapsed, setAcceptedElapsed] = useState(0);
   const [arrivedElapsed, setArrivedElapsed] = useState(0);
+  const [arrivedTimeStr, setArrivedTimeStr] = useState<string | null>(null);
   const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
@@ -272,7 +273,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("arrived_at").eq("id", tripId).single();
       if ((data as any)?.arrived_at) {
-        const t = new Date((data as any).arrived_at).getTime();
+        const arrivedDate = new Date((data as any).arrived_at);
+        const t = arrivedDate.getTime();
+        setArrivedTimeStr(arrivedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
         setArrivedElapsed(calc());
         timer = setInterval(() => setArrivedElapsed(calc()), 1000);
@@ -522,7 +525,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                   animate={{ scale: 1, opacity: 1 }}
                   className="text-base font-bold text-foreground leading-none"
                 >
-                  {tripStatus === "arrived" ? "—" : etaMinutes ? `${etaMinutes}` : "..."}
+                  {tripStatus === "arrived" ? (arrivedTimeStr || "Here") : etaMinutes ? `${etaMinutes}` : "..."}
                 </motion.span>
                 <span className="text-[9px] text-muted-foreground mt-0.5">
                   {tripStatus === "arrived" ? "Arrived" : tripStatus === "accepted" ? "to pickup" : "min ETA"}
