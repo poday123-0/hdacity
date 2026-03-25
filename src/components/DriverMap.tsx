@@ -1268,6 +1268,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
+      {/* Road closure warning banner */}
+      {isNavigating && closureWarning && (
+        <div className="absolute top-3 left-3 right-3 z-[500]">
+          <div className="bg-destructive/95 backdrop-blur-sm text-destructive-foreground rounded-xl px-4 py-2.5 shadow-lg flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold">⚠ Road Closure Ahead</div>
+              <div className="text-[11px] opacity-90 mt-0.5 leading-tight">{closureWarning}</div>
+            </div>
+            <button onClick={() => setClosureWarning(null)} className="shrink-0 mt-0.5 opacity-70 hover:opacity-100">
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
     </>
   );
