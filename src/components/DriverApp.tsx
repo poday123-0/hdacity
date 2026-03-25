@@ -724,8 +724,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
       }
 
-      // Heartbeat — use admin-configured interval or default 10s
-      let driverIntervalMs = 10000;
+      // Heartbeat — use admin-configured interval or default 30s (reduced from 10s to save battery)
+      let driverIntervalMs = 30000;
       try {
         const { data: intervalSetting } = await supabase.from("system_settings").select("value").eq("key", "driver_location_interval_ms").single();
         if (intervalSetting?.value) {
