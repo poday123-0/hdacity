@@ -246,6 +246,7 @@ async function generateRoadPoint(baseLat: number, baseLng: number, maxRetries = 
 
 const AdminWatermelons = () => {
   const [items, setItems] = useState<PromoItem[]>([]);
+  const [claimerProfiles, setClaimerProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string; user_type: string }>>(new Map());
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -278,7 +279,22 @@ const AdminWatermelons = () => {
       .from("promo_watermelons")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setItems(data as any);
+    if (data) {
+      setItems(data as any);
+      // Fetch profiles for claimed items
+      const claimedUserIds = [...new Set((data as any[]).filter(d => d.claimed_by).map(d => d.claimed_by))];
+      if (claimedUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, phone_number, user_type")
+          .in("id", claimedUserIds);
+        if (profiles) {
+          const map = new Map<string, any>();
+          profiles.forEach(p => map.set(p.id, p));
+          setClaimerProfiles(map);
+        }
+      }
+    }
   };
 
   const fetchLocations = async () => {
@@ -694,6 +710,22 @@ const AdminWatermelons = () => {
                   <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                     {m.lat.toFixed(4)}, {m.lng.toFixed(4)} • {m.claim_radius_m}m radius
                   </p>
+                  {m.status === "claimed" && m.claimed_by && (() => {
+                    const claimer = claimerProfiles.get(m.claimed_by);
+                    return (
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-[10px] font-semibold text-foreground">
+                          👤 {claimer ? `${claimer.first_name} ${claimer.last_name}` : m.claimed_by.slice(0, 8)}
+                          {claimer && <span className="text-muted-foreground font-normal"> • {claimer.phone_number} • {claimer.user_type}</span>}
+                        </p>
+                        {m.claimed_at && (
+                          <p className="text-[9px] text-muted-foreground">
+                            Claimed: {new Date(m.claimed_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {m.status === "active" && (
                   <div className="flex items-center gap-1 shrink-0">
