@@ -34,12 +34,21 @@ serve(async (req) => {
         Authorization: `AccessKey ${MSGOWL_API_KEY}`,
       },
       body: JSON.stringify({
-        recipients: [recipient],
+        recipients: recipient,
+        sender_id: "HDA TAXI",
         body: smsBody,
       }),
     });
 
     const smsData = await smsRes.json();
+
+    if (!smsRes.ok) {
+      console.error("MsgOwl error:", smsData);
+      return new Response(JSON.stringify({ error: "Failed to send SMS", details: smsData }), {
+        status: smsRes.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, sms: smsData }), {
       status: 200,
