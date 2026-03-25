@@ -912,6 +912,27 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
             if (routePolylineRef.current) {
               routePolylineRef.current.setPath(pathCoords);
             }
+
+            // Check if route passes near any road closure
+            const PROXIMITY_M = 100; // warn if route is within 100m of a closure
+            const nearbyClosures = roadClosures.filter((c) => {
+              return c.coordinates.some((cp) =>
+                pathCoords.some((rp) => getDistanceMeters(rp, cp) < PROXIMITY_M)
+              );
+            });
+
+            if (nearbyClosures.length > 0) {
+              const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard" };
+              const labels = nearbyClosures.map((c) => {
+                const label = sevLabels[c.severity] || "Closure";
+                return c.notes ? `${label}: ${c.notes}` : label;
+              });
+              setClosureWarning(labels.join(" • "));
+              if (closureWarningTimeoutRef.current) clearTimeout(closureWarningTimeoutRef.current);
+              closureWarningTimeoutRef.current = setTimeout(() => setClosureWarning(null), 15000);
+            } else {
+              setClosureWarning(null);
+            }
           } catch {}
         }
       }).catch((err: any) => console.error("Directions error:", err))
