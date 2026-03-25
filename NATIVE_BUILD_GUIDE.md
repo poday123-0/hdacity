@@ -781,6 +781,138 @@ When submitting for review, in the **App Review Information** section:
 
 ---
 
+## Background Geolocation Plugin
+
+The app uses `@capacitor-community/background-geolocation` to continue tracking the driver's location even when the app is minimized or the screen is off. This is critical for active trips.
+
+### How It Works
+
+- **Native (Android/iOS):** The plugin runs a foreground service (Android) or background task (iOS) that delivers GPS updates to the app even when it's not in the foreground. A persistent notification ("HDA Driver Active") is shown on Android as required by the OS.
+- **Web/PWA:** The plugin is a no-op — the app falls back to the standard `navigator.geolocation.watchPosition` API, which pauses when the browser is minimized. On foreground return, the app immediately re-acquires a fresh GPS position.
+
+### Configuration
+
+The plugin is automatically started when a driver goes online and stopped when they go offline. No additional configuration is needed in the app code.
+
+**Android** — the following permissions are already included in the guide above:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+```
+
+**iOS** — the following are already included in the guide above:
+
+```xml
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>HDA APP needs your location to track active trips.</string>
+<key>UIBackgroundModes</key>
+<array>
+  <string>location</string>
+</array>
+```
+
+### Distance Filter
+
+The plugin uses a 10-meter distance filter to avoid excessive battery drain — location updates are only delivered when the driver moves more than 10 meters. This matches the app's existing write threshold.
+
+### Testing Background Location
+
+1. Start the app and go online as a driver
+2. Minimize the app (press home button)
+3. Walk or drive to a new location
+4. Return to the app — the map should show your updated position
+5. Check the database — `driver_locations` should have updated coordinates during the background period
+
+---
+
+## In-App Sound System
+
+The app has a comprehensive sound system for notifications and trip events that works across web and native platforms.
+
+### Sound Architecture
+
+```
+Admin Settings → system_settings table → Sound URLs
+                                             ↓
+         ┌───────────────────────────────────┤
+         ↓                                   ↓
+   Foreground App                     Background (PWA)
+   (sound-manager.ts)               (Service Worker)
+         │                                   │
+         ├─ HTMLAudioElement pool             ├─ Queues sounds
+         ├─ Web Audio API fallback           └─ Replays on foreground
+         └─ Silent heartbeat keeps
+            audio pipeline alive
+```
+
+### How Sounds Work
+
+| Layer | File | Purpose |
+|-------|------|---------|
+| **Sound Manager** | `src/lib/sound-manager.ts` | Global sound playback, tracking, pool management, heartbeat |
+| **Sound Utils** | `src/lib/sound-utils.ts` | Fetches sound URLs from `system_settings`, parsing helpers |
+| **Push Notifications** | `src/lib/push-notifications.ts` | Plays notification-specific sounds on trip events |
+| **Service Worker** | `public/firebase-messaging-sw.js` | Queues sounds when app is backgrounded (PWA) |
+
+### Sound Categories in Admin Settings
+
+Sounds are configured via the **Admin Settings** panel. Each sound is stored as a URL in the `system_settings` table:
+
+| Setting Key | Description | Used When |
+|-------------|-------------|-----------|
+| `sound_trip_request` | New trip request alert | Driver receives a trip request |
+| `sound_trip_accepted` | Trip accepted confirmation | Passenger's trip is accepted |
+| `sound_driver_arrived` | Driver arrival alert | Driver arrives at pickup |
+| `sound_trip_started` | Trip started notification | Trip begins |
+| `sound_trip_completed` | Trip completion sound | Trip ends |
+| `sound_trip_cancelled` | Cancellation alert | Trip is cancelled |
+| `sound_trip_taken` | Trip taken by another driver | Another driver accepted the trip |
+| `sound_message_received` | Chat message sound | New in-trip chat message |
+
+### Driver Custom Sounds
+
+Drivers can select their own preferred notification sound from the **Sound** section in their settings. The selected sound is stored in `profiles.trip_sound_id` and references `notification_sounds.file_url`.
+
+**Priority order for trip request sounds:**
+1. Driver's custom sound (if set in their profile)
+2. System default sound (from `system_settings`)
+3. Fallback beep (generated via Web Audio API oscillator)
+
+### Background Sound Playback (PWA)
+
+The app uses several techniques to ensure sounds play even when the browser tab is minimized:
+
+1. **Pre-unlocked Audio Pool** — 8 `HTMLAudioElement` instances are pre-created during a user gesture (tap). These bypass browser autoplay restrictions when the page is hidden.
+
+2. **Silent Audio Heartbeat** — A near-silent looping audio element + Web Audio API oscillator prevents the browser from suspending the audio pipeline:
+   - iOS: heartbeat every 15 seconds
+   - Android/Desktop: heartbeat every 30 seconds
+
+3. **Service Worker Queue** — When the PWA is fully backgrounded, the service worker stores pending sounds. On foreground return, sounds from the last 5 minutes are replayed.
+
+4. **iOS Web Audio Fallback** — If `HTMLAudioElement.play()` fails (common on iOS when backgrounded), the app falls back to `AudioContext.decodeAudioData()` + `BufferSource.start()`.
+
+### Native Sound Behavior
+
+On native apps (Capacitor), sounds are handled differently:
+
+| Platform | Foreground Sounds | Background Sounds |
+|----------|------------------|-------------------|
+| **Android** | Same as PWA (Web Audio) | Via FCM notification channel sounds (configured in `MainActivity.java`) |
+| **iOS** | Same as PWA (Web Audio) | Via APNs notification payload sound field |
+
+For native apps, ensure sound files are placed in the correct directories (see [Custom Notification Sounds](#custom-notification-sounds) section above).
+
+### Stopping Sounds
+
+All sounds are tracked globally. When a driver declines a trip, accepts a trip, or goes offline:
+- `stopAllSounds()` — stops all currently playing sounds
+- `stopHeartbeat()` — stops the silent heartbeat (saves battery when offline)
+
+---
+
 ## Ongoing Updates
 
 ### Pulling Changes from Lovable
