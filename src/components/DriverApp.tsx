@@ -390,6 +390,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.geolocation.clearWatch(locationWatchRef.current);
       locationWatchRef.current = null;
     }
+    stopBackgroundLocation();
     try { navigator.vibrate?.([300, 100, 300, 100, 300]); } catch {}
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
