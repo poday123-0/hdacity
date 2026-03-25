@@ -407,8 +407,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
   // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
   useEffect(() => {
-    // If navigating, we need our own high-accuracy GPS for heading/speed
-    if (!isNavigating) {
+    // If navigating or free-nav, we need our own high-accuracy GPS for heading/speed
+    const needsOwnGps = isNavigating || !!freeNavTarget;
+    if (!needsOwnGps) {
       // Clean up any existing watcher when not navigating
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
