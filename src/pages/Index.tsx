@@ -285,8 +285,7 @@ const Index = () => {
         .from("trips")
         .select("*")
         .eq("passenger_id", userProfile.id)
-        .in("status", ["requested", "scheduled", "accepted", "arrived", "in_progress"])
-        .or("status.in.(requested,scheduled,accepted,arrived,started,in_progress)")
+        .in("status", ["requested", "scheduled", "accepted", "arrived", "started", "in_progress"])
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle();
