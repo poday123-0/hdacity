@@ -493,9 +493,13 @@ const DispatchGoogleMap = () => {
         notes: closureNotes,
         severity: closureSeverity,
         expires_at: expiresAt,
+        schedule_type: scheduleType,
+        schedule_days: scheduleDays,
+        schedule_start_time: scheduleType !== "immediate" ? scheduleStartTime : null,
+        schedule_end_time: scheduleType !== "immediate" ? scheduleEndTime : null,
+        scheduled_date: scheduleType === "scheduled" ? scheduledDate || null : null,
       });
       toast({ title: "Road closure added" });
-      // Clear temp
       drawTempMarkersRef.current.forEach((m) => m.setMap(null));
       drawTempMarkersRef.current = [];
       if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
@@ -506,6 +510,11 @@ const DispatchGoogleMap = () => {
     setClosureNotes("");
     setClosureSeverity("closed");
     setClosureExpiry("");
+    setScheduleType("immediate");
+    setScheduleDays([]);
+    setScheduleStartTime("08:00");
+    setScheduleEndTime("17:00");
+    setScheduledDate("");
   };
 
   if (error) {
