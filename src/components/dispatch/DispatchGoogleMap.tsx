@@ -97,6 +97,11 @@ const DispatchGoogleMap = () => {
   const [closureNotes, setClosureNotes] = useState("");
   const [closureSeverity, setClosureSeverity] = useState("closed");
   const [closureExpiry, setClosureExpiry] = useState("");
+  const [scheduleType, setScheduleType] = useState<"immediate" | "scheduled" | "recurring">("immediate");
+  const [scheduleDays, setScheduleDays] = useState<string[]>([]);
+  const [scheduleStartTime, setScheduleStartTime] = useState("08:00");
+  const [scheduleEndTime, setScheduleEndTime] = useState("17:00");
+  const [scheduledDate, setScheduledDate] = useState("");
 
   // Refs for map objects
   const closureMarkersRef = useRef<any[]>([]);
