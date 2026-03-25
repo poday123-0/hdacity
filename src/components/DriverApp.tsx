@@ -1406,12 +1406,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => { if (timer) clearInterval(timer); };
   }, [currentTrip?.id, driverTripPhase]);
 
-  // Driver arrived waiting timer (resets to 0 when arrived)
+  // Driver arrived waiting timer (based on arrived_at from DB - persists across refreshes)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "arrived") { setDriverArrivedElapsed(0); return; }
-    setDriverArrivedElapsed(0);
-    const timer = setInterval(() => setDriverArrivedElapsed(p => p + 1), 1000);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setInterval>;
+    const init = async () => {
+      const { data } = await supabase.from("trips").select("arrived_at").eq("id", currentTrip.id).single();
+      if ((data as any)?.arrived_at) {
+        const t = new Date((data as any).arrived_at).getTime();
+        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+        setDriverArrivedElapsed(calc());
+        timer = setInterval(() => setDriverArrivedElapsed(calc()), 1000);
+      } else {
+        timer = setInterval(() => setDriverArrivedElapsed(p => p + 1), 1000);
+      }
+    };
+    init();
+    return () => { if (timer) clearInterval(timer); };
   }, [currentTrip?.id, driverTripPhase]);
 
   // Driver trip elapsed timer (resets to 0 when trip starts)
