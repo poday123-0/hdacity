@@ -435,7 +435,9 @@ const DispatchGoogleMap = () => {
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full dispatch-map-container">
+      {/* Hide Google Places autocomplete pac-container for this map's search */}
+      <style>{`.dispatch-map-container .pac-container { display: none !important; }`}</style>
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Search bar */}
