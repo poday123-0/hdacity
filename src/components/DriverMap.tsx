@@ -416,11 +416,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (programmaticZoom) return;
     });
 
-    // Long-press to report closure
+    // Long-press / right-click to report closure
     const mapDiv = map.getDiv();
-    map.addListener("rightclick", (e: any) => {
-      if (!e.latLng) return;
-      const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+
+    const showMenuAtLatLng = (latLng: any) => {
+      const coords = { lat: latLng.lat(), lng: latLng.lng() };
       const bounds = map.getBounds();
       const proj = map.getProjection();
       if (bounds && proj) {
@@ -428,7 +428,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         const sw = bounds.getSouthWest();
         const topRight = proj.fromLatLngToPoint(ne);
         const bottomLeft = proj.fromLatLngToPoint(sw);
-        const point = proj.fromLatLngToPoint(e.latLng);
+        const point = proj.fromLatLngToPoint(latLng);
         if (topRight && bottomLeft && point) {
           const scale = Math.pow(2, map.getZoom() || 16);
           const px = (point.x - bottomLeft.x) * scale;
@@ -442,11 +442,46 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           });
         }
       }
+    };
+
+    // Right-click (desktop)
+    map.addListener("rightclick", (e: any) => {
+      if (!e.latLng) return;
+      showMenuAtLatLng(e.latLng);
     });
 
-    // Also support tap-and-hold via click (single tap shows menu)
+    // Touch long-press (mobile)
+    let lpTimer: ReturnType<typeof setTimeout> | null = null;
+    let lpLatLng: any = null;
+    let touchMoved = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchMoved = false;
+      lpTimer = setTimeout(() => {
+        if (!touchMoved && lpLatLng) {
+          showMenuAtLatLng(lpLatLng);
+        }
+      }, 600);
+    };
+    const onTouchMove = () => {
+      touchMoved = true;
+      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    };
+    const onTouchEnd = () => {
+      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    };
+
+    // Capture the latLng from mousedown/touchstart via Google Maps
+    map.addListener("mousedown", (e: any) => {
+      if (e.latLng) lpLatLng = e.latLng;
+    });
+
+    mapDiv.addEventListener("touchstart", onTouchStart, { passive: true });
+    mapDiv.addEventListener("touchmove", onTouchMove, { passive: true });
+    mapDiv.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    // Dismiss on normal tap
     map.addListener("click", (e: any) => {
-      // Dismiss any open menu on normal tap
       setReportMenuPos(null);
     });
 
