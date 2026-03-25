@@ -3508,7 +3508,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {driverTripPhase === "heading_to_pickup" &&
           <button onClick={async () => {
             if (!currentTrip) return;
-            await supabase.from("trips").update({ status: "arrived", arrived_at: new Date().toISOString() } as any).eq("id", currentTrip.id);
+            const arrivedNow = new Date().toISOString();
+            await supabase.from("trips").update({ status: "arrived", arrived_at: arrivedNow } as any).eq("id", currentTrip.id);
+            setStoredTripTimer(currentTrip.id, "arrived_at", arrivedNow);
+            setCurrentTrip({ ...currentTrip, arrived_at: arrivedNow } as any);
             setDriverTripPhase("arrived");
             fetchSoundUrl("driver_sound_arrived").then(u => playSound(u));
             // Notify passenger that driver arrived
