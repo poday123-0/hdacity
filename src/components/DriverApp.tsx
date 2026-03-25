@@ -466,15 +466,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           return;
         }
 
+        const normalizedStatus = trip.status === "started" ? "in_progress" : trip.status;
         setStoredTripTimer(trip.id, "accepted_at", trip.accepted_at);
         setStoredTripTimer(trip.id, "arrived_at", trip.arrived_at);
         setStoredTripTimer(trip.id, "started_at", trip.started_at);
-        setCurrentTrip(trip);
+        setCurrentTrip({ ...trip, status: normalizedStatus } as any);
 
         // Determine trip phase from status
-        if (trip.status === "in_progress") {
+        if (normalizedStatus === "in_progress") {
           setDriverTripPhase("in_progress");
-        } else if (trip.status === "arrived") {
+        } else if (normalizedStatus === "arrived") {
           setDriverTripPhase("arrived");
         } else {
           setDriverTripPhase("heading_to_pickup");
@@ -3236,7 +3237,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
 
                 setStoredTripTimer(currentTrip.id, "accepted_at", acceptedNow);
-                setCurrentTrip({ ...currentTrip, accepted_at: acceptedNow, driver_id: userProfile.id, vehicle_id: selectedVehicleId || null } as any);
+                setCurrentTrip({ ...currentTrip, status: "accepted", accepted_at: acceptedNow, driver_id: userProfile.id, vehicle_id: selectedVehicleId || null } as any);
 
                 // Send tracking SMS for broadcast trips (non-blocking)
                 if (currentTrip.dispatch_type === "dispatch_broadcast" || currentTrip.dispatch_type === "passenger") {
@@ -3511,7 +3512,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             const arrivedNow = new Date().toISOString();
             await supabase.from("trips").update({ status: "arrived", arrived_at: arrivedNow } as any).eq("id", currentTrip.id);
             setStoredTripTimer(currentTrip.id, "arrived_at", arrivedNow);
-            setCurrentTrip({ ...currentTrip, arrived_at: arrivedNow } as any);
+            setCurrentTrip({ ...currentTrip, status: "arrived", arrived_at: arrivedNow } as any);
             setDriverTripPhase("arrived");
             fetchSoundUrl("driver_sound_arrived").then(u => playSound(u));
             // Notify passenger that driver arrived
@@ -3530,7 +3531,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             const now = new Date().toISOString();
             await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
             setStoredTripTimer(currentTrip.id, "started_at", now);
-            setCurrentTrip({ ...currentTrip, started_at: now } as any);
+            setCurrentTrip({ ...currentTrip, status: "in_progress", started_at: now } as any);
             setDriverTripPhase("in_progress");
             fetchSoundUrl("driver_sound_started").then(u => playSound(u));
             // Notify passenger that trip started
