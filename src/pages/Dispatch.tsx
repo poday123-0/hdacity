@@ -733,6 +733,36 @@ const Dispatch = () => {
     };
   }, [isAuthed]);
 
+  // Realtime: play alert sound when driver reports a road closure
+  useEffect(() => {
+    if (!isAuthed) return;
+    const closureChannel = supabase
+      .channel("dispatch-road-closures")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "road_closures" },
+        (payload: any) => {
+          const row = payload.new;
+          if (row?.reported_by_type === "driver" && row?.status === "pending") {
+            // Play alert sound
+            try {
+              const audio = new Audio();
+              audio.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoGAACAgICAgICAgICAgICAgICAgIB/f39/f39/f4CAgICBgYKCgoODg4SEhIWFhYWFhYSEhIODg4KCgoGBgYCAgH9/f35+fn19fX19fX19fn5+f3+AgIGBgoKDg4SEhYWGhoaGhoaGhYWFhISEg4OCgoGBgIB/f39+fn59fX19fX19fn5/f4CAgYGCg4OEhIWFhoaHh4eHh4eGhoaFhYSEg4OCgoGBgIB/f35+fX19fHx8fH19fX5+f4CAgYGCg4OEhYWGhoeHiIiIiIiHh4aGhYWEhIODgoKBgYCAf39+fn19fHx8fHx8fX1+fn+AgIGBgoOEhIWGhoeHiIiJiYmJiIiHh4aGhYWEg4OCgoGBgIB/f35+fX18fHx8fHx9fX5/f4CAgYKCg4SEhYaGh4iIiYmJiYmIiIeHhoaFhISDg4KCgYGAf39+fn19fHx8e3t8fH19fn5/gICBgoKDhISFhoaHiIiJiYqKioqJiYiIh4eGhYWEhIOCgoGBgIB/fn5+fX18fHx7e3x8fX1+f3+AgIGCgoOEhYWGh4eIiYmKioqKiomJiIiHhoaFhYSEg4KCgYCAf39+fn19fHx8e3t7fHx9fX5/f4CAgYKCg4SFhYaHh4iJiYqKi4uKiomJiIiHhoaFhYSEg4KCgYCAf39+fn19fHx7e3t7fHx9fn5/f4CBgYKDhISFhoaHiImJioqLi4uLioqJiYiHh4aGhYSEg4KCgYGAf39+fn19fHx7e3t7fHx9fn5/gICBgYKDhISFhoeHiImJiouLi4uLi4qKiYmIh4eGhYWEhIODgoGBgH9/fn59fXx8e3t7e3x8fX5+f4CAgIGCg4SEhYaHh4iJiYqLi4yMjIuLioqJiYiHh4aFhYSEg4KCgYGAf39+fn19fHx7e3t7e3x9fX5/f4CAgYKCg4SFhYaHiIiJiouLjIyMjIyLi4qKiYiIh4aGhYWEg4OCgoGBgH9/fn59fXx8e3t7e3t8fH1+fn+AgIGBgoOEhIWGh4eIiYqKi4uMjIyMjIuLioqJiIiHhoaFhYSEg4KCgYCAf39+fn19fHx7e3t7e3x9fX5/f4CAgYGCg4SEhYaHh4iJioqLi4yMjY2MjIyLi4qKiYiIh4aGhYSEg4OCgoGBgH9/fn59fXx8e3t7e3t8fH1+fn+AgICBgoODhIWGhoeIiYmKi4uMjIyNjY2MjIuLioqJiIiHhoaFhISEg4KCgYCAf39+fn19fHx7e3t7e3x8fX5+f4CAgYGCg4SEhYaGh4iJiYqLi4yMjI2NjYyMi4uKiomJiIeHhoWFhISDgoKBgYB/f35+fX18fHt7e3t7fH19fn9/gICBgYKDhISFhoaHiIiJiouLjIyMjY2NjIyMi4uKiomIiIeGhoWFhISDgoKBgYB/f35+fX18fHt7e3t7fH19fn5/gICBgYKDg4SFhoaHiIiJiouLjIyMjY2NjY2MjIuLioqJiIeHhoaFhISDg4KCgYB/f35+fX18fHt7e3t7fH19fn5/gICBgYKDhISFhYaHiIiJiouLjIyMjY2NjY2MjIyLi4qKiYiIh4aGhYWEg4OCgoGBgH9/fn59fXx8e3t7e3t8fH1+fn+AgICBgoKDhISFhoaHiIiJiouLjIyNjY2NjY2NjIyLi4qKiYmIh4eGhYWEhIOCgoGBgH9/fn59fXx8e3t7e3t8fX1+fn+AgICBgoKDhISFhoaHiIiJiouLjIyNjY2Ojo2NjYyMi4uKiomJiIeHhoaFhISDg4KCgYCAf39+fn19fHx7e3t7e3x9fX5+f4CAgIGCgoOEhIWGhoeIiImKi4uMjI2NjY6Ojo2NjIyLi4qKiYmIh4eGhoWFhISDgoKBgYB/f35+fX18fHt7e3t7fH19fn5/gICAgYKCg4SEhYaGh4iIiYqKi4yMjI2NjY6OjY2NjIyLi4qKiYiIh4eGhYWEhIODgoKBgIB/f35+fX18fHt7e3t7fH19fn5/f4CAgYGCg4OEhYWGh4eIiImKi4uMjIyNjY2NjY2NjIyMi4uKiomJiIeHhoaFhYSEg4KCgYGAf39+fn19fHx8e3t7fHx8fX5+f3+AgIGBgoKDhISFhYaHh4iIiYqKi4uMjIyNjY2NjY2MjIyLi4qKiYmIiIeHhoaFhYSEg4OCgoGBgIB/f35+fX19fHx7e3x8fH19fn5/f4CAgIGCgoODhISFhoaHh4iIiYqKi4uMjIyMjY2NjY2MjIyLi4uKiomJiIiHh4aGhYWEhIODgoKBgYCAf39+fn59fXx8fHx8fHx9fX5+f39/gICBgYKCg4OEhIWFhoaHh4iIiYmKiouLi4yMjIyMjIyMjIuLi4qKiomJiIiHh4eGhoWFhYSEg4ODgoKBgYGAgH9/f39+fn59fX19fHx9fX19fn5+fn9/f4CAgICBgYKCgoODhISEhYWGhoaHh4iIiIiJiYmKioqKioqKiomJiYmJiIiIiIeHh4eGhoaGhYWFhYSEhISDg4ODgoKCgoGBgYGBgICAf39/f39/f35+fn5+fn5+fn5+fn5+f39/f39/f4CAgICAgA==";
+              audio.volume = 0.8;
+              audio.play().catch(() => {});
+            } catch {}
+            toast({
+              title: "🚧 Road Closure Report",
+              description: `A driver reported a road issue. Check road closures to review.`,
+            });
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(closureChannel);
+    };
+  }, [isAuthed]);
   // Polling fallback: refresh every 5s for fast dispatch updates
   useEffect(() => {
     if (!isAuthed) return;
