@@ -42,6 +42,7 @@ const AdminDriverInvoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [currency, setCurrency] = useState<"MVR" | "USD">("MVR");
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([newLine()]);
 
   // Trip details
@@ -334,7 +335,14 @@ const AdminDriverInvoice = () => {
           {/* Line items */}
           <div className="bg-card rounded-xl border border-border p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fare / Line Items</label>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fare / Line Items</label>
+                <select value={currency} onChange={e => setCurrency(e.target.value as "MVR" | "USD")}
+                  className="bg-surface border border-border rounded-lg px-2 py-1 text-[10px] font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="MVR">MVR</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
               <button onClick={() => setLineItems(prev => [...prev, newLine()])}
                 className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
                 <Plus className="w-3 h-3" /> Add
@@ -349,7 +357,7 @@ const AdminDriverInvoice = () => {
                   <input type="number" min={1} value={item.qty} onChange={e => updateLine(item.id, "qty", Number(e.target.value) || 1)}
                     className="bg-surface rounded-lg px-2 py-2 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/30" />
                   <input type="number" min={0} step={0.01} value={item.unitPrice || ""} onChange={e => updateLine(item.id, "unitPrice", Number(e.target.value) || 0)}
-                    placeholder="MVR"
+                    placeholder={currency}
                     className="bg-surface rounded-lg px-2 py-2 text-xs text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
                   <button onClick={() => removeLine(item.id)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
@@ -359,7 +367,7 @@ const AdminDriverInvoice = () => {
               ))}
             </div>
             <div className="flex justify-end pt-2 border-t border-border">
-              <span className="text-sm font-bold text-foreground">Total: {subtotal.toFixed(2)} MVR</span>
+              <span className="text-sm font-bold text-foreground">Total: {subtotal.toFixed(2)} {currency}</span>
             </div>
           </div>
 
@@ -387,7 +395,7 @@ const AdminDriverInvoice = () => {
               <InvoiceTemplate ref={null} companyName={companyName} logoUrl={logoUrl}
                 driver={selectedDriver} billTo={billTo} tripDetails={tripDetails}
                 invoiceNumber={invoiceNumber} invoiceDate={invoiceDate} dueDate={dueDate}
-                lineItems={lineItems} subtotal={subtotal} notes={notes} />
+                lineItems={lineItems} subtotal={subtotal} notes={notes} currency={currency} />
             </div>
           </div>
         </div>
@@ -416,7 +424,7 @@ const AdminDriverInvoice = () => {
             <InvoiceTemplate ref={invoiceRef} companyName={companyName} logoUrl={logoUrl}
               driver={selectedDriver} billTo={billTo} tripDetails={tripDetails}
               invoiceNumber={invoiceNumber} invoiceDate={invoiceDate} dueDate={dueDate}
-              lineItems={lineItems} subtotal={subtotal} notes={notes} />
+              lineItems={lineItems} subtotal={subtotal} notes={notes} currency={currency} />
           </div>
         </div>
       )}
@@ -444,6 +452,7 @@ interface InvoiceTemplateProps {
   lineItems: InvoiceLineItem[];
   subtotal: number;
   notes: string;
+  currency: string;
 }
 
 const S = {
@@ -453,7 +462,7 @@ const S = {
 };
 
 const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
-  ({ companyName, logoUrl, driver, billTo, tripDetails, invoiceNumber, invoiceDate, dueDate, lineItems, subtotal, notes }, ref) => {
+  ({ companyName, logoUrl, driver, billTo, tripDetails, invoiceNumber, invoiceDate, dueDate, lineItems, subtotal, notes, currency }, ref) => {
     const td = tripDetails;
     let hourlyDuration = "";
     if (td.type === "hourly" && td.hourlyStart && td.hourlyEnd) {
@@ -579,7 +588,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
           <div style={{ backgroundColor: "#f8f8f8", borderRadius: 10, padding: "10px 18px", minWidth: 160, textAlign: "right" }}>
             <div style={{ fontSize: 9, color: "#888", marginBottom: 3 }}>Total Amount</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#40A3DB" }}>{subtotal.toFixed(2)} MVR</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#40A3DB" }}>{subtotal.toFixed(2)} {currency}</div>
           </div>
         </div>
 
