@@ -2965,7 +2965,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <>
         {/* Expand tab when panel is hidden */}
         <AnimatePresence>
-          {panelMinimized &&
+          {panelMinimized && !isFreeNavigating &&
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2994,7 +2994,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           }
         </AnimatePresence>
 
-        <AnimatePresence>{!showProfile && !panelMinimized && <motion.div
+        <AnimatePresence>{!showProfile && !panelMinimized && !isFreeNavigating && <motion.div
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
