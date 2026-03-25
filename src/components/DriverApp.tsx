@@ -270,6 +270,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
   const [locationSearchResults, setLocationSearchResults] = useState<{ name: string; address: string; lat: number; lng: number; type: string }[]>([]);
+  const [isFreeNavigating, setIsFreeNavigating] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
   // --- Online time tracking ---
@@ -2582,7 +2583,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         onMapReady={setDriverMapInstance}
         resetNorthRef={resetNorthRef}
         externalPosition={driverLat != null && driverLng != null ? { lat: driverLat, lng: driverLng } : null}
-        startFreeNavRef={startFreeNavRef} />
+        startFreeNavRef={startFreeNavRef}
+        onFreeNavChange={setIsFreeNavigating} />
 
       {/* Promo Items Overlay — only when online and NOT on a trip */}
       {userProfile?.id && screen === "online" && driverMapInstance && (
@@ -2595,7 +2597,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         />
       )}
       {/* Ad Banner for drivers */}
-      {screen === "online" && (
+      {screen === "online" && !isFreeNavigating && (
         <div className="fixed top-16 left-3 right-3 z-[600] pointer-events-auto max-w-md mx-auto md:hidden">
           <AdBanner audience="drivers" />
         </div>
