@@ -1597,6 +1597,30 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                 </button>
               ))}
             </div>
+            {/* Lane side picker for lane_closed, accident, cones */}
+            {["lane_closed", "accident", "cones"].includes(reportSeverity) && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground">Which lane?</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: "left" as const, label: "← Left Lane" },
+                    { value: "right" as const, label: "Right Lane →" },
+                  ]).map((side) => (
+                    <button
+                      key={side.value}
+                      onClick={() => setReportLaneSide(side.value)}
+                      className={`flex-1 text-xs py-2 px-3 rounded-lg border transition-all font-medium ${
+                        reportLaneSide === side.value
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:bg-accent/50 text-foreground"
+                      }`}
+                    >
+                      {side.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <input
               type="text"
               placeholder="Add details (optional)"
@@ -1618,10 +1642,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                   setReportSubmitting(true);
                   try {
                     const { data: { user } } = await supabase.auth.getUser();
+                    const lanePart = reportLaneSide ? `[${reportLaneSide} lane] ` : "";
+                    const fullNotes = `${lanePart}${reportNotes}`.trim();
                     await addClosure({
                       closure_type: "point",
                       coordinates: [reportCoords],
-                      notes: reportNotes,
+                      notes: fullNotes,
                       severity: reportSeverity,
                       expires_at: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
                       status: "pending",
