@@ -43,7 +43,7 @@ const AnimatedTimer = ({ seconds, label, variant = "default", showIcon = true, c
        <span className={`inline-flex items-center gap-1.5 font-mono text-xs bg-surface text-black dark:text-white px-2.5 py-1 rounded-full ${className}`}>
         {showIcon && <Clock className="w-3 h-3 text-primary" />}
         {label && <span className="text-black/60 dark:text-white/60 text-[10px]">{label}</span>}
-        <span className="flex items-center font-bold text-current">
+        <span className="flex items-center font-bold text-black dark:text-white">
           {showHours && (
             <>
               <FlipDigit digit={hh[0]} id="h0" />
