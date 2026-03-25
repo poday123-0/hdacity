@@ -328,6 +328,7 @@ const Index = () => {
             plate: v?.plate_number || "",
             vehicle_color: v?.color || "",
             vehicle_image_url: v?.image_url || null,
+            map_icon_url: driverIconUrl || null,
             bank_accounts: banksRes.data || [],
             favara_accounts: favaraRes.data || [],
           });
@@ -899,6 +900,7 @@ const Index = () => {
           plate: v?.plate_number || "",
           vehicle_color: v?.color || "",
           vehicle_image_url: v?.image_url || null,
+          map_icon_url: driverIconUrl || null,
           bank_accounts: banksRes.data || [],
           favara_accounts: favaraRes.data || [],
         });
