@@ -42,6 +42,7 @@ const AdminDriverInvoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [currency, setCurrency] = useState<"MVR" | "USD">("MVR");
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([newLine()]);
 
   // Trip details
