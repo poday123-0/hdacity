@@ -1100,6 +1100,45 @@ export type Database = {
           },
         ]
       }
+      road_closures: {
+        Row: {
+          closure_type: string
+          coordinates: Json
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          closure_type?: string
+          coordinates?: Json
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          closure_type?: string
+          coordinates?: Json
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       saved_locations: {
         Row: {
           address: string

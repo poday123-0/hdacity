@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { Search, X } from "lucide-react";
+import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
+import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 // Waze-inspired map style
 const wazeMapStyle = [
@@ -42,6 +44,22 @@ const wazeDarkStyle = [
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2e" }] },
 ];
 
+type DrawMode = null | "point" | "line";
+
+const SEVERITY_OPTIONS = [
+  { value: "closed", label: "Road Closed", color: "#ef4444" },
+  { value: "lane_closed", label: "Lane Closed", color: "#f59e0b" },
+  { value: "hazard", label: "Hazard", color: "#f97316" },
+];
+
+const EXPIRY_OPTIONS = [
+  { value: "", label: "No expiry" },
+  { value: "1", label: "1 hour" },
+  { value: "4", label: "4 hours" },
+  { value: "8", label: "8 hours" },
+  { value: "24", label: "24 hours" },
+];
+
 const DispatchGoogleMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
@@ -51,6 +69,25 @@ const DispatchGoogleMap = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { isLoaded, error } = useGoogleMaps();
 
+  // Road closure state
+  const { closures, addClosure, removeClosure } = useRoadClosures();
+  const [drawMode, setDrawMode] = useState<DrawMode>(null);
+  const [linePoints, setLinePoints] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [showClosureForm, setShowClosureForm] = useState(false);
+  const [pendingCoords, setPendingCoords] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [pendingType, setPendingType] = useState<"point" | "line">("point");
+  const [closureNotes, setClosureNotes] = useState("");
+  const [closureSeverity, setClosureSeverity] = useState("closed");
+  const [closureExpiry, setClosureExpiry] = useState("");
+
+  // Refs for map objects
+  const closureMarkersRef = useRef<any[]>([]);
+  const closureLinesRef = useRef<any[]>([]);
+  const drawTempMarkersRef = useRef<any[]>([]);
+  const drawTempLineRef = useRef<any>(null);
+  const clickListenerRef = useRef<any>(null);
+
+  // Init map
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstance.current) return;
     const g = (window as any).google;
@@ -70,7 +107,6 @@ const DispatchGoogleMap = () => {
 
     mapInstance.current = map;
 
-    // Theme observer
     const observer = new MutationObserver(() => {
       const dark = document.documentElement.classList.contains("dark");
       map.setOptions({ styles: dark ? wazeDarkStyle : wazeMapStyle });
@@ -83,7 +119,7 @@ const DispatchGoogleMap = () => {
     };
   }, [isLoaded]);
 
-  // Init SearchBox after map is ready
+  // SearchBox
   useEffect(() => {
     if (!isLoaded || !mapInstance.current || !inputRef.current) return;
     const g = (window as any).google;
@@ -97,18 +133,13 @@ const DispatchGoogleMap = () => {
     searchBox.addListener("places_changed", () => {
       const places = searchBox.getPlaces();
       if (!places || places.length === 0) return;
-
       const place = places[0];
       if (!place.geometry?.location) return;
 
-      // Clear old marker
       if (searchMarkerRef.current) searchMarkerRef.current.setMap(null);
-
-      // Pan to place
       mapInstance.current?.panTo(place.geometry.location);
       mapInstance.current?.setZoom(18);
 
-      // Drop marker
       searchMarkerRef.current = new g.maps.Marker({
         map: mapInstance.current,
         position: place.geometry.location,
@@ -116,27 +147,187 @@ const DispatchGoogleMap = () => {
         animation: g.maps.Animation.DROP,
         icon: {
           path: g.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: "#4285F4",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 3,
+          scale: 12, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3,
         },
       });
 
-      // Info window
       const iw = new g.maps.InfoWindow({
         content: `<div style="font-size:12px;font-weight:600;padding:4px">${place.name || ""}<br/><span style="font-weight:400;color:#666">${place.formatted_address || ""}</span></div>`,
       });
       iw.open(mapInstance.current, searchMarkerRef.current);
-
       setSearchQuery(place.name || place.formatted_address || "");
     });
 
-    return () => {
-      g.maps.event.clearInstanceListeners(searchBox);
-    };
+    return () => { g.maps.event.clearInstanceListeners(searchBox); };
   }, [isLoaded, !!mapInstance.current]);
+
+  // Draw mode click listener
+  useEffect(() => {
+    if (!mapInstance.current || !isLoaded) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    // Remove old listener
+    if (clickListenerRef.current) {
+      g.maps.event.removeListener(clickListenerRef.current);
+      clickListenerRef.current = null;
+    }
+
+    if (!drawMode) {
+      // Clear temp markers
+      drawTempMarkersRef.current.forEach((m) => m.setMap(null));
+      drawTempMarkersRef.current = [];
+      if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+      return;
+    }
+
+    clickListenerRef.current = mapInstance.current.addListener("click", (e: any) => {
+      const pos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+
+      if (drawMode === "point") {
+        // Immediately open form
+        setPendingCoords([pos]);
+        setPendingType("point");
+        setShowClosureForm(true);
+        setDrawMode(null);
+        // Temp marker
+        const m = new g.maps.Marker({
+          map: mapInstance.current,
+          position: pos,
+          icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 0.8, strokeColor: "#fff", strokeWeight: 2 },
+        });
+        drawTempMarkersRef.current.push(m);
+      } else if (drawMode === "line") {
+        setLinePoints((prev) => {
+          const updated = [...prev, pos];
+          // Add temp marker
+          const m = new g.maps.Marker({
+            map: mapInstance.current,
+            position: pos,
+            icon: { path: g.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#ef4444", fillOpacity: 0.9, strokeColor: "#fff", strokeWeight: 2 },
+          });
+          drawTempMarkersRef.current.push(m);
+
+          // Update temp line
+          if (drawTempLineRef.current) drawTempLineRef.current.setMap(null);
+          if (updated.length > 1) {
+            drawTempLineRef.current = new g.maps.Polyline({
+              map: mapInstance.current,
+              path: updated,
+              strokeColor: "#ef4444",
+              strokeWeight: 5,
+              strokeOpacity: 0.7,
+              icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
+            });
+          }
+          return updated;
+        });
+      }
+    });
+
+    return () => {
+      if (clickListenerRef.current) {
+        g.maps.event.removeListener(clickListenerRef.current);
+        clickListenerRef.current = null;
+      }
+    };
+  }, [drawMode, isLoaded]);
+
+  // Render closures on map
+  useEffect(() => {
+    if (!mapInstance.current || !isLoaded) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    // Clear old
+    closureMarkersRef.current.forEach((m) => m.setMap(null));
+    closureLinesRef.current.forEach((l) => l.setMap(null));
+    closureMarkersRef.current = [];
+    closureLinesRef.current = [];
+
+    closures.forEach((c) => {
+      const coords = c.coordinates;
+      const sev = SEVERITY_OPTIONS.find((s) => s.value === c.severity) || SEVERITY_OPTIONS[0];
+
+      if (c.closure_type === "point" && coords.length > 0) {
+        const marker = new g.maps.Marker({
+          map: mapInstance.current,
+          position: coords[0],
+          icon: {
+            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
+            fillColor: sev.color,
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 1.5,
+            scale: 1.3,
+            anchor: new g.maps.Point(12, 12),
+          },
+          zIndex: 2000,
+        });
+
+        const iw = new g.maps.InfoWindow({
+          content: `<div style="font-size:12px;padding:4px;max-width:200px">
+            <strong style="color:${sev.color}">${sev.label}</strong>
+            ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+            ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
+            <br/><button onclick="window.__removeClosure__('${c.id}')" style="margin-top:4px;font-size:11px;color:#ef4444;cursor:pointer;background:none;border:none;text-decoration:underline">Remove</button>
+          </div>`,
+        });
+        marker.addListener("click", () => iw.open(mapInstance.current, marker));
+        closureMarkersRef.current.push(marker);
+      } else if (c.closure_type === "line" && coords.length > 1) {
+        const line = new g.maps.Polyline({
+          map: mapInstance.current,
+          path: coords,
+          strokeColor: sev.color,
+          strokeWeight: 6,
+          strokeOpacity: 0.8,
+          icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
+          zIndex: 1999,
+        });
+
+        // Click on line to show info
+        const midIdx = Math.floor(coords.length / 2);
+        const midPoint = coords[midIdx];
+        const infoMarker = new g.maps.Marker({
+          map: mapInstance.current,
+          position: midPoint,
+          icon: {
+            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
+            fillColor: sev.color,
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 1.5,
+            scale: 1.3,
+            anchor: new g.maps.Point(12, 12),
+          },
+          zIndex: 2001,
+        });
+
+        const iw = new g.maps.InfoWindow({
+          content: `<div style="font-size:12px;padding:4px;max-width:200px">
+            <strong style="color:${sev.color}">${sev.label}</strong>
+            ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+            ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
+            <br/><button onclick="window.__removeClosure__('${c.id}')" style="margin-top:4px;font-size:11px;color:#ef4444;cursor:pointer;background:none;border:none;text-decoration:underline">Remove</button>
+          </div>`,
+        });
+        infoMarker.addListener("click", () => iw.open(mapInstance.current, infoMarker));
+
+        closureLinesRef.current.push(line);
+        closureMarkersRef.current.push(infoMarker);
+      }
+    });
+  }, [closures, isLoaded]);
+
+  // Global remove handler
+  useEffect(() => {
+    (window as any).__removeClosure__ = async (id: string) => {
+      await removeClosure(id);
+      toast({ title: "Closure removed" });
+    };
+    return () => { delete (window as any).__removeClosure__; };
+  }, [removeClosure]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
@@ -146,6 +337,55 @@ const DispatchGoogleMap = () => {
       searchMarkerRef.current = null;
     }
   }, []);
+
+  const finishLineDraw = () => {
+    if (linePoints.length < 2) {
+      toast({ title: "Need at least 2 points for a line closure", variant: "destructive" });
+      return;
+    }
+    setPendingCoords(linePoints);
+    setPendingType("line");
+    setShowClosureForm(true);
+    setDrawMode(null);
+    setLinePoints([]);
+  };
+
+  const cancelDraw = () => {
+    setDrawMode(null);
+    setLinePoints([]);
+    drawTempMarkersRef.current.forEach((m) => m.setMap(null));
+    drawTempMarkersRef.current = [];
+    if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+  };
+
+  const submitClosure = async () => {
+    try {
+      let expiresAt: string | null = null;
+      if (closureExpiry) {
+        const d = new Date();
+        d.setHours(d.getHours() + parseInt(closureExpiry));
+        expiresAt = d.toISOString();
+      }
+      await addClosure({
+        closure_type: pendingType,
+        coordinates: pendingCoords,
+        notes: closureNotes,
+        severity: closureSeverity,
+        expires_at: expiresAt,
+      });
+      toast({ title: "Road closure added" });
+      // Clear temp
+      drawTempMarkersRef.current.forEach((m) => m.setMap(null));
+      drawTempMarkersRef.current = [];
+      if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+    } catch {
+      toast({ title: "Failed to add closure", variant: "destructive" });
+    }
+    setShowClosureForm(false);
+    setClosureNotes("");
+    setClosureSeverity("closed");
+    setClosureExpiry("");
+  };
 
   if (error) {
     return (
@@ -166,7 +406,8 @@ const DispatchGoogleMap = () => {
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
-      {/* Search bar overlay */}
+
+      {/* Search bar */}
       <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-10">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -179,15 +420,131 @@ const DispatchGoogleMap = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
       </div>
+
+      {/* Road closure toolbar */}
+      <div className="absolute top-3 right-3 sm:right-4 z-10 flex flex-col gap-1.5">
+        <button
+          onClick={() => { if (drawMode === "point") cancelDraw(); else { cancelDraw(); setDrawMode("point"); } }}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-lg text-xs font-medium transition-all ${
+            drawMode === "point"
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-background/95 backdrop-blur-sm border border-border text-foreground hover:bg-accent"
+          }`}
+          title="Mark point closure"
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Point</span>
+        </button>
+        <button
+          onClick={() => { if (drawMode === "line") cancelDraw(); else { cancelDraw(); setDrawMode("line"); } }}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-lg text-xs font-medium transition-all ${
+            drawMode === "line"
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-background/95 backdrop-blur-sm border border-border text-foreground hover:bg-accent"
+          }`}
+          title="Draw line closure"
+        >
+          <Minus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Line</span>
+        </button>
+      </div>
+
+      {/* Drawing mode indicator */}
+      {drawMode && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+          <div className="bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-xl text-xs font-medium shadow-lg flex items-center gap-2">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            {drawMode === "point" ? "Tap map to place closure" : `Drawing line (${linePoints.length} pts) — tap to add points`}
+          </div>
+          {drawMode === "line" && linePoints.length >= 2 && (
+            <button onClick={finishLineDraw} className="bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-medium shadow-lg">
+              Done
+            </button>
+          )}
+          <button onClick={cancelDraw} className="bg-muted text-muted-foreground px-3 py-2 rounded-xl text-xs font-medium shadow-lg">
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Closure form modal */}
+      {showClosureForm && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-2xl shadow-2xl p-5 w-80 max-w-[90vw] space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              {pendingType === "point" ? "Point Closure" : "Line Closure"}
+            </h3>
+
+            {/* Severity */}
+            <div className="flex gap-1.5">
+              {SEVERITY_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setClosureSeverity(s.value)}
+                  className={`flex-1 text-xs py-1.5 rounded-lg border transition-all ${
+                    closureSeverity === s.value
+                      ? "border-foreground bg-accent font-medium"
+                      : "border-border hover:bg-accent/50"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Notes */}
+            <input
+              type="text"
+              placeholder="Notes (e.g. 'Construction on main road')"
+              value={closureNotes}
+              onChange={(e) => setClosureNotes(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+
+            {/* Expiry */}
+            <div className="flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <select
+                value={closureExpiry}
+                onChange={(e) => setClosureExpiry(e.target.value)}
+                className="flex-1 px-2 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none"
+              >
+                {EXPIRY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setShowClosureForm(false);
+                  drawTempMarkersRef.current.forEach((m) => m.setMap(null));
+                  drawTempMarkersRef.current = [];
+                  if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+                }}
+                className="flex-1 py-2 text-xs rounded-lg border border-border text-muted-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitClosure}
+                className="flex-1 py-2 text-xs rounded-lg bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90"
+              >
+                Add Closure
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

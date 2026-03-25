@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { selectShortestRoute } from "@/lib/shortest-route";
+import { useRoadClosures } from "@/hooks/use-road-closures";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
@@ -196,6 +197,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error, mapId } = useGoogleMaps();
+  const { closures: roadClosures } = useRoadClosures();
+  const roadClosureMarkersRef = useRef<any[]>([]);
+  const roadClosureLinesRef = useRef<any[]>([]);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -953,6 +957,82 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       });
     }
   }, [radiusKm, isNavigating, currentPos, showRadius]);
+
+  // Road closures overlay
+  useEffect(() => {
+    const map = mapInstance.current;
+    const g = (window as any).google;
+    if (!map || !g?.maps) return;
+
+    // Clear old
+    roadClosureMarkersRef.current.forEach((m) => m.setMap(null));
+    roadClosureLinesRef.current.forEach((l) => l.setMap(null));
+    roadClosureMarkersRef.current = [];
+    roadClosureLinesRef.current = [];
+
+    const sevColors: Record<string, string> = { closed: "#ef4444", lane_closed: "#f59e0b", hazard: "#f97316" };
+    const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard" };
+
+    roadClosures.forEach((c) => {
+      const coords = c.coordinates;
+      const color = sevColors[c.severity] || "#ef4444";
+      const label = sevLabels[c.severity] || "Closure";
+
+      if (c.closure_type === "point" && coords.length > 0) {
+        const marker = new g.maps.Marker({
+          map,
+          position: coords[0],
+          icon: {
+            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 1.5,
+            scale: 1.2,
+            anchor: new g.maps.Point(12, 12),
+          },
+          zIndex: 2000,
+        });
+        const iw = new g.maps.InfoWindow({
+          content: `<div style="font-size:12px;padding:4px"><strong style="color:${color}">${label}</strong>${c.notes ? `<br/>${c.notes}` : ""}</div>`,
+        });
+        marker.addListener("click", () => iw.open(map, marker));
+        roadClosureMarkersRef.current.push(marker);
+      } else if (c.closure_type === "line" && coords.length > 1) {
+        const line = new g.maps.Polyline({
+          map,
+          path: coords,
+          strokeColor: color,
+          strokeWeight: 6,
+          strokeOpacity: 0.8,
+          icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
+          zIndex: 1999,
+        });
+        roadClosureLinesRef.current.push(line);
+
+        const midIdx = Math.floor(coords.length / 2);
+        const infoMarker = new g.maps.Marker({
+          map,
+          position: coords[midIdx],
+          icon: {
+            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 1.5,
+            scale: 1.2,
+            anchor: new g.maps.Point(12, 12),
+          },
+          zIndex: 2001,
+        });
+        const iw = new g.maps.InfoWindow({
+          content: `<div style="font-size:12px;padding:4px"><strong style="color:${color}">${label}</strong>${c.notes ? `<br/>${c.notes}` : ""}</div>`,
+        });
+        infoMarker.addListener("click", () => iw.open(map, infoMarker));
+        roadClosureMarkersRef.current.push(infoMarker);
+      }
+    });
+  }, [roadClosures, isLoaded]);
 
   // Passenger live location marker (shown before trip starts)
   useEffect(() => {
