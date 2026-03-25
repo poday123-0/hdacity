@@ -395,7 +395,7 @@ const AdminDriverInvoice = () => {
               <InvoiceTemplate ref={null} companyName={companyName} logoUrl={logoUrl}
                 driver={selectedDriver} billTo={billTo} tripDetails={tripDetails}
                 invoiceNumber={invoiceNumber} invoiceDate={invoiceDate} dueDate={dueDate}
-                lineItems={lineItems} subtotal={subtotal} notes={notes} />
+                lineItems={lineItems} subtotal={subtotal} notes={notes} currency={currency} />
             </div>
           </div>
         </div>
