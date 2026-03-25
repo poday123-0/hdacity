@@ -726,9 +726,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }, driverIntervalMs);
 
-      // Force fresh GPS on foreground return (watchPosition may be suspended by OS)
+      // Force fresh GPS on foreground return — restart watchPosition entirely
+      // because the OS may have suspended it and it can keep delivering stale positions
       const onForeground = () => {
         if (document.visibilityState !== "visible") return;
+
+        // 1) Immediate fresh fix
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setGpsEnabled(true);
@@ -738,6 +741,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           },
           () => {},
           { enableHighAccuracy: gpsHighAccuracy, timeout: 10000, maximumAge: 0 }
+        );
+
+        // 2) Restart watchPosition so it doesn't keep delivering cached data
+        if (locationWatchRef.current !== null) {
+          navigator.geolocation.clearWatch(locationWatchRef.current);
+        }
+        locationWatchRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            setGpsEnabled(true);
+            setDriverLat(pos.coords.latitude);
+            setDriverLng(pos.coords.longitude);
+            upsertLocation(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err) => {
+            console.warn("GPS unavailable after foreground:", err.message);
+            setGpsEnabled(false);
+          },
+          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
         );
       };
       document.addEventListener("visibilitychange", onForeground);
