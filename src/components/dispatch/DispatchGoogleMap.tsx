@@ -48,11 +48,11 @@ const wazeDarkStyle = [
 type DrawMode = null | "point" | "line";
 
 const SEVERITY_OPTIONS = [
-  { value: "closed", label: "Road Closed", color: "#ef4444" },
-  { value: "lane_closed", label: "Lane Closed", color: "#f59e0b" },
-  { value: "cones", label: "Cones", color: "#eab308" },
-  { value: "accident", label: "Accident", color: "#dc2626" },
-  { value: "hazard", label: "Hazard", color: "#f97316" },
+  { value: "closed", label: "Road Closed", color: "#ef4444", icon: "🚫" },
+  { value: "lane_closed", label: "Lane Closed", color: "#f59e0b", icon: "🚧" },
+  { value: "cones", label: "Cones", color: "#eab308", icon: "🔶" },
+  { value: "accident", label: "Accident", color: "#dc2626", icon: "💥" },
+  { value: "hazard", label: "Hazard", color: "#f97316", icon: "⚠️" },
 ];
 
 const EXPIRY_OPTIONS = [
@@ -61,6 +61,18 @@ const EXPIRY_OPTIONS = [
   { value: "4", label: "4 hours" },
   { value: "8", label: "8 hours" },
   { value: "24", label: "24 hours" },
+  { value: "48", label: "2 days" },
+  { value: "168", label: "1 week" },
+];
+
+const DAY_OPTIONS = [
+  { value: "mon", label: "Mon" },
+  { value: "tue", label: "Tue" },
+  { value: "wed", label: "Wed" },
+  { value: "thu", label: "Thu" },
+  { value: "fri", label: "Fri" },
+  { value: "sat", label: "Sat" },
+  { value: "sun", label: "Sun" },
 ];
 
 const DispatchGoogleMap = () => {
