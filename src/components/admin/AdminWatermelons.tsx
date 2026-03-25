@@ -710,6 +710,22 @@ const AdminWatermelons = () => {
                   <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                     {m.lat.toFixed(4)}, {m.lng.toFixed(4)} • {m.claim_radius_m}m radius
                   </p>
+                  {m.status === "claimed" && m.claimed_by && (() => {
+                    const claimer = claimerProfiles.get(m.claimed_by);
+                    return (
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-[10px] font-semibold text-foreground">
+                          👤 {claimer ? `${claimer.first_name} ${claimer.last_name}` : m.claimed_by.slice(0, 8)}
+                          {claimer && <span className="text-muted-foreground font-normal"> • {claimer.phone_number} • {claimer.user_type}</span>}
+                        </p>
+                        {m.claimed_at && (
+                          <p className="text-[9px] text-muted-foreground">
+                            Claimed: {new Date(m.claimed_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {m.status === "active" && (
                   <div className="flex items-center gap-1 shrink-0">
