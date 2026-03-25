@@ -587,7 +587,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
           <div style={{ backgroundColor: "#f8f8f8", borderRadius: 10, padding: "10px 18px", minWidth: 160, textAlign: "right" }}>
             <div style={{ fontSize: 9, color: "#888", marginBottom: 3 }}>Total Amount</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#40A3DB" }}>{subtotal.toFixed(2)} MVR</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#40A3DB" }}>{subtotal.toFixed(2)} {currency}</div>
           </div>
         </div>
 
