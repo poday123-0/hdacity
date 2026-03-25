@@ -60,7 +60,8 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const avatarUrl = driver?.avatar_url;
   const vehicleColor = driver?.vehicle_color || "";
   const vehicleImageUrl = driver?.vehicle_image_url;
-  const mapIconUrl = driver?.map_icon_url;
+  const [resolvedMapIconUrl, setResolvedMapIconUrl] = useState<string | null>(driver?.map_icon_url || null);
+  useEffect(() => { if (driver?.map_icon_url) setResolvedMapIconUrl(driver.map_icon_url); }, [driver?.map_icon_url]);
   const bankAccounts = driver?.bank_accounts || [];
   const favaraAccounts = driver?.favara_accounts || [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -145,7 +146,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     });
   }, []);
 
-  // Track driver location for speed & ETA
+  // Fetch vehicle map icon from trip
+  useEffect(() => {
+    if (resolvedMapIconUrl || !tripId) return;
+    const fetchIcon = async () => {
+      const { data: trip } = await supabase.from("trips").select("vehicle_type_id, driver_id").eq("id", tripId).single();
+      if (trip?.vehicle_type_id) {
+        const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", trip.vehicle_type_id).single();
+        if (vt?.map_icon_url) { setResolvedMapIconUrl(vt.map_icon_url); return; }
+      }
+      if (trip?.driver_id) {
+        const { data: loc } = await supabase.from("driver_locations").select("vehicle_type_id").eq("driver_id", trip.driver_id).single();
+        if (loc?.vehicle_type_id) {
+          const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", loc.vehicle_type_id).single();
+          if (vt?.map_icon_url) setResolvedMapIconUrl(vt.map_icon_url);
+        }
+      }
+    };
+    fetchIcon();
+  }, [tripId, resolvedMapIconUrl]);
+
+
   useEffect(() => {
     if (!tripId) return;
 
@@ -452,8 +473,8 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                       transition={{ duration: 1, ease: "easeOut" }}
                       style={{ transform: "translateX(-50%)" }}
                     >
-                      {mapIconUrl ? (
-                        <img src={mapIconUrl} alt="" className="w-7 h-7 object-contain drop-shadow-md" />
+                      {resolvedMapIconUrl ? (
+                        <img src={resolvedMapIconUrl} alt="" className="w-7 h-7 object-contain drop-shadow-md rotate-90" />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
                           <Navigation className="w-3 h-3 text-primary-foreground" />
