@@ -47,6 +47,7 @@ import AdminVehicles from "@/components/admin/AdminVehicles";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
+import DispatchGoogleMap from "@/components/dispatch/DispatchGoogleMap";
 import {
   format,
   startOfDay,
@@ -146,7 +147,8 @@ type DispatchTab =
   | "banks"
   | "companies"
   | "duty_hours"
-  | "hdc_map";
+  | "hdc_map"
+  | "google_map";
 
 // Map each tab to the permission key required to access it
 const tabPermissionMap: Record<DispatchTab, string | null> = {
@@ -169,6 +171,7 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   named_locations: "manage_locations",
   duty_hours: "manage_dispatchers",
   hdc_map: null,
+  google_map: null,
 };
 
 const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -191,6 +194,7 @@ const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboa
   { id: "companies", label: "Companies", icon: Building },
   { id: "duty_hours", label: "Duty Hours", icon: Clock },
   { id: "hdc_map", label: "HDC Map", icon: MapPinIcon },
+  { id: "google_map", label: "Google Map", icon: MapPin },
 ];
 
 const Dispatch = () => {
@@ -1952,6 +1956,9 @@ const Dispatch = () => {
             title="HDC Map"
             allow="geolocation"
           />
+        </div>
+        <div className={`w-full h-full ${activeTab === "google_map" ? "" : "hidden"}`}>
+          <DispatchGoogleMap />
         </div>
       </div>
 
