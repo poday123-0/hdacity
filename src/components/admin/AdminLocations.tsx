@@ -21,6 +21,7 @@ const AdminLocations = () => {
   const [form, setForm] = useState(emptyForm);
   const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([]);
   const [drawingMode, setDrawingMode] = useState(false);
+  const [fetchingPlaces, setFetchingPlaces] = useState<string | null>(null);
   const { isLoaded } = useGoogleMaps();
 
   const mapRef = useRef<HTMLDivElement>(null);
