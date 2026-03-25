@@ -850,7 +850,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
         lastCameraUpdateAtRef.current = now;
 
-        if (isNavigating) {
+        if (isNavigating || freeNavTarget) {
           if (typeof map.setHeading === "function") {
             if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
             map.setHeading(heading);
@@ -874,7 +874,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         }
       }
     }
-  }, [currentPos, isNavigating, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
+  }, [currentPos, isNavigating, freeNavTarget, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
 
   // Trim route polyline behind driver — remove passed segments
   useEffect(() => {
