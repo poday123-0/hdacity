@@ -112,6 +112,7 @@ interface TripRequest {
   booking_notes?: string;
   started_at?: string;
   accepted_at?: string;
+  arrived_at?: string;
 }
 
 interface BankAccount {
@@ -148,6 +149,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
+  const getStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at") => {
+    if (!tripId) return null;
+    try {
+      return localStorage.getItem(`hda_trip_timer:${tripId}:${field}`);
+    } catch {
+      return null;
+    }
+  };
+  const setStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at", value?: string | null) => {
+    if (!tripId || !value) return;
+    try {
+      localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
+    } catch {}
+  };
   const [showEarnings, setShowEarnings] = useState(true);
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
@@ -451,6 +466,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           return;
         }
 
+        setStoredTripTimer(trip.id, "accepted_at", trip.accepted_at);
+        setStoredTripTimer(trip.id, "arrived_at", trip.arrived_at);
+        setStoredTripTimer(trip.id, "started_at", trip.started_at);
         setCurrentTrip(trip);
 
         // Determine trip phase from status
@@ -1387,62 +1405,83 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, []);
 
-  // Driver accepted elapsed timer (only heading_to_pickup phase)
+  // Driver accepted elapsed timer (resumes from current trip data or persisted storage on refresh)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "heading_to_pickup") { setDriverPhaseElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setDriverPhaseElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setDriverPhaseElapsed(calc()), 1000);
+    };
+    const fallbackAcceptedAt = currentTrip.accepted_at || getStoredTripTimer(currentTrip.id, "accepted_at");
+    if (fallbackAcceptedAt) startTimer(fallbackAcceptedAt);
     const init = async () => {
       const { data } = await supabase.from("trips").select("accepted_at").eq("id", currentTrip.id).single();
       if (data?.accepted_at) {
-        const t = new Date(data.accepted_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setDriverPhaseElapsed(calc());
-        timer = setInterval(() => setDriverPhaseElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimer(currentTrip.id, "accepted_at", data.accepted_at);
+        startTimer(data.accepted_at);
+      } else if (!fallbackAcceptedAt) {
         timer = setInterval(() => setDriverPhaseElapsed(p => p + 1), 1000);
       }
     };
     init();
     return () => { if (timer) clearInterval(timer); };
-  }, [currentTrip?.id, driverTripPhase]);
+  }, [currentTrip?.id, currentTrip?.accepted_at, driverTripPhase]);
 
-  // Driver arrived waiting timer (based on arrived_at from DB - persists across refreshes)
+  // Driver arrived waiting timer (resumes from current trip data or persisted storage on refresh)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "arrived") { setDriverArrivedElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setDriverArrivedElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setDriverArrivedElapsed(calc()), 1000);
+    };
+    const fallbackArrivedAt = currentTrip.arrived_at || getStoredTripTimer(currentTrip.id, "arrived_at");
+    if (fallbackArrivedAt) startTimer(fallbackArrivedAt);
     const init = async () => {
       const { data } = await supabase.from("trips").select("arrived_at").eq("id", currentTrip.id).single();
       if ((data as any)?.arrived_at) {
-        const t = new Date((data as any).arrived_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setDriverArrivedElapsed(calc());
-        timer = setInterval(() => setDriverArrivedElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimer(currentTrip.id, "arrived_at", (data as any).arrived_at);
+        startTimer((data as any).arrived_at);
+      } else if (!fallbackArrivedAt) {
         timer = setInterval(() => setDriverArrivedElapsed(p => p + 1), 1000);
       }
     };
     init();
     return () => { if (timer) clearInterval(timer); };
-  }, [currentTrip?.id, driverTripPhase]);
+  }, [currentTrip?.id, currentTrip?.arrived_at, driverTripPhase]);
 
-  // Driver trip elapsed timer (resets to 0 when trip starts)
+  // Driver trip elapsed timer (resumes from current trip data or persisted storage on refresh)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "in_progress") { setDriverTripElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setDriverTripElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setDriverTripElapsed(calc()), 1000);
+    };
+    const fallbackStartedAt = currentTrip.started_at || getStoredTripTimer(currentTrip.id, "started_at");
+    if (fallbackStartedAt) startTimer(fallbackStartedAt);
     const init = async () => {
       const { data } = await supabase.from("trips").select("started_at").eq("id", currentTrip.id).single();
       if (data?.started_at) {
-        const t = new Date(data.started_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setDriverTripElapsed(calc());
-        timer = setInterval(() => setDriverTripElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimer(currentTrip.id, "started_at", data.started_at);
+        startTimer(data.started_at);
+      } else if (!fallbackStartedAt) {
         timer = setInterval(() => setDriverTripElapsed(p => p + 1), 1000);
       }
     };
     init();
     return () => { if (timer) clearInterval(timer); };
-  }, [currentTrip?.id, driverTripPhase]);
+  }, [currentTrip?.id, currentTrip?.started_at, driverTripPhase]);
 
   // Lightweight stats-only refresh (called periodically + after trip completion)
   const refreshDriverStats = useCallback(async () => {
@@ -3168,10 +3207,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
 
                 // Accept trip in database
+                const acceptedNow = new Date().toISOString();
                 const { error, count } = await supabase.from("trips").update({
                   status: "accepted",
                   driver_id: userProfile.id,
-                  accepted_at: new Date().toISOString(),
+                  accepted_at: acceptedNow,
                   vehicle_id: selectedVehicleId || null
                 }).eq("id", currentTrip.id).in("status", ["requested", "scheduled"]);
 
@@ -3194,6 +3234,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   setPassengerProfile(null);
                   return;
                 }
+
+                setStoredTripTimer(currentTrip.id, "accepted_at", acceptedNow);
+                setCurrentTrip({ ...currentTrip, accepted_at: acceptedNow, driver_id: userProfile.id, vehicle_id: selectedVehicleId || null } as any);
 
                 // Send tracking SMS for broadcast trips (non-blocking)
                 if (currentTrip.dispatch_type === "dispatch_broadcast" || currentTrip.dispatch_type === "passenger") {
@@ -3465,7 +3508,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {driverTripPhase === "heading_to_pickup" &&
           <button onClick={async () => {
             if (!currentTrip) return;
-            await supabase.from("trips").update({ status: "arrived", arrived_at: new Date().toISOString() } as any).eq("id", currentTrip.id);
+            const arrivedNow = new Date().toISOString();
+            await supabase.from("trips").update({ status: "arrived", arrived_at: arrivedNow } as any).eq("id", currentTrip.id);
+            setStoredTripTimer(currentTrip.id, "arrived_at", arrivedNow);
+            setCurrentTrip({ ...currentTrip, arrived_at: arrivedNow } as any);
             setDriverTripPhase("arrived");
             fetchSoundUrl("driver_sound_arrived").then(u => playSound(u));
             // Notify passenger that driver arrived
@@ -3483,6 +3529,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             if (!currentTrip) return;
             const now = new Date().toISOString();
             await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
+            setStoredTripTimer(currentTrip.id, "started_at", now);
             setCurrentTrip({ ...currentTrip, started_at: now } as any);
             setDriverTripPhase("in_progress");
             fetchSoundUrl("driver_sound_started").then(u => playSound(u));

@@ -117,6 +117,12 @@ const Index = () => {
   const [showCancelledByDriverPopup, setShowCancelledByDriverPopup] = useState(false);
   const [cancelledByDriverReason, setCancelledByDriverReason] = useState("");
   const missingProfileChecksRef = useRef(0);
+  const persistTripTimerTimestamp = (tripId: string | null | undefined, field: "accepted_at" | "arrived_at" | "started_at", value?: string | null) => {
+    if (!tripId || !value) return;
+    try {
+      localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
+    } catch {}
+  };
 
   // Passenger font size
   const [passengerTextSize, setPassengerTextSize] = useState<number>(() => {
@@ -291,6 +297,9 @@ const Index = () => {
       setCurrentTripId(activeTrip.id);
       setTripStatus(activeTrip.status);
       setEstimatedFare(activeTrip.estimated_fare || 0);
+      persistTripTimerTimestamp(activeTrip.id, "accepted_at", activeTrip.accepted_at);
+      persistTripTimerTimestamp(activeTrip.id, "arrived_at", activeTrip.arrived_at);
+      persistTripTimerTimestamp(activeTrip.id, "started_at", activeTrip.started_at);
 
       // Restore pickup/dropoff locations
       if (activeTrip.pickup_lat && activeTrip.pickup_lng) {
@@ -852,6 +861,9 @@ const Index = () => {
   const handlePassengerTripUpdate = useCallback(async (trip: any) => {
     const status = trip.status;
     setTripStatus(status);
+    persistTripTimerTimestamp(trip.id, "accepted_at", trip.accepted_at);
+    persistTripTimerTimestamp(trip.id, "arrived_at", trip.arrived_at);
+    persistTripTimerTimestamp(trip.id, "started_at", trip.started_at);
 
     const statusChanged = lastPlayedStatusRef.current !== status;
     const isNoDriverCancel = status === "cancelled" && trip.cancel_reason === "No driver found";

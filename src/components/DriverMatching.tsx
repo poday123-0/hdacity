@@ -83,6 +83,20 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
   const [tripDropoffName, setTripDropoffName] = useState(dropoffName || "");
+  const getStoredTripTimestamp = (field: "accepted_at" | "arrived_at" | "started_at") => {
+    if (!tripId) return null;
+    try {
+      return localStorage.getItem(`hda_trip_timer:${tripId}:${field}`);
+    } catch {
+      return null;
+    }
+  };
+  const setStoredTripTimestamp = (field: "accepted_at" | "arrived_at" | "started_at", value?: string | null) => {
+    if (!tripId || !value) return;
+    try {
+      localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
+    } catch {}
+  };
 
   // Sync showChat ref & clear unread
   useEffect(() => { showChatRef.current = showChat; if (showChat) setUnreadMessages(0); }, [showChat]);
@@ -225,61 +239,83 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     return () => clearInterval(interval);
   }, [tripId, speed]);
 
-  // Trip elapsed timer - based on started_at from DB so it persists across refreshes
+  // Trip elapsed timer - based on started_at and resumes from persisted storage on refresh
   useEffect(() => {
-    if (tripStatus !== "in_progress" || !tripId) return;
+    if (tripStatus !== "in_progress" || !tripId) { setTripElapsed(0); return; }
 
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const startedAt = new Date(timestamp).getTime();
+      const calcElapsed = () => Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      setTripElapsed(calcElapsed());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setTripElapsed(calcElapsed()), 1000);
+    };
+
+    const storedStartedAt = getStoredTripTimestamp("started_at");
+    if (storedStartedAt) startTimer(storedStartedAt);
 
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("started_at").eq("id", tripId).single();
       if (data?.started_at) {
-        const startedAt = new Date(data.started_at).getTime();
-        const calcElapsed = () => Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-        setTripElapsed(calcElapsed());
-        timer = setInterval(() => setTripElapsed(calcElapsed()), 1000);
-      } else {
+        setStoredTripTimestamp("started_at", data.started_at);
+        startTimer(data.started_at);
+      } else if (!storedStartedAt) {
         timer = setInterval(() => setTripElapsed(prev => prev + 1), 1000);
       }
     };
 
     initTimer();
-    return () => clearInterval(timer);
+    return () => { if (timer) clearInterval(timer); };
   }, [tripStatus, tripId]);
 
-  // Accepted elapsed timer - time since driver accepted (only for "accepted" phase)
+  // Accepted elapsed timer - resumes from persisted storage on refresh
   useEffect(() => {
     if (!tripId || tripStatus !== "accepted") { setAcceptedElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const t = new Date(timestamp).getTime();
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setAcceptedElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setAcceptedElapsed(calc()), 1000);
+    };
+    const storedAcceptedAt = getStoredTripTimestamp("accepted_at");
+    if (storedAcceptedAt) startTimer(storedAcceptedAt);
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("accepted_at").eq("id", tripId).single();
       if (data?.accepted_at) {
-        const t = new Date(data.accepted_at).getTime();
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setAcceptedElapsed(calc());
-        timer = setInterval(() => setAcceptedElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimestamp("accepted_at", data.accepted_at);
+        startTimer(data.accepted_at);
+      } else if (!storedAcceptedAt) {
         timer = setInterval(() => setAcceptedElapsed(prev => prev + 1), 1000);
       }
     };
     initTimer();
-    return () => clearInterval(timer);
+    return () => { if (timer) clearInterval(timer); };
   }, [tripStatus, tripId]);
 
-  // Arrived waiting timer - based on arrived_at from DB so it persists across refreshes
+  // Arrived waiting timer - resumes from persisted storage on refresh
   useEffect(() => {
-    if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); return; }
+    if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); setArrivedTimeStr(null); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const arrivedDate = new Date(timestamp);
+      const t = arrivedDate.getTime();
+      setArrivedTimeStr(arrivedDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setArrivedElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setArrivedElapsed(calc()), 1000);
+    };
+    const storedArrivedAt = getStoredTripTimestamp("arrived_at");
+    if (storedArrivedAt) startTimer(storedArrivedAt);
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("arrived_at").eq("id", tripId).single();
       if ((data as any)?.arrived_at) {
-        const arrivedDate = new Date((data as any).arrived_at);
-        const t = arrivedDate.getTime();
-        setArrivedTimeStr(arrivedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setArrivedElapsed(calc());
-        timer = setInterval(() => setArrivedElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimestamp("arrived_at", (data as any).arrived_at);
+        startTimer((data as any).arrived_at);
+      } else if (!storedArrivedAt) {
         timer = setInterval(() => setArrivedElapsed(prev => prev + 1), 1000);
       }
     };
