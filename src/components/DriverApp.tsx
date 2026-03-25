@@ -621,6 +621,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.geolocation.clearWatch(locationWatchRef.current);
       locationWatchRef.current = null;
     }
+    // Stop native background location tracking
+    stopBackgroundLocation();
     // Clear heartbeat interval
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current);
