@@ -1453,6 +1453,29 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
+      {/* Free navigation banner */}
+      {freeNavTarget && (
+        <div className="absolute bottom-4 left-3 right-3 z-[500]">
+          <div className="bg-primary/95 backdrop-blur-sm text-primary-foreground rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center shrink-0">
+              <Route className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold">Navigating to location</div>
+              <div className="text-sm font-bold mt-0.5">
+                {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
+              </div>
+            </div>
+            <button
+              onClick={stopFreeNav}
+              className="shrink-0 w-9 h-9 rounded-xl bg-primary-foreground/20 hover:bg-primary-foreground/30 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Context menu on map tap/long-press */}
       {reportMenuPos && !showReportForm && (
         <div
