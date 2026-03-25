@@ -1543,6 +1543,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                         setShowReportForm(true);
                         setReportMenuPos(null);
                         setReportSeverity(item.severity);
+                        setReportLaneSide(null);
                         setReportNotes("");
                       }}
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-accent transition-colors"
