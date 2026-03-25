@@ -2717,14 +2717,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         .from("service_locations")
                         .select("name, address, lat, lng")
                         .eq("is_active", true)
-                        .ilike("name", `%${q}%`)
+                        .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
                         .limit(10);
                       const { data: namedData } = await supabase
                         .from("named_locations")
                         .select("name, address, lat, lng")
                         .eq("is_active", true)
                         .eq("status", "approved")
-                        .ilike("name", `%${q}%`)
+                        .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
                         .limit(10);
                       const results: { name: string; address: string; lat: number; lng: number; type: string }[] = [];
                       (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
