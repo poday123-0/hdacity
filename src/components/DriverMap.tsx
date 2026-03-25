@@ -199,13 +199,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error, mapId } = useGoogleMaps();
-  const { closures: roadClosures } = useRoadClosures();
+  const { closures: roadClosures, addClosure } = useRoadClosures();
   const roadClosureMarkersRef = useRef<any[]>([]);
   const roadClosureLinesRef = useRef<any[]>([]);
   const [closureWarning, setClosureWarning] = useState<string | null>(null);
   const closureWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  // Driver closure reporting state
+  const [reportMenuPos, setReportMenuPos] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [reportSeverity, setReportSeverity] = useState("closed");
+  const [reportNotes, setReportNotes] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
