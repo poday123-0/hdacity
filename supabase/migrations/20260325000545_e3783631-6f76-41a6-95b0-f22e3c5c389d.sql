@@ -1,0 +1,1 @@
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS arrived_at timestamp with time zone DEFAULT NULL;
