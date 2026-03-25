@@ -452,6 +452,7 @@ interface InvoiceTemplateProps {
   lineItems: InvoiceLineItem[];
   subtotal: number;
   notes: string;
+  currency: string;
 }
 
 const S = {
