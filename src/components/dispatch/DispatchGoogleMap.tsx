@@ -664,55 +664,182 @@ const DispatchGoogleMap = () => {
 
       {/* Closure form modal */}
       {showClosureForm && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-background border border-border rounded-2xl shadow-2xl p-5 w-80 max-w-[90vw] space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              {pendingType === "point" ? "Point Closure" : "Line Closure"}
-            </h3>
-
-            {/* Severity */}
-            <div className="flex gap-1.5">
-              {SEVERITY_OPTIONS.map((s) => (
-                <button
-                  key={s.value}
-                  onClick={() => setClosureSeverity(s.value)}
-                  className={`flex-1 text-xs py-1.5 rounded-lg border transition-all ${
-                    closureSeverity === s.value
-                      ? "border-foreground bg-accent font-medium"
-                      : "border-border hover:bg-accent/50"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-2xl shadow-2xl w-96 max-w-[92vw] max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-border">
+              <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {pendingType === "point" ? "Point Closure" : "Line Closure"}
+                </h3>
+                <p className="text-xs text-muted-foreground">Mark a road hazard or closure</p>
+              </div>
             </div>
 
-            {/* Notes */}
-            <input
-              type="text"
-              placeholder="Notes (e.g. 'Construction on main road')"
-              value={closureNotes}
-              onChange={(e) => setClosureNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
+            <div className="p-5 space-y-4">
+              {/* Severity - grid of cards */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Type</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {SEVERITY_OPTIONS.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => setClosureSeverity(s.value)}
+                      className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 transition-all text-center ${
+                        closureSeverity === s.value
+                          ? "border-foreground bg-accent shadow-sm"
+                          : "border-transparent bg-muted/50 hover:bg-accent/50"
+                      }`}
+                    >
+                      <span className="text-base leading-none">{s.icon}</span>
+                      <span className="text-[10px] font-medium leading-tight">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            {/* Expiry */}
-            <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-              <select
-                value={closureExpiry}
-                onChange={(e) => setClosureExpiry(e.target.value)}
-                className="flex-1 px-2 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none"
-              >
-                {EXPIRY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Notes</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Construction on main road"
+                  value={closureNotes}
+                  onChange={(e) => setClosureNotes(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40"
+                />
+              </div>
+
+              {/* Schedule Type Tabs */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Schedule</label>
+                <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
+                  {[
+                    { value: "immediate" as const, label: "Now", icon: "⚡" },
+                    { value: "scheduled" as const, label: "Date", icon: "📅" },
+                    { value: "recurring" as const, label: "Repeat", icon: "🔁" },
+                  ].map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => setScheduleType(t.value)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        scheduleType === t.value
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span>{t.icon}</span>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Immediate: expiry */}
+              {scheduleType === "immediate" && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <select
+                    value={closureExpiry}
+                    onChange={(e) => setClosureExpiry(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl border border-border bg-muted/30 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    {EXPIRY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Scheduled: date + time range */}
+              {scheduleType === "scheduled" && (
+                <div className="space-y-3 p-3 bg-muted/30 rounded-xl border border-border">
+                  <div>
+                    <label className="text-[10px] font-medium text-muted-foreground mb-1 block uppercase tracking-wider">Date</label>
+                    <input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground mb-1 block uppercase tracking-wider">Start</label>
+                      <input
+                        type="time"
+                        value={scheduleStartTime}
+                        onChange={(e) => setScheduleStartTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground mb-1 block uppercase tracking-wider">End</label>
+                      <input
+                        type="time"
+                        value={scheduleEndTime}
+                        onChange={(e) => setScheduleEndTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recurring: day picker + time range */}
+              {scheduleType === "recurring" && (
+                <div className="space-y-3 p-3 bg-muted/30 rounded-xl border border-border">
+                  <div>
+                    <label className="text-[10px] font-medium text-muted-foreground mb-2 block uppercase tracking-wider">Repeat On</label>
+                    <div className="flex gap-1">
+                      {DAY_OPTIONS.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() =>
+                            setScheduleDays((prev) =>
+                              prev.includes(d.value) ? prev.filter((x) => x !== d.value) : [...prev, d.value]
+                            )
+                          }
+                          className={`flex-1 py-2 rounded-lg text-[10px] font-semibold transition-all ${
+                            scheduleDays.includes(d.value)
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-background text-muted-foreground border border-border hover:bg-accent"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground mb-1 block uppercase tracking-wider">Start</label>
+                      <input
+                        type="time"
+                        value={scheduleStartTime}
+                        onChange={(e) => setScheduleStartTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground mb-1 block uppercase tracking-wider">End</label>
+                      <input
+                        type="time"
+                        value={scheduleEndTime}
+                        onChange={(e) => setScheduleEndTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 pt-1">
+            {/* Footer actions */}
+            <div className="flex gap-2 px-5 pb-5 pt-2 border-t border-border">
               <button
                 onClick={() => {
                   setShowClosureForm(false);
@@ -720,14 +847,20 @@ const DispatchGoogleMap = () => {
                   drawTempMarkersRef.current = [];
                   if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
                 }}
-                className="flex-1 py-2 text-xs rounded-lg border border-border text-muted-foreground hover:bg-accent"
+                className="flex-1 py-2.5 text-xs rounded-xl border border-border text-muted-foreground hover:bg-accent font-medium transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={submitClosure}
-                className="flex-1 py-2 text-xs rounded-lg bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90"
+                className="flex-1 py-2.5 text-xs rounded-xl bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90 shadow-sm transition-all"
               >
+                Add Closure
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
                 Add Closure
               </button>
             </div>
