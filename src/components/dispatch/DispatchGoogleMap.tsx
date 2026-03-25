@@ -448,7 +448,6 @@ const DispatchGoogleMap = () => {
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
-      <div ref={mapRef} className="w-full h-full" />
 
       {/* Search bar */}
       <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-10">
