@@ -123,6 +123,63 @@ const DispatchGoogleMap = () => {
     };
   }, [isLoaded]);
 
+  // Load named locations
+  useEffect(() => {
+    supabase
+      .from("named_locations")
+      .select("id, name, address, lat, lng")
+      .eq("is_active", true)
+      .eq("status", "approved")
+      .then(({ data }) => {
+        if (data) setNamedLocations(data);
+      });
+  }, []);
+
+  // Filter named locations on search
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 2) {
+      setFilteredLocations([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const q = searchQuery.toLowerCase();
+    const matches = namedLocations.filter(
+      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
+    ).slice(0, 6);
+    setFilteredLocations(matches);
+    setShowSuggestions(matches.length > 0);
+  }, [searchQuery, namedLocations]);
+
+  const selectNamedLocation = useCallback((loc: typeof namedLocations[0]) => {
+    const g = (window as any).google;
+    if (!g?.maps || !mapInstance.current) return;
+
+    if (searchMarkerRef.current) searchMarkerRef.current.setMap(null);
+    const pos = { lat: loc.lat, lng: loc.lng };
+    mapInstance.current.panTo(pos);
+    mapInstance.current.setZoom(18);
+
+    searchMarkerRef.current = new g.maps.Marker({
+      map: mapInstance.current,
+      position: pos,
+      title: loc.name,
+      animation: g.maps.Animation.DROP,
+      icon: {
+        path: g.maps.SymbolPath.CIRCLE,
+        scale: 12, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3,
+      },
+    });
+
+    const iw = new g.maps.InfoWindow({
+      content: `<div style="font-size:12px;font-weight:600;padding:4px">${loc.name}<br/><span style="font-weight:400;color:#666">${loc.address}</span></div>`,
+    });
+    iw.open(mapInstance.current, searchMarkerRef.current);
+
+    setSearchQuery(loc.name);
+    if (inputRef.current) inputRef.current.value = loc.name;
+    setShowSuggestions(false);
+  }, []);
+
   // SearchBox
   useEffect(() => {
     if (!isLoaded || !mapInstance.current || !inputRef.current) return;
