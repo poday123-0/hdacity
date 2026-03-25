@@ -1491,7 +1491,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="absolute inset-0 z-[590] bg-black/20"
+              className="fixed inset-0 z-[9990] bg-black/20"
               onClick={() => setReportMenuPos(null)}
             />
             {/* Menu sheet */}
@@ -1500,7 +1500,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 350 }}
-              className="absolute bottom-0 left-0 right-0 z-[600] px-3 pb-4"
+              className="fixed bottom-0 left-0 right-0 z-[9991] px-3 pb-4"
             >
               <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
                 {/* Handle bar */}
@@ -1570,7 +1570,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
       {/* Report closure form */}
       {showReportForm && reportCoords && (
-        <div className="absolute inset-0 z-[700] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9992] flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-80 max-w-[90vw] space-y-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-destructive" />
