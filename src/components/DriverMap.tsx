@@ -381,9 +381,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     setFreeNavTarget(null);
     setFreeNavEta("");
     setFreeNavDist("");
+    setFreeNavSteps([]);
+    setFreeNavStepIndex(0);
+    freeNavPathRef.current = [];
     if (freeNavPolylineRef.current) { freeNavPolylineRef.current.setMap(null); freeNavPolylineRef.current = null; }
     if (freeNavMarkerRef.current) { freeNavMarkerRef.current.setMap(null); freeNavMarkerRef.current = null; }
     if (freeNavIntervalRef.current) { clearInterval(freeNavIntervalRef.current); freeNavIntervalRef.current = null; }
+    // Reset camera to non-nav mode
+    const map = mapInstance.current;
+    if (map) {
+      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+      map.setZoom(16);
+      if (typeof map.setHeading === "function") {
+        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
+        map.setHeading(0);
+      }
+    }
   }, []);
 
   // Cleanup free nav on unmount
