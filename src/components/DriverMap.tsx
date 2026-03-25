@@ -417,6 +417,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
 
     // Long-press to report closure
+    const mapDiv = map.getDiv();
     map.addListener("rightclick", (e: any) => {
       if (!e.latLng) return;
       const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
