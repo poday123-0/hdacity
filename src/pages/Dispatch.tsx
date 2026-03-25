@@ -709,7 +709,7 @@ const Dispatch = () => {
     };
   }, [isAuthed, debouncedRefreshTrips]);
 
-  // Realtime: driver locations for online driver count updates
+  // Realtime: driver locations for online driver count updates (debounced — GPS updates are very frequent)
   useEffect(() => {
     if (!isAuthed) return;
     const refreshOnlineDrivers = async () => {
@@ -732,13 +732,16 @@ const Dispatch = () => {
       }));
       setOnlineDrivers(drivers);
     };
+    let driverDebounce: ReturnType<typeof setTimeout> | null = null;
     const driverChannel = supabase
       .channel("dispatch-driver-locations")
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
-        refreshOnlineDrivers();
+        if (driverDebounce) clearTimeout(driverDebounce);
+        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 3_000);
       })
       .subscribe();
     return () => {
+      if (driverDebounce) clearTimeout(driverDebounce);
       supabase.removeChannel(driverChannel);
     };
   }, [isAuthed]);
