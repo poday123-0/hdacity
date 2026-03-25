@@ -496,15 +496,15 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
             </div>
             {/* Timer row */}
-            <div className="px-4 pb-2 flex justify-center">
+            <div className="px-4 pb-3 flex justify-center">
               {normalizedTripStatus === "in_progress" && (
-                <AnimatedTimer seconds={tripElapsed} label="Trip time" variant="default" />
+                <AnimatedTimer seconds={tripElapsed} label="Trip" variant="badge" />
               )}
               {normalizedTripStatus === "accepted" && (
-                <AnimatedTimer seconds={acceptedElapsed} label="Since accepted" variant="default" />
+                <AnimatedTimer seconds={acceptedElapsed} label="Accepted" variant="badge" />
               )}
               {normalizedTripStatus === "arrived" && (
-                <AnimatedTimer seconds={arrivedElapsed} label="Driver waiting" variant="default" />
+                <AnimatedTimer seconds={arrivedElapsed} label="Waiting" variant="badge" />
               )}
             </div>
 
