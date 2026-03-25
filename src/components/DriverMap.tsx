@@ -215,6 +215,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [reportNotes, setReportNotes] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Free navigation state (driver picks a destination on map)
+  const [freeNavTarget, setFreeNavTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [freeNavEta, setFreeNavEta] = useState("");
+  const [freeNavDist, setFreeNavDist] = useState("");
+  const freeNavPolylineRef = useRef<any>(null);
+  const freeNavMarkerRef = useRef<any>(null);
+  const freeNavIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
@@ -241,6 +248,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [currentHeading, setCurrentHeading] = useState<number | null>(null);
   const [mapHeading, setMapHeading] = useState(0);
+  const currentPosRef = useRef(currentPos);
+  currentPosRef.current = currentPos;
 
   // Broadcast current nav step to parent
   useEffect(() => {
@@ -258,6 +267,88 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       nextDistance: next?.distance,
     });
   }, [currentStepIndex, navSteps, navEta, navDistance, onNavStepChange]);
+
+  // Free navigation: start navigating to a tapped location
+  const startFreeNav = useCallback((target: { lat: number; lng: number }) => {
+    const g = (window as any).google;
+    const map = mapInstance.current;
+    if (!g?.maps || !map || !currentPos) return;
+
+    // Clear previous free nav
+    stopFreeNav();
+    setFreeNavTarget(target);
+
+    // Place destination marker
+    const marker = new g.maps.Marker({
+      map,
+      position: target,
+      icon: {
+        path: g.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#6366f1",
+        fillOpacity: 1,
+        strokeColor: "#fff",
+        strokeWeight: 3,
+      },
+      zIndex: 3000,
+    });
+    freeNavMarkerRef.current = marker;
+
+    // Create polyline
+    const polyline = new g.maps.Polyline({
+      map,
+      strokeColor: "#6366f1",
+      strokeWeight: 6,
+      strokeOpacity: 0.8,
+      zIndex: 99,
+    });
+    freeNavPolylineRef.current = polyline;
+
+    const fetchFreeRoute = () => {
+      const driverPos = currentPosRef.current;
+      if (!driverPos) return;
+
+      const ds = new g.maps.DirectionsService();
+      ds.route({
+        origin: driverPos,
+        destination: target,
+        travelMode: g.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
+      }).then((raw: any) => {
+        const result = selectShortestRoute(raw);
+        const leg = result.routes?.[0]?.legs?.[0];
+        if (!leg) return;
+
+        // Extract path
+        const pathCoords: { lat: number; lng: number }[] = [];
+        for (const step of leg.steps) {
+          for (const p of (step.path || [])) {
+            pathCoords.push({ lat: p.lat(), lng: p.lng() });
+          }
+        }
+        if (freeNavPolylineRef.current) freeNavPolylineRef.current.setPath(pathCoords);
+        setFreeNavEta(leg.duration?.text || "");
+        setFreeNavDist(leg.distance?.text || "");
+      }).catch(() => {});
+    };
+
+    fetchFreeRoute();
+    freeNavIntervalRef.current = setInterval(fetchFreeRoute, 10000);
+  }, [currentPos]);
+
+  const stopFreeNav = useCallback(() => {
+    setFreeNavTarget(null);
+    setFreeNavEta("");
+    setFreeNavDist("");
+    if (freeNavPolylineRef.current) { freeNavPolylineRef.current.setMap(null); freeNavPolylineRef.current = null; }
+    if (freeNavMarkerRef.current) { freeNavMarkerRef.current.setMap(null); freeNavMarkerRef.current = null; }
+    if (freeNavIntervalRef.current) { clearInterval(freeNavIntervalRef.current); freeNavIntervalRef.current = null; }
+  }, []);
+
+  // Cleanup free nav on unmount
+  useEffect(() => () => { stopFreeNav(); }, [stopFreeNav]);
+
+
 
   // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
   // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
@@ -823,8 +914,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   });
 
   // Route when navigating — use refs for volatile values to avoid re-triggering
-  const currentPosRef = useRef(currentPos);
-  currentPosRef.current = currentPos;
+  // (currentPosRef is defined earlier, near free navigation)
 
   useEffect(() => {
     const map = mapInstance.current;
@@ -1363,13 +1453,48 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
+      {/* Free navigation banner */}
+      {freeNavTarget && (
+        <div className="absolute bottom-4 left-3 right-3 z-[500]">
+          <div className="bg-primary/95 backdrop-blur-sm text-primary-foreground rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center shrink-0">
+              <Route className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold">Navigating to location</div>
+              <div className="text-sm font-bold mt-0.5">
+                {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
+              </div>
+            </div>
+            <button
+              onClick={stopFreeNav}
+              className="shrink-0 w-9 h-9 rounded-xl bg-primary-foreground/20 hover:bg-primary-foreground/30 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Context menu on map tap/long-press */}
       {reportMenuPos && !showReportForm && (
         <div
           className="absolute z-[600]"
           style={{ left: reportMenuPos.x, top: reportMenuPos.y }}
         >
-          <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-1 min-w-[170px] animate-in zoom-in-95 fade-in">
+          <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-1 min-w-[180px] animate-in zoom-in-95 fade-in">
+            {/* Navigate Here */}
+            <button
+              onClick={() => {
+                startFreeNav({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                setReportMenuPos(null);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Route className="w-4 h-4" />
+              Navigate Here
+            </button>
+            <div className="border-t border-border my-0.5" />
             <button
               onClick={() => {
                 setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
