@@ -892,6 +892,22 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, isNavigating]);
 
+  // Trim free nav polyline behind driver
+  useEffect(() => {
+    if (!freeNavTarget || !currentPos || !freeNavPolylineRef.current || freeNavPathRef.current.length < 2) return;
+    const fullPath = freeNavPathRef.current;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < fullPath.length; i++) {
+      const d = getDistanceMeters(currentPos, fullPath[i]);
+      if (d < closestDist) { closestDist = d; closestIdx = i; }
+    }
+    if (closestIdx > 0) {
+      const trimmedPath = [{ lat: currentPos.lat, lng: currentPos.lng }, ...fullPath.slice(closestIdx)];
+      freeNavPolylineRef.current.setPath(trimmedPath);
+    }
+  }, [currentPos, freeNavTarget]);
+
   // Apply exact admin map icon when it becomes available
   useEffect(() => {
     if (!mapIconUrl || !driverMarkerRef.current) return;
