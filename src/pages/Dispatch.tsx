@@ -1655,7 +1655,7 @@ const Dispatch = () => {
                     {appRequestTrips.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
                     ) : (
-                      appRequestTrips.slice(0, 5).map((t: any) => {
+                      appRequestTrips.slice(0, 3).map((t: any) => {
                         const wasAccepted = !!t.accepted_at;
                         const isOngoing =
                           t.status === "accepted" || t.status === "started" || t.status === "in_progress";
