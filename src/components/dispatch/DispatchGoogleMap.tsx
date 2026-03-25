@@ -192,47 +192,6 @@ const DispatchGoogleMap = () => {
     setShowSuggestions(false);
   }, []);
 
-  // SearchBox
-  useEffect(() => {
-    if (!isLoaded || !mapInstance.current || !inputRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps?.places) return;
-
-    const searchBox = new g.maps.places.SearchBox(inputRef.current, {
-      bounds: mapInstance.current.getBounds(),
-    });
-    searchBoxRef.current = searchBox;
-
-    searchBox.addListener("places_changed", () => {
-      const places = searchBox.getPlaces();
-      if (!places || places.length === 0) return;
-      const place = places[0];
-      if (!place.geometry?.location) return;
-
-      if (searchMarkerRef.current) searchMarkerRef.current.setMap(null);
-      mapInstance.current?.panTo(place.geometry.location);
-      mapInstance.current?.setZoom(18);
-
-      searchMarkerRef.current = new g.maps.Marker({
-        map: mapInstance.current,
-        position: place.geometry.location,
-        title: place.name || place.formatted_address,
-        animation: g.maps.Animation.DROP,
-        icon: {
-          path: g.maps.SymbolPath.CIRCLE,
-          scale: 12, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3,
-        },
-      });
-
-      const iw = new g.maps.InfoWindow({
-        content: `<div style="font-size:12px;font-weight:600;padding:4px">${place.name || ""}<br/><span style="font-weight:400;color:#666">${place.formatted_address || ""}</span></div>`,
-      });
-      iw.open(mapInstance.current, searchMarkerRef.current);
-      setSearchQuery(place.name || place.formatted_address || "");
-    });
-
-    return () => { g.maps.event.clearInstanceListeners(searchBox); };
-  }, [isLoaded, !!mapInstance.current]);
 
   // Draw mode click listener
   useEffect(() => {
