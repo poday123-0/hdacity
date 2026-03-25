@@ -273,7 +273,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("arrived_at").eq("id", tripId).single();
       if ((data as any)?.arrived_at) {
-        const t = new Date((data as any).arrived_at).getTime();
+        const arrivedDate = new Date((data as any).arrived_at);
+        const t = arrivedDate.getTime();
+        setArrivedTimeStr(arrivedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
         setArrivedElapsed(calc());
         timer = setInterval(() => setArrivedElapsed(calc()), 1000);
