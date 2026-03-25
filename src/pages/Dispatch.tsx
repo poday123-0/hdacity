@@ -193,6 +193,7 @@ const dispatchTabs: { id: DispatchTab; label: string; icon: typeof LayoutDashboa
   { id: "companies", label: "Companies", icon: Building },
   { id: "duty_hours", label: "Duty Hours", icon: Clock },
   { id: "hdc_map", label: "HDC Map", icon: MapPinIcon },
+  { id: "google_map", label: "Google Map", icon: MapPin },
 ];
 
 const Dispatch = () => {
