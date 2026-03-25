@@ -634,8 +634,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const vehicleTypeId = vehicle?.vehicle_type_id || null;
       activeVehicleTypeIdRef.current = vehicleTypeId;
 
-      const upsertLocation = async (lat: number, lng: number) => {
+      // Distance threshold — skip DB writes if driver hasn't moved enough
+      const MIN_MOVE_METERS = 10;
+      const lastWrittenPosRef = { lat: 0, lng: 0, time: 0 };
+      const haversineMeters = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      };
+
+      const upsertLocation = async (lat: number, lng: number, force = false) => {
         lastPosRef.current = { lat, lng };
+
+        // Skip DB write if driver hasn't moved enough (saves battery & network)
+        // Always write on first fix, force flag, or if >60s since last write
+        const now = Date.now();
+        const timeSinceLastWrite = now - lastWrittenPosRef.time;
+        if (!force && lastWrittenPosRef.time > 0 && timeSinceLastWrite < 60000) {
+          const dist = haversineMeters(lat, lng, lastWrittenPosRef.lat, lastWrittenPosRef.lng);
+          if (dist < MIN_MOVE_METERS) return;
+        }
+
+        lastWrittenPosRef.lat = lat;
+        lastWrittenPosRef.lng = lng;
+        lastWrittenPosRef.time = now;
+
         // Don't override is_on_trip — just update position + online status
         const upsertPayload: any = {
           driver_id: userProfile.id,
