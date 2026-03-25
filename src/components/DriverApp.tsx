@@ -688,8 +688,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setGpsEnabled(false);
 
       // Fetch GPS accuracy settings from admin
-      let gpsHighAccuracy = true;
-      let gpsMaxAge = 3000;
+      let gpsHighAccuracy = false; // Default to balanced mode to reduce battery drain
+      let gpsMaxAge = 15000; // 15s idle — reduces GPS radio usage significantly
       try {
         const [accRes, ageRes] = await Promise.all([
           supabase.from("system_settings").select("value").eq("key", "driver_gps_accuracy").single(),
