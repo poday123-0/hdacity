@@ -510,6 +510,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Long-press / right-click to report closure
     const mapDiv = map.getDiv();
 
+    let menuJustOpened = false;
     const showMenuAtLatLng = (latLng: any) => {
       const coords = { lat: latLng.lat(), lng: latLng.lng() };
       const bounds = map.getBounds();
@@ -525,11 +526,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           const px = (point.x - bottomLeft.x) * scale;
           const py = (point.y - topRight.y) * scale;
           const rect = mapDiv.getBoundingClientRect();
+          menuJustOpened = true;
+          setTimeout(() => { menuJustOpened = false; }, 400);
           setReportMenuPos({
             lat: coords.lat,
             lng: coords.lng,
-            x: Math.min(px, rect.width - 180),
-            y: Math.min(py, rect.height - 160),
+            x: Math.min(px, rect.width - 200),
+            y: Math.min(py, rect.height - 280),
           });
         }
       }
