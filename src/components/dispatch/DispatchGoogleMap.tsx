@@ -191,6 +191,17 @@ const DispatchGoogleMap = () => {
     setShowSuggestions(false);
   }, []);
 
+  // Suppress Google Places pac-container dropdown on our search input
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll(".pac-container").forEach((el) => {
+        (el as HTMLElement).style.display = "none";
+      });
+    });
+    observer.observe(document.body, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+
 
   // Draw mode click listener
   useEffect(() => {
