@@ -164,7 +164,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
     } catch {}
   };
-  const [showEarnings, setShowEarnings] = useState(true);
+  const [showEarnings, setShowEarnings] = useState(() => {
+    try { return localStorage.getItem("hda_driver_show_earnings") !== "false"; } catch { return true; }
+  });
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
   const [driverWalletBalance, setDriverWalletBalance] = useState(0);
@@ -3019,7 +3021,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setShowEarnings(!showEarnings)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
+                <button onClick={() => { const next = !showEarnings; setShowEarnings(next); try { localStorage.setItem("hda_driver_show_earnings", String(next)); } catch {} }} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
                   {showEarnings ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 <button onClick={() => setPanelMinimized(true)} className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center active:scale-90 transition-transform">
