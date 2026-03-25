@@ -3529,6 +3529,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             if (!currentTrip) return;
             const now = new Date().toISOString();
             await supabase.from("trips").update({ status: "in_progress", started_at: now, ...(currentTrip.booking_type === "hourly" ? { hourly_started_at: now } : {}) } as any).eq("id", currentTrip.id);
+            setStoredTripTimer(currentTrip.id, "started_at", now);
             setCurrentTrip({ ...currentTrip, started_at: now } as any);
             setDriverTripPhase("in_progress");
             fetchSoundUrl("driver_sound_started").then(u => playSound(u));

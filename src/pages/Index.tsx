@@ -861,6 +861,9 @@ const Index = () => {
   const handlePassengerTripUpdate = useCallback(async (trip: any) => {
     const status = trip.status;
     setTripStatus(status);
+    persistTripTimerTimestamp(trip.id, "accepted_at", trip.accepted_at);
+    persistTripTimerTimestamp(trip.id, "arrived_at", trip.arrived_at);
+    persistTripTimerTimestamp(trip.id, "started_at", trip.started_at);
 
     const statusChanged = lastPlayedStatusRef.current !== status;
     const isNoDriverCancel = status === "cancelled" && trip.cancel_reason === "No driver found";

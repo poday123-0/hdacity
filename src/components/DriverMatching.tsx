@@ -295,20 +295,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     return () => { if (timer) clearInterval(timer); };
   }, [tripStatus, tripId]);
 
-  // Arrived waiting timer - based on arrived_at from DB so it persists across refreshes
+  // Arrived waiting timer - resumes from persisted storage on refresh
   useEffect(() => {
-    if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); return; }
+    if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); setArrivedTimeStr(null); return; }
     let timer: ReturnType<typeof setInterval>;
+    const startTimer = (timestamp: string) => {
+      const arrivedDate = new Date(timestamp);
+      const t = arrivedDate.getTime();
+      setArrivedTimeStr(arrivedDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
+      setArrivedElapsed(calc());
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => setArrivedElapsed(calc()), 1000);
+    };
+    const storedArrivedAt = getStoredTripTimestamp("arrived_at");
+    if (storedArrivedAt) startTimer(storedArrivedAt);
     const initTimer = async () => {
       const { data } = await supabase.from("trips").select("arrived_at").eq("id", tripId).single();
       if ((data as any)?.arrived_at) {
-        const arrivedDate = new Date((data as any).arrived_at);
-        const t = arrivedDate.getTime();
-        setArrivedTimeStr(arrivedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        const calc = () => Math.max(0, Math.floor((Date.now() - t) / 1000));
-        setArrivedElapsed(calc());
-        timer = setInterval(() => setArrivedElapsed(calc()), 1000);
-      } else {
+        setStoredTripTimestamp("arrived_at", (data as any).arrived_at);
+        startTimer((data as any).arrived_at);
+      } else if (!storedArrivedAt) {
         timer = setInterval(() => setArrivedElapsed(prev => prev + 1), 1000);
       }
     };
