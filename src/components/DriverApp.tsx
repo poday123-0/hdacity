@@ -2597,7 +2597,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         />
       )}
       {/* Ad Banner for drivers */}
-      {screen === "online" && (
+      {screen === "online" && !isFreeNavigating && (
         <div className="fixed top-16 left-3 right-3 z-[600] pointer-events-auto max-w-md mx-auto md:hidden">
           <AdBanner audience="drivers" />
         </div>
