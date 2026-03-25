@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -67,6 +68,9 @@ const DispatchGoogleMap = () => {
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [namedLocations, setNamedLocations] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number }>>([]);
+  const [filteredLocations, setFilteredLocations] = useState<typeof namedLocations>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const { isLoaded, error } = useGoogleMaps();
 
   // Road closure state
@@ -118,6 +122,63 @@ const DispatchGoogleMap = () => {
       mapInstance.current = null;
     };
   }, [isLoaded]);
+
+  // Load named locations
+  useEffect(() => {
+    supabase
+      .from("named_locations")
+      .select("id, name, address, lat, lng")
+      .eq("is_active", true)
+      .eq("status", "approved")
+      .then(({ data }) => {
+        if (data) setNamedLocations(data);
+      });
+  }, []);
+
+  // Filter named locations on search
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 2) {
+      setFilteredLocations([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const q = searchQuery.toLowerCase();
+    const matches = namedLocations.filter(
+      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
+    ).slice(0, 6);
+    setFilteredLocations(matches);
+    setShowSuggestions(matches.length > 0);
+  }, [searchQuery, namedLocations]);
+
+  const selectNamedLocation = useCallback((loc: typeof namedLocations[0]) => {
+    const g = (window as any).google;
+    if (!g?.maps || !mapInstance.current) return;
+
+    if (searchMarkerRef.current) searchMarkerRef.current.setMap(null);
+    const pos = { lat: loc.lat, lng: loc.lng };
+    mapInstance.current.panTo(pos);
+    mapInstance.current.setZoom(18);
+
+    searchMarkerRef.current = new g.maps.Marker({
+      map: mapInstance.current,
+      position: pos,
+      title: loc.name,
+      animation: g.maps.Animation.DROP,
+      icon: {
+        path: g.maps.SymbolPath.CIRCLE,
+        scale: 12, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3,
+      },
+    });
+
+    const iw = new g.maps.InfoWindow({
+      content: `<div style="font-size:12px;font-weight:600;padding:4px">${loc.name}<br/><span style="font-weight:400;color:#666">${loc.address}</span></div>`,
+    });
+    iw.open(mapInstance.current, searchMarkerRef.current);
+
+    setSearchQuery(loc.name);
+    if (inputRef.current) inputRef.current.value = loc.name;
+    setShowSuggestions(false);
+  }, []);
 
   // SearchBox
   useEffect(() => {
@@ -414,17 +475,39 @@ const DispatchGoogleMap = () => {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search locations..."
+            placeholder="Search places or named locations..."
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-background/95 backdrop-blur-sm border border-border shadow-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             defaultValue={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => { if (filteredLocations.length > 0) setShowSuggestions(true); }}
           />
           {searchQuery && (
-            <button onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => { clearSearch(); setShowSuggestions(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
+        {/* Named locations dropdown */}
+        {showSuggestions && filteredLocations.length > 0 && (
+          <div className="mt-1 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+            <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
+              Named Locations
+            </div>
+            {filteredLocations.map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => selectNamedLocation(loc)}
+                className="w-full px-3 py-2 text-left hover:bg-accent flex items-start gap-2 border-b border-border/50 last:border-0"
+              >
+                <MapPin className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-foreground truncate">{loc.name}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{loc.address}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Road closure toolbar */}
