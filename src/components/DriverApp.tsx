@@ -2777,8 +2777,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
                         .limit(10);
                       const results: { name: string; address: string; lat: number; lng: number; type: string }[] = [];
-                      (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
+                      // Show service areas first, then named locations
                       (svcData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "service" }));
+                      (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
                       setLocationSearchResults(results);
                     }}
                   />
