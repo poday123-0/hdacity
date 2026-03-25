@@ -197,6 +197,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoaded, error, mapId } = useGoogleMaps();
+  const { closures: roadClosures } = useRoadClosures();
+  const roadClosureMarkersRef = useRef<any[]>([]);
+  const roadClosureLinesRef = useRef<any[]>([]);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
