@@ -117,6 +117,12 @@ const Index = () => {
   const [showCancelledByDriverPopup, setShowCancelledByDriverPopup] = useState(false);
   const [cancelledByDriverReason, setCancelledByDriverReason] = useState("");
   const missingProfileChecksRef = useRef(0);
+  const persistTripTimerTimestamp = (tripId: string | null | undefined, field: "accepted_at" | "arrived_at" | "started_at", value?: string | null) => {
+    if (!tripId || !value) return;
+    try {
+      localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
+    } catch {}
+  };
 
   // Passenger font size
   const [passengerTextSize, setPassengerTextSize] = useState<number>(() => {

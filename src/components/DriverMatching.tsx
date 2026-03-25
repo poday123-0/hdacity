@@ -83,6 +83,20 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
   const [tripDropoffName, setTripDropoffName] = useState(dropoffName || "");
+  const getStoredTripTimestamp = (field: "accepted_at" | "arrived_at" | "started_at") => {
+    if (!tripId) return null;
+    try {
+      return localStorage.getItem(`hda_trip_timer:${tripId}:${field}`);
+    } catch {
+      return null;
+    }
+  };
+  const setStoredTripTimestamp = (field: "accepted_at" | "arrived_at" | "started_at", value?: string | null) => {
+    if (!tripId || !value) return;
+    try {
+      localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
+    } catch {}
+  };
 
   // Sync showChat ref & clear unread
   useEffect(() => { showChatRef.current = showChat; if (showChat) setUnreadMessages(0); }, [showChat]);

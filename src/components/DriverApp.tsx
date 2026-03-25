@@ -112,6 +112,7 @@ interface TripRequest {
   booking_notes?: string;
   started_at?: string;
   accepted_at?: string;
+  arrived_at?: string;
 }
 
 interface BankAccount {
