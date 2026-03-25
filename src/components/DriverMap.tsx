@@ -510,6 +510,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Long-press / right-click to report closure
     const mapDiv = map.getDiv();
 
+    let menuJustOpened = false;
     const showMenuAtLatLng = (latLng: any) => {
       const coords = { lat: latLng.lat(), lng: latLng.lng() };
       const bounds = map.getBounds();
@@ -525,11 +526,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           const px = (point.x - bottomLeft.x) * scale;
           const py = (point.y - topRight.y) * scale;
           const rect = mapDiv.getBoundingClientRect();
+          menuJustOpened = true;
+          setTimeout(() => { menuJustOpened = false; }, 400);
           setReportMenuPos({
             lat: coords.lat,
             lng: coords.lng,
-            x: Math.min(px, rect.width - 180),
-            y: Math.min(py, rect.height - 160),
+            x: Math.min(px, rect.width - 200),
+            y: Math.min(py, rect.height - 280),
           });
         }
       }
@@ -573,6 +576,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Dismiss on normal tap
     map.addListener("click", (e: any) => {
+      if (menuJustOpened) return;
       setReportMenuPos(null);
     });
 
@@ -1476,88 +1480,91 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
-      {/* Context menu on map tap/long-press */}
-      {reportMenuPos && !showReportForm && (
-        <div
-          className="absolute z-[600]"
-          style={{ left: reportMenuPos.x, top: reportMenuPos.y }}
-        >
-          <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-1 min-w-[180px] animate-in zoom-in-95 fade-in">
-            {/* Navigate Here */}
-            <button
-              onClick={() => {
-                startFreeNav({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
-                setReportMenuPos(null);
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-            >
-              <Route className="w-4 h-4" />
-              Navigate Here
-            </button>
-            <div className="border-t border-border my-0.5" />
-            <button
-              onClick={() => {
-                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
-                setShowReportForm(true);
-                setReportMenuPos(null);
-                setReportSeverity("closed");
-                setReportNotes("");
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
-            >
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              Report Road Closed
-            </button>
-            <button
-              onClick={() => {
-                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
-                setShowReportForm(true);
-                setReportMenuPos(null);
-                setReportSeverity("lane_closed");
-                setReportNotes("");
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
-            >
-              <Construction className="w-4 h-4 text-warning" />
-              Report Lane Closed
-            </button>
-            <button
-              onClick={() => {
-                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
-                setShowReportForm(true);
-                setReportMenuPos(null);
-                setReportSeverity("cones");
-                setReportNotes("");
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
-            >
-              <TriangleAlert className="w-4 h-4 text-warning" />
-              Report Cones
-            </button>
-            <button
-              onClick={() => {
-                setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
-                setShowReportForm(true);
-                setReportMenuPos(null);
-                setReportSeverity("accident");
-                setReportNotes("");
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-accent transition-colors"
-            >
-              <Car className="w-4 h-4 text-destructive" />
-              Report Accident
-            </button>
-            <div className="border-t border-border my-0.5" />
-            <button
+      {/* Context menu on map tap/long-press — bottom sheet style */}
+      <AnimatePresence>
+        {reportMenuPos && !showReportForm && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 z-[590] bg-black/20"
               onClick={() => setReportMenuPos(null)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:bg-accent transition-colors"
+            />
+            {/* Menu sheet */}
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", damping: 28, stiffness: 350 }}
+              className="absolute bottom-0 left-0 right-0 z-[600] px-3 pb-4"
             >
-              <X className="w-3.5 h-3.5" />
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+              <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+                {/* Handle bar */}
+                <div className="flex justify-center pt-2.5 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+                </div>
+                {/* Navigate Here — hero action */}
+                <div className="px-3 pb-2">
+                  <button
+                    onClick={() => {
+                      startFreeNav({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                      setReportMenuPos(null);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-md hover:bg-primary/90 transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-primary-foreground/20 flex items-center justify-center shrink-0">
+                      <Route className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-semibold">Navigate Here</div>
+                      <div className="text-[11px] opacity-80 font-normal">Get directions to this location</div>
+                    </div>
+                  </button>
+                </div>
+                {/* Report actions */}
+                <div className="px-3 pb-1">
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 pb-1.5">Report an issue</div>
+                </div>
+                <div className="px-3 pb-2 grid grid-cols-2 gap-1.5">
+                  {[
+                    { severity: "closed", label: "Road Closed", icon: <AlertTriangle className="w-4 h-4" />, color: "text-destructive" },
+                    { severity: "lane_closed", label: "Lane Closed", icon: <Construction className="w-4 h-4" />, color: "text-amber-500" },
+                    { severity: "cones", label: "Cones", icon: <TriangleAlert className="w-4 h-4" />, color: "text-amber-500" },
+                    { severity: "accident", label: "Accident", icon: <Car className="w-4 h-4" />, color: "text-destructive" },
+                  ].map((item) => (
+                    <button
+                      key={item.severity}
+                      onClick={() => {
+                        setReportCoords({ lat: reportMenuPos.lat, lng: reportMenuPos.lng });
+                        setShowReportForm(true);
+                        setReportMenuPos(null);
+                        setReportSeverity(item.severity);
+                        setReportNotes("");
+                      }}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                    >
+                      <span className={item.color}>{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Cancel */}
+                <div className="px-3 pb-3">
+                  <button
+                    onClick={() => setReportMenuPos(null)}
+                    className="w-full py-2.5 text-xs font-medium text-muted-foreground rounded-xl hover:bg-accent transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Report closure form */}
       {showReportForm && reportCoords && (
