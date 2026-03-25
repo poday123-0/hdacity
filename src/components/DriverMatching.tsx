@@ -145,7 +145,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     });
   }, []);
 
-  // Track driver location for speed & ETA
+  // Fetch vehicle map icon from trip
+  useEffect(() => {
+    if (resolvedMapIconUrl || !tripId) return;
+    const fetchIcon = async () => {
+      const { data: trip } = await supabase.from("trips").select("vehicle_type_id, driver_id").eq("id", tripId).single();
+      if (trip?.vehicle_type_id) {
+        const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", trip.vehicle_type_id).single();
+        if (vt?.map_icon_url) { setResolvedMapIconUrl(vt.map_icon_url); return; }
+      }
+      if (trip?.driver_id) {
+        const { data: loc } = await supabase.from("driver_locations").select("vehicle_type_id").eq("driver_id", trip.driver_id).single();
+        if (loc?.vehicle_type_id) {
+          const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", loc.vehicle_type_id).single();
+          if (vt?.map_icon_url) setResolvedMapIconUrl(vt.map_icon_url);
+        }
+      }
+    };
+    fetchIcon();
+  }, [tripId, resolvedMapIconUrl]);
+
+
   useEffect(() => {
     if (!tripId) return;
 
