@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, MapPin, Undo2, Trash } from "lucide-react";
+import { Plus, X, Pencil, Trash2, MapPin, Undo2, Trash, Download, Loader2 } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
@@ -21,6 +21,7 @@ const AdminLocations = () => {
   const [form, setForm] = useState(emptyForm);
   const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([]);
   const [drawingMode, setDrawingMode] = useState(false);
+  const [fetchingPlaces, setFetchingPlaces] = useState<string | null>(null);
   const { isLoaded } = useGoogleMaps();
 
   const mapRef = useRef<HTMLDivElement>(null);
@@ -248,6 +249,24 @@ const AdminLocations = () => {
     setDrawingMode(false);
   };
 
+  const fetchPlacesForArea = async (locationId: string) => {
+    setFetchingPlaces(locationId);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-area-places", {
+        body: { service_location_id: locationId },
+      });
+      if (error) throw error;
+      toast({
+        title: "Places fetched!",
+        description: `Found ${data.total_found} places, ${data.inserted} new added (${data.duplicates_skipped} duplicates skipped)`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error fetching places", description: err.message, variant: "destructive" });
+    } finally {
+      setFetchingPlaces(null);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.name || !form.lat || !form.lng) {
       toast({ title: "Please provide name and set center point on the map", variant: "destructive" });
@@ -261,16 +280,30 @@ const AdminLocations = () => {
       lng: parseFloat(form.lng),
       polygon: polygonPoints.length >= 3 ? polygonPoints : null,
     };
-    const { error } = editingId
-      ? await supabase.from("service_locations").update(payload).eq("id", editingId)
-      : await supabase.from("service_locations").insert(payload);
 
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    let savedId = editingId;
+    if (editingId) {
+      const { error } = await supabase.from("service_locations").update(payload).eq("id", editingId);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
     } else {
-      toast({ title: editingId ? "Service area updated!" : "Service area added!" });
-      resetForm();
-      fetchLocations();
+      const { data: inserted, error } = await supabase.from("service_locations").insert(payload).select("id").single();
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      savedId = inserted.id;
+    }
+
+    toast({ title: editingId ? "Service area updated!" : "Service area added!" });
+    resetForm();
+    fetchLocations();
+
+    // Auto-fetch Google Places for this area
+    if (savedId && polygonPoints.length >= 3) {
+      fetchPlacesForArea(savedId);
     }
   };
 
@@ -423,6 +456,19 @@ const AdminLocations = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => fetchPlacesForArea(loc.id)}
+                          disabled={fetchingPlaces === loc.id}
+                          className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1"
+                          title="Fetch all Google Places within this area"
+                        >
+                          {fetchingPlaces === loc.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Download className="w-3 h-3" />
+                          )}
+                          {fetchingPlaces === loc.id ? "Fetching…" : "Fetch Places"}
+                        </button>
                         <button onClick={() => toggleActive(loc.id, loc.is_active)} className="text-xs font-medium text-primary hover:underline">
                           {loc.is_active ? "Deactivate" : "Activate"}
                         </button>
