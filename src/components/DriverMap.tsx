@@ -266,6 +266,89 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
   }, [currentStepIndex, navSteps, navEta, navDistance, onNavStepChange]);
 
+  // Free navigation: start navigating to a tapped location
+  const startFreeNav = useCallback((target: { lat: number; lng: number }) => {
+    const g = (window as any).google;
+    const map = mapInstance.current;
+    if (!g?.maps || !map || !currentPos) return;
+
+    // Clear previous free nav
+    stopFreeNav();
+    setFreeNavTarget(target);
+
+    // Place destination marker
+    const marker = new g.maps.Marker({
+      map,
+      position: target,
+      icon: {
+        path: g.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#6366f1",
+        fillOpacity: 1,
+        strokeColor: "#fff",
+        strokeWeight: 3,
+      },
+      zIndex: 3000,
+    });
+    freeNavMarkerRef.current = marker;
+
+    // Create polyline
+    const polyline = new g.maps.Polyline({
+      map,
+      strokeColor: "#6366f1",
+      strokeWeight: 6,
+      strokeOpacity: 0.8,
+      zIndex: 99,
+    });
+    freeNavPolylineRef.current = polyline;
+
+    const fetchFreeRoute = () => {
+      const driverPos = currentPosRef.current;
+      if (!driverPos) return;
+
+      const ds = new g.maps.DirectionsService();
+      ds.route({
+        origin: driverPos,
+        destination: target,
+        travelMode: g.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
+      }).then((raw: any) => {
+        const result = selectShortestRoute(raw);
+        const leg = result.routes?.[0]?.legs?.[0];
+        if (!leg) return;
+
+        // Extract path
+        const pathCoords: { lat: number; lng: number }[] = [];
+        for (const step of leg.steps) {
+          for (const p of (step.path || [])) {
+            pathCoords.push({ lat: p.lat(), lng: p.lng() });
+          }
+        }
+        if (freeNavPolylineRef.current) freeNavPolylineRef.current.setPath(pathCoords);
+        setFreeNavEta(leg.duration?.text || "");
+        setFreeNavDist(leg.distance?.text || "");
+      }).catch(() => {});
+    };
+
+    fetchFreeRoute();
+    freeNavIntervalRef.current = setInterval(fetchFreeRoute, 10000);
+  }, [currentPos]);
+
+  const stopFreeNav = useCallback(() => {
+    setFreeNavTarget(null);
+    setFreeNavEta("");
+    setFreeNavDist("");
+    if (freeNavPolylineRef.current) { freeNavPolylineRef.current.setMap(null); freeNavPolylineRef.current = null; }
+    if (freeNavMarkerRef.current) { freeNavMarkerRef.current.setMap(null); freeNavMarkerRef.current = null; }
+    if (freeNavIntervalRef.current) { clearInterval(freeNavIntervalRef.current); freeNavIntervalRef.current = null; }
+  }, []);
+
+  // Cleanup free nav on unmount
+  useEffect(() => () => { stopFreeNav(); }, [stopFreeNav]);
+
+  const currentPosRef = useRef(currentPos);
+  currentPosRef.current = currentPos;
+
   // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
   // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
   useEffect(() => {
