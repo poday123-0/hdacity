@@ -65,7 +65,8 @@ import {
   XCircle,
   Ban,
   FileText,
-  Shield } from
+  Shield,
+  Search } from
 "lucide-react";
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
