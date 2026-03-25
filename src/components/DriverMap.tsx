@@ -576,6 +576,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Dismiss on normal tap
     map.addListener("click", (e: any) => {
+      if (menuJustOpened) return;
       setReportMenuPos(null);
     });
 
