@@ -10,10 +10,14 @@ export interface RoadClosure {
   expires_at: string | null;
   created_at: string;
   is_active: boolean;
+  status: string;
+  reported_by: string | null;
+  reported_by_type: string;
 }
 
 export const useRoadClosures = () => {
   const [closures, setClosures] = useState<RoadClosure[]>([]);
+  const [pendingClosures, setPendingClosures] = useState<RoadClosure[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchClosures = useCallback(async () => {
@@ -24,12 +28,14 @@ export const useRoadClosures = () => {
       .order("created_at", { ascending: false });
 
     if (data) {
-      // Filter out expired
       const now = new Date().toISOString();
       const active = (data as any[]).filter(
         (c) => !c.expires_at || c.expires_at > now
       );
-      setClosures(active as RoadClosure[]);
+      // Approved closures visible to everyone
+      setClosures(active.filter((c) => (c.status || "approved") === "approved") as RoadClosure[]);
+      // Pending closures for dispatch review
+      setPendingClosures(active.filter((c) => c.status === "pending") as RoadClosure[]);
     }
     setLoading(false);
   }, []);
@@ -53,6 +59,9 @@ export const useRoadClosures = () => {
     notes: string;
     severity: string;
     expires_at: string | null;
+    status?: string;
+    reported_by?: string;
+    reported_by_type?: string;
   }) => {
     const { error } = await supabase.from("road_closures").insert({
       closure_type: closure.closure_type,
@@ -60,7 +69,10 @@ export const useRoadClosures = () => {
       notes: closure.notes,
       severity: closure.severity,
       expires_at: closure.expires_at,
-    });
+      status: closure.status || "approved",
+      reported_by: closure.reported_by || null,
+      reported_by_type: closure.reported_by_type || "dispatch",
+    } as any);
     if (error) throw error;
   };
 
@@ -68,5 +80,13 @@ export const useRoadClosures = () => {
     await supabase.from("road_closures").update({ is_active: false } as any).eq("id", id);
   };
 
-  return { closures, loading, addClosure, removeClosure, refetch: fetchClosures };
+  const approveClosure = async (id: string) => {
+    await supabase.from("road_closures").update({ status: "approved" } as any).eq("id", id);
+  };
+
+  const rejectClosure = async (id: string) => {
+    await supabase.from("road_closures").update({ is_active: false, status: "rejected" } as any).eq("id", id);
+  };
+
+  return { closures, pendingClosures, loading, addClosure, removeClosure, approveClosure, rejectClosure, refetch: fetchClosures };
 };
