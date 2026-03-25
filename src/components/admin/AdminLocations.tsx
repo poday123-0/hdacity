@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, MapPin, Undo2, Trash } from "lucide-react";
+import { Plus, X, Pencil, Trash2, MapPin, Undo2, Trash, Download, Loader2 } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
