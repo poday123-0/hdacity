@@ -779,6 +779,10 @@ const DispatchTripForm = ({
                   cancelled_at: new Date().toISOString(),
                   cancel_reason: "No driver available - auto cancelled",
                 }).eq("id", tripId);
+                // SMS passenger that no driver accepted
+                if (customerPhone.trim()) {
+                  supabase.functions.invoke("send-no-vehicle-sms", { body: { phone: customerPhone.trim() } }).catch(console.warn);
+                }
                 onTripCreated();
               }
             }, timeoutMs);
