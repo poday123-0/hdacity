@@ -222,6 +222,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const freeNavPolylineRef = useRef<any>(null);
   const freeNavMarkerRef = useRef<any>(null);
   const freeNavIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
   const routeFetchInFlightRef = useRef(false);
