@@ -2687,16 +2687,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             onClick={() => setShowLocationSearch(false)}
           >
             <motion.div
-              initial={{ y: "100%" }}
+              initial={{ y: "-100%" }}
               animate={{ y: 0 }}
-              exit={{ y: "100%" }}
+              exit={{ y: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 max-h-[80vh] bg-card rounded-t-3xl shadow-2xl border-t border-border overflow-hidden"
+              className="absolute top-0 left-0 right-0 max-h-[100vh] bg-card shadow-2xl border-b border-border overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
-              <div className="p-4 space-y-3">
-                <h3 className="text-lg font-semibold text-foreground">Search Location</h3>
+              <div className="p-4 space-y-3 safe-top">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">Search Location</h3>
+                  <button onClick={() => setShowLocationSearch(false)} className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
@@ -2709,15 +2713,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       const q = e.target.value;
                       setLocationSearchQuery(q);
                       if (q.trim().length < 1) { setLocationSearchResults([]); return; }
-                      const lower = q.toLowerCase();
-                      // Search service_locations
                       const { data: svcData } = await supabase
                         .from("service_locations")
                         .select("name, address, lat, lng")
                         .eq("is_active", true)
                         .ilike("name", `%${q}%`)
                         .limit(10);
-                      // Search named_locations
                       const { data: namedData } = await supabase
                         .from("named_locations")
                         .select("name, address, lat, lng")
@@ -2732,7 +2733,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     }}
                   />
                 </div>
-                <div className="max-h-[50vh] overflow-y-auto space-y-1 pb-safe">
+                <div className="max-h-[60vh] overflow-y-auto space-y-1 pb-safe">
                   {locationSearchResults.length === 0 && locationSearchQuery.trim().length > 0 && (
                     <p className="text-center text-muted-foreground text-sm py-8">No locations found</p>
                   )}
