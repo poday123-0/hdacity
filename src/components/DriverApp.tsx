@@ -318,7 +318,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setOnlineTimeDisplay(formatOnlineTime(elapsed));
     };
     tick();
-    onlineTimerRef.current = setInterval(tick, 1000);
+    onlineTimerRef.current = setInterval(tick, 30000); // Every 30s — display only shows minutes
 
     return () => { if (onlineTimerRef.current) clearInterval(onlineTimerRef.current); };
   }, [screen, onlineStorageKey]);
@@ -902,7 +902,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
 
-    const interval = setInterval(checkTakeover, 15000);
+    const interval = setInterval(checkTakeover, 60000); // 60s — realtime handles most cases
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         checkTakeover();
@@ -1201,7 +1201,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 10s for new requested/scheduled trips AND direct-assigned trips
+    // Fallback: Poll every 30s for new requested/scheduled trips AND direct-assigned trips
+    // Realtime handles most cases — this is just a safety net
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -1243,7 +1244,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 15000);
+    }, 30000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification sound)
     const onVisibilityChange = async () => {
@@ -1326,7 +1327,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
 
     checkBlockStatus();
-    const poll = setInterval(checkBlockStatus, 30000); // Check every 30s
+    const poll = setInterval(checkBlockStatus, 60000); // Check every 60s
     return () => clearInterval(poll);
   }, [screen, userProfile?.id, selectedVehicleId, driverVehicles]);
 
@@ -1375,7 +1376,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
     checkScheduled();
-    const interval = setInterval(checkScheduled, 30000);
+    const interval = setInterval(checkScheduled, 60000); // 60s — scheduled trips don't change often
     return () => clearInterval(interval);
   }, [screen, userProfile?.id]);
 
@@ -1431,13 +1432,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Polling fallback every 10s in case realtime misses the event
+    // Polling fallback every 30s in case realtime misses the event
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
         await handleTripCancelledOrTaken(data);
       }
-    }, 10000);
+    }, 30000);
 
     return () => {
       supabase.removeChannel(channel);
