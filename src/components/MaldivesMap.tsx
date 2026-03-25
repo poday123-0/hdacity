@@ -284,13 +284,24 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       if (driverLat != null && driverLng != null) bounds.extend({ lat: driverLat, lng: driverLng });
       map.fitBounds(bounds, 60);
     }
-  }, [rideData?.pickup?.lat, rideData?.dropoff?.lat, rideData?.driverLat, rideData?.driverLng, rideData?.showRoute]);
+  }, [rideData?.pickup?.lat, rideData?.dropoff?.lat, rideData?.driverLat, rideData?.driverLng, rideData?.driverIconUrl, rideData?.showRoute]);
 
   // Smooth driver marker update
   useEffect(() => {
     if (!driverMarkerRef.current || rideData?.driverLat == null || rideData?.driverLng == null) return;
     driverMarkerRef.current.setPosition({ lat: rideData.driverLat, lng: rideData.driverLng });
   }, [rideData?.driverLat, rideData?.driverLng]);
+
+  useEffect(() => {
+    const g = (window as any).google;
+    if (!driverMarkerRef.current || !g?.maps || !rideData?.driverIconUrl) return;
+    driverMarkerRef.current.setIcon({
+      url: rideData.driverIconUrl,
+      scaledSize: new g.maps.Size(36, 36),
+      anchor: new g.maps.Point(18, 18),
+    });
+    driverMarkerRef.current.setOptions({ optimized: false });
+  }, [rideData?.driverIconUrl]);
 
   // Vehicle markers
   useEffect(() => {
@@ -337,6 +348,10 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
       if (existing) {
         existing.setPosition({ lat: v.lat, lng: v.lng });
+        if (v.imageUrl) {
+          existing.setIcon({ url: v.imageUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) });
+          existing.setOptions({ optimized: false });
+        }
         (existing as any)._vdata = v;
         newMarkerRefs.push(existing);
         existingMap.delete(vid);

@@ -51,6 +51,7 @@ interface DriverMatchingProps {
 }
 
 const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBankDetails = false, pickupName, dropoffName, onCancelTrip }: DriverMatchingProps) => {
+  const normalizedTripStatus = tripStatus === "started" ? "in_progress" : tripStatus;
   const driverName = driver?.name || "Driver";
   const initials = driver?.initials || driverName.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const rating = driver?.rating || 4.9;
@@ -165,10 +166,17 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   useEffect(() => {
     if (resolvedMapIconUrl || !tripId) return;
     const fetchIcon = async () => {
-      const { data: trip } = await supabase.from("trips").select("vehicle_type_id, driver_id").eq("id", tripId).single();
+      const { data: trip } = await supabase.from("trips").select("vehicle_type_id, vehicle_id, driver_id").eq("id", tripId).single();
       if (trip?.vehicle_type_id) {
         const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", trip.vehicle_type_id).single();
         if (vt?.map_icon_url) { setResolvedMapIconUrl(vt.map_icon_url); return; }
+      }
+      if (trip?.vehicle_id) {
+        const { data: vehicle } = await supabase.from("vehicles").select("vehicle_type_id").eq("id", trip.vehicle_id).single();
+        if (vehicle?.vehicle_type_id) {
+          const { data: vt } = await supabase.from("vehicle_types").select("map_icon_url").eq("id", vehicle.vehicle_type_id).single();
+          if (vt?.map_icon_url) { setResolvedMapIconUrl(vt.map_icon_url); return; }
+        }
       }
       if (trip?.driver_id) {
         const { data: loc } = await supabase.from("driver_locations").select("vehicle_type_id").eq("driver_id", trip.driver_id).single();
@@ -204,7 +212,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
       lastLocRef.current = { lat: loc.lat, lng: loc.lng, time: now };
 
       // Determine target: before pickup use pickup coords, during trip use dropoff coords
-      const isPrePickup = tripStatus === "accepted" || tripStatus === "arrived";
+      const isPrePickup = normalizedTripStatus === "accepted" || normalizedTripStatus === "arrived";
       const targetLat = isPrePickup ? (trip.pickup_lat ? Number(trip.pickup_lat) : null) : (trip.dropoff_lat ? Number(trip.dropoff_lat) : null);
       const targetLng = isPrePickup ? (trip.pickup_lng ? Number(trip.pickup_lng) : null) : (trip.dropoff_lng ? Number(trip.dropoff_lng) : null);
 
@@ -237,11 +245,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     });
     const interval = setInterval(fetchDriverLocation, pollMs);
     return () => clearInterval(interval);
-  }, [tripId, speed]);
+  }, [tripId, speed, normalizedTripStatus]);
 
   // Trip elapsed timer - based on started_at and resumes from persisted storage on refresh
   useEffect(() => {
-    if (tripStatus !== "in_progress" || !tripId) { setTripElapsed(0); return; }
+    if (normalizedTripStatus !== "in_progress" || !tripId) { setTripElapsed(0); return; }
 
     let timer: ReturnType<typeof setInterval>;
     const startTimer = (timestamp: string) => {
@@ -267,11 +275,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
 
     initTimer();
     return () => { if (timer) clearInterval(timer); };
-  }, [tripStatus, tripId]);
+  }, [normalizedTripStatus, tripId]);
 
   // Accepted elapsed timer - resumes from persisted storage on refresh
   useEffect(() => {
-    if (!tripId || tripStatus !== "accepted") { setAcceptedElapsed(0); return; }
+    if (!tripId || normalizedTripStatus !== "accepted") { setAcceptedElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
     const startTimer = (timestamp: string) => {
       const t = new Date(timestamp).getTime();
@@ -293,11 +301,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     };
     initTimer();
     return () => { if (timer) clearInterval(timer); };
-  }, [tripStatus, tripId]);
+  }, [normalizedTripStatus, tripId]);
 
   // Arrived waiting timer - resumes from persisted storage on refresh
   useEffect(() => {
-    if (!tripId || tripStatus !== "arrived") { setArrivedElapsed(0); setArrivedTimeStr(null); return; }
+    if (!tripId || normalizedTripStatus !== "arrived") { setArrivedElapsed(0); setArrivedTimeStr(null); return; }
     let timer: ReturnType<typeof setInterval>;
     const startTimer = (timestamp: string) => {
       const arrivedDate = new Date(timestamp);
@@ -321,7 +329,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     };
     initTimer();
     return () => { if (timer) clearInterval(timer); };
-  }, [tripStatus, tripId]);
+  }, [normalizedTripStatus, tripId]);
 
 
   const copyToClipboard = (text: string, id: string) => {
@@ -374,7 +382,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     arrived: { label: "Driver has arrived!", icon: MapPin, color: "text-green-500" },
     accepted: { label: "Driver is on the way", icon: Navigation, color: "text-primary" },
   };
-  const status = statusConfig[tripStatus as keyof typeof statusConfig] || statusConfig.accepted;
+  const status = statusConfig[normalizedTripStatus as keyof typeof statusConfig] || statusConfig.accepted;
   const StatusIcon = status.icon;
 
   return (
@@ -400,7 +408,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               <p className="text-sm font-bold text-foreground truncate">{driverName}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className={`font-semibold ${status.color}`}>{status.label}</span>
-                {etaMinutes && tripStatus !== "arrived" && (
+                {etaMinutes && normalizedTripStatus !== "arrived" && (
                   <span className="text-foreground font-mono">• {etaMinutes} min</span>
                 )}
               </div>
@@ -477,7 +485,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             {/* Status Header */}
             <div className="px-4 pt-4 pb-1 flex items-center gap-2">
               <motion.div
-                animate={{ rotate: tripStatus === "in_progress" ? [0, 15, -15, 0] : 0 }}
+                animate={{ rotate: normalizedTripStatus === "in_progress" ? [0, 15, -15, 0] : 0 }}
                 transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
               >
                 <StatusIcon className={`w-5 h-5 ${status.color}`} />
@@ -486,13 +494,13 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             </div>
             {/* Timer row */}
             <div className="px-4 pb-2 flex justify-center">
-              {tripStatus === "in_progress" && (
+              {normalizedTripStatus === "in_progress" && (
                 <AnimatedTimer seconds={tripElapsed} label="Trip time" variant="default" />
               )}
-              {tripStatus === "accepted" && (
+              {normalizedTripStatus === "accepted" && (
                 <AnimatedTimer seconds={acceptedElapsed} label="Since accepted" variant="default" />
               )}
-              {tripStatus === "arrived" && (
+              {normalizedTripStatus === "arrived" && (
                 <AnimatedTimer seconds={arrivedElapsed} label="Driver waiting" variant="default" />
               )}
             </div>
@@ -500,10 +508,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
             {/* Animated Progress Bar with Vehicle Icon */}
             <div className="px-4 pb-3">
               {(() => {
-                const progressPct = tripStatus === "arrived" ? 33
-                  : tripStatus === "in_progress" && totalDistanceKm && distanceKm !== null
+                const progressPct = normalizedTripStatus === "arrived" ? 33
+                  : normalizedTripStatus === "in_progress" && totalDistanceKm && distanceKm !== null
                     ? Math.min(95, Math.max(5, ((totalDistanceKm - distanceKm) / totalDistanceKm) * 100))
-                    : tripStatus === "in_progress" ? 50
+                    : normalizedTripStatus === "in_progress" ? 50
                     : 15;
                 return (
                   <div className="relative mt-2 mb-1">
@@ -561,10 +569,10 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                   animate={{ scale: 1, opacity: 1 }}
                   className="text-base font-bold text-foreground leading-none"
                 >
-                  {tripStatus === "arrived" ? (arrivedTimeStr || "Here") : etaMinutes ? `${etaMinutes}` : "..."}
+                  {normalizedTripStatus === "arrived" ? (arrivedTimeStr || "Here") : etaMinutes ? `${etaMinutes}` : "..."}
                 </motion.span>
                 <span className="text-[9px] text-muted-foreground mt-0.5">
-                  {tripStatus === "arrived" ? "Arrived" : tripStatus === "accepted" ? "to pickup" : "min ETA"}
+                  {normalizedTripStatus === "arrived" ? "Arrived" : normalizedTripStatus === "accepted" ? "to pickup" : "min ETA"}
                 </span>
               </motion.div>
 
@@ -584,7 +592,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 >
                   {distanceKm !== null ? distanceKm : "..."}
                 </motion.span>
-                <span className="text-[9px] text-muted-foreground mt-0.5">{tripStatus === "in_progress" ? "km left" : "km away"}</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">{normalizedTripStatus === "in_progress" ? "km left" : "km away"}</span>
               </motion.div>
 
               {/* Speed */}

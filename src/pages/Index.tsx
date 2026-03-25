@@ -123,6 +123,7 @@ const Index = () => {
       localStorage.setItem(`hda_trip_timer:${tripId}:${field}`, value);
     } catch {}
   };
+  const normalizeTripStatus = (status?: string | null) => status === "started" ? "in_progress" : (status || "accepted");
 
   // Passenger font size
   const [passengerTextSize, setPassengerTextSize] = useState<number>(() => {
@@ -292,10 +293,11 @@ const Index = () => {
       if (!activeTrip) return;
 
       // Set the ref BEFORE setting state to prevent realtime from re-toasting
-      lastPlayedStatusRef.current = activeTrip.status;
+      const restoredStatus = normalizeTripStatus(activeTrip.status);
+      lastPlayedStatusRef.current = restoredStatus;
 
       setCurrentTripId(activeTrip.id);
-      setTripStatus(activeTrip.status);
+      setTripStatus(restoredStatus);
       setEstimatedFare(activeTrip.estimated_fare || 0);
       persistTripTimerTimestamp(activeTrip.id, "accepted_at", activeTrip.accepted_at);
       persistTripTimerTimestamp(activeTrip.id, "arrived_at", activeTrip.arrived_at);
@@ -314,7 +316,7 @@ const Index = () => {
         setPassengerScreen("home");
       } else if (activeTrip.status === "requested") {
         setPassengerScreen("searching");
-      } else if (["accepted", "arrived", "in_progress"].includes(activeTrip.status)) {
+      } else if (["accepted", "arrived", "started", "in_progress"].includes(activeTrip.status)) {
         // Fetch driver info
         if (activeTrip.driver_id) {
           const [profileRes, banksRes, favaraRes, vehicleRes] = await Promise.all([
@@ -351,6 +353,11 @@ const Index = () => {
 
     restoreTrip();
   }, [userProfile?.id, phase]);
+
+  useEffect(() => {
+    if (!driverIconUrl) return;
+    setMatchedDriver((prev: any) => prev ? { ...prev, map_icon_url: driverIconUrl } : prev);
+  }, [driverIconUrl]);
 
   // Build ride data for the map
   const rideMapData = useMemo(() => {
@@ -859,7 +866,7 @@ const Index = () => {
 
   // Handle passenger trip status update (shared by realtime + polling)
   const handlePassengerTripUpdate = useCallback(async (trip: any) => {
-    const status = trip.status;
+    const status = normalizeTripStatus(trip.status);
     setTripStatus(status);
     persistTripTimerTimestamp(trip.id, "accepted_at", trip.accepted_at);
     persistTripTimerTimestamp(trip.id, "arrived_at", trip.arrived_at);
@@ -919,9 +926,9 @@ const Index = () => {
       }
       setPassengerScreen("driver-matching");
     } else if (status === "arrived") {
-      // Stay on driver-matching but update status
+      setPassengerScreen("driver-matching");
     } else if (status === "in_progress") {
-      // Stay on driver-matching, show bank details
+      setPassengerScreen("driver-matching");
     } else if (status === "completed") {
       setPassengerScreen("feedback");
     } else if (status === "cancelled" && !isNoDriverCancel) {
