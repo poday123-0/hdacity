@@ -452,8 +452,8 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                       transition={{ duration: 1, ease: "easeOut" }}
                       style={{ transform: "translateX(-50%)" }}
                     >
-                      {mapIconUrl ? (
-                        <img src={mapIconUrl} alt="" className="w-7 h-7 object-contain drop-shadow-md" />
+                      {resolvedMapIconUrl ? (
+                        <img src={resolvedMapIconUrl} alt="" className="w-7 h-7 object-contain drop-shadow-md rotate-90" />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
                           <Navigation className="w-3 h-3 text-primary-foreground" />
