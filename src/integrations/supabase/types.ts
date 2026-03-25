@@ -1112,6 +1112,11 @@ export type Database = {
           notes: string | null
           reported_by: string | null
           reported_by_type: string | null
+          schedule_days: string[] | null
+          schedule_end_time: string | null
+          schedule_start_time: string | null
+          schedule_type: string
+          scheduled_date: string | null
           severity: string
           status: string
           updated_at: string
@@ -1127,6 +1132,11 @@ export type Database = {
           notes?: string | null
           reported_by?: string | null
           reported_by_type?: string | null
+          schedule_days?: string[] | null
+          schedule_end_time?: string | null
+          schedule_start_time?: string | null
+          schedule_type?: string
+          scheduled_date?: string | null
           severity?: string
           status?: string
           updated_at?: string
@@ -1142,6 +1152,11 @@ export type Database = {
           notes?: string | null
           reported_by?: string | null
           reported_by_type?: string | null
+          schedule_days?: string[] | null
+          schedule_end_time?: string | null
+          schedule_start_time?: string | null
+          schedule_type?: string
+          scheduled_date?: string | null
           severity?: string
           status?: string
           updated_at?: string

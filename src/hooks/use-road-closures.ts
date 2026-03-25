@@ -62,6 +62,11 @@ export const useRoadClosures = () => {
     status?: string;
     reported_by?: string;
     reported_by_type?: string;
+    schedule_type?: string;
+    schedule_days?: string[];
+    schedule_start_time?: string | null;
+    schedule_end_time?: string | null;
+    scheduled_date?: string | null;
   }) => {
     const { error } = await supabase.from("road_closures").insert({
       closure_type: closure.closure_type,
@@ -72,6 +77,11 @@ export const useRoadClosures = () => {
       status: closure.status || "approved",
       reported_by: closure.reported_by || null,
       reported_by_type: closure.reported_by_type || "dispatch",
+      schedule_type: closure.schedule_type || "immediate",
+      schedule_days: closure.schedule_days || [],
+      schedule_start_time: closure.schedule_start_time || null,
+      schedule_end_time: closure.schedule_end_time || null,
+      scheduled_date: closure.scheduled_date || null,
     } as any);
     if (error) throw error;
   };
