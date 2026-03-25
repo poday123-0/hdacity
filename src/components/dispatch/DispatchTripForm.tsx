@@ -780,22 +780,23 @@ const DispatchTripForm = ({
         }
       }
 
-      // Reset form but keep Car default
-      setCustomerPhone("");
-      setPickup(null);
-      setPickupQuery("");
-      setDropoff(null);
-      setStops([]);
-      setPassengerCount(1);
-      setLuggageCount(0);
-      setCenterCode("");
-      setCenterCodeResults([]);
-      setSelectedCenterCode(null);
-      // Default back to Car
-      const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
-      setSelectedVehicleType(carType?.id || vehicleTypes[0]?.id || "");
-      setSelectedDriverId("");
-      setEstimatedFare(null);
+      // For broadcast (Send to App), keep form data so dispatcher can re-assign without re-entering
+      if (!isBroadcast) {
+        setCustomerPhone("");
+        setPickup(null);
+        setPickupQuery("");
+        setDropoff(null);
+        setStops([]);
+        setPassengerCount(1);
+        setLuggageCount(0);
+        setCenterCode("");
+        setCenterCodeResults([]);
+        setSelectedCenterCode(null);
+        const carType = vehicleTypes.find(vt => vt.name.toLowerCase() === "car");
+        setSelectedVehicleType(carType?.id || vehicleTypes[0]?.id || "");
+        setSelectedDriverId("");
+        setEstimatedFare(null);
+      }
       onTripCreated();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
