@@ -76,7 +76,7 @@ const DispatchGoogleMap = () => {
   const { isLoaded, error } = useGoogleMaps();
 
   // Road closure state
-  const { closures, addClosure, removeClosure } = useRoadClosures();
+  const { closures, pendingClosures, addClosure, removeClosure, approveClosure, rejectClosure } = useRoadClosures();
   const [drawMode, setDrawMode] = useState<DrawMode>(null);
   const [linePoints, setLinePoints] = useState<Array<{ lat: number; lng: number }>>([]);
   const [showClosureForm, setShowClosureForm] = useState(false);
