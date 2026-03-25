@@ -248,6 +248,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [currentHeading, setCurrentHeading] = useState<number | null>(null);
   const [mapHeading, setMapHeading] = useState(0);
+  const currentPosRef = useRef(currentPos);
+  currentPosRef.current = currentPos;
 
   // Broadcast current nav step to parent
   useEffect(() => {
