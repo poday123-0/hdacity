@@ -1375,7 +1375,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
     checkScheduled();
-    const interval = setInterval(checkScheduled, 30000);
+    const interval = setInterval(checkScheduled, 60000); // 60s — scheduled trips don't change often
     return () => clearInterval(interval);
   }, [screen, userProfile?.id]);
 
