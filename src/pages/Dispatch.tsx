@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { toast } from "@/hooks/use-toast";
@@ -566,18 +566,21 @@ const Dispatch = () => {
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 30_000);
+    const interval = window.setInterval(refresh, 60_000); // refresh every 60s instead of 30s
 
-    // Realtime: auto-refresh center code index when trips change
+    // Realtime: debounced auto-refresh center code index when trips change
+    let ccDebounce: ReturnType<typeof setTimeout> | null = null;
     const ccChannel = supabase
       .channel("dispatch-center-code-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
-        refresh();
+        if (ccDebounce) clearTimeout(ccDebounce);
+        ccDebounce = setTimeout(() => refresh(), 5_000);
       })
       .subscribe();
 
     return () => {
       window.clearInterval(interval);
+      if (ccDebounce) clearTimeout(ccDebounce);
       supabase.removeChannel(ccChannel);
     };
   }, [isAuthed]);
@@ -645,7 +648,13 @@ const Dispatch = () => {
     load();
   }, [isAuthed]);
 
-  // Realtime: auto-refresh trips table on any change — instant status update + full refetch
+  // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
+  const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedRefreshTrips = useCallback(() => {
+    if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
+    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), 1_500);
+  }, []);
+
   useEffect(() => {
     if (!isAuthed) return;
     const channel = supabase
@@ -678,8 +687,8 @@ const Dispatch = () => {
           setRecentTrips((prev) => patchTrip(prev));
           setAppRequestTrips((prev) => patchTrip(prev));
           setLostTrips((prev) => patchTrip(prev));
-          // Full refetch for joined data (driver/vehicle details)
-          refreshTrips();
+          // Debounced full refetch for joined data (driver/vehicle details)
+          debouncedRefreshTrips();
         },
       )
       .on(
@@ -690,16 +699,17 @@ const Dispatch = () => {
           table: "trips",
         },
         () => {
-          refreshTrips();
+          debouncedRefreshTrips();
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
+      if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
     };
-  }, [isAuthed]);
+  }, [isAuthed, debouncedRefreshTrips]);
 
-  // Realtime: driver locations for online driver count updates
+  // Realtime: driver locations for online driver count updates (debounced — GPS updates are very frequent)
   useEffect(() => {
     if (!isAuthed) return;
     const refreshOnlineDrivers = async () => {
@@ -722,13 +732,16 @@ const Dispatch = () => {
       }));
       setOnlineDrivers(drivers);
     };
+    let driverDebounce: ReturnType<typeof setTimeout> | null = null;
     const driverChannel = supabase
       .channel("dispatch-driver-locations")
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
-        refreshOnlineDrivers();
+        if (driverDebounce) clearTimeout(driverDebounce);
+        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 3_000);
       })
       .subscribe();
     return () => {
+      if (driverDebounce) clearTimeout(driverDebounce);
       supabase.removeChannel(driverChannel);
     };
   }, [isAuthed]);
@@ -763,12 +776,12 @@ const Dispatch = () => {
       supabase.removeChannel(closureChannel);
     };
   }, [isAuthed]);
-  // Polling fallback: refresh every 5s for fast dispatch updates
+  // Polling fallback: refresh every 15s (realtime handles instant updates)
   useEffect(() => {
     if (!isAuthed) return;
     const interval = setInterval(() => {
       refreshTrips();
-    }, 5_000);
+    }, 15_000);
     return () => clearInterval(interval);
   }, [isAuthed]);
 
