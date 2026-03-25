@@ -861,12 +861,6 @@ const DispatchGoogleMap = () => {
           </div>
         </div>
       )}
-                Add Closure
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
