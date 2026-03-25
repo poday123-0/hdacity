@@ -83,8 +83,8 @@ const startHeartbeat = () => {
     heartbeatAudio.play().catch(() => {});
   } catch {}
 
-  // Periodically nudge audio to keep it alive (shorter interval for iOS)
-  const interval = isIOS() ? 5_000 : 10_000;
+  // Periodically nudge audio to keep it alive (longer intervals to save battery)
+  const interval = isIOS() ? 15_000 : 30_000;
   heartbeatInterval = setInterval(() => {
     // Resume Web Audio context if suspended
     resumeAudioContext();
