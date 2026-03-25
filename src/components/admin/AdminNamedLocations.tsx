@@ -96,7 +96,21 @@ const AdminNamedLocations = () => {
     batchMapInstance.current = new g.maps.Map(batchMapRef.current, {
       center: MALE_CENTER, zoom: 14, mapId: "hda_batch_loc_map",
     });
-  }, [isLoaded, batchMode]);
+
+    // Show existing approved locations as green pins
+    locations.filter(l => l.status === "approved" && l.is_active).forEach(loc => {
+      const el = document.createElement("div");
+      el.innerHTML = `<div style="background:#22c55e;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>`;
+      new g.maps.marker.AdvancedMarkerElement({
+        map: batchMapInstance.current,
+        position: { lat: loc.lat, lng: loc.lng },
+        content: el,
+        title: loc.name,
+      });
+    });
+  }, [isLoaded, batchMode, locations]);
 
   // -- Batch map click listener --
   useEffect(() => {
