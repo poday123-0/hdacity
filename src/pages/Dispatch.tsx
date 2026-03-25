@@ -47,6 +47,7 @@ import AdminVehicles from "@/components/admin/AdminVehicles";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
+import DispatchGoogleMap from "@/components/dispatch/DispatchGoogleMap";
 import {
   format,
   startOfDay,
