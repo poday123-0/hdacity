@@ -215,7 +215,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [reportNotes, setReportNotes] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  // Free navigation state (driver picks a destination on map)
+  const [freeNavTarget, setFreeNavTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [freeNavEta, setFreeNavEta] = useState("");
+  const [freeNavDist, setFreeNavDist] = useState("");
+  const freeNavPolylineRef = useRef<any>(null);
+  const freeNavMarkerRef = useRef<any>(null);
+  const freeNavIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const animatingRef = useRef(false);
   const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
   const routeFetchInFlightRef = useRef(false);
