@@ -281,32 +281,44 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Clear previous free nav
     stopFreeNav();
     setFreeNavTarget(target);
+    setFreeNavSteps([]);
+    setFreeNavStepIndex(0);
+    freeNavPathRef.current = [];
 
-    // Place destination marker
+    // Place destination marker with pulse
     const marker = new g.maps.Marker({
       map,
       position: target,
       icon: {
         path: g.maps.SymbolPath.CIRCLE,
-        scale: 10,
+        scale: 16,
         fillColor: "#6366f1",
         fillOpacity: 1,
         strokeColor: "#fff",
         strokeWeight: 3,
       },
+      label: { text: "📍", fontSize: "14px" },
       zIndex: 3000,
     });
     freeNavMarkerRef.current = marker;
 
-    // Create polyline
+    // Create polyline matching in-trip style
     const polyline = new g.maps.Polyline({
       map,
       strokeColor: "#6366f1",
-      strokeWeight: 6,
-      strokeOpacity: 0.8,
-      zIndex: 99,
+      strokeWeight: 7,
+      strokeOpacity: 0.85,
+      zIndex: 100,
     });
     freeNavPolylineRef.current = polyline;
+
+    // Switch to nav camera mode
+    map.setTilt(0);
+    if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
+    map.setZoom(18);
+    setFollowDriver(true);
+    userInteractingRef.current = false;
+    setUserPannedAway(false);
 
     const fetchFreeRoute = () => {
       const driverPos = currentPosRef.current;
@@ -323,21 +335,46 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         const leg = result.routes?.[0]?.legs?.[0];
         if (!leg) return;
 
-        // Extract path
+        // Extract road-snapped path from individual steps
         const pathCoords: { lat: number; lng: number }[] = [];
         for (const step of leg.steps) {
           for (const p of (step.path || [])) {
             pathCoords.push({ lat: p.lat(), lng: p.lng() });
           }
         }
+        freeNavPathRef.current = pathCoords;
         if (freeNavPolylineRef.current) freeNavPolylineRef.current.setPath(pathCoords);
         setFreeNavEta(leg.duration?.text || "");
         setFreeNavDist(leg.distance?.text || "");
+
+        // Extract turn-by-turn steps
+        const steps: NavStep[] = leg.steps.map((step: any) => ({
+          instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
+          distance: step.distance?.text || '',
+          maneuver: step.maneuver || undefined,
+          endLat: step.end_location?.lat?.() ?? undefined,
+          endLng: step.end_location?.lng?.() ?? undefined,
+        }));
+        setFreeNavSteps(steps);
+
+        // Auto-advance step based on proximity
+        if (driverPos && steps.length > 0) {
+          let closestIdx = 0;
+          let closestDist = Infinity;
+          for (let idx = 0; idx < leg.steps.length; idx++) {
+            const step = leg.steps[idx];
+            const endLat = step.end_location.lat();
+            const endLng = step.end_location.lng();
+            const dist = getDistanceMeters(driverPos, { lat: endLat, lng: endLng });
+            if (dist < closestDist) { closestDist = dist; closestIdx = idx; }
+          }
+          setFreeNavStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
+        }
       }).catch(() => {});
     };
 
     fetchFreeRoute();
-    freeNavIntervalRef.current = setInterval(fetchFreeRoute, 10000);
+    freeNavIntervalRef.current = setInterval(fetchFreeRoute, 8000);
   }, [currentPos]);
 
   const stopFreeNav = useCallback(() => {
