@@ -1945,16 +1945,14 @@ const Dispatch = () => {
             <AdminDutyHours />
           </div>
         )}
-        {activeTab === "hdc_map" && (
-          <div className="w-full h-full">
-            <iframe
-              src="https://hulhumale.maps.arcgis.com/apps/webappviewer/index.html?id=18781129603f429799a7f94292d2f67f"
-              className="w-full h-full border-0"
-              title="HDC Map"
-              allow="geolocation"
-            />
-          </div>
-        )}
+        <div className={`w-full h-full ${activeTab === "hdc_map" ? "" : "hidden"}`}>
+          <iframe
+            src="https://hulhumale.maps.arcgis.com/apps/webappviewer/index.html?id=18781129603f429799a7f94292d2f67f"
+            className="w-full h-full border-0"
+            title="HDC Map"
+            allow="geolocation"
+          />
+        </div>
       </div>
 
       {/* Chat history modal */}
