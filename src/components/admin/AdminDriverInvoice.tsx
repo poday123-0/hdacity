@@ -357,7 +357,7 @@ const AdminDriverInvoice = () => {
                   <input type="number" min={1} value={item.qty} onChange={e => updateLine(item.id, "qty", Number(e.target.value) || 1)}
                     className="bg-surface rounded-lg px-2 py-2 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/30" />
                   <input type="number" min={0} step={0.01} value={item.unitPrice || ""} onChange={e => updateLine(item.id, "unitPrice", Number(e.target.value) || 0)}
-                    placeholder="MVR"
+                    placeholder={currency}
                     className="bg-surface rounded-lg px-2 py-2 text-xs text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
                   <button onClick={() => removeLine(item.id)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
