@@ -462,7 +462,7 @@ const S = {
 };
 
 const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
-  ({ companyName, logoUrl, driver, billTo, tripDetails, invoiceNumber, invoiceDate, dueDate, lineItems, subtotal, notes }, ref) => {
+  ({ companyName, logoUrl, driver, billTo, tripDetails, invoiceNumber, invoiceDate, dueDate, lineItems, subtotal, notes, currency }, ref) => {
     const td = tripDetails;
     let hourlyDuration = "";
     if (td.type === "hourly" && td.hourlyStart && td.hourlyEnd) {
