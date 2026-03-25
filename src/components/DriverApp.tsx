@@ -766,6 +766,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
       }
 
+      // Start native background location tracking (no-op on web)
+      startBackgroundLocation(
+        (lat, lng) => {
+          setGpsEnabled(true);
+          setDriverLat(lat);
+          setDriverLng(lng);
+          upsertLocation(lat, lng);
+        },
+        { distanceFilter: MIN_MOVE_METERS }
+      );
+
       // Heartbeat — use admin-configured interval or default 30s (reduced from 10s to save battery)
       let driverIntervalMs = 30000;
       try {
