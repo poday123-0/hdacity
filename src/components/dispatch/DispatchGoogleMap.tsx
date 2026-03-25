@@ -191,6 +191,17 @@ const DispatchGoogleMap = () => {
     setShowSuggestions(false);
   }, []);
 
+  // Suppress Google Places pac-container dropdown on our search input
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll(".pac-container").forEach((el) => {
+        (el as HTMLElement).style.display = "none";
+      });
+    });
+    observer.observe(document.body, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+
 
   // Draw mode click listener
   useEffect(() => {
@@ -437,6 +448,7 @@ const DispatchGoogleMap = () => {
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
+      <div ref={mapRef} className="w-full h-full" />
 
       {/* Search bar */}
       <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-10">
@@ -446,6 +458,7 @@ const DispatchGoogleMap = () => {
             ref={inputRef}
             type="text"
             placeholder="Search service areas & named locations..."
+            autoComplete="off"
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-background/95 backdrop-blur-sm border border-border shadow-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
