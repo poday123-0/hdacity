@@ -577,8 +577,13 @@ const DispatchGoogleMap = () => {
       {/* Road closure toolbar */}
       <div className="absolute top-3 right-3 sm:right-4 z-10 flex flex-col gap-2">
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-1.5 flex flex-col gap-1">
-          <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             Road Closures
+            {pendingClosures.length > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground text-[8px] font-bold animate-pulse">
+                {pendingClosures.length}
+              </span>
+            )}
           </div>
           <button
             onClick={() => { if (drawMode === "point") cancelDraw(); else { cancelDraw(); setDrawMode("point"); } }}
