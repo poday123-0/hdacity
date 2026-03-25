@@ -762,7 +762,7 @@ const Dispatch = () => {
     return () => {
       supabase.removeChannel(closureChannel);
     };
-
+  }, [isAuthed]);
   // Polling fallback: refresh every 5s for fast dispatch updates
   useEffect(() => {
     if (!isAuthed) return;
