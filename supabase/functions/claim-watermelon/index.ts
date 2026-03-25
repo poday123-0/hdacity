@@ -108,6 +108,18 @@ Deno.serve(async (req) => {
       const freeUntil = new Date();
       freeUntil.setMonth(freeUntil.getMonth() + melon.fee_free_months);
       await supabase.from("profiles").update({ fee_free_until: freeUntil.toISOString() }).eq("id", user_id);
+      // Log a wallet transaction for admin visibility
+      let { data: wallet } = await supabase.from("wallets").select("id").eq("user_id", user_id).single();
+      if (!wallet) {
+        const { data: nw } = await supabase.from("wallets").insert({ user_id, balance: 0 }).select().single();
+        wallet = nw;
+      }
+      if (wallet) {
+        await supabase.from("wallet_transactions").insert({
+          wallet_id: wallet.id, user_id, amount: 0, type: "credit",
+          reason: "🏷️ Free Center Fee", notes: `${melon.fee_free_months} month${melon.fee_free_months > 1 ? "s" : ""} free fee from map reward (until ${freeUntil.toLocaleDateString()})`, status: "completed",
+        });
+      }
       reward_description = `${melon.fee_free_months} month${melon.fee_free_months > 1 ? "s" : ""} center fee-free!`;
     } else if (melon.promo_type === "free_trip") {
       let { data: wallet } = await supabase.from("wallets").select("id, balance").eq("user_id", user_id).single();

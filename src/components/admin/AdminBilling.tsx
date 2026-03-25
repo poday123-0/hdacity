@@ -433,7 +433,8 @@ const AdminBilling = () => {
                             ) : (
                               <span className="text-sm font-semibold text-foreground">{driverFee} MVR</span>
                             )}
-                            {temporaryFree && <p className="text-[10px] text-muted-foreground">until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
+                            {temporaryFree && <p className="text-[10px] text-muted-foreground">Free until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
+                            {temporaryFree && new Date(d.fee_free_until) < new Date("2099-01-01") && <p className="text-[9px] text-primary">🎁 From map promo / competition</p>}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`text-xs font-medium px-2 py-1 rounded-full ${d.status === "Active" ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
