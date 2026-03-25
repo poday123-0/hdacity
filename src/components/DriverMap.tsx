@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { selectShortestRoute } from "@/lib/shortest-route";
 import { useRoadClosures } from "@/hooks/use-road-closures";
+import { AlertTriangle, X as XIcon } from "lucide-react";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X } from "lucide-react";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
