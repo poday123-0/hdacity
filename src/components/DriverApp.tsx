@@ -253,6 +253,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const activeVehicleTypeIdRef = useRef<string | null>(null);
   const [driverPhaseElapsed, setDriverPhaseElapsed] = useState(0);
+  const [driverArrivedElapsed, setDriverArrivedElapsed] = useState(0);
   const [driverTripElapsed, setDriverTripElapsed] = useState(0);
   const forceSessionTakeoverLogout = useCallback(() => {
     // Guard: only fire once
@@ -1386,9 +1387,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, []);
 
-  // Driver phase elapsed timer (waiting at pickup / heading time)
+  // Driver accepted elapsed timer (only heading_to_pickup phase)
   useEffect(() => {
-    if (!currentTrip?.id || driverTripPhase === "in_progress") { setDriverPhaseElapsed(0); return; }
+    if (!currentTrip?.id || driverTripPhase !== "heading_to_pickup") { setDriverPhaseElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
     const init = async () => {
       const { data } = await supabase.from("trips").select("accepted_at").eq("id", currentTrip.id).single();
@@ -1405,7 +1406,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => { if (timer) clearInterval(timer); };
   }, [currentTrip?.id, driverTripPhase]);
 
-  // Driver trip elapsed timer (from started_at)
+  // Driver arrived waiting timer (resets to 0 when arrived)
+  useEffect(() => {
+    if (!currentTrip?.id || driverTripPhase !== "arrived") { setDriverArrivedElapsed(0); return; }
+    setDriverArrivedElapsed(0);
+    const timer = setInterval(() => setDriverArrivedElapsed(p => p + 1), 1000);
+    return () => clearInterval(timer);
+  }, [currentTrip?.id, driverTripPhase]);
+
+  // Driver trip elapsed timer (resets to 0 when trip starts)
   useEffect(() => {
     if (!currentTrip?.id || driverTripPhase !== "in_progress") { setDriverTripElapsed(0); return; }
     let timer: ReturnType<typeof setInterval>;
@@ -3251,7 +3260,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
         <ChevronUp className="w-4 h-4" />
         <span className="text-xs font-bold">{driverTripPhase === "heading_to_pickup" ? "Heading to pickup" : driverTripPhase === "arrived" ? "At pickup" : "Trip in progress"}</span>
-        <AnimatedTimer seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed} variant="badge" showIcon={false} className="bg-primary-foreground/20 text-primary-foreground [&_span]:text-primary-foreground" />
+        <AnimatedTimer seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed} variant="badge" showIcon={false} className="bg-primary-foreground/20 text-primary-foreground [&_span]:text-primary-foreground" />
       </button>
       }
 
@@ -3295,7 +3304,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             {/* Animated Timer Bar */}
             <div className="px-3 pb-2 flex justify-center">
               <AnimatedTimer
-                seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverPhaseElapsed}
+                seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed}
                 label={driverTripPhase === "in_progress" ? "Trip" : driverTripPhase === "arrived" ? "Waiting" : "En route"}
                 variant="badge"
                 className="bg-primary-foreground/15 text-primary-foreground [&_span]:text-primary-foreground [&_svg]:text-primary-foreground/70"
