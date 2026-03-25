@@ -68,8 +68,9 @@ const DispatchGoogleMap = () => {
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [namedLocations, setNamedLocations] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number }>>([]);
-  const [filteredLocations, setFilteredLocations] = useState<typeof namedLocations>([]);
+  const [namedLocations, setNamedLocations] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" }>>([]);
+  const [serviceAreas, setServiceAreas] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "service" }>>([]);
+  const [filteredResults, setFilteredResults] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" | "service" }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const { isLoaded, error } = useGoogleMaps();
 
