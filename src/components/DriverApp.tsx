@@ -1326,7 +1326,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
 
     checkBlockStatus();
-    const poll = setInterval(checkBlockStatus, 30000); // Check every 30s
+    const poll = setInterval(checkBlockStatus, 60000); // Check every 60s
     return () => clearInterval(poll);
   }, [screen, userProfile?.id, selectedVehicleId, driverVehicles]);
 
