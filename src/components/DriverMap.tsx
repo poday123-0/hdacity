@@ -1433,6 +1433,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, recenterRef]);
 
+  // Expose startFreeNav to parent
+  useEffect(() => {
+    if (startFreeNavRef) {
+      startFreeNavRef.current = startFreeNav;
+    }
+  }, [startFreeNav, startFreeNavRef]);
+
   // Expose follow toggle to parent
   useEffect(() => {
     onFollowDriverChange?.(followDriver);
