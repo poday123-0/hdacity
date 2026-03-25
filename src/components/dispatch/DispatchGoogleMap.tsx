@@ -50,6 +50,8 @@ type DrawMode = null | "point" | "line";
 const SEVERITY_OPTIONS = [
   { value: "closed", label: "Road Closed", color: "#ef4444" },
   { value: "lane_closed", label: "Lane Closed", color: "#f59e0b" },
+  { value: "cones", label: "Cones", color: "#eab308" },
+  { value: "accident", label: "Accident", color: "#dc2626" },
   { value: "hazard", label: "Hazard", color: "#f97316" },
 ];
 
