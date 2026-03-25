@@ -41,9 +41,10 @@ const AnimatedTimer = ({ seconds, label, variant = "default", showIcon = true, c
   if (variant === "badge") {
     return (
        <span className={`inline-flex items-center gap-1.5 font-mono text-xs bg-surface text-surface-foreground px-2.5 py-1 rounded-full ${className}`}>
+        {/* Badge variant text inherits from parent or uses surface-foreground */}
         {showIcon && <Clock className="w-3 h-3 text-primary" />}
         {label && <span className="text-muted-foreground text-[10px]">{label}</span>}
-        <span className="flex items-center font-bold">
+        <span className="flex items-center font-bold text-black dark:text-white">
           {showHours && (
             <>
               <FlipDigit digit={hh[0]} id="h0" />
