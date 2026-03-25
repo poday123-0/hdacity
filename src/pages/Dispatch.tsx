@@ -1539,9 +1539,9 @@ const Dispatch = () => {
                                   <div>
                                     <span className="text-muted-foreground">Status:</span>{" "}
                                     <span
-                                      className={`font-bold ${t.is_loss ? "text-red-500" : t.status === "cancelled" ? "text-warning" : t.status === "completed" ? "text-green-500" : "text-foreground"}`}
+                                      className={`font-bold ${t.is_loss ? "text-red-500" : t.booking_notes?.includes("No Vehicle") ? "text-orange-500" : t.status === "cancelled" ? "text-warning" : t.status === "completed" ? "text-green-500" : "text-foreground"}`}
                                     >
-                                      {t.is_loss ? "LOSS" : t.status?.toUpperCase()}
+                                      {t.is_loss ? "LOSS" : t.booking_notes?.includes("No Vehicle") ? "NO VEHICLE" : t.status?.toUpperCase()}
                                     </span>
                                   </div>
 
