@@ -297,6 +297,9 @@ const Index = () => {
       setCurrentTripId(activeTrip.id);
       setTripStatus(activeTrip.status);
       setEstimatedFare(activeTrip.estimated_fare || 0);
+      persistTripTimerTimestamp(activeTrip.id, "accepted_at", activeTrip.accepted_at);
+      persistTripTimerTimestamp(activeTrip.id, "arrived_at", activeTrip.arrived_at);
+      persistTripTimerTimestamp(activeTrip.id, "started_at", activeTrip.started_at);
 
       // Restore pickup/dropoff locations
       if (activeTrip.pickup_lat && activeTrip.pickup_lng) {
