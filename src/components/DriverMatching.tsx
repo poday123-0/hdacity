@@ -78,6 +78,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   const [tripElapsed, setTripElapsed] = useState(0);
   const [acceptedElapsed, setAcceptedElapsed] = useState(0);
   const [arrivedElapsed, setArrivedElapsed] = useState(0);
+  const [arrivedTimeStr, setArrivedTimeStr] = useState<string | null>(null);
   const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
   const lastLocRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const [tripPickupName, setTripPickupName] = useState(pickupName || "");
