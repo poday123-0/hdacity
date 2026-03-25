@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { selectShortestRoute } from "@/lib/shortest-route";
 import { useRoadClosures } from "@/hooks/use-road-closures";
-import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle, MapPin, Construction, Car, TriangleAlert } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 // Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
 const createRotatedIcon = (
