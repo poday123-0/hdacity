@@ -3361,12 +3361,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
             </div>
             {/* Animated Timer Bar */}
-            <div className="px-3 pb-2 flex justify-center">
+            <div className="px-3 pb-3 flex justify-center">
               <AnimatedTimer
                 seconds={driverTripPhase === "in_progress" ? driverTripElapsed : driverTripPhase === "arrived" ? driverArrivedElapsed : driverPhaseElapsed}
                 label={driverTripPhase === "in_progress" ? "Trip" : driverTripPhase === "arrived" ? "Waiting" : "En route"}
                 variant="badge"
-                className="bg-primary-foreground/15"
               />
             </div>
           </div>
