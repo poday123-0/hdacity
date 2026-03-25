@@ -294,56 +294,7 @@ const AdminWallets = () => {
             </div>
           )}
 
-          {/* Transaction History */}
-          {selectedWallet && transactions.length > 0 && (
-            <div className="bg-card rounded-xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <History className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Recent Transactions — {selectedWallet.profile?.first_name}</h3>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {transactions.map(t => (
-                  <div key={t.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                      t.status === "pending" ? "bg-amber-500/10 text-amber-600" :
-                      t.status === "rejected" ? "bg-destructive/10 text-destructive" :
-                      t.type === "credit" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"
-                    }`}>
-                      {t.status === "pending" ? <Clock className="w-3.5 h-3.5" /> :
-                       t.type === "credit" ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{t.reason || t.type}</p>
-                      {t.notes && <p className="text-[10px] text-muted-foreground truncate">{t.notes}</p>}
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleString()}</p>
-                        {t.status !== "completed" && (
-                          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
-                            t.status === "pending" ? "bg-amber-500/10 text-amber-600" :
-                            "bg-destructive/10 text-destructive"
-                          }`}>{t.status}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {t.proof_url && (
-                        <a href={t.proof_url} target="_blank" rel="noopener noreferrer" className="w-6 h-6 rounded-md bg-surface flex items-center justify-center hover:bg-primary/10">
-                          <Image className="w-3 h-3 text-muted-foreground" />
-                        </a>
-                      )}
-                      <p className={`text-sm font-bold ${
-                        t.status === "rejected" ? "text-muted-foreground line-through" :
-                        t.status === "pending" ? "text-amber-600" :
-                        t.type === "credit" ? "text-green-600" : "text-red-500"
-                      }`}>
-                        {t.type === "credit" ? "+" : "-"}{t.amount.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Inline transaction list removed — use the history modal (clock icon) instead */}
         </>
       )}
 
