@@ -861,6 +861,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         foregroundGpsCleanupRef.current();
         foregroundGpsCleanupRef.current = null;
       }
+      stopBackgroundLocation();
     };
   }, [screen, sessionReady, userProfile?.id, selectedVehicleId, handleSessionMismatch, goOfflineNow]);
 
