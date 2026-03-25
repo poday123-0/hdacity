@@ -291,10 +291,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const isOnline = screen === "online" || screen === "navigating" || screen === "ride-request";
     if (!isOnline || !onlineStorageKey) { return; }
 
+    const accKey = `${onlineStorageKey}_acc`;
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+
+    // Reset accumulated time if it's from a previous day
+    const accDayKey = `${onlineStorageKey}_acc_day`;
+    const storedDay = localStorage.getItem(accDayKey);
+    const todayStr = todayStart.toISOString().slice(0, 10);
+    if (storedDay !== todayStr) {
+      localStorage.setItem(accKey, "0");
+      localStorage.setItem(accDayKey, todayStr);
+    }
+
     // Persist "went online" timestamp (only set if not already set today)
     let onlineSince: number;
     const stored = localStorage.getItem(onlineStorageKey);
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
     if (stored) {
       const ts = parseInt(stored, 10);
       if (ts >= todayStart.getTime()) {
@@ -303,24 +314,46 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Reset for new day
         onlineSince = Date.now();
         localStorage.setItem(onlineStorageKey, String(onlineSince));
+        localStorage.setItem(accKey, "0");
+        localStorage.setItem(accDayKey, todayStr);
       }
     } else {
       onlineSince = Date.now();
       localStorage.setItem(onlineStorageKey, String(onlineSince));
     }
 
-    // Also accumulate any previous offline gaps today
-    const accKey = `${onlineStorageKey}_acc`;
     const accumulated = parseInt(localStorage.getItem(accKey) || "0", 10);
 
     const tick = () => {
-      const elapsed = accumulated + (Date.now() - onlineSince);
-      setOnlineTimeDisplay(formatOnlineTime(elapsed));
+      // Check if midnight has passed since onlineSince — if so, reset
+      const now = Date.now();
+      const currentDayStart = new Date(); currentDayStart.setHours(0, 0, 0, 0);
+      if (onlineSince < currentDayStart.getTime()) {
+        // Midnight crossed — reset everything for new day
+        onlineSince = currentDayStart.getTime();
+        localStorage.setItem(onlineStorageKey, String(onlineSince));
+        localStorage.setItem(accKey, "0");
+        localStorage.setItem(accDayKey, currentDayStart.toISOString().slice(0, 10));
+        const elapsed = now - onlineSince;
+        setOnlineTimeDisplay(formatOnlineTime(elapsed));
+      } else {
+        const elapsed = accumulated + (now - onlineSince);
+        setOnlineTimeDisplay(formatOnlineTime(elapsed));
+      }
     };
     tick();
-    onlineTimerRef.current = setInterval(tick, 30000); // Every 30s — display only shows minutes
+    onlineTimerRef.current = setInterval(tick, 30000);
 
-    return () => { if (onlineTimerRef.current) clearInterval(onlineTimerRef.current); };
+    // Schedule a tick at exactly midnight to reset the display
+    const now = new Date();
+    const nextMidnight = new Date(now); nextMidnight.setDate(nextMidnight.getDate() + 1); nextMidnight.setHours(0, 0, 0, 0);
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    const midnightTimer = setTimeout(() => { tick(); }, msUntilMidnight + 500);
+
+    return () => {
+      if (onlineTimerRef.current) clearInterval(onlineTimerRef.current);
+      clearTimeout(midnightTimer);
+    };
   }, [screen, onlineStorageKey]);
 
   // When going offline, accumulate the elapsed online time
