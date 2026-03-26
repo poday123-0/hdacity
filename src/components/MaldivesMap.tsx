@@ -283,18 +283,25 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     driverMarkerRef.current.setOptions({ optimized: false });
   }, [rideData?.driverIconUrl]);
 
-  // Vehicle markers — reuse existing, only update positions
+  // Vehicle markers — update via ref to avoid effect churn
+  const vehicleMarkersDataRef = useRef(vehicleMarkers);
+  vehicleMarkersDataRef.current = vehicleMarkers;
+
+  // Stable key: sorted IDs
+  const vehicleIdsKey = (vehicleMarkers || []).map(v => v.id).sort().join(",");
+
   useEffect(() => {
     const map = mapInstance.current;
     const g = (window as any).google;
     if (!map || !g?.maps) return;
-    if (rideData?.showRoute) {
+    if (rideDataRef.current?.showRoute) {
       vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
       vehicleMarkersRef.current = [];
       return;
     }
 
-    if (!vehicleMarkers || vehicleMarkers.length === 0) {
+    const markers = vehicleMarkersDataRef.current;
+    if (!markers || markers.length === 0) {
       vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
       vehicleMarkersRef.current = [];
       return;
@@ -317,7 +324,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       return `<div style="padding:4px;min-width:120px">${lines.join("")}</div>`;
     };
 
-    vehicleMarkers.forEach(v => {
+    markers.forEach(v => {
       const vid = v.id || v.lat + "," + v.lng;
       const existing = existingMap.get(vid);
       if (existing) {
@@ -356,7 +363,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
     existingMap.forEach((m: any) => m.setMap(null));
     vehicleMarkersRef.current = newMarkerRefs;
-  }, [vehicleMarkers, rideData?.showRoute]);
+  }, [vehicleIdsKey, rideData?.showRoute]);
 
   // Trip routes — cache by trip IDs, only re-render when set of trips changes
   const prevTripIdsRef = useRef("");
