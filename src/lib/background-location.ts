@@ -28,7 +28,7 @@ export async function startBackgroundLocation(
   try {
     const watcherId = await BackgroundGeolocation.addWatcher(
       {
-        backgroundMessage: "HDA is tracking your location for active trips.",
+        backgroundMessage: "Delivering every journey on time, every time.",
         backgroundTitle: "HDA Driver Active",
         requestPermissions: true,
         stale: false,

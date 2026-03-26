@@ -134,7 +134,8 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
                   maxLength={1}
-                  className="w-10 h-11 text-center text-lg font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                   className="w-10 h-11 text-center text-lg font-bold bg-surface rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                   autoComplete={i === 0 ? "one-time-code" : "off"}
                   autoFocus={i === 0}
                   disabled={loading}
                 />
