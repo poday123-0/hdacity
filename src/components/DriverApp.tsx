@@ -828,12 +828,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }, driverIntervalMs);
 
-      // Force fresh GPS on foreground return — restart watchPosition entirely
-      // because the OS may have suspended it and it can keep delivering stale positions
+      // Force fresh GPS on foreground return (web only — native plugin handles this automatically)
       const onForeground = () => {
         if (document.visibilityState !== "visible") return;
+        if (isNativePlatform) {
+          // On native, just upsert last known position — plugin will resume automatically
+          if (lastPosRef.current) upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng, true);
+          return;
+        }
 
-        // 1) Immediate fresh fix
+        // Web: get fresh fix and restart watchPosition
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setGpsEnabled(true);
@@ -845,7 +849,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           { enableHighAccuracy: gpsHighAccuracy, timeout: 10000, maximumAge: 0 }
         );
 
-        // 2) Restart watchPosition so it doesn't keep delivering cached data
         if (locationWatchRef.current !== null) {
           navigator.geolocation.clearWatch(locationWatchRef.current);
         }
