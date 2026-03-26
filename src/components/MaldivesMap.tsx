@@ -365,6 +365,19 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     vehicleMarkersRef.current = newMarkerRefs;
   }, [vehicleIdsKey, rideData?.showRoute]);
 
+  // Smoothly update vehicle positions without triggering marker recreation
+  useEffect(() => {
+    if (!vehicleMarkers || vehicleMarkersRef.current.length === 0) return;
+    const posMap = new Map(vehicleMarkers.map(v => [v.id || `${v.lat},${v.lng}`, v]));
+    vehicleMarkersRef.current.forEach((m: any) => {
+      const v = posMap.get(m._vid);
+      if (v) {
+        m.setPosition({ lat: v.lat, lng: v.lng });
+        (m as any)._vdata = v;
+      }
+    });
+  }, [vehicleMarkers]);
+
   // Trip routes — cache by trip IDs, only re-render when set of trips changes
   const prevTripIdsRef = useRef("");
   const tripRoutesStableRef = useRef(tripRoutes);
