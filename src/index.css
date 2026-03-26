@@ -128,6 +128,16 @@
   }
 }
 
+/* ─── Android Capacitor safe-area fallback ─── */
+/* On Android WebView, env(safe-area-inset-top) often returns 0.
+   Use a fallback padding so content doesn't hide behind the status bar. */
+.capacitor-safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 28px);
+}
+.capacitor-safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

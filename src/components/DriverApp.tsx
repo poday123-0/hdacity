@@ -750,35 +750,56 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       } catch {}
 
-      if (navigator.geolocation) {
-        locationWatchRef.current = navigator.geolocation.watchPosition(
-          (pos) => {
-            setGpsEnabled(true);
-            setDriverLat(pos.coords.latitude);
-            setDriverLng(pos.coords.longitude);
-            upsertLocation(pos.coords.latitude, pos.coords.longitude);
-          },
-          (err) => {
-            console.warn("GPS unavailable:", err.message);
-            setGpsEnabled(false);
-            toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
-          },
-          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
-        );
-      } else {
-        toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
-      }
+      // On native, use ONLY background geolocation plugin (battery efficient, distance-filtered).
+      // On web, fall back to watchPosition.
+      const isNativePlatform = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor.isNativePlatform?.();
 
-      // Start native background location tracking (no-op on web)
-      startBackgroundLocation(
-        (lat, lng) => {
-          setGpsEnabled(true);
-          setDriverLat(lat);
-          setDriverLng(lng);
-          upsertLocation(lat, lng);
-        },
-        { distanceFilter: MIN_MOVE_METERS }
-      );
+      if (isNativePlatform) {
+        // Native: rely solely on background geolocation plugin — much more battery efficient
+        // It uses the OS-level distance filter and doesn't keep GPS radio on constantly
+        startBackgroundLocation(
+          (lat, lng) => {
+            setGpsEnabled(true);
+            setDriverLat(lat);
+            setDriverLng(lng);
+            upsertLocation(lat, lng);
+          },
+          { distanceFilter: MIN_MOVE_METERS }
+        );
+        // Get one initial fix to show position immediately
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setGpsEnabled(true);
+              setDriverLat(pos.coords.latitude);
+              setDriverLng(pos.coords.longitude);
+              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+            },
+            () => {},
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 15000 }
+          );
+        }
+      } else {
+        // Web: use watchPosition
+        if (navigator.geolocation) {
+          locationWatchRef.current = navigator.geolocation.watchPosition(
+            (pos) => {
+              setGpsEnabled(true);
+              setDriverLat(pos.coords.latitude);
+              setDriverLng(pos.coords.longitude);
+              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+            },
+            (err) => {
+              console.warn("GPS unavailable:", err.message);
+              setGpsEnabled(false);
+              toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
+            },
+            { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
+          );
+        } else {
+          toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
+        }
+      }
 
       // Heartbeat — use admin-configured interval or default 30s (reduced from 10s to save battery)
       let driverIntervalMs = 30000;
@@ -807,12 +828,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }, driverIntervalMs);
 
-      // Force fresh GPS on foreground return — restart watchPosition entirely
-      // because the OS may have suspended it and it can keep delivering stale positions
+      // Force fresh GPS on foreground return (web only — native plugin handles this automatically)
       const onForeground = () => {
         if (document.visibilityState !== "visible") return;
+        if (isNativePlatform) {
+          // On native, just upsert last known position — plugin will resume automatically
+          if (lastPosRef.current) upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng, true);
+          return;
+        }
 
-        // 1) Immediate fresh fix
+        // Web: get fresh fix and restart watchPosition
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setGpsEnabled(true);
@@ -824,7 +849,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           { enableHighAccuracy: gpsHighAccuracy, timeout: 10000, maximumAge: 0 }
         );
 
-        // 2) Restart watchPosition so it doesn't keep delivering cached data
         if (locationWatchRef.current !== null) {
           navigator.geolocation.clearWatch(locationWatchRef.current);
         }
@@ -2459,7 +2483,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </AnimatePresence>
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
+      <div className="absolute top-0 left-0 right-0 z-[700] capacitor-safe-top">
         <div className={`flex items-center justify-between relative transition-all duration-300 ${showProfile ? "px-2 py-1" : "px-2 py-2.5 sm:px-3"}`}>
           {/* Left: Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
@@ -3090,7 +3114,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel`}
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)", maxHeight: "min(65vh, calc(100dvh - 120px))" }}>
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 8px)", maxHeight: "min(60vh, calc(100dvh - 140px))" }}>
 
           <div className="px-4 pt-3 pb-5 space-y-3 overflow-y-auto flex-1 min-h-0">
             {/* Drag handle */}
