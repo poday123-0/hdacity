@@ -358,18 +358,21 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     vehicleMarkersRef.current = newMarkerRefs;
   }, [vehicleMarkers, rideData?.showRoute]);
 
-  // Trip routes — cache by trip IDs to avoid recreating on every poll
+  // Trip routes — cache by trip IDs, only re-render when set of trips changes
   const prevTripIdsRef = useRef("");
+  const tripRoutesStableRef = useRef(tripRoutes);
+  tripRoutesStableRef.current = tripRoutes;
+
+  const tripIdsKey = (tripRoutes || []).map(t => t.id).sort().join(",");
+
   useEffect(() => {
     const map = mapInstance.current;
     const g = (window as any).google;
     if (!map || !g?.maps) return;
 
-    const currentIds = (tripRoutes || []).map(t => t.id).sort().join(",");
-
-    // If same trips, skip full re-render (markers/routes already on map)
-    if (currentIds === prevTripIdsRef.current && tripRenderersRef.current.length > 0) return;
-    prevTripIdsRef.current = currentIds;
+    // Skip if same set of trips (the key is the dep, not the array ref)
+    if (tripIdsKey === prevTripIdsRef.current && tripRenderersRef.current.length > 0) return;
+    prevTripIdsRef.current = tripIdsKey;
 
     // Clear previous
     tripRenderersRef.current.forEach((r: any) => r.setMap(null));
@@ -377,11 +380,12 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     tripMarkersRef.current.forEach((m: any) => m.setMap(null));
     tripMarkersRef.current = [];
 
-    if (!tripRoutes || tripRoutes.length === 0) return;
+    const routes = tripRoutesStableRef.current;
+    if (!routes || routes.length === 0) return;
 
     const ds = new g.maps.DirectionsService();
 
-    tripRoutes.forEach((trip) => {
+    routes.forEach((trip) => {
       const pickupM = new g.maps.Marker({
         map, position: { lat: trip.pickupLat, lng: trip.pickupLng }, zIndex: 800,
         label: { text: "P", color: "white", fontWeight: "700", fontSize: "10px" },
@@ -398,7 +402,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
       const dr = new g.maps.DirectionsRenderer({
         map, suppressMarkers: true,
-        preserveViewport: true, // ← CRITICAL: never auto-zoom
+        preserveViewport: true,
         polylineOptions: {
           strokeColor: trip.status === "in_progress" ? "#4285F4" : "#f59e0b",
           strokeWeight: 4, strokeOpacity: 0.7,
@@ -423,7 +427,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
         pickupM.addListener("click", () => infoWindow.open(map, pickupM));
       }
     });
-  }, [tripRoutes]);
+  }, [tripIdsKey]); // ← depend on stable string key, not array ref
 
   if (error) {
     return <div className="w-full h-full bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
