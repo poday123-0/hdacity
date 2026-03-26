@@ -1319,9 +1319,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     }, 30000);
 
-    // Immediately check for pending trips when app becomes visible (e.g. after push notification sound)
-    const onVisibilityChange = async () => {
-      if (document.visibilityState !== "visible" || !isActive || screen !== "online") return;
+    // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
+    const doForegroundTripCheck = async () => {
+      if (!isActive) return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Check broadcast trips
@@ -1363,6 +1363,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           handleDirectAssignedTrip(trip);
         }
       }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      // Fire immediately + retry after 500ms to handle WebView resume lag on native
+      doForegroundTripCheck();
+      setTimeout(doForegroundTripCheck, 500);
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
