@@ -2459,7 +2459,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </AnimatePresence>
 
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-[700] pt-[env(safe-area-inset-top,0px)]">
+      <div className="absolute top-0 left-0 right-0 z-[700] capacitor-safe-top">
         <div className={`flex items-center justify-between relative transition-all duration-300 ${showProfile ? "px-2 py-1" : "px-2 py-2.5 sm:px-3"}`}>
           {/* Left: Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
