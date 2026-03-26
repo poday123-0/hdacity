@@ -750,35 +750,56 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       } catch {}
 
-      if (navigator.geolocation) {
-        locationWatchRef.current = navigator.geolocation.watchPosition(
-          (pos) => {
-            setGpsEnabled(true);
-            setDriverLat(pos.coords.latitude);
-            setDriverLng(pos.coords.longitude);
-            upsertLocation(pos.coords.latitude, pos.coords.longitude);
-          },
-          (err) => {
-            console.warn("GPS unavailable:", err.message);
-            setGpsEnabled(false);
-            toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
-          },
-          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
-        );
-      } else {
-        toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
-      }
+      // On native, use ONLY background geolocation plugin (battery efficient, distance-filtered).
+      // On web, fall back to watchPosition.
+      const isNativePlatform = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor.isNativePlatform?.();
 
-      // Start native background location tracking (no-op on web)
-      startBackgroundLocation(
-        (lat, lng) => {
-          setGpsEnabled(true);
-          setDriverLat(lat);
-          setDriverLng(lng);
-          upsertLocation(lat, lng);
-        },
-        { distanceFilter: MIN_MOVE_METERS }
-      );
+      if (isNativePlatform) {
+        // Native: rely solely on background geolocation plugin — much more battery efficient
+        // It uses the OS-level distance filter and doesn't keep GPS radio on constantly
+        startBackgroundLocation(
+          (lat, lng) => {
+            setGpsEnabled(true);
+            setDriverLat(lat);
+            setDriverLng(lng);
+            upsertLocation(lat, lng);
+          },
+          { distanceFilter: MIN_MOVE_METERS }
+        );
+        // Get one initial fix to show position immediately
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setGpsEnabled(true);
+              setDriverLat(pos.coords.latitude);
+              setDriverLng(pos.coords.longitude);
+              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+            },
+            () => {},
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 15000 }
+          );
+        }
+      } else {
+        // Web: use watchPosition
+        if (navigator.geolocation) {
+          locationWatchRef.current = navigator.geolocation.watchPosition(
+            (pos) => {
+              setGpsEnabled(true);
+              setDriverLat(pos.coords.latitude);
+              setDriverLng(pos.coords.longitude);
+              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+            },
+            (err) => {
+              console.warn("GPS unavailable:", err.message);
+              setGpsEnabled(false);
+              toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
+            },
+            { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
+          );
+        } else {
+          toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
+        }
+      }
 
       // Heartbeat — use admin-configured interval or default 30s (reduced from 10s to save battery)
       let driverIntervalMs = 30000;
