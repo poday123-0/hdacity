@@ -1340,8 +1340,14 @@ const DispatchTripForm = ({
 
                   if (vehicle.driver_id) {
                     // Use Maldives time (UTC+5) for "today" calculation
-                    const nowMv = new Date(Date.now() + 5 * 60 * 60 * 1000);
-                    const todayStart = new Date(Date.UTC(nowMv.getUTCFullYear(), nowMv.getUTCMonth(), nowMv.getUTCDate()) - 5 * 60 * 60 * 1000);
+                    // Maldives midnight = current UTC date adjusted by +5h, then back to UTC
+                    const nowUtcMs = Date.now();
+                    const maldivesNow = new Date(nowUtcMs + 5 * 3600000);
+                    const yy = maldivesNow.getUTCFullYear();
+                    const mm = String(maldivesNow.getUTCMonth() + 1).padStart(2, '0');
+                    const dd = String(maldivesNow.getUTCDate()).padStart(2, '0');
+                    // Midnight Maldives in UTC = subtract 5 hours
+                    const todayStartISO = `${yy}-${mm}-${dd}T00:00:00+05:00`;
 
                     // Get all vehicle IDs for this center code to count trips by code
                     const { data: codeVehicles } = await supabase
