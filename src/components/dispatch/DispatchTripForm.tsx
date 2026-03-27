@@ -1231,10 +1231,9 @@ const DispatchTripForm = ({
                           const hasLoss = !!item.has_loss;
                           const hasTripsToday = (item.today_trips || 0) > 0;
 
-                          if (hasLoss && !hasTripsToday) return 0;
-                          if (!hasLoss && !hasTripsToday) return 1;
-                          if (hasLoss && hasTripsToday) return 2;
-                          return 3;
+                          if (hasLoss) return 0; // Loss always top
+                          if (!hasTripsToday) return 1; // No trips today next
+                          return 2; // Has trips today last
                         };
 
                         const priorityDiff = getPriority(a) - getPriority(b);
