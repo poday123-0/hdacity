@@ -2467,6 +2467,7 @@ const Dispatch = () => {
                                   e.stopPropagation();
                                   await supabase.from("trips").update({ is_loss: true } as any).eq("id", t.id);
                                   setRecentTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: true } : tr));
+                                  setAllBookingsTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: true } : tr));
                                   toast({ title: "Marked as Loss" });
                                 }}
                                 className="text-[9px] font-bold text-destructive px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors"
