@@ -4014,27 +4014,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
                 await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-                // Deduct from passenger wallet, credit driver wallet
-                const passengerId = currentTrip.passenger_id;
-                if (passengerId && actualFare) {
-                  // Deduct passenger
-                  const { data: pWallet } = await supabase.from("wallets").select("id, balance").eq("user_id", passengerId).maybeSingle();
-                  if (pWallet) {
-                    await supabase.from("wallets").update({ balance: Math.max(0, Number(pWallet.balance) - actualFare), updated_at: now } as any).eq("id", pWallet.id);
-                    await supabase.from("wallet_transactions").insert({ wallet_id: pWallet.id, user_id: passengerId, amount: actualFare, type: "debit", reason: "Trip fare", trip_id: currentTrip.id } as any);
+                // Skip wallet operations for dispatch trips
+                const isDispatchTrip = currentTrip.dispatch_type === "operator";
+                if (!isDispatchTrip) {
+                  // Deduct from passenger wallet, credit driver wallet
+                  const passengerId = currentTrip.passenger_id;
+                  if (passengerId && actualFare) {
+                    // Deduct passenger
+                    const { data: pWallet } = await supabase.from("wallets").select("id, balance").eq("user_id", passengerId).maybeSingle();
+                    if (pWallet) {
+                      await supabase.from("wallets").update({ balance: Math.max(0, Number(pWallet.balance) - actualFare), updated_at: now } as any).eq("id", pWallet.id);
+                      await supabase.from("wallet_transactions").insert({ wallet_id: pWallet.id, user_id: passengerId, amount: actualFare, type: "debit", reason: "Trip fare", trip_id: currentTrip.id } as any);
+                    }
+                    // Credit driver
+                    let dWallet = (await supabase.from("wallets").select("id, balance").eq("user_id", userProfile.id).maybeSingle()).data;
+                    if (!dWallet) {
+                      const { data: newW } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
+                      dWallet = newW;
+                    }
+                    if (dWallet) {
+                      await supabase.from("wallets").update({ balance: Number(dWallet.balance) + actualFare, updated_at: now } as any).eq("id", dWallet.id);
+                      await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: actualFare, type: "credit", reason: "Trip earning", trip_id: currentTrip.id } as any);
+                    }
                   }
-                  // Credit driver
-                  let dWallet = (await supabase.from("wallets").select("id, balance").eq("user_id", userProfile.id).maybeSingle()).data;
-                  if (!dWallet) {
-                    const { data: newW } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
-                    dWallet = newW;
-                  }
-                  if (dWallet) {
-                    await supabase.from("wallets").update({ balance: Number(dWallet.balance) + actualFare, updated_at: now } as any).eq("id", dWallet.id);
-                    await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: actualFare, type: "credit", reason: "Trip earning", trip_id: currentTrip.id } as any);
-                  }
+                  await applyTripCashback(currentTrip.id, actualFare || 0, currentTrip.passenger_id);
                 }
-                await applyTripCashback(currentTrip.id, actualFare || 0, currentTrip.passenger_id);
                 // Notify passenger trip completed
                 if (currentTrip.passenger_id) {
                   notifyTripCompleted(currentTrip.passenger_id, String(actualFare || 0), currentTrip.id);
