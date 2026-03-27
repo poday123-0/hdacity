@@ -239,6 +239,8 @@ const Dispatch = () => {
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
+  const [allBookingsTrips, setAllBookingsTrips] = useState<any[]>([]);
+  const [allBookingsLoading, setAllBookingsLoading] = useState(false);
   const [showAllAppRequests, setShowAllAppRequests] = useState(false);
   const [appRequestsSearch, setAppRequestsSearch] = useState("");
   const [appRequestsStatusFilter, setAppRequestsStatusFilter] = useState<string>("all");
