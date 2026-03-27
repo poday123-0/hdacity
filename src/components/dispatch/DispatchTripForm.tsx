@@ -165,10 +165,9 @@ const DispatchTripForm = ({
               const getPriority = (item: CenterCodeIndexEntry) => {
                 const hasLoss = !!item.has_loss;
                 const hasTripsToday = (item.today_trips || 0) > 0;
-                if (hasLoss && !hasTripsToday) return 0;
-                if (!hasLoss && !hasTripsToday) return 1;
-                if (hasLoss && hasTripsToday) return 2;
-                return 3;
+                if (hasLoss) return 0;
+                if (!hasTripsToday) return 1;
+                return 2;
               };
               const priorityDiff = getPriority(a) - getPriority(b);
               if (priorityDiff !== 0) return priorityDiff;
@@ -1231,10 +1230,9 @@ const DispatchTripForm = ({
                           const hasLoss = !!item.has_loss;
                           const hasTripsToday = (item.today_trips || 0) > 0;
 
-                          if (hasLoss && !hasTripsToday) return 0;
-                          if (!hasLoss && !hasTripsToday) return 1;
-                          if (hasLoss && hasTripsToday) return 2;
-                          return 3;
+                          if (hasLoss) return 0; // Loss always top
+                          if (!hasTripsToday) return 1; // No trips today next
+                          return 2; // Has trips today last
                         };
 
                         const priorityDiff = getPriority(a) - getPriority(b);
@@ -1430,7 +1428,7 @@ const DispatchTripForm = ({
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type === 'Mini Pickup' ? 'MPickup' : info.vehicle_type === 'Big Pickup' ? 'BPickup' : info.vehicle_type}</span>}
                         {info.color && <span className="text-muted-foreground"> • {info.color}</span>}
-                        <span className="text-primary font-semibold"> • {info.today_trips || 0}</span>
+                        {(info.today_trips || 0) > 0 && <span className="text-primary font-semibold"> • {info.today_trips}</span>}
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                         {info.last_trip_date && <span className="text-muted-foreground/70 text-[9px]"> • {new Date(info.last_trip_date).toLocaleDateString([], { month: "short", day: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                       </span>
