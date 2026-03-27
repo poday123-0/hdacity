@@ -242,6 +242,8 @@ const Dispatch = () => {
   const [showAllAppRequests, setShowAllAppRequests] = useState(false);
   const [appRequestsSearch, setAppRequestsSearch] = useState("");
   const [appRequestsStatusFilter, setAppRequestsStatusFilter] = useState<string>("all");
+  const [appRequestsDateFilter, setAppRequestsDateFilter] = useState<string>("today");
+  const [appRequestsCustomDate, setAppRequestsCustomDate] = useState<Date | undefined>(undefined);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
@@ -2509,11 +2511,70 @@ const Dispatch = () => {
             </div>
           </div>
 
-          {/* Filtered list */}
+          {/* Date Filters */}
+          <div className="flex flex-wrap items-center gap-1 pb-2 border-b border-border">
+            {[
+              { key: "today", label: "Today" },
+              { key: "week", label: "This Week" },
+              { key: "month", label: "This Month" },
+              { key: "all", label: "All Time" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => { setAppRequestsDateFilter(f.key); setAppRequestsCustomDate(undefined); }}
+                className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+                  appRequestsDateFilter === f.key && !appRequestsCustomDate
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={`px-2 py-1 text-[10px] font-medium rounded flex items-center gap-1 transition-colors ${
+                  appRequestsCustomDate ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                }`}>
+                  <CalendarIcon className="w-3 h-3" />
+                  {appRequestsCustomDate ? format(appRequestsCustomDate, "dd MMM") : "Custom"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={appRequestsCustomDate}
+                  onSelect={(d) => { setAppRequestsCustomDate(d); setAppRequestsDateFilter("custom"); }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             {(() => {
               const q = appRequestsSearch.toLowerCase().trim();
+              const now = new Date();
+              let dateStart: Date | null = null;
+              let dateEnd: Date | null = null;
+              if (appRequestsCustomDate) {
+                dateStart = startOfDay(appRequestsCustomDate);
+                dateEnd = endOfDay(appRequestsCustomDate);
+              } else {
+                switch (appRequestsDateFilter) {
+                  case "today": dateStart = startOfDay(now); dateEnd = endOfDay(now); break;
+                  case "week": dateStart = startOfWeek(now, { weekStartsOn: 1 }); dateEnd = endOfDay(now); break;
+                  case "month": dateStart = startOfMonth(now); dateEnd = endOfDay(now); break;
+                  default: break;
+                }
+              }
               const filtered = appRequestTrips.filter((t: any) => {
+                // Date filter
+                if (dateStart && dateEnd) {
+                  const created = new Date(t.created_at);
+                  if (created < dateStart || created > dateEnd) return false;
+                }
                 // Status filter
                 if (appRequestsStatusFilter !== "all") {
                   if (appRequestsStatusFilter === "searching" && t.status !== "requested") return false;
