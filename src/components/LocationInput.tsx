@@ -665,7 +665,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
     return (
       <MapPicker
         onConfirm={handleMapPickerConfirm}
-        onCancel={() => { setSettingOnMap(false); setMapPickerField(null); }}
+        onCancel={() => { setSettingOnMap(false); onMapPickerChange?.(false); setMapPickerField(null); }}
         initialLat={pickup?.lat}
         initialLng={pickup?.lng}
       />
