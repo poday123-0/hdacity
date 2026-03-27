@@ -1404,9 +1404,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      // Fire immediately + retry after 500ms to handle WebView resume lag on native
+      // Fire immediately + multiple retries to handle WebView resume lag on native
       doForegroundTripCheck();
       setTimeout(doForegroundTripCheck, 500);
+      setTimeout(doForegroundTripCheck, 1500);
+      setTimeout(doForegroundTripCheck, 3000);
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
