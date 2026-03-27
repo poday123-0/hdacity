@@ -1371,6 +1371,7 @@ const DispatchTripForm = ({
                         .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
                         .gte("created_at", todayStart.toISOString())
                         .in("status", ["requested", "accepted", "started", "completed"])
+                        .eq("dispatch_type", "operator")
                         .eq("is_loss", false),
                       supabase
                         .from("trips")
