@@ -60,7 +60,7 @@ const PRESET_LABELS = [
   { label: "Office", icon: "briefcase" },
 ];
 
-const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
+const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputProps) => {
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickup, setPickup] = useState<ServiceLocation | null>(null);
