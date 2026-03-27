@@ -1342,6 +1342,14 @@ const DispatchTripForm = ({
                     const todayStart = new Date();
                     todayStart.setHours(0, 0, 0, 0);
 
+                    // Get all vehicle IDs for this center code to count trips by code
+                    const { data: codeVehicles } = await supabase
+                      .from("vehicles")
+                      .select("id")
+                      .eq("center_code", code)
+                      .eq("is_active", true);
+                    const codeVehicleIds = (codeVehicles || []).map((v: any) => v.id);
+
                     const [{ data: profile }, { data: lastTrip }, { count: todayCount }, { count: lossCount }] = await Promise.all([
                       supabase
                         .from("profiles")
@@ -1359,14 +1367,14 @@ const DispatchTripForm = ({
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
-                        .eq("vehicle_id", vehicle.id)
+                        .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
                         .gte("created_at", todayStart.toISOString())
                         .in("status", ["requested", "accepted", "started", "completed"])
                         .eq("is_loss", false),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
-                        .eq("vehicle_id", vehicle.id)
+                        .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
                         .eq("is_loss", true)
                         .eq("dispatch_type", "operator"),
                     ]);
