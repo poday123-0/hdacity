@@ -323,7 +323,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
 
   return (
     <>
-      <div className="absolute -top-3 left-0 right-0 z-[700] capacitor-safe-top bg-gradient-to-b from-background/80 via-background/40 to-transparent">
+      <div className="absolute -top-6 left-0 right-0 z-[700] capacitor-safe-top bg-gradient-to-b from-background/80 via-background/40 to-transparent">
         <div className="px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setShowProfile(true)}
