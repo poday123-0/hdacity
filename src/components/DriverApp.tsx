@@ -1378,6 +1378,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       }
     };
+    // Expose for native notification tap / SW focus message
+    doForegroundTripCheckRef.current = doForegroundTripCheck;
 
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
@@ -1390,12 +1392,61 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     return () => {
       isActive = false;
+      doForegroundTripCheckRef.current = null;
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
       supabase.removeChannel(targetChannel);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
+
+  // Native: trigger immediate trip check when driver taps push notification
+  // PWA: listen for SW TRIP_REQUEST_FOCUS message to trigger immediate trip check
+  useEffect(() => {
+    if (!userProfile?.id) return;
+
+    const triggerCheck = () => {
+      doForegroundTripCheckRef.current?.();
+      // Retry after delays to handle WebView resume lag
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 300);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 1000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 2500);
+    };
+
+    // Native Capacitor: listen for notification tap
+    let nativeCleanup: (() => void) | null = null;
+    const setupNativeListener = async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+        const listener = await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          console.log("Native notification tapped:", action);
+          triggerCheck();
+        });
+        nativeCleanup = () => listener.remove();
+      } catch {}
+    };
+    setupNativeListener();
+
+    // PWA: listen for SW TRIP_REQUEST_FOCUS message
+    const onSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === "TRIP_REQUEST_FOCUS") {
+        console.log("SW TRIP_REQUEST_FOCUS received");
+        triggerCheck();
+      }
+    };
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", onSwMessage);
+    }
+
+    return () => {
+      nativeCleanup?.();
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", onSwMessage);
+      }
+    };
+  }, [userProfile?.id]);
 
   // Poll for vehicle block status
   useEffect(() => {
