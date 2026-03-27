@@ -699,8 +699,22 @@ const Dispatch = () => {
           schema: "public",
           table: "trips",
         },
-        () => {
-          debouncedRefreshTrips();
+        (payload) => {
+          const newTrip = payload.new as any;
+          // Immediately add to the correct list so it doesn't disappear
+          if (newTrip.dispatch_type === "operator") {
+            setRecentTrips((prev) => {
+              if (prev.some((t: any) => t.id === newTrip.id)) return prev;
+              return [newTrip, ...prev];
+            });
+          } else if (newTrip.dispatch_type === "dispatch_broadcast") {
+            setAppRequestTrips((prev) => {
+              if (prev.some((t: any) => t.id === newTrip.id)) return prev;
+              return [newTrip, ...prev];
+            });
+          }
+          // Quick refetch to get joined data (driver/vehicle names)
+          debouncedRefreshTrips(true);
         },
       )
       .subscribe();
