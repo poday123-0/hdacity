@@ -142,6 +142,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     } catch {}
     return "offline";
   });
+  const screenRef = useRef(screen);
+  useEffect(() => { screenRef.current = screen; }, [screen]);
   const [showVehicleSwitcher, setShowVehicleSwitcher] = useState(false);
   const [driverTripPhase, setDriverTripPhase] = useState<DriverTripPhase>("heading_to_pickup");
   const [showDriverChat, setShowDriverChat] = useState(false);
@@ -1336,8 +1338,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
     const doForegroundTripCheck = async () => {
       if (!isActive) return;
-      // Skip check if already showing a trip
-      if (screen !== "online") return;
+      // Skip check if already showing a trip (use ref for latest value inside closure)
+      if (screenRef.current !== "online" && screenRef.current !== "offline") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Check broadcast trips (no driver assigned yet)
