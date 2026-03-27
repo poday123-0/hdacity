@@ -651,9 +651,9 @@ const Dispatch = () => {
 
   // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
   const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedRefreshTrips = useCallback(() => {
+  const debouncedRefreshTrips = useCallback((immediate?: boolean) => {
     if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
-    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), 1_500);
+    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 300 : 1_500);
   }, []);
 
   useEffect(() => {
