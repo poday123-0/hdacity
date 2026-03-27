@@ -2420,6 +2420,34 @@ const Dispatch = () => {
                               {t.is_loss ? "LOSS" : t.status?.toUpperCase()}
                             </span>
                           </div>
+                          <div className="col-span-2 flex gap-2 pt-1">
+                            {!t.is_loss && t.status !== "cancelled" && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await supabase.from("trips").update({ is_loss: true } as any).eq("id", t.id);
+                                  setRecentTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: true } : tr));
+                                  toast({ title: "Marked as Loss" });
+                                }}
+                                className="text-[9px] font-bold text-destructive px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors"
+                              >
+                                Set Loss
+                              </button>
+                            )}
+                            {t.is_loss && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await supabase.from("trips").update({ is_loss: false } as any).eq("id", t.id);
+                                  setRecentTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: false } : tr));
+                                  toast({ title: "Loss cleared" });
+                                }}
+                                className="text-[9px] font-bold text-success px-2 py-1 rounded bg-success/10 hover:bg-success/20 transition-colors"
+                              >
+                                Clear Loss
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
