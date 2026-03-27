@@ -1335,7 +1335,7 @@ const Index = () => {
         )}
       </div>
 
-      <TopBar 
+      {passengerScreen === "home" && <TopBar 
         onLogout={handleLogout} 
         userName={userProfile?.first_name} 
         userProfile={userProfile} 
