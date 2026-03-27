@@ -38,6 +38,7 @@ import AdminCompetitions from "@/components/admin/AdminCompetitions";
 import AdminDutyHours from "@/components/admin/AdminDutyHours";
 import AdminAdBanners from "@/components/admin/AdminAdBanners";
 import AdminDriverInvoice from "@/components/admin/AdminDriverInvoice";
+import AdminStorage from "@/components/admin/AdminStorage";
 
 type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "settings";
 
