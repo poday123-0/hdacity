@@ -2555,7 +2555,26 @@ const Dispatch = () => {
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             {(() => {
               const q = appRequestsSearch.toLowerCase().trim();
+              const now = new Date();
+              let dateStart: Date | null = null;
+              let dateEnd: Date | null = null;
+              if (appRequestsCustomDate) {
+                dateStart = startOfDay(appRequestsCustomDate);
+                dateEnd = endOfDay(appRequestsCustomDate);
+              } else {
+                switch (appRequestsDateFilter) {
+                  case "today": dateStart = startOfDay(now); dateEnd = endOfDay(now); break;
+                  case "week": dateStart = startOfWeek(now, { weekStartsOn: 1 }); dateEnd = endOfDay(now); break;
+                  case "month": dateStart = startOfMonth(now); dateEnd = endOfDay(now); break;
+                  default: break;
+                }
+              }
               const filtered = appRequestTrips.filter((t: any) => {
+                // Date filter
+                if (dateStart && dateEnd) {
+                  const created = new Date(t.created_at);
+                  if (created < dateStart || created > dateEnd) return false;
+                }
                 // Status filter
                 if (appRequestsStatusFilter !== "all") {
                   if (appRequestsStatusFilter === "searching" && t.status !== "requested") return false;
