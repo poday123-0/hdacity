@@ -162,6 +162,18 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     if (newOtp.every((d) => d !== "")) handleVerify(newOtp.join(""));
   };
 
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text");
+    const match = pasted.match(/(\d{6})/);
+    if (match) {
+      e.preventDefault();
+      const digits = match[1].split("");
+      setOtp(digits);
+      digits.forEach((d, i) => { if (otpRefs.current[i]) otpRefs.current[i]!.value = d; });
+      setTimeout(() => handleVerify(match[1]), 300);
+    }
+  };
+
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) otpRefs.current[index - 1]?.focus();
   };
