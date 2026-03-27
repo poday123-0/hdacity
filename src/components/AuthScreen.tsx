@@ -345,6 +345,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  onPaste={handleOtpPaste}
                   maxLength={1}
                   className={`w-12 h-14 text-center text-xl font-bold rounded-2xl text-foreground focus:outline-none transition-all border shadow-sm ${
                   digit ?
