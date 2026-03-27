@@ -242,6 +242,8 @@ const Dispatch = () => {
   const [showAllAppRequests, setShowAllAppRequests] = useState(false);
   const [appRequestsSearch, setAppRequestsSearch] = useState("");
   const [appRequestsStatusFilter, setAppRequestsStatusFilter] = useState<string>("all");
+  const [appRequestsDateFilter, setAppRequestsDateFilter] = useState<string>("today");
+  const [appRequestsCustomDate, setAppRequestsCustomDate] = useState<Date | undefined>(undefined);
 
   // Chat history
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
