@@ -4060,7 +4060,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
                 } as any).eq("id", currentTrip.id);
                 await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-                await applyTripCashback(currentTrip.id, actualFare, currentTrip.passenger_id);
+                if (currentTrip.dispatch_type !== "operator") {
+                  await applyTripCashback(currentTrip.id, actualFare, currentTrip.passenger_id);
+                }
                 if (currentTrip.passenger_id) notifyTripCompleted(currentTrip.passenger_id, String(actualFare), currentTrip.id);
                 setConfirmedPaymentMethod(tripPM);
                 setDriverTripPhase("heading_to_pickup");
