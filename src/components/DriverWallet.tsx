@@ -231,33 +231,111 @@ const DriverWallet = ({ driverId, walletId, balance, onRequestWithdraw, minWithd
 
 const TransactionRow = ({ tx }: { tx: WalletTransaction }) => {
   const isCredit = tx.type === "credit";
+  const [expanded, setExpanded] = useState(false);
+  const [tripData, setTripData] = useState<any>(null);
+  const [loadingTrip, setLoadingTrip] = useState(false);
+
+  const toggleExpand = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && tx.trip_id && !tripData) {
+      setLoadingTrip(true);
+      const { data } = await supabase
+        .from("trips")
+        .select("id, pickup_address, dropoff_address, estimated_fare, actual_fare, status, created_at, completed_at, customer_name, customer_phone, vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code)")
+        .eq("id", tx.trip_id)
+        .maybeSingle();
+      setTripData(data);
+      setLoadingTrip(false);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3 bg-surface rounded-xl px-3 py-2.5">
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCredit ? "bg-green-500/15" : "bg-destructive/15"}`}>
-        {isCredit ? (
-          <ArrowDownLeft className="w-4 h-4 text-green-600" />
-        ) : (
-          <ArrowUpRight className="w-4 h-4 text-destructive" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-foreground capitalize truncate">{tx.reason || tx.type}</p>
-        <p className="text-[10px] text-muted-foreground">
-          {format(new Date(tx.created_at), "MMM d, h:mm a")}
-          {tx.status !== "completed" && (
-            <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
-              tx.status === "pending" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"
-            }`}>
-              {tx.status}
-            </span>
+    <div className="bg-surface rounded-xl overflow-hidden">
+      <button onClick={toggleExpand} className="flex items-center gap-3 w-full px-3 py-2.5 text-left active:bg-muted/30 transition-colors">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCredit ? "bg-green-500/15" : "bg-destructive/15"}`}>
+          {isCredit ? (
+            <ArrowDownLeft className="w-4 h-4 text-green-600" />
+          ) : (
+            <ArrowUpRight className="w-4 h-4 text-destructive" />
           )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-foreground capitalize truncate">{tx.reason || tx.type}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {format(new Date(tx.created_at), "MMM d, h:mm a")}
+            {tx.status !== "completed" && (
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
+                tx.status === "pending" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"
+              }`}>
+                {tx.status}
+              </span>
+            )}
+          </p>
+        </div>
+        <p className={`text-sm font-bold shrink-0 ${isCredit ? "text-green-600" : "text-destructive"}`}>
+          {isCredit ? "+" : "-"}{Math.abs(Number(tx.amount)).toFixed(2)}
         </p>
-      </div>
-      <p className={`text-sm font-bold shrink-0 ${isCredit ? "text-green-600" : "text-destructive"}`}>
-        {isCredit ? "+" : "-"}{Math.abs(Number(tx.amount)).toFixed(2)}
-      </p>
+        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-2.5 pt-0 space-y-1.5 border-t border-border/50">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-2">
+                <DetailItem label="Type" value={tx.type} />
+                <DetailItem label="Reason" value={tx.reason || "-"} />
+                <DetailItem label="Status" value={tx.status} />
+                <DetailItem label="Amount" value={`${Math.abs(Number(tx.amount)).toFixed(2)} MVR`} />
+                {tx.notes && <DetailItem label="Notes" value={tx.notes} span />}
+              </div>
+
+              {tx.trip_id && (
+                <>
+                  {loadingTrip ? (
+                    <div className="flex items-center gap-2 py-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      <span className="text-[10px] text-muted-foreground">Loading trip...</span>
+                    </div>
+                  ) : tripData ? (
+                    <div className="bg-card rounded-lg p-2 space-y-1 border border-border/30">
+                      <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Trip Details</p>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        <DetailItem label="Pickup" value={tripData.pickup_address} span />
+                        <DetailItem label="Dropoff" value={tripData.dropoff_address} span />
+                        <DetailItem label="Fare" value={`${(tripData.actual_fare || tripData.estimated_fare || 0).toFixed(0)} MVR`} />
+                        <DetailItem label="Status" value={tripData.status} />
+                        {tripData.vehicle?.center_code && <DetailItem label="Center" value={tripData.vehicle.center_code} />}
+                        {tripData.vehicle?.plate_number && <DetailItem label="Plate" value={tripData.vehicle.plate_number} />}
+                        {tripData.customer_name && <DetailItem label="Customer" value={tripData.customer_name} />}
+                        {tripData.customer_phone && <DetailItem label="Phone" value={tripData.customer_phone} />}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground italic">Trip not found</p>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+const DetailItem = ({ label, value, span }: { label: string; value: string; span?: boolean }) => (
+  <div className={span ? "col-span-2" : ""}>
+    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
+    <p className="text-[11px] font-medium text-foreground truncate">{value}</p>
+  </div>
+);
 
 export default DriverWallet;
