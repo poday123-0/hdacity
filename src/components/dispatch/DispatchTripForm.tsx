@@ -1258,7 +1258,7 @@ const DispatchTripForm = ({
                   });
                 };
 
-                // 1) Instant path: use preloaded index, but verify vehicle is still active
+                // 1) Instant path: use preloaded index, but re-fetch today_trips live
                 const cached = centerCodeIndex?.[code];
                 if (cached) {
                   // Quick check vehicle is still active and not blocked
@@ -1290,7 +1290,40 @@ const DispatchTripForm = ({
                     });
                     return;
                   }
-                  addEntry({ ...cached, code });
+
+                  // Re-fetch today_trips and loss status live
+                  const nowUtcMs = Date.now();
+                  const maldivesNow = new Date(nowUtcMs + 5 * 3600000);
+                  const yy = maldivesNow.getUTCFullYear();
+                  const mm = String(maldivesNow.getUTCMonth() + 1).padStart(2, '0');
+                  const dd = String(maldivesNow.getUTCDate()).padStart(2, '0');
+                  const todayStartISO = `${yy}-${mm}-${dd}T00:00:00+05:00`;
+
+                  const { data: codeVehicles } = await supabase
+                    .from("vehicles")
+                    .select("id")
+                    .eq("center_code", code)
+                    .eq("is_active", true);
+                  const codeVehicleIds = (codeVehicles || []).map((v: any) => v.id);
+
+                  const [{ count: todayCount }, { count: lossCount }] = await Promise.all([
+                    supabase
+                      .from("trips")
+                      .select("id", { count: "exact", head: true })
+                      .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
+                      .gte("created_at", todayStartISO)
+                      .in("status", ["requested", "accepted", "started", "completed"])
+                      .eq("dispatch_type", "operator")
+                      .eq("is_loss", false),
+                    supabase
+                      .from("trips")
+                      .select("id", { count: "exact", head: true })
+                      .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
+                      .eq("is_loss", true)
+                      .eq("dispatch_type", "operator"),
+                  ]);
+
+                  addEntry({ ...cached, code, today_trips: todayCount || 0, has_loss: (lossCount || 0) > 0 });
                   return;
                 }
 
