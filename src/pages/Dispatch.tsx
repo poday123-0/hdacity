@@ -239,6 +239,8 @@ const Dispatch = () => {
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
+  const [allBookingsTrips, setAllBookingsTrips] = useState<any[]>([]);
+  const [allBookingsLoading, setAllBookingsLoading] = useState(false);
   const [showAllAppRequests, setShowAllAppRequests] = useState(false);
   const [appRequestsSearch, setAppRequestsSearch] = useState("");
   const [appRequestsStatusFilter, setAppRequestsStatusFilter] = useState<string>("all");
@@ -489,6 +491,7 @@ const Dispatch = () => {
                 .in("vehicle_id", vehicleIds)
                 .gte("created_at", todayISO)
                 .in("status", ["requested", "accepted", "started", "completed"])
+                .eq("dispatch_type", "operator")
                 .eq("is_loss", false)
             : Promise.resolve({ data: [] as any[] }),
           vehicleIds.length
@@ -838,7 +841,78 @@ const Dispatch = () => {
     setLostTrips(lost || []);
   };
 
-  // Login handlers
+  // Fetch all bookings for the All Bookings dialog (supports all date ranges)
+  const fetchAllBookings = useCallback(async () => {
+    if (!showAllBookings) return;
+    setAllBookingsLoading(true);
+    try {
+      const tripSelect =
+        "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, is_loss, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+
+      const now = new Date();
+      let dateStart: Date | null = null;
+      let dateEnd: Date | null = null;
+
+      if (allBookingsCustomDate) {
+        dateStart = startOfDay(allBookingsCustomDate);
+        dateEnd = endOfDay(allBookingsCustomDate);
+      } else {
+        switch (allBookingsDateFilter) {
+          case "today":
+            dateStart = startOfDay(now);
+            dateEnd = endOfDay(now);
+            break;
+          case "yesterday":
+            dateStart = startOfDay(subDays(now, 1));
+            dateEnd = endOfDay(subDays(now, 1));
+            break;
+          case "this_week":
+            dateStart = startOfWeek(now, { weekStartsOn: 1 });
+            dateEnd = endOfWeek(now, { weekStartsOn: 1 });
+            break;
+          case "last_week":
+            dateStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            dateEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            break;
+          case "this_month":
+            dateStart = startOfMonth(now);
+            dateEnd = endOfMonth(now);
+            break;
+          case "last_month":
+            dateStart = startOfMonth(subMonths(now, 1));
+            dateEnd = endOfMonth(subMonths(now, 1));
+            break;
+          case "all":
+            dateStart = null;
+            dateEnd = null;
+            break;
+        }
+      }
+
+      let query = supabase
+        .from("trips")
+        .select(tripSelect)
+        .eq("dispatch_type", "operator")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (dateStart) query = query.gte("created_at", dateStart.toISOString());
+      if (dateEnd) query = query.lte("created_at", dateEnd.toISOString());
+
+      const { data } = await query;
+      setAllBookingsTrips(data || []);
+    } catch {
+      // keep existing
+    } finally {
+      setAllBookingsLoading(false);
+    }
+  }, [showAllBookings, allBookingsDateFilter, allBookingsCustomDate]);
+
+  useEffect(() => {
+    fetchAllBookings();
+  }, [fetchAllBookings]);
+
+
   const handlePhoneSubmit = async () => {
     if (phone.length < 7) return;
     setLoginLoading(true);
@@ -2230,77 +2304,31 @@ const Dispatch = () => {
 
           {/* Filtered list */}
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            {(() => {
-              const now = new Date();
-              let dateStart: Date | null = null;
-              let dateEnd: Date | null = null;
-
-              if (allBookingsCustomDate) {
-                dateStart = startOfDay(allBookingsCustomDate);
-                dateEnd = endOfDay(allBookingsCustomDate);
-              } else {
-                switch (allBookingsDateFilter) {
-                  case "today":
-                    dateStart = startOfDay(now);
-                    dateEnd = endOfDay(now);
-                    break;
-                  case "yesterday":
-                    dateStart = startOfDay(subDays(now, 1));
-                    dateEnd = endOfDay(subDays(now, 1));
-                    break;
-                  case "this_week":
-                    dateStart = startOfWeek(now, { weekStartsOn: 1 });
-                    dateEnd = endOfWeek(now, { weekStartsOn: 1 });
-                    break;
-                  case "last_week":
-                    dateStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-                    dateEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-                    break;
-                  case "this_month":
-                    dateStart = startOfMonth(now);
-                    dateEnd = endOfMonth(now);
-                    break;
-                  case "last_month":
-                    dateStart = startOfMonth(subMonths(now, 1));
-                    dateEnd = endOfMonth(subMonths(now, 1));
-                    break;
-                  case "all":
-                    dateStart = null;
-                    dateEnd = null;
-                    break;
-                }
-              }
-
+            {allBookingsLoading ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Loading...</p>
+            ) : (() => {
               const q = allBookingsSearch.toLowerCase().trim();
-              const filtered = recentTrips.filter((t: any) => {
-                // Date filter
-                if (dateStart && dateEnd) {
-                  const created = new Date(t.created_at);
-                  if (created < dateStart || created > dateEnd) return false;
-                }
-                // Search filter
-                if (q) {
-                  const centerCode =
-                    t.vehicle?.center_code?.toLowerCase() ||
-                    t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() ||
-                    "";
-                  const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
-                  const pickup = (t.pickup_address || "").toLowerCase();
-                  const dropoff = (t.dropoff_address || "").toLowerCase();
-                  const customerName = (t.customer_name || "").toLowerCase();
-                  const driverName = t.driver
-                    ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}`.toLowerCase()
-                    : "";
-                  return (
-                    centerCode.includes(q) ||
-                    plateNumber.includes(q) ||
-                    pickup.includes(q) ||
-                    dropoff.includes(q) ||
-                    customerName.includes(q) ||
-                    driverName.includes(q)
-                  );
-                }
-                return true;
+              const filtered = allBookingsTrips.filter((t: any) => {
+                if (!q) return true;
+                const centerCode =
+                  t.vehicle?.center_code?.toLowerCase() ||
+                  t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() ||
+                  "";
+                const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
+                const pickup = (t.pickup_address || "").toLowerCase();
+                const dropoff = (t.dropoff_address || "").toLowerCase();
+                const customerName = (t.customer_name || "").toLowerCase();
+                const driverName = t.driver
+                  ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}`.toLowerCase()
+                  : "";
+                return (
+                  centerCode.includes(q) ||
+                  plateNumber.includes(q) ||
+                  pickup.includes(q) ||
+                  dropoff.includes(q) ||
+                  customerName.includes(q) ||
+                  driverName.includes(q)
+                );
               });
 
               if (filtered.length === 0) {
@@ -2439,6 +2467,7 @@ const Dispatch = () => {
                                   e.stopPropagation();
                                   await supabase.from("trips").update({ is_loss: true } as any).eq("id", t.id);
                                   setRecentTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: true } : tr));
+                                  setAllBookingsTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: true } : tr));
                                   toast({ title: "Marked as Loss" });
                                 }}
                                 className="text-[9px] font-bold text-destructive px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors"
@@ -2452,6 +2481,7 @@ const Dispatch = () => {
                                   e.stopPropagation();
                                   await supabase.from("trips").update({ is_loss: false } as any).eq("id", t.id);
                                   setRecentTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: false } : tr));
+                                  setAllBookingsTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: false } : tr));
                                   toast({ title: "Loss cleared" });
                                 }}
                                 className="text-[9px] font-bold text-success px-2 py-1 rounded bg-success/10 hover:bg-success/20 transition-colors"
