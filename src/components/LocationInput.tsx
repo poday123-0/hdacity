@@ -589,6 +589,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
     }
     setActiveField(null);
     setSettingOnMap(false);
+    onMapPickerChange?.(false);
     setMapPickerField(null);
   };
 
