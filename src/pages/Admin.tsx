@@ -107,6 +107,7 @@ const navGroups: NavGroup[] = [
     label: "System",
     items: [
       { id: "device_tokens", label: "Device Tokens", icon: Smartphone },
+      { id: "storage", label: "Storage", icon: Building2 },
       { id: "settings", label: "Settings", icon: Settings },
     ],
   },
