@@ -45,6 +45,7 @@ export type BookingType = "now" | "scheduled" | "hourly";
 interface LocationInputProps {
   onSearch: (pickup: ServiceLocation, dropoff: ServiceLocation, passengers: number, luggage: number, stops?: ServiceLocation[], bookingType?: BookingType, scheduledAt?: string, bookingNotes?: string) => void;
   userId?: string;
+  onMapPickerChange?: (open: boolean) => void;
 }
 
 const ICON_MAP: Record<string, typeof Home> = {
