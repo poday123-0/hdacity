@@ -1336,7 +1336,7 @@ const Index = () => {
         )}
       </div>
 
-      {passengerScreen === "home" && <TopBar 
+      {passengerScreen === "home" && !isMapPickerOpen && <TopBar 
         onLogout={handleLogout} 
         userName={userProfile?.first_name} 
         userProfile={userProfile} 
