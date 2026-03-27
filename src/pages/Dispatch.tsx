@@ -2481,6 +2481,7 @@ const Dispatch = () => {
                                   e.stopPropagation();
                                   await supabase.from("trips").update({ is_loss: false } as any).eq("id", t.id);
                                   setRecentTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: false } : tr));
+                                  setAllBookingsTrips((prev) => prev.map((tr: any) => tr.id === t.id ? { ...tr, is_loss: false } : tr));
                                   toast({ title: "Loss cleared" });
                                 }}
                                 className="text-[9px] font-bold text-success px-2 py-1 rounded bg-success/10 hover:bg-success/20 transition-colors"
