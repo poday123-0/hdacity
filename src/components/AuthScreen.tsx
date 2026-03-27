@@ -45,7 +45,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     load();
   }, []);
 
-  // WebOTP API
+  // WebOTP API (works in browsers, not in native WebView)
   useEffect(() => {
     if (step !== "otp") return;
     const ac = new AbortController();
@@ -65,6 +65,37 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
       catch(() => {});
     }
     return () => ac.abort();
+  }, [step]);
+
+  // Clipboard polling for native apps (checks clipboard every 2s for 6-digit code)
+  useEffect(() => {
+    if (step !== "otp") return;
+    let active = true;
+    let lastClip = "";
+    const poll = async () => {
+      if (!active) return;
+      try {
+        if (navigator.clipboard?.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text !== lastClip) {
+            lastClip = text;
+            const match = text.match(/\b(\d{6})\b/);
+            if (match) {
+              const digits = match[1].split("");
+              setOtp(digits);
+              digits.forEach((d, i) => { if (otpRefs.current[i]) otpRefs.current[i]!.value = d; });
+              setTimeout(() => handleVerify(match[1]), 300);
+              active = false;
+              return;
+            }
+          }
+        }
+      } catch {}
+      if (active) setTimeout(poll, 2000);
+    };
+    // Start polling after a short delay
+    const timer = setTimeout(poll, 1500);
+    return () => { active = false; clearTimeout(timer); };
   }, [step]);
 
   const handlePhoneSubmit = async () => {
@@ -129,6 +160,18 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     setOtp(newOtp);
     if (value && index < 5) otpRefs.current[index + 1]?.focus();
     if (newOtp.every((d) => d !== "")) handleVerify(newOtp.join(""));
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text");
+    const match = pasted.match(/(\d{6})/);
+    if (match) {
+      e.preventDefault();
+      const digits = match[1].split("");
+      setOtp(digits);
+      digits.forEach((d, i) => { if (otpRefs.current[i]) otpRefs.current[i]!.value = d; });
+      setTimeout(() => handleVerify(match[1]), 300);
+    }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -302,6 +345,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  onPaste={handleOtpPaste}
                   maxLength={1}
                   className={`w-12 h-14 text-center text-xl font-bold rounded-2xl text-foreground focus:outline-none transition-all border shadow-sm ${
                   digit ?
