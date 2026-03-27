@@ -45,6 +45,7 @@ export type BookingType = "now" | "scheduled" | "hourly";
 interface LocationInputProps {
   onSearch: (pickup: ServiceLocation, dropoff: ServiceLocation, passengers: number, luggage: number, stops?: ServiceLocation[], bookingType?: BookingType, scheduledAt?: string, bookingNotes?: string) => void;
   userId?: string;
+  onMapPickerChange?: (open: boolean) => void;
 }
 
 const ICON_MAP: Record<string, typeof Home> = {
@@ -59,7 +60,7 @@ const PRESET_LABELS = [
   { label: "Office", icon: "briefcase" },
 ];
 
-const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
+const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputProps) => {
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickup, setPickup] = useState<ServiceLocation | null>(null);
@@ -557,6 +558,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
   const handleSetOnMap = (field: "pickup" | "dropoff" | `stop-${number}`) => {
     setMapPickerField(field);
     setSettingOnMap(true);
+    onMapPickerChange?.(true);
     setActiveField(null);
     setPlaceResults([]);
   };
@@ -587,6 +589,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     }
     setActiveField(null);
     setSettingOnMap(false);
+    onMapPickerChange?.(false);
     setMapPickerField(null);
   };
 
@@ -662,7 +665,7 @@ const LocationInput = ({ onSearch, userId }: LocationInputProps) => {
     return (
       <MapPicker
         onConfirm={handleMapPickerConfirm}
-        onCancel={() => { setSettingOnMap(false); setMapPickerField(null); }}
+        onCancel={() => { setSettingOnMap(false); onMapPickerChange?.(false); setMapPickerField(null); }}
         initialLat={pickup?.lat}
         initialLng={pickup?.lng}
       />

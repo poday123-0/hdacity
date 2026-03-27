@@ -91,6 +91,7 @@ const Index = () => {
     try { return localStorage.getItem("hda_pending_phone") || ""; } catch { return ""; }
   });
   const [showPassengerNotifs, setShowPassengerNotifs] = useState(false);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [pendingDriverData, setPendingDriverData] = useState<{ profile: any; vehicles: any[]; vehicleTypes: any[] } | null>(null);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   const [passengerMapInstance, setPassengerMapInstance] = useState<google.maps.Map | null>(null);
@@ -1335,7 +1336,7 @@ const Index = () => {
         )}
       </div>
 
-      {passengerScreen === "home" && <TopBar 
+      {passengerScreen === "home" && !isMapPickerOpen && <TopBar 
         onLogout={handleLogout} 
         userName={userProfile?.first_name} 
         userProfile={userProfile} 
@@ -1371,7 +1372,7 @@ const Index = () => {
 
       <div className="absolute inset-0 z-[500] pointer-events-none [&>*]:pointer-events-auto lg:left-0 lg:right-auto lg:w-[420px] lg:top-[4.5rem]">
         <AnimatePresence mode="wait">
-          {passengerScreen === "home" && !showScheduledConfirmation && <LocationInput key="home" onSearch={handleLocationSearch} userId={userProfile?.id} />}
+          {passengerScreen === "home" && !showScheduledConfirmation && <LocationInput key="home" onSearch={handleLocationSearch} userId={userProfile?.id} onMapPickerChange={setIsMapPickerOpen} />}
           {passengerScreen === "ride-options" && !showScheduledConfirmation && (
             <RideOptions key="ride-options" onBack={() => setPassengerScreen("home")} onConfirm={handleSelectVehicle} pickup={pickup} dropoff={dropoff} passengerCount={passengerCount} luggageCount={luggageCount} stops={intermediateStops} bookingType={bookingType} scheduledAt={scheduledAt} />
           )}
