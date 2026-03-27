@@ -119,7 +119,7 @@ const OnboardingScreens = ({ onComplete }: OnboardingScreensProps) => {
       </div>
 
       {/* Bottom controls */}
-      <div className="bg-background px-6 py-5 flex items-center justify-between shrink-0">
+      <div className="bg-background px-6 py-5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom,8px)+0.75rem))] flex items-center justify-between shrink-0">
         {/* Left - prev button */}
         <div className="w-20">
           {current > 0 && (
