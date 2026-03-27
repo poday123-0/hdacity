@@ -135,6 +135,56 @@ const DispatchTripForm = ({
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
 
+  // Realtime: update centerCodeResults when trip is_loss changes
+  useEffect(() => {
+    if (centerCodeResults.length === 0) return;
+    const vehicleIds = centerCodeResults.map(r => r.vehicle_id).filter(Boolean);
+    if (vehicleIds.length === 0) return;
+
+    const channel = supabase
+      .channel(`dispatch-loss-${formIndex}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'trips' },
+        (payload) => {
+          const newRow = payload.new as any;
+          const oldRow = payload.old as any;
+          // Only react to is_loss changes on operator trips with matching vehicles
+          if (newRow.is_loss === oldRow.is_loss) return;
+          if (newRow.dispatch_type !== 'operator') return;
+          const changedVehicleId = newRow.vehicle_id;
+          if (!changedVehicleId || !vehicleIds.includes(changedVehicleId)) return;
+
+          setCenterCodeResults((prev) => {
+            const updated = prev.map((entry) => {
+              if (entry.vehicle_id !== changedVehicleId) return entry;
+              return { ...entry, has_loss: newRow.is_loss };
+            });
+            // Re-sort with priority logic
+            return [...updated].sort((a, b) => {
+              const getPriority = (item: CenterCodeIndexEntry) => {
+                const hasLoss = !!item.has_loss;
+                const hasTripsToday = (item.today_trips || 0) > 0;
+                if (hasLoss && !hasTripsToday) return 0;
+                if (!hasLoss && !hasTripsToday) return 1;
+                if (hasLoss && hasTripsToday) return 2;
+                return 3;
+              };
+              const priorityDiff = getPriority(a) - getPriority(b);
+              if (priorityDiff !== 0) return priorityDiff;
+              if (!a.last_trip_date && !b.last_trip_date) return 0;
+              if (!a.last_trip_date) return 1;
+              if (!b.last_trip_date) return -1;
+              return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+            });
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [centerCodeResults.map(r => r.vehicle_id).join(','), formIndex]);
+
   // Load fare data with shared cache
   useEffect(() => {
     const load = async () => {
