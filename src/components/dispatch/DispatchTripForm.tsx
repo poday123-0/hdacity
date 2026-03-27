@@ -1375,7 +1375,7 @@ const DispatchTripForm = ({
                         .from("trips")
                         .select("id", { count: "exact", head: true })
                         .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
-                        .gte("created_at", todayStart.toISOString())
+                        .gte("created_at", todayStartISO)
                         .in("status", ["requested", "accepted", "started", "completed"])
                         .eq("dispatch_type", "operator")
                         .eq("is_loss", false),
