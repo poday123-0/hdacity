@@ -1335,7 +1335,7 @@ const Index = () => {
         )}
       </div>
 
-      <TopBar 
+      {passengerScreen === "home" && <TopBar 
         onLogout={handleLogout} 
         userName={userProfile?.first_name} 
         userProfile={userProfile} 
@@ -1354,7 +1354,7 @@ const Index = () => {
             }
           } catch {}
         }}
-      />
+      />}
 
       {/* Passenger SOS - visible during active trip */}
       {userProfile?.id && (tripStatus === "in_progress" || tripStatus === "accepted" || tripStatus === "arrived") && currentTripId && (
