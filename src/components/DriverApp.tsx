@@ -832,8 +832,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const onForeground = () => {
         if (document.visibilityState !== "visible") return;
         if (isNativePlatform) {
-          // On native, just upsert last known position — plugin will resume automatically
-          if (lastPosRef.current) upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng, true);
+          // On native, get a fresh GPS fix on resume — background plugin may lag after wake
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setGpsEnabled(true);
+              setDriverLat(pos.coords.latitude);
+              setDriverLng(pos.coords.longitude);
+              lastPosRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              upsertLocation(pos.coords.latitude, pos.coords.longitude, true);
+            },
+            () => {
+              // Fallback: upsert last known position if fresh fix fails
+              if (lastPosRef.current) upsertLocation(lastPosRef.current.lat, lastPosRef.current.lng, true);
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          );
           return;
         }
 
