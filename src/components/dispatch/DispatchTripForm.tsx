@@ -1339,8 +1339,9 @@ const DispatchTripForm = ({
                   let hasLoss = false;
 
                   if (vehicle.driver_id) {
-                    const todayStart = new Date();
-                    todayStart.setHours(0, 0, 0, 0);
+                    // Use Maldives time (UTC+5) for "today" calculation
+                    const nowMv = new Date(Date.now() + 5 * 60 * 60 * 1000);
+                    const todayStart = new Date(Date.UTC(nowMv.getUTCFullYear(), nowMv.getUTCMonth(), nowMv.getUTCDate()) - 5 * 60 * 60 * 1000);
 
                     // Get all vehicle IDs for this center code to count trips by code
                     const { data: codeVehicles } = await supabase
