@@ -45,7 +45,7 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     load();
   }, []);
 
-  // WebOTP API
+  // WebOTP API (works in browsers, not in native WebView)
   useEffect(() => {
     if (step !== "otp") return;
     const ac = new AbortController();
@@ -65,6 +65,37 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
       catch(() => {});
     }
     return () => ac.abort();
+  }, [step]);
+
+  // Clipboard polling for native apps (checks clipboard every 2s for 6-digit code)
+  useEffect(() => {
+    if (step !== "otp") return;
+    let active = true;
+    let lastClip = "";
+    const poll = async () => {
+      if (!active) return;
+      try {
+        if (navigator.clipboard?.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text !== lastClip) {
+            lastClip = text;
+            const match = text.match(/\b(\d{6})\b/);
+            if (match) {
+              const digits = match[1].split("");
+              setOtp(digits);
+              digits.forEach((d, i) => { if (otpRefs.current[i]) otpRefs.current[i]!.value = d; });
+              setTimeout(() => handleVerify(match[1]), 300);
+              active = false;
+              return;
+            }
+          }
+        }
+      } catch {}
+      if (active) setTimeout(poll, 2000);
+    };
+    // Start polling after a short delay
+    const timer = setTimeout(poll, 1500);
+    return () => { active = false; clearTimeout(timer); };
   }, [step]);
 
   const handlePhoneSubmit = async () => {
