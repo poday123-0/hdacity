@@ -1361,7 +1361,8 @@ const DispatchTripForm = ({
                         .select("id", { count: "exact", head: true })
                         .eq("vehicle_id", vehicle.id)
                         .gte("created_at", todayStart.toISOString())
-                        .in("status", ["requested", "accepted", "started", "completed"]),
+                        .in("status", ["requested", "accepted", "started", "completed"])
+                        .eq("is_loss", false),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })
