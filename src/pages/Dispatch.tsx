@@ -2304,77 +2304,31 @@ const Dispatch = () => {
 
           {/* Filtered list */}
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            {(() => {
-              const now = new Date();
-              let dateStart: Date | null = null;
-              let dateEnd: Date | null = null;
-
-              if (allBookingsCustomDate) {
-                dateStart = startOfDay(allBookingsCustomDate);
-                dateEnd = endOfDay(allBookingsCustomDate);
-              } else {
-                switch (allBookingsDateFilter) {
-                  case "today":
-                    dateStart = startOfDay(now);
-                    dateEnd = endOfDay(now);
-                    break;
-                  case "yesterday":
-                    dateStart = startOfDay(subDays(now, 1));
-                    dateEnd = endOfDay(subDays(now, 1));
-                    break;
-                  case "this_week":
-                    dateStart = startOfWeek(now, { weekStartsOn: 1 });
-                    dateEnd = endOfWeek(now, { weekStartsOn: 1 });
-                    break;
-                  case "last_week":
-                    dateStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-                    dateEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-                    break;
-                  case "this_month":
-                    dateStart = startOfMonth(now);
-                    dateEnd = endOfMonth(now);
-                    break;
-                  case "last_month":
-                    dateStart = startOfMonth(subMonths(now, 1));
-                    dateEnd = endOfMonth(subMonths(now, 1));
-                    break;
-                  case "all":
-                    dateStart = null;
-                    dateEnd = null;
-                    break;
-                }
-              }
-
+            {allBookingsLoading ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Loading...</p>
+            ) : (() => {
               const q = allBookingsSearch.toLowerCase().trim();
-              const filtered = recentTrips.filter((t: any) => {
-                // Date filter
-                if (dateStart && dateEnd) {
-                  const created = new Date(t.created_at);
-                  if (created < dateStart || created > dateEnd) return false;
-                }
-                // Search filter
-                if (q) {
-                  const centerCode =
-                    t.vehicle?.center_code?.toLowerCase() ||
-                    t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() ||
-                    "";
-                  const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
-                  const pickup = (t.pickup_address || "").toLowerCase();
-                  const dropoff = (t.dropoff_address || "").toLowerCase();
-                  const customerName = (t.customer_name || "").toLowerCase();
-                  const driverName = t.driver
-                    ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}`.toLowerCase()
-                    : "";
-                  return (
-                    centerCode.includes(q) ||
-                    plateNumber.includes(q) ||
-                    pickup.includes(q) ||
-                    dropoff.includes(q) ||
-                    customerName.includes(q) ||
-                    driverName.includes(q)
-                  );
-                }
-                return true;
+              const filtered = allBookingsTrips.filter((t: any) => {
+                if (!q) return true;
+                const centerCode =
+                  t.vehicle?.center_code?.toLowerCase() ||
+                  t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() ||
+                  "";
+                const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
+                const pickup = (t.pickup_address || "").toLowerCase();
+                const dropoff = (t.dropoff_address || "").toLowerCase();
+                const customerName = (t.customer_name || "").toLowerCase();
+                const driverName = t.driver
+                  ? `${(t.driver as any).first_name} ${(t.driver as any).last_name}`.toLowerCase()
+                  : "";
+                return (
+                  centerCode.includes(q) ||
+                  plateNumber.includes(q) ||
+                  pickup.includes(q) ||
+                  dropoff.includes(q) ||
+                  customerName.includes(q) ||
+                  driverName.includes(q)
+                );
               });
 
               if (filtered.length === 0) {
