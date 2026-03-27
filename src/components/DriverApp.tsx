@@ -1179,6 +1179,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Track last seen trip id and declined trips to avoid duplicate handling
   const lastSeenTripRef = useRef<string | null>(null);
   const declinedTripIdsRef = useRef<Set<string>>(new Set());
+  const doForegroundTripCheckRef = useRef<(() => void) | null>(null);
 
   // Load declined trips from DB on mount
   useEffect(() => {
