@@ -841,7 +841,78 @@ const Dispatch = () => {
     setLostTrips(lost || []);
   };
 
-  // Login handlers
+  // Fetch all bookings for the All Bookings dialog (supports all date ranges)
+  const fetchAllBookings = useCallback(async () => {
+    if (!showAllBookings) return;
+    setAllBookingsLoading(true);
+    try {
+      const tripSelect =
+        "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, is_loss, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+
+      const now = new Date();
+      let dateStart: Date | null = null;
+      let dateEnd: Date | null = null;
+
+      if (allBookingsCustomDate) {
+        dateStart = startOfDay(allBookingsCustomDate);
+        dateEnd = endOfDay(allBookingsCustomDate);
+      } else {
+        switch (allBookingsDateFilter) {
+          case "today":
+            dateStart = startOfDay(now);
+            dateEnd = endOfDay(now);
+            break;
+          case "yesterday":
+            dateStart = startOfDay(subDays(now, 1));
+            dateEnd = endOfDay(subDays(now, 1));
+            break;
+          case "this_week":
+            dateStart = startOfWeek(now, { weekStartsOn: 1 });
+            dateEnd = endOfWeek(now, { weekStartsOn: 1 });
+            break;
+          case "last_week":
+            dateStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            dateEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            break;
+          case "this_month":
+            dateStart = startOfMonth(now);
+            dateEnd = endOfMonth(now);
+            break;
+          case "last_month":
+            dateStart = startOfMonth(subMonths(now, 1));
+            dateEnd = endOfMonth(subMonths(now, 1));
+            break;
+          case "all":
+            dateStart = null;
+            dateEnd = null;
+            break;
+        }
+      }
+
+      let query = supabase
+        .from("trips")
+        .select(tripSelect)
+        .eq("dispatch_type", "operator")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (dateStart) query = query.gte("created_at", dateStart.toISOString());
+      if (dateEnd) query = query.lte("created_at", dateEnd.toISOString());
+
+      const { data } = await query;
+      setAllBookingsTrips(data || []);
+    } catch {
+      // keep existing
+    } finally {
+      setAllBookingsLoading(false);
+    }
+  }, [showAllBookings, allBookingsDateFilter, allBookingsCustomDate]);
+
+  useEffect(() => {
+    fetchAllBookings();
+  }, [fetchAllBookings]);
+
+
   const handlePhoneSubmit = async () => {
     if (phone.length < 7) return;
     setLoginLoading(true);
