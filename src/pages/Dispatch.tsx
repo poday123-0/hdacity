@@ -1707,7 +1707,10 @@ const Dispatch = () => {
                   <div className="px-3 py-2 border-b border-border bg-orange-500/5">
                     <h3 className="text-xs font-bold text-orange-500 flex items-center gap-1.5">
                       <Send className="w-3.5 h-3.5 text-orange-500" />
-                      App Requests ({appRequestTrips.length})
+                      App Requests ({(() => {
+                        const todayStart = startOfDay(new Date()).getTime();
+                        return appRequestTrips.filter((t: any) => new Date(t.created_at).getTime() >= todayStart).length;
+                      })()})
                     </h3>
                   </div>
                   <div className="max-h-[280px] overflow-y-auto p-1.5 space-y-1.5">
