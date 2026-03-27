@@ -795,6 +795,7 @@ const Dispatch = () => {
         .select(tripSelect)
         .eq("dispatch_type", "operator")
         .in("status", ["requested", "accepted", "started", "completed"])
+        .gte("created_at", startOfDay(new Date()).toISOString())
         .order("created_at", { ascending: false })
         .limit(200),
       supabase
