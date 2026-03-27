@@ -192,9 +192,12 @@ const AdminSettings = () => {
   };
 
   const deleteSound = async (sound: SoundFile) => {
+    // Delete from storage first
+    const { deleteStorageFile } = await import("@/lib/storage-utils");
+    await deleteStorageFile(sound.file_url);
     await supabase.from("notification_sounds").delete().eq("id", sound.id);
     setSounds(sounds.filter(s => s.id !== sound.id));
-    toast({ title: "Sound deleted" });
+    toast({ title: "Sound deleted from database & storage" });
   };
 
   const playSound = (sound: SoundFile) => {

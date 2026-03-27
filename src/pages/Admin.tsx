@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy, Clock,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy, Clock, HardDrive,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -38,8 +38,9 @@ import AdminCompetitions from "@/components/admin/AdminCompetitions";
 import AdminDutyHours from "@/components/admin/AdminDutyHours";
 import AdminAdBanners from "@/components/admin/AdminAdBanners";
 import AdminDriverInvoice from "@/components/admin/AdminDriverInvoice";
+import AdminStorage from "@/components/admin/AdminStorage";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "settings";
 
 type NavGroup = {
   label: string;
@@ -106,6 +107,7 @@ const navGroups: NavGroup[] = [
     label: "System",
     items: [
       { id: "device_tokens", label: "Device Tokens", icon: Smartphone },
+      { id: "storage", label: "Storage", icon: HardDrive },
       { id: "settings", label: "Settings", icon: Settings },
     ],
   },
@@ -401,6 +403,7 @@ const Admin = () => {
           {activeTab === "duty_hours" && <AdminDutyHours />}
           {activeTab === "ad_banners" && <AdminAdBanners />}
           {activeTab === "driver_invoices" && <AdminDriverInvoice />}
+          {activeTab === "storage" && <AdminStorage />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
