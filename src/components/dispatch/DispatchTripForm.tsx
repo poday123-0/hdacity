@@ -1389,6 +1389,7 @@ const DispatchTripForm = ({
                       lastTripDate = lastTrip.created_at;
                     }
                     todayTrips = todayCount || 0;
+                    console.log(`[CenterCode] ${code}: todayStart=${todayStart.toISOString()}, vehicleIds=${codeVehicleIds.length}, todayTrips=${todayTrips}, hasLoss=${(lossCount || 0) > 0}`);
                     hasLoss = (lossCount || 0) > 0;
                   }
 
