@@ -299,6 +299,12 @@ const AdminDrivers = () => {
 
   const uploadDoc = async (field: string, file: File) => {
     setUploading(field);
+    // Delete old file from storage if replacing
+    const oldUrl = editForm[field];
+    if (oldUrl) {
+      const { deleteStorageFile } = await import("@/lib/storage-utils");
+      await deleteStorageFile(oldUrl);
+    }
     const ext = file.name.split(".").pop();
     const path = `driver-docs/${editingId}/${field}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("driver-documents").upload(path, file);
