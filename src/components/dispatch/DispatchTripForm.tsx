@@ -1173,38 +1173,41 @@ const DispatchTripForm = ({
                 }
 
                 const addEntry = (entry: CenterCodeIndexEntry) => {
-                  const updated = [...centerCodeResults, entry].sort((a, b) => {
-                    try {
-                      const getPriority = (item: CenterCodeIndexEntry) => {
-                        const hasLoss = !!item.has_loss;
-                        const hasTripsToday = (item.today_trips || 0) > 0;
+                  setCenterCodeResults((prev) => {
+                    if (prev.some((r) => r.code === entry.code)) return prev;
+                    const updated = [...prev, entry].sort((a, b) => {
+                      try {
+                        const getPriority = (item: CenterCodeIndexEntry) => {
+                          const hasLoss = !!item.has_loss;
+                          const hasTripsToday = (item.today_trips || 0) > 0;
 
-                        if (hasLoss && !hasTripsToday) return 0;
-                        if (!hasLoss && !hasTripsToday) return 1;
-                        if (hasLoss && hasTripsToday) return 2;
-                        return 3;
-                      };
+                          if (hasLoss && !hasTripsToday) return 0;
+                          if (!hasLoss && !hasTripsToday) return 1;
+                          if (hasLoss && hasTripsToday) return 2;
+                          return 3;
+                        };
 
-                      const priorityDiff = getPriority(a) - getPriority(b);
-                      if (priorityDiff !== 0) return priorityDiff;
+                        const priorityDiff = getPriority(a) - getPriority(b);
+                        if (priorityDiff !== 0) return priorityDiff;
 
-                      if (!a.last_trip_date && !b.last_trip_date) return 0;
-                      if (!a.last_trip_date) return 1; // No trip data goes to bottom
-                      if (!b.last_trip_date) return -1; // No trip data goes to bottom
+                        if (!a.last_trip_date && !b.last_trip_date) return 0;
+                        if (!a.last_trip_date) return 1;
+                        if (!b.last_trip_date) return -1;
 
-                      return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
-                    } catch (error) {
-                      console.error("Vehicle sorting error:", error);
-                      return 0;
+                        return new Date(a.last_trip_date).getTime() - new Date(b.last_trip_date).getTime();
+                      } catch (error) {
+                        console.error("Vehicle sorting error:", error);
+                        return 0;
+                      }
+                    });
+
+                    const topResult = updated[0];
+                    if (topResult?.vehicle_type_id) {
+                      setSelectedVehicleType(topResult.vehicle_type_id);
                     }
+
+                    return updated;
                   });
-
-                  setCenterCodeResults(updated);
-
-                  const topResult = updated[0];
-                  if (topResult?.vehicle_type_id) {
-                    setSelectedVehicleType(topResult.vehicle_type_id);
-                  }
                 };
 
                 // 1) Instant path: use preloaded index, but verify vehicle is still active
