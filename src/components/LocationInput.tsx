@@ -558,6 +558,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
   const handleSetOnMap = (field: "pickup" | "dropoff" | `stop-${number}`) => {
     setMapPickerField(field);
     setSettingOnMap(true);
+    onMapPickerChange?.(true);
     setActiveField(null);
     setPlaceResults([]);
   };
