@@ -1340,8 +1340,14 @@ const DispatchTripForm = ({
 
                   if (vehicle.driver_id) {
                     // Use Maldives time (UTC+5) for "today" calculation
-                    const nowMv = new Date(Date.now() + 5 * 60 * 60 * 1000);
-                    const todayStart = new Date(Date.UTC(nowMv.getUTCFullYear(), nowMv.getUTCMonth(), nowMv.getUTCDate()) - 5 * 60 * 60 * 1000);
+                    // Maldives midnight = current UTC date adjusted by +5h, then back to UTC
+                    const nowUtcMs = Date.now();
+                    const maldivesNow = new Date(nowUtcMs + 5 * 3600000);
+                    const yy = maldivesNow.getUTCFullYear();
+                    const mm = String(maldivesNow.getUTCMonth() + 1).padStart(2, '0');
+                    const dd = String(maldivesNow.getUTCDate()).padStart(2, '0');
+                    // Midnight Maldives in UTC = subtract 5 hours
+                    const todayStartISO = `${yy}-${mm}-${dd}T00:00:00+05:00`;
 
                     // Get all vehicle IDs for this center code to count trips by code
                     const { data: codeVehicles } = await supabase
@@ -1369,7 +1375,7 @@ const DispatchTripForm = ({
                         .from("trips")
                         .select("id", { count: "exact", head: true })
                         .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
-                        .gte("created_at", todayStart.toISOString())
+                        .gte("created_at", todayStartISO)
                         .in("status", ["requested", "accepted", "started", "completed"])
                         .eq("dispatch_type", "operator")
                         .eq("is_loss", false),
@@ -1389,6 +1395,7 @@ const DispatchTripForm = ({
                       lastTripDate = lastTrip.created_at;
                     }
                     todayTrips = todayCount || 0;
+                    console.log(`[CenterCode] ${code}: todayStart=${todayStartISO}, vehicleIds=${codeVehicleIds.length}, todayTrips=${todayTrips}, hasLoss=${(lossCount || 0) > 0}`);
                     hasLoss = (lossCount || 0) > 0;
                   }
 
