@@ -1336,9 +1336,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
     const doForegroundTripCheck = async () => {
       if (!isActive) return;
+      // Skip check if already showing a trip
+      if (screen !== "online") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-      // Check broadcast trips
+      // Check broadcast trips (no driver assigned yet)
       const { data } = await supabase
         .from("trips")
         .select("*")
@@ -1351,11 +1353,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (data && data.length > 0) {
         const trip = data[0] as any;
         if (!(trip.target_driver_id && trip.target_driver_id !== userProfile.id)) {
-          if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          if (!declinedTripIdsRef.current.has(trip.id)) {
             lastSeenTripRef.current = trip.id;
             handleNewTrip(trip);
             return;
           }
+        }
+      }
+
+      // Check targeted trips (target_driver_id matches this driver, still requested)
+      const { data: targetedTrips } = await supabase
+        .from("trips")
+        .select("*")
+        .in("status", ["requested", "scheduled"])
+        .eq("target_driver_id", userProfile.id)
+        .gte("requested_at", fiveMinAgo)
+        .order("requested_at", { ascending: false })
+        .limit(1);
+
+      if (targetedTrips && targetedTrips.length > 0) {
+        const trip = targetedTrips[0] as any;
+        if (!declinedTripIdsRef.current.has(trip.id)) {
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
+          return;
         }
       }
 
@@ -1372,7 +1393,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (assignedTrips && assignedTrips.length > 0) {
         const trip = assignedTrips[0] as any;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (!declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
         }
@@ -1383,9 +1404,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      // Fire immediately + retry after 500ms to handle WebView resume lag on native
+      // Fire immediately + multiple retries to handle WebView resume lag on native
       doForegroundTripCheck();
       setTimeout(doForegroundTripCheck, 500);
+      setTimeout(doForegroundTripCheck, 1500);
+      setTimeout(doForegroundTripCheck, 3000);
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
