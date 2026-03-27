@@ -165,10 +165,9 @@ const DispatchTripForm = ({
               const getPriority = (item: CenterCodeIndexEntry) => {
                 const hasLoss = !!item.has_loss;
                 const hasTripsToday = (item.today_trips || 0) > 0;
-                if (hasLoss && !hasTripsToday) return 0;
-                if (!hasLoss && !hasTripsToday) return 1;
-                if (hasLoss && hasTripsToday) return 2;
-                return 3;
+                if (hasLoss) return 0;
+                if (!hasTripsToday) return 1;
+                return 2;
               };
               const priorityDiff = getPriority(a) - getPriority(b);
               if (priorityDiff !== 0) return priorityDiff;
