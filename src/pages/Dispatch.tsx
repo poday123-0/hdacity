@@ -491,6 +491,7 @@ const Dispatch = () => {
                 .in("vehicle_id", vehicleIds)
                 .gte("created_at", todayISO)
                 .in("status", ["requested", "accepted", "started", "completed"])
+                .eq("dispatch_type", "operator")
                 .eq("is_loss", false)
             : Promise.resolve({ data: [] as any[] }),
           vehicleIds.length
