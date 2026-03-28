@@ -74,6 +74,13 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     const q = searchQuery.toLowerCase();
     const matches = searchLocations
       .filter(l => l.name.toLowerCase().includes(q) || (l.address || "").toLowerCase().includes(q))
+      .sort((a, b) => {
+        const an = a.name.toLowerCase();
+        const bn = b.name.toLowerCase();
+        const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
+        const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
+        return aScore - bScore;
+      })
       .slice(0, 8)
       .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
     setSearchResults(matches);
