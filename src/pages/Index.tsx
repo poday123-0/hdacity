@@ -906,10 +906,11 @@ const Index = () => {
 
     if (status === "accepted") {
       if (trip.driver_id) {
-        const [profileRes, banksRes, favaraRes, vehicleRes] = await Promise.all([
+        const [profileRes, banksRes, favaraRes, swipeRes, vehicleRes] = await Promise.all([
           supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.driver_id).single(),
           supabase.from("driver_bank_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
           supabase.from("driver_favara_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
+          supabase.from("driver_swipe_accounts").select("*").eq("driver_id", trip.driver_id).eq("is_active", true).order("is_primary", { ascending: false }),
           trip.vehicle_id
             ? supabase.from("vehicles").select("make, model, plate_number, color, image_url").eq("id", trip.vehicle_id).single()
             : Promise.resolve({ data: null }),
