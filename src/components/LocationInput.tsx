@@ -269,18 +269,13 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
                     if (status === "OK" && place?.geometry?.location) {
                       const lat = place.geometry.location.lat();
                       const lng = place.geometry.location.lng();
-                      const area = isInServiceArea(lat, lng);
-                      if (area) {
-                        resolve({
-                          place_id: pred.place_id,
-                          name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
-                          address: place.formatted_address || pred.description,
-                          lat,
-                          lng,
-                        });
-                      } else {
-                        resolve(null);
-                      }
+                      resolve({
+                        place_id: pred.place_id,
+                        name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
+                        address: place.formatted_address || pred.description,
+                        lat,
+                        lng,
+                      });
                     } else {
                       resolve(null);
                     }
@@ -295,7 +290,17 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           // Deduplicate: remove Google results that match admin location names
           const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
           const uniqueGoogle = detailedResults.filter(r => !adminNames.has(r.name.toLowerCase()));
-          setPlaceResults([...adminMatches, ...uniqueGoogle]);
+          const combined = [...adminMatches, ...uniqueGoogle];
+          // Sort by relevance: exact match > starts-with > contains
+          const ql = q;
+          combined.sort((a, b) => {
+            const an = a.name.toLowerCase();
+            const bn = b.name.toLowerCase();
+            const aScore = an === ql ? 0 : an.startsWith(ql) ? 1 : 2;
+            const bScore = bn === ql ? 0 : bn.startsWith(ql) ? 1 : 2;
+            return aScore - bScore;
+          });
+          setPlaceResults(combined);
         } catch {
           setPlaceResults(adminMatches);
         }
@@ -311,20 +316,25 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           for (const r of data) {
             const lat = parseFloat(r.lat);
             const lng = parseFloat(r.lon);
-            const area = isInServiceArea(lat, lng);
-            if (area) {
-              filtered.push({
-                place_id: String(r.place_id),
-                name: r.name || r.display_name.split(",")[0],
-                address: r.display_name.split(",").slice(0, 3).join(", "),
-                lat,
-                lng,
-              });
-            }
+            filtered.push({
+              place_id: String(r.place_id),
+              name: r.name || r.display_name.split(",")[0],
+              address: r.display_name.split(",").slice(0, 3).join(", "),
+              lat,
+              lng,
+            });
           }
           const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
           const uniqueNom = filtered.filter(r => !adminNames.has(r.name.toLowerCase()));
-          setPlaceResults([...adminMatches, ...uniqueNom]);
+          const combined = [...adminMatches, ...uniqueNom];
+          combined.sort((a, b) => {
+            const an = a.name.toLowerCase();
+            const bn = b.name.toLowerCase();
+            const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
+            const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
+            return aScore - bScore;
+          });
+          setPlaceResults(combined);
         } catch {
           setPlaceResults(adminMatches);
         }
