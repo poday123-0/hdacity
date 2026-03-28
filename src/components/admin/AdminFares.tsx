@@ -100,6 +100,7 @@ const AdminFares = () => {
     setZoneForm({ from_area: fz.from_area || "", to_area: fz.to_area || "", vehicle_type_id: fz.vehicle_type_id || "", fixed_fare: fz.fixed_fare?.toString() || "" });
     setEditingZoneId(fz.id);
     setShowZoneForm(true);
+    setTimeout(() => zoneFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
   };
   const resetZoneForm = () => { setZoneForm(emptyZoneForm); setEditingZoneId(null); setShowZoneForm(false); };
   const saveZone = async () => {
