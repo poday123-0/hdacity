@@ -494,10 +494,10 @@ const AdminWatermelons = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <span className="text-2xl">🎁</span>
+            <Gift className="w-6 h-6 text-primary" />
             Map Promo Items
           </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Drop promo items (watermelons, oranges, etc.) on the map for users to collect!</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Drop promo items on the map for users to collect</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {activeItems.length > 1 && (
