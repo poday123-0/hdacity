@@ -28,6 +28,7 @@ const AdminNamedLocations = () => {
   const [search, setSearch] = useState("");
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
   const [inlineEdit, setInlineEdit] = useState({ name: "", address: "", group_name: "" });
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [bulkGroupName, setBulkGroupName] = useState("");
