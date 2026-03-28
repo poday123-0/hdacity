@@ -86,12 +86,24 @@ const NotificationPermissionPrompt = () => {
       const notifAlready = await isNotifGranted();
       
       let locGranted = false;
-      try {
-        if (navigator.permissions) {
-          const result = await navigator.permissions.query({ name: "geolocation" as PermissionName });
-          locGranted = result.state === "granted";
+      if (isNative) {
+        // On native, probe geolocation with a fast timeout
+        try {
+          await new Promise<void>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(() => resolve(), () => reject(), { timeout: 2000 });
+          });
+          locGranted = true;
+        } catch {
+          locGranted = false;
         }
-      } catch {}
+      } else {
+        try {
+          if (navigator.permissions) {
+            const result = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+            locGranted = result.state === "granted";
+          }
+        } catch {}
+      }
 
       if (notifAlready && locGranted) return; // All good
 
