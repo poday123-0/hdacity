@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
@@ -564,8 +564,8 @@ const AdminVehicles = () => {
       )}
 
       {/* Vehicle Table */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <table className="w-full">
+      <div className="bg-card border border-border rounded-2xl overflow-x-auto">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr className="border-b border-border bg-surface/50">
               <th className="px-4 py-3 w-10">
@@ -701,7 +701,7 @@ const AdminVehicles = () => {
                               }}
                               className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-warning"
                             >
-                              <Ban className="w-3.5 h-3.5" />
+                              <Timer className="w-3.5 h-3.5" />
                             </button>
                             <button
                               title="Block permanently"
@@ -718,7 +718,7 @@ const AdminVehicles = () => {
                               }}
                               className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"
                             >
-                              <Ban className="w-3.5 h-3.5" />
+                              <Lock className="w-3.5 h-3.5" />
                             </button>
                           </>
                         )}
