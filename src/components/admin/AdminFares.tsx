@@ -71,6 +71,7 @@ const AdminFares = () => {
   const [routeFromFilter, setRouteFromFilter] = useState("all");
   const [routeVtFilter, setRouteVtFilter] = useState("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [showVehicleRates, setShowVehicleRates] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -223,37 +224,46 @@ const AdminFares = () => {
       <h2 className="text-2xl font-bold text-foreground">Fare Settings</h2>
 
       {/* ─── Distance-based fares + Hourly rates ─── */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">Vehicle Rates</h3>
-        <div className="bg-card border border-border rounded-xl overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface">
-                <th className={thCls}>Type</th>
-                <th className={thCls}>Base (MVR)</th>
-                <th className={thCls}>Per KM</th>
-                <th className={thCls}>Per Min</th>
-                <th className={thCls}>Per Hour</th>
-                <th className={thCls}>Minimum</th>
-                <th className={thCls}>Pax Tax %</th>
-                <th className={thCls}>Driver Tax %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicleTypes.map((vt) => (
-                <tr key={vt.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{vt.name}</td>
-                  {["base_fare", "per_km_rate", "per_minute_rate", "per_hour_rate", "minimum_fare", "passenger_tax_pct", "driver_tax_pct"].map((field) => (
-                    <td key={field} className="px-4 py-3">
-                      <input type="number" key={`${vt.id}-${field}-${vt[field]}`} defaultValue={vt[field]} onBlur={(e) => updateVehicleType(vt.id, field, e.target.value)}
-                        className="w-20 px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </td>
-                  ))}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowVehicleRates(prev => !prev)}
+          className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-muted/50 transition-colors"
+        >
+          {showVehicleRates ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          <span className="text-sm font-bold text-foreground">Vehicle Rates</span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{vehicleTypes.length} types</span>
+        </button>
+        {showVehicleRates && (
+          <div className="overflow-x-auto border-t border-border">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface/50">
+                  <th className={thCls}>Type</th>
+                  <th className={thCls}>Base (MVR)</th>
+                  <th className={thCls}>Per KM</th>
+                  <th className={thCls}>Per Min</th>
+                  <th className={thCls}>Per Hour</th>
+                  <th className={thCls}>Minimum</th>
+                  <th className={thCls}>Pax Tax %</th>
+                  <th className={thCls}>Driver Tax %</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {vehicleTypes.map((vt) => (
+                  <tr key={vt.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{vt.name}</td>
+                    {["base_fare", "per_km_rate", "per_minute_rate", "per_hour_rate", "minimum_fare", "passenger_tax_pct", "driver_tax_pct"].map((field) => (
+                      <td key={field} className="px-4 py-3">
+                        <input type="number" key={`${vt.id}-${field}-${vt[field]}`} defaultValue={vt[field]} onBlur={(e) => updateVehicleType(vt.id, field, e.target.value)}
+                          className="w-20 px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ─── Route-based fares ─── */}
