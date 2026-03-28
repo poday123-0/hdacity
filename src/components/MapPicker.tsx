@@ -344,7 +344,8 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                   <button
                     key={i}
                     onClick={() => {
-                      if (keepOpenOnNearbySelect && mapInstance.current) {
+                      onConfirm(place.lat, place.lng, place.name, place.vicinity);
+                    }}
                         const newCenter = { lat: place.lat, lng: place.lng };
                         mapInstance.current.panTo(newCenter);
                         setCenter(newCenter);
