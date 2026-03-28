@@ -32,9 +32,11 @@ interface DriverEarningsProps {
   driverId: string;
   isOpen: boolean;
   onClose: () => void;
+  vehicleId?: string | null;
+  vehiclePlate?: string;
 }
 
-const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
+const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: DriverEarningsProps) => {
   const [period, setPeriod] = useState<Period>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [customFrom, setCustomFrom] = useState("");
@@ -73,13 +75,15 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
     if (!isOpen || !driverId) return;
     const fetchTrips = async () => {
       setLoading(true);
-      const { data } = await supabase
+      let query = supabase
         .from("trips")
         .select("id, actual_fare, estimated_fare, duration_minutes, distance_km, status, created_at, pickup_address, dropoff_address, completed_at, accepted_at, started_at, passenger_count, luggage_count, rating, feedback_text, customer_name, fare_type")
         .eq("driver_id", driverId)
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString())
         .order("created_at", { ascending: false });
+      if (vehicleId) query = query.eq("vehicle_id", vehicleId);
+      const { data } = await query;
       const tripData = (data as TripRecord[]) || [];
       setTrips(tripData);
       // Fetch message counts
@@ -95,7 +99,7 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
       setLoading(false);
     };
     fetchTrips();
-  }, [isOpen, driverId, dateRange]);
+  }, [isOpen, driverId, dateRange, vehicleId]);
 
   const completedTrips = trips.filter(t => t.status === "completed");
   const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
@@ -127,7 +131,10 @@ const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
           <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
-              <h3 className="font-bold text-foreground">Earnings</h3>
+              <div>
+                <h3 className="font-bold text-foreground">Earnings</h3>
+                {vehiclePlate && <p className="text-[10px] text-muted-foreground">Vehicle: {vehiclePlate}</p>}
+              </div>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center">
               <X className="w-4 h-4 text-foreground" />

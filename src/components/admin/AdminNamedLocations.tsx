@@ -25,6 +25,8 @@ const AdminNamedLocations = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "" });
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
   const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -328,6 +330,16 @@ const AdminNamedLocations = () => {
           <p className="text-sm text-muted-foreground">{filtered.length} of {locations.length} locations{pendingCount > 0 && ` · ${pendingCount} pending approval`}</p>
         </div>
         <div className="flex items-center gap-2">
+          {locations.length > 0 && !batchMode && !showForm && (
+            <button onClick={async () => {
+              if (!confirm(`Delete ALL ${locations.length} named locations? This cannot be undone.`)) return;
+              const { error } = await supabase.from("named_locations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+              else { toast({ title: "All locations deleted" }); fetchLocations(); }
+            }} className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+              <Trash2 className="w-4 h-4" /> Delete All
+            </button>
+          )}
           <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
             {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
             {batchMode ? "Cancel Batch" : "Batch Add"}
@@ -507,9 +519,14 @@ const AdminNamedLocations = () => {
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
-            ) : filtered.map(loc => (
+            ) : filtered.map(loc => {
+              const isInlineEditing = inlineEditId === loc.id;
+              return (
               <tr key={loc.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
+                  {isInlineEditing ? (
+                    <input value={inlineEdit.name} onChange={e => setInlineEdit(p => ({ ...p, name: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  ) : (
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-primary shrink-0" />
                     <div>
@@ -517,8 +534,15 @@ const AdminNamedLocations = () => {
                       {loc.description && <p className="text-[10px] text-muted-foreground">{loc.description}</p>}
                     </div>
                   </div>
+                  )}
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{loc.address || "—"}</td>
+                <td className="px-4 py-3">
+                  {isInlineEditing ? (
+                    <input value={inlineEdit.address} onChange={e => setInlineEdit(p => ({ ...p, address: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{loc.address || "—"}</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     loc.suggested_by_type === "admin" ? "bg-primary/10 text-primary" :
@@ -538,21 +562,36 @@ const AdminNamedLocations = () => {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
+                    {isInlineEditing ? (
+                      <>
+                        <button onClick={async () => {
+                          const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address }).eq("id", loc.id);
+                          if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                          else { toast({ title: "Updated" }); setInlineEditId(null); fetchLocations(); }
+                        }} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setInlineEditId(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                      </>
+                    ) : (
+                    <>
                     {loc.status === "pending" && (
                       <>
                         <button onClick={() => approveLocation(loc.id)} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Approve"><Check className="w-3.5 h-3.5" /></button>
                         <button onClick={() => rejectLocation(loc.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10" title="Reject"><XCircle className="w-3.5 h-3.5" /></button>
                       </>
                     )}
-                    <button onClick={() => openEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => openEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Full Edit"><MapPin className="w-3.5 h-3.5" /></button>
                     <button onClick={() => toggleActive(loc.id, loc.is_active)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${loc.is_active ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                       {loc.is_active ? "Active" : "Inactive"}
                     </button>
                     <button onClick={() => handleDelete(loc.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </>
+                    )}
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
