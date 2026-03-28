@@ -12,6 +12,7 @@ const AdminBanks = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", logo_url: "" });
   const [uploading, setUploading] = useState(false);
+  const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
 
   const fetchBanks = async () => {
     setLoading(true);
@@ -22,7 +23,12 @@ const AdminBanks = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchBanks(); }, [search]);
+  const fetchFavaraLogo = async () => {
+    const { data } = await supabase.from("system_settings").select("value").eq("key", "favara_logo_url").single();
+    if (data?.value) setFavaraLogoUrl(data.value as string);
+  };
+
+  useEffect(() => { fetchBanks(); fetchFavaraLogo(); }, [search]);
 
   const uploadLogo = async (rawFile: File) => {
     setUploading(true);
@@ -142,6 +148,41 @@ const AdminBanks = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Favara Logo */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
+          <Building2 className="w-4 h-4 text-primary" /> Favara Logo
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">Shown next to driver Favara accounts</p>
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-xl bg-surface border-2 border-border flex items-center justify-center overflow-hidden shrink-0">
+            {favaraLogoUrl ? <img src={favaraLogoUrl} alt="Favara" className="w-12 h-12 object-contain" /> : <Building2 className="w-8 h-8 text-muted-foreground" />}
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-sm text-foreground font-medium">{favaraLogoUrl ? "Logo uploaded ✓" : "No logo set"}</p>
+            <input id="favara-logo-input" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              const path = `branding/favara_${Date.now()}.${file.name.split(".").pop()}`;
+              const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+              if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
+              const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+              // Save to system_settings
+              const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "favara_logo_url").single();
+              if (existing) {
+                await supabase.from("system_settings").update({ value: urlData.publicUrl as any, updated_at: new Date().toISOString() }).eq("key", "favara_logo_url");
+              } else {
+                await supabase.from("system_settings").insert({ key: "favara_logo_url", value: urlData.publicUrl as any, description: "Favara logo URL" });
+              }
+              setFavaraLogoUrl(urlData.publicUrl);
+              toast({ title: "Favara logo updated!" }); e.target.value = "";
+            }} />
+            <button onClick={() => (document.getElementById("favara-logo-input") as HTMLInputElement)?.click()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all">
+              <Upload className="w-3.5 h-3.5" /> Upload Logo
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

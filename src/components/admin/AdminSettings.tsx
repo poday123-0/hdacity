@@ -366,30 +366,6 @@ const AdminSettings = () => {
         </div>
       </SectionCard>
 
-      {/* Favara Logo */}
-      <SectionCard title="Favara Logo" description="Shown next to driver Favara accounts" icon={Building2}>
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 rounded-xl bg-background border-2 border-border flex items-center justify-center overflow-hidden shrink-0">
-            {settings["favara_logo_url"] ? <img src={settings["favara_logo_url"]} alt="Favara" className="w-12 h-12 object-contain" /> : <Building2 className="w-8 h-8 text-muted-foreground" />}
-          </div>
-          <div className="flex-1 space-y-2">
-            <p className="text-sm text-foreground font-medium">{settings["favara_logo_url"] ? "Logo uploaded ✓" : "No logo set"}</p>
-            <input id="favara-logo-input" type="file" accept="image/*" className="hidden" onChange={async (e) => {
-              const file = e.target.files?.[0]; if (!file) return;
-              const path = `branding/favara_${Date.now()}.${file.name.split(".").pop()}`;
-              const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
-              if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
-              const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
-              await updateSetting("favara_logo_url", urlData.publicUrl);
-              setSettings({ ...settings, favara_logo_url: urlData.publicUrl });
-              toast({ title: "Favara logo updated!" }); e.target.value = "";
-            }} />
-            <button onClick={() => (document.getElementById("favara-logo-input") as HTMLInputElement)?.click()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all">
-              <Upload className="w-3.5 h-3.5" /> Upload Logo
-            </button>
-          </div>
-        </div>
-      </SectionCard>
     </div>
   );
 
