@@ -269,18 +269,13 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
                     if (status === "OK" && place?.geometry?.location) {
                       const lat = place.geometry.location.lat();
                       const lng = place.geometry.location.lng();
-                      const area = isInServiceArea(lat, lng);
-                      if (area) {
-                        resolve({
-                          place_id: pred.place_id,
-                          name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
-                          address: place.formatted_address || pred.description,
-                          lat,
-                          lng,
-                        });
-                      } else {
-                        resolve(null);
-                      }
+                      resolve({
+                        place_id: pred.place_id,
+                        name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
+                        address: place.formatted_address || pred.description,
+                        lat,
+                        lng,
+                      });
                     } else {
                       resolve(null);
                     }
