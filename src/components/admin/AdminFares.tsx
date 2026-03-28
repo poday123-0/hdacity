@@ -393,11 +393,11 @@ const AdminFares = () => {
                       onClick={() => toggleGroup(fromArea)}
                       className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-muted/50 transition-colors"
                     >
-                      {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                       <span className="text-sm font-bold text-foreground">From: {fromArea}</span>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{items.length} routes</span>
                     </button>
-                    {!isCollapsed && (
+                    {isExpanded && (
                       <div className="divide-y divide-border">
                         {subKeys.map(toArea => {
                           const routes = subGrouped[toArea];
