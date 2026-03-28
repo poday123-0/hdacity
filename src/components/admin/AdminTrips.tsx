@@ -36,22 +36,36 @@ const AdminTrips = () => {
 
   const fetchTrips = async () => {
     setLoading(true);
-    let query = supabase
-      .from("trips")
-      .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
-      .order("created_at", { ascending: false })
-      .limit(100);
+    let allTrips: any[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
 
-    if (filter !== "all") query = query.eq("status", filter);
-    if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
-    if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
-    if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      query = query.lte("created_at", endDate.toISOString());
+    while (hasMore) {
+      let query = supabase
+        .from("trips")
+        .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
+        .order("created_at", { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (filter !== "all") query = query.eq("status", filter);
+      if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
+      if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", endDate.toISOString());
+      }
+      const { data } = await query;
+      if (data && data.length > 0) {
+        allTrips = allTrips.concat(data);
+        from += pageSize;
+        if (data.length < pageSize) hasMore = false;
+      } else {
+        hasMore = false;
+      }
     }
-    const { data } = await query;
-    setTrips(data || []);
+    setTrips(allTrips);
     setLoading(false);
   };
 
