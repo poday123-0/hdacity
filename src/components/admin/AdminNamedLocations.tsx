@@ -25,6 +25,8 @@ const AdminNamedLocations = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "" });
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
   const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
