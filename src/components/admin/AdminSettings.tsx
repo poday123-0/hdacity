@@ -871,6 +871,85 @@ const AdminSettings = () => {
           ))}
         </div>
       </SectionCard>
+
+      {/* Native App Version Control */}
+      <SectionCard title="Native App Version Control" description="Manage version requirements for iOS & Android apps" icon={Smartphone}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Latest Version</label>
+              <input
+                type="text"
+                value={versionConfig.latest_version}
+                onChange={e => setVersionConfig(prev => ({ ...prev, latest_version: e.target.value }))}
+                placeholder="1.0.0"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Users below this see an update prompt</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Minimum Version (Required)</label>
+              <input
+                type="text"
+                value={versionConfig.min_version}
+                onChange={e => setVersionConfig(prev => ({ ...prev, min_version: e.target.value }))}
+                placeholder="1.0.0"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Users below this MUST update (can't skip)</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Play Store URL</label>
+              <input
+                type="url"
+                value={versionConfig.play_store_url}
+                onChange={e => setVersionConfig(prev => ({ ...prev, play_store_url: e.target.value }))}
+                placeholder="https://play.google.com/store/apps/details?id=com.hda.app"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">App Store URL</label>
+              <input
+                type="url"
+                value={versionConfig.app_store_url}
+                onChange={e => setVersionConfig(prev => ({ ...prev, app_store_url: e.target.value }))}
+                placeholder="https://apps.apple.com/app/hda-app/id..."
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Update Message (optional)</label>
+              <input
+                type="text"
+                value={versionConfig.update_message}
+                onChange={e => setVersionConfig(prev => ({ ...prev, update_message: e.target.value }))}
+                placeholder="A new version is available with improvements and fixes."
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
+            <div>
+              <p className="text-xs font-semibold text-foreground">Force Update</p>
+              <p className="text-[10px] text-muted-foreground">Block app usage until user updates (even if above min version)</p>
+            </div>
+            <Switch
+              checked={versionConfig.force_update}
+              onCheckedChange={v => setVersionConfig(prev => ({ ...prev, force_update: v }))}
+            />
+          </div>
+          <button
+            onClick={async () => {
+              await updateSetting("app_version_control", versionConfig);
+              toast({ title: "Version control saved!", description: `Latest: ${versionConfig.latest_version}, Min: ${versionConfig.min_version}` });
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold active:scale-95 transition-transform hover:opacity-90"
+          >
+            <Save className="w-4 h-4" /> Save Version Settings
+          </button>
+        </div>
+      </SectionCard>
     </div>
   );
 
