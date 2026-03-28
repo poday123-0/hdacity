@@ -63,27 +63,31 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
 
       setNativeScanning(true);
 
-      // Make WebView transparent so native camera shows behind
-      document.body.classList.add("barcode-scanner-active");
+      // Use the simple scan() method which opens a native scan view
+      try {
+        const { barcodes } = await BarcodeScanner.scan({
+          formats: [BarcodeFormat.QrCode],
+        });
 
-      const listener = await BarcodeScanner.addListener("barcodeScanned", async (result) => {
-        const value = result.barcode.rawValue || "";
-        if (value.startsWith("HDATOPUP:")) {
-          await listener.remove();
-          await BarcodeScanner.stopScan();
-          document.body.classList.remove("barcode-scanner-active");
-          setNativeScanning(false);
-          const code = value.replace("HDATOPUP:", "");
-          handleClaim(code);
+        setNativeScanning(false);
+
+        if (barcodes.length > 0) {
+          const value = barcodes[0].rawValue || "";
+          if (value.startsWith("HDATOPUP:")) {
+            const code = value.replace("HDATOPUP:", "");
+            handleClaim(code);
+          } else {
+            toast({ title: "Invalid QR", description: "This is not a valid topup card QR code.", variant: "destructive" });
+          }
         }
-      });
-
-      await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode], lensFacing: "BACK" as any });
+      } catch (scanErr: any) {
+        // User cancelled the scan
+        setNativeScanning(false);
+        console.log("Scan cancelled:", scanErr?.message);
+      }
     } catch (err: any) {
       console.error("Native scan error:", err);
-      document.body.classList.remove("barcode-scanner-active");
       setNativeScanning(false);
-
       // Fall back to web camera
       startCamera();
     }
