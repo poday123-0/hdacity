@@ -1118,11 +1118,19 @@ const DispatchTripForm = ({
                   onChange={e => { setSelecting("dropoff"); setSearchQuery(e.target.value); }}
                   onFocus={() => { setSelecting("dropoff"); setSearchQuery(""); }}
                   onKeyDown={e => {
-                    if (e.key === "Enter") {
+                    if (e.key === "ArrowDown") {
                       e.preventDefault();
+                      setResultHighlight(prev => Math.min(prev + 1, osmResults.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setResultHighlight(prev => Math.max(prev - 1, -1));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const idx = resultHighlight >= 0 ? resultHighlight : 0;
                       if (osmResults.length > 0 && !dropoff) {
-                        selectLocation(osmResults[0]);
+                        selectLocation(osmResults[idx]);
                       }
+                      setResultHighlight(-1);
                       setTimeout(() => phoneInputRef.current?.focus(), 50);
                     }
                   }}
