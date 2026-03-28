@@ -265,42 +265,17 @@ const SOSAlertPanel = () => {
                     </div>
                   )}
 
-                  {/* Contact user */}
+                  {/* Contact numbers */}
                   <div className="flex gap-2">
-                    <a
-                      href={`tel:+960${alert.user_phone}`}
-                      className="flex-1 flex items-center justify-center gap-1 bg-primary/10 text-primary rounded-lg py-2 text-xs font-semibold hover:bg-primary/20"
-                    >
-                      <Phone className="w-3 h-3" /> Call User
-                    </a>
-                    <a
-                      href={`sms:+960${alert.user_phone}?body=${encodeURIComponent("HDA Emergency: We received your SOS. Help is on the way.")}`}
-                      className="flex-1 flex items-center justify-center gap-1 bg-accent text-accent-foreground rounded-lg py-2 text-xs font-semibold hover:bg-accent/80"
-                    >
-                      SMS User
-                    </a>
-                  </div>
-
-                  {/* Police & Emergency services */}
-                  <div className="flex gap-2">
-                    <a
-                      href={`tel:${MALDIVES_POLICE_NUMBER}`}
-                      className="flex-1 flex items-center justify-center gap-1 bg-destructive/10 text-destructive rounded-lg py-2 text-xs font-semibold hover:bg-destructive/20"
-                    >
-                      <Shield className="w-3 h-3" /> Call Police (119)
-                    </a>
-                    <a
-                      href={`sms:${MALDIVES_POLICE_NUMBER}?body=${encodeURIComponent(`SOS Alert - ${alert.user_type === "driver" ? "Driver" : "Passenger"}: ${alert.user_name}, Phone: +960${alert.user_phone}${alert.lat && alert.lng ? `, Location: https://maps.google.com/?q=${alert.lat},${alert.lng}` : ""}`)}`}
-                      className="flex-1 flex items-center justify-center gap-1 bg-destructive/10 text-destructive rounded-lg py-2 text-xs font-semibold hover:bg-destructive/20"
-                    >
-                      SMS Police
-                    </a>
-                    <a
-                      href={`tel:${MALDIVES_AMBULANCE_NUMBER}`}
-                      className="flex-1 flex items-center justify-center gap-1 bg-destructive/10 text-destructive rounded-lg py-2 text-xs font-semibold hover:bg-destructive/20"
-                    >
-                      <Phone className="w-3 h-3" /> Ambulance (102)
-                    </a>
+                    <div className="flex-1 flex items-center justify-center gap-1.5 bg-primary/10 text-primary rounded-lg py-2.5 text-xs font-bold select-all">
+                      <Phone className="w-3 h-3 shrink-0" /> +960 {alert.user_phone}
+                    </div>
+                    <div className="flex-1 flex items-center justify-center gap-1.5 bg-destructive/10 text-destructive rounded-lg py-2.5 text-xs font-bold select-all">
+                      <Shield className="w-3 h-3 shrink-0" /> Police: {MALDIVES_POLICE_NUMBER}
+                    </div>
+                    <div className="flex-1 flex items-center justify-center gap-1.5 bg-destructive/10 text-destructive rounded-lg py-2.5 text-xs font-bold select-all">
+                      <Phone className="w-3 h-3 shrink-0" /> Ambulance: {MALDIVES_AMBULANCE_NUMBER}
+                    </div>
                   </div>
                 </div>
               ))}
