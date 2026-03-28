@@ -546,13 +546,13 @@ const AdminWatermelons = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Active", count: activeItems.length, color: "text-emerald-600", icon: "🎁" },
-          { label: "For Drivers", count: driverItems.length, color: "text-blue-600", icon: "🚗" },
-          { label: "For Passengers", count: passengerItems.length, color: "text-purple-600", icon: "👤" },
-          { label: "Claimed", count: claimedItems.length, color: "text-amber-600", icon: "✅" },
+          { label: "Active", count: activeItems.length, color: "text-primary", icon: <Gift className="w-5 h-5" /> },
+          { label: "For Drivers", count: driverItems.length, color: "text-primary", icon: <Car className="w-5 h-5" /> },
+          { label: "For Passengers", count: passengerItems.length, color: "text-primary", icon: <Users className="w-5 h-5" /> },
+          { label: "Claimed", count: claimedItems.length, color: "text-primary", icon: <CheckCircle2 className="w-5 h-5" /> },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
-            <span className="text-2xl">{s.icon}</span>
+            <div className="flex justify-center text-muted-foreground">{s.icon}</div>
             <p className={`text-2xl font-extrabold ${s.color} mt-1`}>{s.count}</p>
             <p className="text-xs text-muted-foreground">{s.label}</p>
           </div>
