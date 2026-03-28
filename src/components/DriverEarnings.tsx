@@ -75,13 +75,15 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
     if (!isOpen || !driverId) return;
     const fetchTrips = async () => {
       setLoading(true);
-      const { data } = await supabase
+      let query = supabase
         .from("trips")
         .select("id, actual_fare, estimated_fare, duration_minutes, distance_km, status, created_at, pickup_address, dropoff_address, completed_at, accepted_at, started_at, passenger_count, luggage_count, rating, feedback_text, customer_name, fare_type")
         .eq("driver_id", driverId)
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString())
         .order("created_at", { ascending: false });
+      if (vehicleId) query = query.eq("vehicle_id", vehicleId);
+      const { data } = await query;
       const tripData = (data as TripRecord[]) || [];
       setTrips(tripData);
       // Fetch message counts
