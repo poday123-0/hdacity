@@ -667,7 +667,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
           </div>
 
           {/* Payment accounts - compact */}
-          {(showBankDetails || tripStatus === "in_progress") && (primaryBank || favaraAccounts.length > 0) && (
+          {(showBankDetails || tripStatus === "in_progress") && (primaryBank || favaraAccounts.length > 0 || swipeAccounts.length > 0) && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <Landmark className="w-3.5 h-3.5 text-primary" />
