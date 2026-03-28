@@ -4310,7 +4310,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "documents", label: "Docs", icon: IdCard },
                 { key: "vehicles", label: "Vehicles", icon: Car },
                 { key: "banks", label: "Banks", icon: Landmark },
-                { key: "wallets", label: "Wallets", icon: Wallet },
+                { key: "wallets", label: "Wallet", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
                 { key: "billing", label: "Billing", icon: DollarSign },
                 { key: "settings", label: "Settings", icon: Settings }] as
@@ -4618,18 +4618,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <Plus className="w-4 h-4" />Add bank account
                       </button>
                 }
-                  </div>
-              }
-
-                {profileTab === "wallets" &&
-              <div className="space-y-4">
-                    {/* HDA Wallet */}
-                    <DriverWallet
-                  driverId={userProfile.id}
-                  walletId={driverWalletId}
-                  balance={driverWalletBalance}
-                  onRequestWithdraw={() => setShowWithdrawModal(true)}
-                  minWithdrawalAmount={minWithdrawalAmount} />
 
                     {/* Favara Section */}
                     <Collapsible defaultOpen={false}>
@@ -4675,15 +4663,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {showAddFavara ?
                 <div className="bg-surface rounded-xl p-3 space-y-2">
                         <p className="text-xs font-semibold text-foreground">Add Favara account</p>
-                        <input
-                    placeholder="Favara ID (phone / ID card / account)"
-                    value={newFavara.favara_id}
-                    onChange={(e) => setNewFavara({ ...newFavara, favara_id: e.target.value })}
+                        <input placeholder="Favara ID (phone / ID card / account)" value={newFavara.favara_id} onChange={(e) => setNewFavara({ ...newFavara, favara_id: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                        <input
-                    placeholder="Account name (optional)"
-                    value={newFavara.favara_name}
-                    onChange={(e) => setNewFavara({ ...newFavara, favara_name: e.target.value })}
+                        <input placeholder="Account name (optional)" value={newFavara.favara_name} onChange={(e) => setNewFavara({ ...newFavara, favara_name: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                         <div className="flex gap-2">
                           <button onClick={() => setShowAddFavara(false)} className="flex-1 py-2.5 rounded-xl bg-card text-sm font-semibold text-foreground active:scale-95 transition-transform">Cancel</button>
@@ -4741,15 +4723,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {showAddSwipe ?
                 <div className="bg-surface rounded-xl p-3 space-y-2">
                         <p className="text-xs font-semibold text-foreground">Add Swipe account</p>
-                        <input
-                    placeholder="Swipe username"
-                    value={newSwipe.swipe_username}
-                    onChange={(e) => setNewSwipe({ ...newSwipe, swipe_username: e.target.value })}
+                        <input placeholder="Swipe username" value={newSwipe.swipe_username} onChange={(e) => setNewSwipe({ ...newSwipe, swipe_username: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                        <input
-                    placeholder="Account name (optional)"
-                    value={newSwipe.swipe_name}
-                    onChange={(e) => setNewSwipe({ ...newSwipe, swipe_name: e.target.value })}
+                        <input placeholder="Account name (optional)" value={newSwipe.swipe_name} onChange={(e) => setNewSwipe({ ...newSwipe, swipe_name: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                         <div className="flex gap-2">
                           <button onClick={() => setShowAddSwipe(false)} className="flex-1 py-2.5 rounded-xl bg-card text-sm font-semibold text-foreground active:scale-95 transition-transform">Cancel</button>
@@ -4762,6 +4738,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
+                  </div>
+              }
+
+                {profileTab === "wallets" &&
+              <div className="space-y-4">
+                    {/* HDA Wallet */}
+                    <DriverWallet
+                  driverId={userProfile.id}
+                  walletId={driverWalletId}
+                  balance={driverWalletBalance}
+                  onRequestWithdraw={() => setShowWithdrawModal(true)}
+                  minWithdrawalAmount={minWithdrawalAmount} />
                   </div>
               }
 
