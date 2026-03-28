@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, X, MapPin, Phone, Clock, CheckCircle, Shield, Users } from "lucide-react";
+import { AlertTriangle, X, MapPin, Phone, Clock, CheckCircle, Shield, Users, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
@@ -28,25 +28,126 @@ interface EmergencyContact {
   relationship: string | null;
 }
 
-const SOS_SOUND_URL = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-
 const SOSAlertPanel = () => {
   const [alerts, setAlerts] = useState<SOSAlert[]>([]);
   const [expanded, setExpanded] = useState(true);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const prevAlertCountRef = useRef(0);
   const [emergencyContacts, setEmergencyContacts] = useState<Record<string, EmergencyContact[]>>({});
+  const knownIdsRef = useRef<Set<string>>(new Set());
 
-  const fetchAlerts = async () => {
+  // ── Audio: keep a single AudioContext, unlocked on first user gesture ──
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioUnlockedRef = useRef(false);
+
+  // Pre-create & unlock AudioContext on first user interaction
+  useEffect(() => {
+    const getCtx = () => {
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AudioContext();
+      }
+      return audioCtxRef.current;
+    };
+
+    const unlock = async () => {
+      try {
+        const ctx = getCtx();
+        if (ctx.state === "suspended") await ctx.resume();
+        // Play a silent buffer to fully unlock
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        audioUnlockedRef.current = true;
+      } catch {}
+    };
+
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    window.addEventListener("click", unlock, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("click", unlock);
+    };
+  }, []);
+
+  const stopAlarm = useCallback(() => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+  }, []);
+
+  const playAlarm = useCallback(() => {
+    stopAlarm();
+    try {
+      const ctx = audioCtxRef.current || new AudioContext();
+      audioCtxRef.current = ctx;
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+
+      const playSirenCycle = () => {
+        try {
+          if (ctx.state === "closed") return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sawtooth";
+          gain.gain.value = 0.8;
+          osc.frequency.setValueAtTime(600, ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.5);
+          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 1.0);
+          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 1.5);
+          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 2.0);
+          gain.gain.setValueAtTime(0.8, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.2);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 2.2);
+        } catch {}
+      };
+
+      playSirenCycle();
+      let count = 0;
+      alarmIntervalRef.current = setInterval(() => {
+        count++;
+        if (count >= 12) { stopAlarm(); return; }
+        playSirenCycle();
+      }, 2500);
+    } catch {}
+  }, [stopAlarm]);
+
+  const fetchAlerts = useCallback(async () => {
     const { data } = await supabase
       .from("sos_alerts")
       .select("*")
       .eq("status", "active")
       .order("created_at", { ascending: false });
     const alertsData = (data as SOSAlert[]) || [];
+
+    // Check for NEW alerts that we haven't seen before
+    const newIds = alertsData.map(a => a.id);
+    const trulyNew = newIds.filter(id => !knownIdsRef.current.has(id));
+
+    // Update known IDs
+    knownIdsRef.current = new Set(newIds);
+
     setAlerts(alertsData);
-    
-    // Fetch emergency contacts for each user
+
+    if (trulyNew.length > 0 && alertsData.length > 0) {
+      playAlarm();
+      const newest = alertsData.find(a => a.id === trulyNew[0]);
+      if (newest) {
+        toast({
+          title: "🚨 SOS EMERGENCY!",
+          description: `${newest.user_type === "driver" ? "Driver" : "Passenger"}: ${newest.user_name} needs help!`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    // Fetch emergency contacts
     for (const alert of alertsData) {
       if (!emergencyContacts[alert.user_id]) {
         const { data: contacts } = await supabase
@@ -59,12 +160,12 @@ const SOSAlertPanel = () => {
         }
       }
     }
-  };
+  }, [playAlarm]);
 
   useEffect(() => {
     fetchAlerts();
 
-    // Realtime subscription
+    // Realtime subscription for instant detection
     const channel = supabase
       .channel("sos-alerts-realtime")
       .on("postgres_changes", {
@@ -73,8 +174,8 @@ const SOSAlertPanel = () => {
         table: "sos_alerts",
       }, (payload) => {
         const newAlert = payload.new as SOSAlert;
-        setAlerts(prev => [newAlert, ...prev]);
-        // Play alarm sound
+        knownIdsRef.current.add(newAlert.id);
+        setAlerts(prev => [newAlert, ...prev.filter(a => a.id !== newAlert.id)]);
         playAlarm();
         toast({
           title: "🚨 SOS EMERGENCY!",
@@ -89,77 +190,38 @@ const SOSAlertPanel = () => {
       }, (payload) => {
         const updated = payload.new as SOSAlert;
         if (updated.status !== "active") {
+          knownIdsRef.current.delete(updated.id);
           setAlerts(prev => prev.filter(a => a.id !== updated.id));
         }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+    // Polling fallback every 10 seconds (in case realtime misses)
+    const pollInterval = setInterval(fetchAlerts, 10_000);
 
-  const alarmCtxRef = useRef<AudioContext | null>(null);
-  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [fetchAlerts, playAlarm]);
 
-  const stopAlarm = () => {
-    if (alarmIntervalRef.current) {
-      clearInterval(alarmIntervalRef.current);
-      alarmIntervalRef.current = null;
-    }
-    if (alarmCtxRef.current) {
-      alarmCtxRef.current.close().catch(() => {});
-      alarmCtxRef.current = null;
-    }
-  };
-
-  const playAlarm = () => {
-    stopAlarm(); // stop any existing alarm first
-    try {
-      const ctx = new AudioContext();
-      alarmCtxRef.current = ctx;
-
-      const playSirenCycle = () => {
-        try {
-          if (ctx.state === "closed") return;
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = "sawtooth";
-          gain.gain.value = 0.6;
-          // Siren sweep up then down
-          osc.frequency.setValueAtTime(600, ctx.currentTime);
-          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.5);
-          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 1.0);
-          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 1.5);
-          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 2.0);
-          gain.gain.setValueAtTime(0.6, ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.2);
-          osc.start(ctx.currentTime);
-          osc.stop(ctx.currentTime + 2.2);
-        } catch {}
-      };
-
-      // Play immediately + repeat every 3 seconds for 30 seconds
-      playSirenCycle();
-      let count = 0;
-      alarmIntervalRef.current = setInterval(() => {
-        count++;
-        if (count >= 10) { stopAlarm(); return; }
-        playSirenCycle();
-      }, 3000);
-    } catch {}
-  };
-
-  // Cleanup on unmount
+  // Cleanup alarm on unmount
   useEffect(() => {
-    return () => stopAlarm();
-  }, []);
+    return () => {
+      stopAlarm();
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+        audioCtxRef.current.close().catch(() => {});
+      }
+    };
+  }, [stopAlarm]);
 
   const resolveAlert = async (alertId: string) => {
+    stopAlarm();
     await supabase.from("sos_alerts").update({
       status: "resolved",
       resolved_at: new Date().toISOString(),
     }).eq("id", alertId);
+    knownIdsRef.current.delete(alertId);
     setAlerts(prev => prev.filter(a => a.id !== alertId));
     toast({ title: "SOS Resolved" });
   };
@@ -176,7 +238,15 @@ const SOSAlertPanel = () => {
           <AlertTriangle className="w-5 h-5" />
           🚨 ACTIVE SOS ALERTS ({alerts.length})
         </span>
-        <span className="text-xs">{expanded ? "Collapse" : "Expand"}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); playAlarm(); }}
+            className="flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground rounded text-[10px] font-bold"
+          >
+            <Volume2 className="w-3 h-3" /> Test Sound
+          </button>
+          <span className="text-xs">{expanded ? "Collapse" : "Expand"}</span>
+        </div>
       </button>
 
       <AnimatePresence>
