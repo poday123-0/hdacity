@@ -4628,6 +4628,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <Plus className="w-4 h-4" />Add bank account
                       </button>
                 }
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
 
                     {/* Favara Section */}
                     <Collapsible defaultOpen={false}>
