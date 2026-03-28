@@ -1873,6 +1873,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const { data: favaraLogoSetting } = await supabase.from("system_settings").select("value").eq("key", "favara_logo_url").maybeSingle();
         if (favaraLogoSetting?.value && typeof favaraLogoSetting.value === "string") setFavaraLogoUrl(favaraLogoSetting.value);
 
+        // Fetch Swipe accounts
+        const { data: swipes } = await supabase.from("driver_swipe_accounts").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("is_primary", { ascending: false });
+        setSwipeAccounts((swipes || []) as any);
+
+        // Fetch Swipe logo
+        const { data: swipeLogoSetting } = await supabase.from("system_settings").select("value").eq("key", "swipe_logo_url").maybeSingle();
+        if (swipeLogoSetting?.value && typeof swipeLogoSetting.value === "string") setSwipeLogoUrl(swipeLogoSetting.value);
+
         // Check if no bank accounts
         if (!banks || banks.length === 0) issues.push("At least one bank account required");
         setVerificationIssues(issues);
