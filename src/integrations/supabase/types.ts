@@ -757,6 +757,7 @@ export type Database = {
           approved_by: string | null
           created_at: string
           description: string | null
+          group_name: string | null
           id: string
           is_active: boolean
           lat: number
@@ -773,6 +774,7 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           description?: string | null
+          group_name?: string | null
           id?: string
           is_active?: boolean
           lat: number
@@ -789,6 +791,7 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           description?: string | null
+          group_name?: string | null
           id?: string
           is_active?: boolean
           lat?: number

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers } from "lucide-react";
+import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag } from "lucide-react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 
@@ -26,8 +26,11 @@ const AdminNamedLocations = () => {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
-  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "" });
+  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "", group_name: "" });
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [bulkGroupName, setBulkGroupName] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
@@ -316,10 +319,15 @@ const AdminNamedLocations = () => {
   const q = search.toLowerCase();
   const filtered = locations.filter(loc => {
     if (statusFilter !== "all" && loc.status !== statusFilter) return false;
-    if (q && !loc.name.toLowerCase().includes(q) && !loc.address.toLowerCase().includes(q)) return false;
+    if (groupFilter !== "all") {
+      if (groupFilter === "__none__") { if (loc.group_name) return false; }
+      else if (loc.group_name !== groupFilter) return false;
+    }
+    if (q && !loc.name.toLowerCase().includes(q) && !loc.address.toLowerCase().includes(q) && !(loc.group_name || "").toLowerCase().includes(q)) return false;
     return true;
   });
 
+  const groups = [...new Set(locations.map(l => l.group_name).filter(Boolean))].sort();
   const pendingCount = locations.filter(l => l.status === "pending").length;
 
   return (
@@ -488,8 +496,8 @@ const AdminNamedLocations = () => {
       )}
 
       {/* Search and filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search locations..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
@@ -500,14 +508,68 @@ const AdminNamedLocations = () => {
             </button>
           ))}
         </div>
+        <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="all">All Groups</option>
+          <option value="__none__">Ungrouped</option>
+          {groups.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
       </div>
+
+      {/* Bulk group assignment */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex-wrap">
+          <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+          <div className="flex-1" />
+          <input
+            value={bulkGroupName}
+            onChange={e => setBulkGroupName(e.target.value)}
+            placeholder="Group name..."
+            list="group-suggestions"
+            className="px-3 py-1.5 bg-surface border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-48"
+          />
+          <datalist id="group-suggestions">
+            {groups.map(g => <option key={g} value={g} />)}
+          </datalist>
+          <button
+            onClick={async () => {
+              if (!bulkGroupName.trim()) { toast({ title: "Enter a group name", variant: "destructive" }); return; }
+              const ids = [...selectedIds];
+              const { error } = await supabase.from("named_locations").update({ group_name: bulkGroupName.trim() } as any).in("id", ids);
+              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+              else { toast({ title: `${ids.length} locations grouped as "${bulkGroupName.trim()}"` }); setSelectedIds(new Set()); setBulkGroupName(""); fetchLocations(); }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-xl text-xs font-semibold"
+          >
+            <Tag className="w-3.5 h-3.5" /> Assign Group
+          </button>
+          <button
+            onClick={async () => {
+              const ids = [...selectedIds];
+              const { error } = await supabase.from("named_locations").update({ group_name: null } as any).in("id", ids);
+              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+              else { toast({ title: `${ids.length} locations ungrouped` }); setSelectedIds(new Set()); fetchLocations(); }
+            }}
+            className="px-3 py-1.5 bg-muted text-muted-foreground rounded-xl text-xs font-semibold hover:text-foreground"
+          >
+            Remove Group
+          </button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
+        </div>
+      )}
 
       {/* Locations table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-surface">
+              <th className="px-3 py-3 w-8">
+                <input type="checkbox" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={e => {
+                  if (e.target.checked) setSelectedIds(new Set(filtered.map(l => l.id)));
+                  else setSelectedIds(new Set());
+                }} className="rounded" />
+              </th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Group</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Address</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Source</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -516,13 +578,20 @@ const AdminNamedLocations = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
             ) : filtered.map(loc => {
               const isInlineEditing = inlineEditId === loc.id;
               return (
-              <tr key={loc.id} className="border-b border-border last:border-0">
+              <tr key={loc.id} className={`border-b border-border last:border-0 ${selectedIds.has(loc.id) ? "bg-primary/5" : ""}`}>
+                <td className="px-3 py-3">
+                  <input type="checkbox" checked={selectedIds.has(loc.id)} onChange={e => {
+                    const next = new Set(selectedIds);
+                    if (e.target.checked) next.add(loc.id); else next.delete(loc.id);
+                    setSelectedIds(next);
+                  }} className="rounded" />
+                </td>
                 <td className="px-4 py-3">
                   {isInlineEditing ? (
                     <input value={inlineEdit.name} onChange={e => setInlineEdit(p => ({ ...p, name: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
@@ -534,6 +603,13 @@ const AdminNamedLocations = () => {
                       {loc.description && <p className="text-[10px] text-muted-foreground">{loc.description}</p>}
                     </div>
                   </div>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {isInlineEditing ? (
+                    <input value={inlineEdit.group_name} onChange={e => setInlineEdit(p => ({ ...p, group_name: e.target.value }))} list="group-suggestions" placeholder="Group..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  ) : (
+                    loc.group_name ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{loc.group_name}</span> : <span className="text-[10px] text-muted-foreground">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -565,7 +641,7 @@ const AdminNamedLocations = () => {
                     {isInlineEditing ? (
                       <>
                         <button onClick={async () => {
-                          const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address }).eq("id", loc.id);
+                          const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address, group_name: inlineEdit.group_name || null } as any).eq("id", loc.id);
                           if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
                           else { toast({ title: "Updated" }); setInlineEditId(null); fetchLocations(); }
                         }} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Save"><Check className="w-3.5 h-3.5" /></button>
@@ -579,7 +655,7 @@ const AdminNamedLocations = () => {
                         <button onClick={() => rejectLocation(loc.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10" title="Reject"><XCircle className="w-3.5 h-3.5" /></button>
                       </>
                     )}
-                    <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "", group_name: loc.group_name || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
                     <button onClick={() => openEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Full Edit"><MapPin className="w-3.5 h-3.5" /></button>
                     <button onClick={() => toggleActive(loc.id, loc.is_active)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${loc.is_active ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                       {loc.is_active ? "Active" : "Inactive"}
