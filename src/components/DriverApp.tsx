@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { useNavigate } from "react-router-dom";
@@ -4631,11 +4632,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   minWithdrawalAmount={minWithdrawalAmount} />
 
                     {/* Favara Section */}
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                        {favaraLogoUrl ? <img src={favaraLogoUrl} alt="Favara" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
-                        Favara
-                      </p>
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                          {favaraLogoUrl ? <img src={favaraLogoUrl} alt="Favara" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
+                          Favara ({favaraAccounts.length})
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="space-y-3 mt-2">
                     {favaraAccounts.length === 0 && !showAddFavara &&
                 <div className="text-center py-4 bg-surface rounded-xl">
                         <p className="text-xs text-muted-foreground">No Favara accounts added</p>
@@ -4687,16 +4693,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button onClick={() => setShowAddFavara(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
                         <Plus className="w-3.5 h-3.5" />Add Favara
                       </button>}
-                    </div>
-
-                    <div className="border-t border-border" />
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
 
                     {/* Swipe Section */}
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                        {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
-                        Swipe
-                      </p>
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                          {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
+                          Swipe ({swipeAccounts.length})
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="space-y-3 mt-2">
                     {swipeAccounts.length === 0 && !showAddSwipe &&
                 <div className="text-center py-4 bg-surface rounded-xl">
                         <p className="text-xs text-muted-foreground">No Swipe accounts added</p>
@@ -4748,7 +4759,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button onClick={() => setShowAddSwipe(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
                         <Plus className="w-3.5 h-3.5" />Add Swipe
                       </button>}
-                    </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
               }
 
