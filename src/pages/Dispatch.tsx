@@ -812,6 +812,18 @@ const Dispatch = () => {
             }
 
             const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard", cones: "Cones", accident: "Accident" };
+            const sevEmojis: Record<string, string> = { closed: "🚫", lane_closed: "🚧", hazard: "⚠️", cones: "🔶", accident: "💥" };
+            
+            // Show prominent visual banner
+            if (roadAlertTimerRef.current) clearTimeout(roadAlertTimerRef.current);
+            setRoadAlert({
+              reporter: reporterInfo,
+              type: `${sevEmojis[row.severity] || "🚧"} ${sevLabels[row.severity] || row.severity}`,
+              notes: row.notes || "",
+              id: row.id,
+            });
+            roadAlertTimerRef.current = setTimeout(() => setRoadAlert(null), 12000);
+
             toast({
               title: "🚧 Road Report from Driver",
               description: `${reporterInfo} reported: ${sevLabels[row.severity] || row.severity}${row.notes ? ` — ${row.notes}` : ""}`,
