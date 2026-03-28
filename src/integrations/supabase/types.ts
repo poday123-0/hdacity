@@ -711,6 +711,8 @@ export type Database = {
           description: string
           id: string
           reporter_id: string | null
+          reporter_name: string | null
+          reporter_phone: string | null
           status: string
           trip_id: string
           updated_at: string
@@ -720,6 +722,8 @@ export type Database = {
           description: string
           id?: string
           reporter_id?: string | null
+          reporter_name?: string | null
+          reporter_phone?: string | null
           status?: string
           trip_id: string
           updated_at?: string
@@ -729,6 +733,8 @@ export type Database = {
           description?: string
           id?: string
           reporter_id?: string | null
+          reporter_name?: string | null
+          reporter_phone?: string | null
           status?: string
           trip_id?: string
           updated_at?: string
