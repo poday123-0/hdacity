@@ -257,21 +257,7 @@ const AdminSettings = () => {
     </div>
   );
 
-  // Section card wrapper
-  const SectionCard = ({ title, description, icon: Icon, children }: { title: string; description?: string; icon: typeof Settings; children: React.ReactNode }) => (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center"><Icon className="w-4 h-4 text-primary" /></div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">{title}</h3>
-            {description && <p className="text-[11px] text-muted-foreground">{description}</p>}
-          </div>
-        </div>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
+  // SectionCard moved outside component to prevent remounting
 
   if (loading) return <div className="text-muted-foreground flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" /></div>;
 
