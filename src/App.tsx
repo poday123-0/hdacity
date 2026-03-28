@@ -27,6 +27,7 @@ const App = () => (
       <BrandingInit />
       <Toaster />
       <Sonner />
+      <AppVersionCheck />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
