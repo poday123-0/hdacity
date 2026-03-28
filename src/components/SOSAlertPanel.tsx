@@ -97,28 +97,63 @@ const SOSAlertPanel = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  const alarmCtxRef = useRef<AudioContext | null>(null);
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopAlarm = () => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+    if (alarmCtxRef.current) {
+      alarmCtxRef.current.close().catch(() => {});
+      alarmCtxRef.current = null;
+    }
+  };
+
   const playAlarm = () => {
+    stopAlarm(); // stop any existing alarm first
     try {
-      // Create a repeating alarm using AudioContext
       const ctx = new AudioContext();
-      const playBeep = (freq: number, startTime: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = freq;
-        osc.type = "square";
-        gain.gain.value = 0.3;
-        osc.start(startTime);
-        osc.stop(startTime + 0.3);
+      alarmCtxRef.current = ctx;
+
+      const playSirenCycle = () => {
+        try {
+          if (ctx.state === "closed") return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sawtooth";
+          gain.gain.value = 0.6;
+          // Siren sweep up then down
+          osc.frequency.setValueAtTime(600, ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.5);
+          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 1.0);
+          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 1.5);
+          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 2.0);
+          gain.gain.setValueAtTime(0.6, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.2);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 2.2);
+        } catch {}
       };
-      // Urgent alarm pattern
-      for (let i = 0; i < 6; i++) {
-        playBeep(880, ctx.currentTime + i * 0.5);
-        playBeep(660, ctx.currentTime + i * 0.5 + 0.25);
-      }
+
+      // Play immediately + repeat every 3 seconds for 30 seconds
+      playSirenCycle();
+      let count = 0;
+      alarmIntervalRef.current = setInterval(() => {
+        count++;
+        if (count >= 10) { stopAlarm(); return; }
+        playSirenCycle();
+      }, 3000);
     } catch {}
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => stopAlarm();
+  }, []);
 
   const resolveAlert = async (alertId: string) => {
     await supabase.from("sos_alerts").update({
