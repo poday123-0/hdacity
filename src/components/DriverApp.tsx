@@ -4622,6 +4622,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 {profileTab === "wallets" &&
               <div className="space-y-4">
+                    {/* HDA Wallet */}
+                    <DriverWallet
+                  driverId={userProfile.id}
+                  walletId={driverWalletId}
+                  balance={driverWalletBalance}
+                  onRequestWithdraw={() => setShowWithdrawModal(true)}
+                  minWithdrawalAmount={minWithdrawalAmount} />
+
                     {/* Favara Section */}
                     <div className="space-y-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -5033,13 +5041,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {profileTab === "billing" &&
               <div className="space-y-3">
 
-                    {/* Full Wallet Component */}
-                    <DriverWallet
-                  driverId={userProfile.id}
-                  walletId={driverWalletId}
-                  balance={driverWalletBalance}
-                  onRequestWithdraw={() => setShowWithdrawModal(true)}
-                  minWithdrawalAmount={minWithdrawalAmount} />
 
 
                     {/* Company info & discounts */}
