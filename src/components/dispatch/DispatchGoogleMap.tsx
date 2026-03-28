@@ -267,11 +267,37 @@ const DispatchGoogleMap = () => {
       } else if (drawMode === "line") {
         setLinePoints((prev) => {
           const updated = [...prev, pos];
-          // Add temp marker
+          // Add temp marker — click to remove this point
+          const markerIndex = updated.length - 1;
           const m = new g.maps.Marker({
             map: mapInstance.current,
             position: pos,
             icon: { path: g.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#ef4444", fillOpacity: 0.9, strokeColor: "#fff", strokeWeight: 2 },
+            title: "Click to remove this point",
+          });
+          m.addListener("click", (evt: any) => {
+            if (evt?.domEvent) evt.domEvent.stopPropagation();
+            // Remove this marker
+            m.setMap(null);
+            drawTempMarkersRef.current = drawTempMarkersRef.current.filter((mk) => mk !== m);
+            // Remove this point from linePoints
+            setLinePoints((pts) => {
+              const newPts = pts.filter((_, i) => i !== markerIndex);
+              // Rebuild temp line
+              const gg = (window as any).google;
+              if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+              if (newPts.length > 1 && gg?.maps) {
+                drawTempLineRef.current = new gg.maps.Polyline({
+                  map: mapInstance.current,
+                  path: newPts,
+                  strokeColor: "#ef4444",
+                  strokeWeight: 5,
+                  strokeOpacity: 0.7,
+                  icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
+                });
+              }
+              return newPts;
+            });
           });
           drawTempMarkersRef.current.push(m);
 
