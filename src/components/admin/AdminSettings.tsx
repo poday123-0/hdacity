@@ -210,14 +210,14 @@ const AdminSettings = () => {
   };
 
   // Helper for setting field with inline save
-  const SettingField = ({ label, settingKey, type = "text", placeholder = "" }: { label: string; settingKey: string; type?: string; placeholder?: string }) => (
-    <div className="space-y-1.5">
+  const renderSettingField = (label: string, settingKey: string, type = "text", placeholder = "") => (
+    <div className="space-y-1.5" key={settingKey}>
       <label className="text-xs font-semibold text-foreground">{label}</label>
       <div className="flex items-center gap-2">
         <input
           type={type}
           value={settings[settingKey] ?? ""}
-          onChange={(e) => setSettings({ ...settings, [settingKey]: type === "number" ? (parseFloat(e.target.value) || 0) : e.target.value })}
+          onChange={(e) => setSettings((prev: any) => ({ ...prev, [settingKey]: type === "number" ? (parseFloat(e.target.value) || 0) : e.target.value }))}
           placeholder={placeholder}
           className="flex-1 px-3 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
@@ -228,12 +228,12 @@ const AdminSettings = () => {
     </div>
   );
 
-  const SettingTextarea = ({ label, settingKey, placeholder = "", rows = 5 }: { label: string; settingKey: string; placeholder?: string; rows?: number }) => (
-    <div className="space-y-1.5">
+  const renderSettingTextarea = (label: string, settingKey: string, placeholder = "", rows = 5) => (
+    <div className="space-y-1.5" key={settingKey}>
       <label className="text-xs font-semibold text-foreground">{label}</label>
       <textarea
         value={typeof settings[settingKey] === "string" ? settings[settingKey] : (settings[settingKey] ?? "")}
-        onChange={(e) => setSettings({ ...settings, [settingKey]: e.target.value })}
+        onChange={(e) => setSettings((prev: any) => ({ ...prev, [settingKey]: e.target.value }))}
         rows={rows}
         placeholder={placeholder}
         className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-y"
@@ -244,12 +244,12 @@ const AdminSettings = () => {
     </div>
   );
 
-  const SettingSelect = ({ label, settingKey, options }: { label: string; settingKey: string; options: { value: string; label: string }[] }) => (
-    <div className="space-y-1.5">
+  const renderSettingSelect = (label: string, settingKey: string, options: { value: string; label: string }[]) => (
+    <div className="space-y-1.5" key={settingKey}>
       <label className="text-xs font-semibold text-foreground">{label}</label>
       <select
         value={JSON.stringify(settings[settingKey])}
-        onChange={(e) => { const val = JSON.parse(e.target.value); setSettings({ ...settings, [settingKey]: val }); updateSetting(settingKey, val); }}
+        onChange={(e) => { const val = JSON.parse(e.target.value); setSettings((prev: any) => ({ ...prev, [settingKey]: val })); updateSetting(settingKey, val); }}
         className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
       >
         {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
