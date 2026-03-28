@@ -189,6 +189,40 @@ const AdminBanks = () => {
           </div>
         </div>
       </div>
+
+      {/* Swipe Logo */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
+          <Building2 className="w-4 h-4 text-primary" /> Swipe Logo
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">Shown next to driver Swipe accounts</p>
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-xl bg-surface border-2 border-border flex items-center justify-center overflow-hidden shrink-0">
+            {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-12 h-12 object-contain" /> : <Building2 className="w-8 h-8 text-muted-foreground" />}
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-sm text-foreground font-medium">{swipeLogoUrl ? "Logo uploaded ✓" : "No logo set"}</p>
+            <input id="swipe-logo-input" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              const path = `branding/swipe_${Date.now()}.${file.name.split(".").pop()}`;
+              const { error } = await supabase.storage.from("vehicle-images").upload(path, file, { upsert: true });
+              if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
+              const { data: urlData } = supabase.storage.from("vehicle-images").getPublicUrl(path);
+              const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "swipe_logo_url").single();
+              if (existing) {
+                await supabase.from("system_settings").update({ value: urlData.publicUrl as any, updated_at: new Date().toISOString() }).eq("key", "swipe_logo_url");
+              } else {
+                await supabase.from("system_settings").insert({ key: "swipe_logo_url", value: urlData.publicUrl as any, description: "Swipe logo URL" });
+              }
+              setSwipeLogoUrl(urlData.publicUrl);
+              toast({ title: "Swipe logo updated!" }); e.target.value = "";
+            }} />
+            <button onClick={() => (document.getElementById("swipe-logo-input") as HTMLInputElement)?.click()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all">
+              <Upload className="w-3.5 h-3.5" /> Upload Logo
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
