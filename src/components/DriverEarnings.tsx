@@ -32,9 +32,11 @@ interface DriverEarningsProps {
   driverId: string;
   isOpen: boolean;
   onClose: () => void;
+  vehicleId?: string | null;
+  vehiclePlate?: string;
 }
 
-const DriverEarnings = ({ driverId, isOpen, onClose }: DriverEarningsProps) => {
+const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: DriverEarningsProps) => {
   const [period, setPeriod] = useState<Period>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [customFrom, setCustomFrom] = useState("");
