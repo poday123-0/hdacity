@@ -251,6 +251,8 @@ const Dispatch = () => {
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [lostItems, setLostItems] = useState<any[]>([]);
+  const [roadAlert, setRoadAlert] = useState<{ reporter: string; type: string; notes: string; id: string } | null>(null);
+  const roadAlertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Preloaded center-code index for instant lookups (refreshed in background)
   const [centerCodeIndex, setCenterCodeIndex] = useState<Record<string, any>>({});
