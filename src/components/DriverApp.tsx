@@ -5041,13 +5041,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 {profileTab === "billing" &&
               <div className="space-y-3">
 
-                    {/* Full Wallet Component */}
-                    <DriverWallet
-                  driverId={userProfile.id}
-                  walletId={driverWalletId}
-                  balance={driverWalletBalance}
-                  onRequestWithdraw={() => setShowWithdrawModal(true)}
-                  minWithdrawalAmount={minWithdrawalAmount} />
 
 
                     {/* Company info & discounts */}
