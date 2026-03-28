@@ -22,6 +22,13 @@ interface FavaraAccountInfo {
   is_primary: boolean;
 }
 
+interface SwipeAccountInfo {
+  id: string;
+  swipe_username: string;
+  swipe_name: string;
+  is_primary: boolean;
+}
+
 interface DriverInfo {
   id?: string;
   name?: string;
