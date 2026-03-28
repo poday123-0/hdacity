@@ -319,10 +319,15 @@ const AdminNamedLocations = () => {
   const q = search.toLowerCase();
   const filtered = locations.filter(loc => {
     if (statusFilter !== "all" && loc.status !== statusFilter) return false;
-    if (q && !loc.name.toLowerCase().includes(q) && !loc.address.toLowerCase().includes(q)) return false;
+    if (groupFilter !== "all") {
+      if (groupFilter === "__none__") { if (loc.group_name) return false; }
+      else if (loc.group_name !== groupFilter) return false;
+    }
+    if (q && !loc.name.toLowerCase().includes(q) && !loc.address.toLowerCase().includes(q) && !(loc.group_name || "").toLowerCase().includes(q)) return false;
     return true;
   });
 
+  const groups = [...new Set(locations.map(l => l.group_name).filter(Boolean))].sort();
   const pendingCount = locations.filter(l => l.status === "pending").length;
 
   return (
