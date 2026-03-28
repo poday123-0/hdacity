@@ -701,7 +701,7 @@ const AdminVehicles = () => {
                               }}
                               className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-warning"
                             >
-                              <Ban className="w-3.5 h-3.5" />
+                              <Timer className="w-3.5 h-3.5" />
                             </button>
                             <button
                               title="Block permanently"
@@ -718,7 +718,7 @@ const AdminVehicles = () => {
                               }}
                               className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive"
                             >
-                              <Ban className="w-3.5 h-3.5" />
+                              <Lock className="w-3.5 h-3.5" />
                             </button>
                           </>
                         )}
