@@ -256,6 +256,7 @@ const AdminWatermelons = () => {
   const [editLng, setEditLng] = useState("");
   const [showBulkMove, setShowBulkMove] = useState(false);
   const [claimedFilter, setClaimedFilter] = useState("all");
+  const [claimedSearch, setClaimedSearch] = useState("");
 
   // Form state
   const [promoType, setPromoType] = useState("wallet_amount");
