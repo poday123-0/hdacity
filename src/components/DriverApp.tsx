@@ -3435,7 +3435,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         <DriverEarnings
           driverId={userProfile.id}
           isOpen={showEarningsHistory}
-          onClose={() => setShowEarningsHistory(false)} />
+          onClose={() => setShowEarningsHistory(false)}
+          vehicleId={selectedVehicleId}
+          vehiclePlate={driverVehicles.find(v => v.id === selectedVehicleId)?.plate_number || ""}
+        />
 
         }
         </>
