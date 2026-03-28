@@ -798,79 +798,8 @@ const Dispatch = () => {
     };
   }, [isAuthed]);
 
-  // SOS Alert: preload alarm audio & unlock on first user gesture, then play on new SOS
-  const sosAlarmRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    // Create a siren-like alarm using a base64 WAV or use Web Audio with user-gesture unlock
-    const audio = new Audio();
-    // We'll use Web Audio for the actual siren, but pre-unlock via HTMLAudioElement
-    audio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-    audio.preload = "auto";
-    audio.volume = 1;
-    sosAlarmRef.current = audio;
-
-    // Unlock audio on first interaction (bypasses autoplay policy)
-    const unlock = () => {
-      audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
-    };
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, []);
-
-  const sosIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const playSosAlarm = useCallback(() => {
-    // Stop any existing alarm
-    if (sosIntervalRef.current) clearInterval(sosIntervalRef.current);
-    try {
-      const ctx = new AudioContext();
-      const playCycle = () => {
-        try {
-          if (ctx.state === "closed") return;
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = "sawtooth";
-          gain.gain.value = 0.7;
-          osc.frequency.setValueAtTime(600, ctx.currentTime);
-          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.5);
-          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 1.0);
-          osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 1.5);
-          osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 2.0);
-          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.2);
-          osc.start(ctx.currentTime);
-          osc.stop(ctx.currentTime + 2.2);
-        } catch {}
-      };
-      playCycle();
-      let count = 0;
-      sosIntervalRef.current = setInterval(() => {
-        count++;
-        if (count >= 15) { clearInterval(sosIntervalRef.current!); ctx.close().catch(() => {}); return; }
-        playCycle();
-      }, 2500);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthed) return;
-    const sosChannel = supabase
-      .channel("dispatch-sos-alerts")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "sos_alerts" }, () => {
-        playSosAlarm();
-        // Also try HTMLAudioElement as fallback
-        try { sosAlarmRef.current?.play().catch(() => {}); } catch {}
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(sosChannel);
-      if (sosIntervalRef.current) clearInterval(sosIntervalRef.current);
-    };
-  }, [isAuthed, playSosAlarm]);
+  // SOS alert handling is now fully managed by SOSAlertPanel component
+  // (realtime subscription + polling + audio unlock + siren playback)
 
   // Polling fallback: refresh every 15s (realtime handles instant updates)
   useEffect(() => {
