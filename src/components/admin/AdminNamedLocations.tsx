@@ -607,6 +607,13 @@ const AdminNamedLocations = () => {
                 </td>
                 <td className="px-4 py-3">
                   {isInlineEditing ? (
+                    <input value={inlineEdit.group_name} onChange={e => setInlineEdit(p => ({ ...p, group_name: e.target.value }))} list="group-suggestions" placeholder="Group..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  ) : (
+                    loc.group_name ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{loc.group_name}</span> : <span className="text-[10px] text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {isInlineEditing ? (
                     <input value={inlineEdit.address} onChange={e => setInlineEdit(p => ({ ...p, address: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                   ) : (
                     <span className="text-sm text-muted-foreground">{loc.address || "—"}</span>
