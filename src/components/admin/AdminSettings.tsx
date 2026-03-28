@@ -417,8 +417,8 @@ const AdminSettings = () => {
       <SectionCard title="Location & Battery" description="GPS intervals, accuracy and battery optimization for drivers" icon={Globe}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingField label="Driver Location Update Interval (ms)" settingKey="driver_location_interval_ms" type="number" placeholder="30000" />
-            <SettingField label="Passenger Location Update Interval (ms)" settingKey="passenger_location_interval_ms" type="number" placeholder="5000" />
+            {renderSettingField("Driver Location Update Interval (ms)", "driver_location_interval_ms", "number", "30000")}
+            {renderSettingField("Passenger Location Update Interval (ms)", "passenger_location_interval_ms", "number", "5000")}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <SettingSelect label="Driver GPS Accuracy" settingKey="driver_gps_accuracy" options={[
@@ -426,11 +426,11 @@ const AdminSettings = () => {
               { value: '"balanced"', label: "Balanced (Default — good accuracy, less battery)" },
               { value: '"low"', label: "Low (Approximate, least battery)" },
             ]} />
-            <SettingField label="GPS Max Age (ms)" settingKey="driver_gps_max_age_ms" type="number" placeholder="15000" />
+            {renderSettingField("GPS Max Age (ms)", "driver_gps_max_age_ms", "number", "15000")}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingField label="Session Check Interval (ms)" settingKey="session_check_interval_ms" type="number" placeholder="15000" />
-            <SettingField label="Map Auto-Follow Resume (sec)" settingKey="map_auto_follow_resume_sec" type="number" placeholder="8" />
+            {renderSettingField("Session Check Interval (ms)", "session_check_interval_ms", "number", "15000")}
+            {renderSettingField("Map Auto-Follow Resume (sec)", "map_auto_follow_resume_sec", "number", "8")}
           </div>
           <p className="text-[11px] text-muted-foreground">
             💡 Higher intervals = less battery drain. Recommended: Driver GPS 10000ms, GPS Max Age 3000-5000ms, Balanced accuracy.
@@ -455,10 +455,10 @@ const AdminSettings = () => {
             <SettingField label="Surge Multiplier" settingKey="surge_multiplier" type="number" />
             <SettingField label="Max Search Radius (km)" settingKey="max_search_radius_km" type="number" />
             <SettingField label="Driver Accept Timeout (sec)" settingKey="driver_accept_timeout_seconds" type="number" />
-            <SettingField label="Dispatch Broadcast Timeout (sec)" settingKey="dispatch_broadcast_timeout_seconds" type="number" placeholder="60" />
+            {renderSettingField("Dispatch Broadcast Timeout (sec)", "dispatch_broadcast_timeout_seconds", "number", "60")}
             <SettingField label="Max Drivers to Try (0 = unlimited)" settingKey="max_auto_drivers" type="number" />
             <SettingField label="Default Driver Trip Radius (km)" settingKey="default_trip_radius_km" type="number" />
-            <SettingField label="Min Scheduled Lead Time (min)" settingKey="min_scheduled_lead_minutes" type="number" placeholder="30" />
+            {renderSettingField("Min Scheduled Lead Time (min)", "min_scheduled_lead_minutes", "number", "30")}
           </div>
         </div>
       </SectionCard>
