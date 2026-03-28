@@ -344,15 +344,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                   <button
                     key={i}
                     onClick={() => {
-                      if (keepOpenOnNearbySelect && mapInstance.current) {
-                        const newCenter = { lat: place.lat, lng: place.lng };
-                        mapInstance.current.panTo(newCenter);
-                        setCenter(newCenter);
-                        setPlaceName(place.name);
-                        setAddress(place.vicinity);
-                      } else {
-                        onConfirm(place.lat, place.lng, place.name, place.vicinity);
-                      }
+                      onConfirm(place.lat, place.lng, place.name, place.vicinity);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-border hover:border-primary/30 hover:bg-primary/5 active:scale-[0.97] transition-all whitespace-nowrap shrink-0"
                   >
