@@ -326,8 +326,12 @@ const DispatchGoogleMap = () => {
           zIndex: 2000,
         });
 
+        const driverInfo = c.reported_by_type === "driver" && c.reporter_name
+          ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
+          : "";
         const iw = new g.maps.InfoWindow({
-          content: `<div style="font-size:12px;padding:4px;max-width:200px">
+          content: `<div style="font-size:12px;padding:4px;max-width:220px">
+            ${driverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
