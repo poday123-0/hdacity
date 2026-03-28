@@ -365,7 +365,7 @@ const AdminFares = () => {
           const groupKeys = Object.keys(grouped).sort();
 
           const toggleGroup = (key: string) => {
-            setCollapsedGroups(prev => {
+            setExpandedGroups(prev => {
               const next = new Set(prev);
               if (next.has(key)) next.delete(key); else next.add(key);
               return next;
