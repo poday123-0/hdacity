@@ -930,6 +930,7 @@ const Index = () => {
           map_icon_url: driverIconUrl || null,
           bank_accounts: banksRes.data || [],
           favara_accounts: favaraRes.data || [],
+          swipe_accounts: swipeRes.data || [],
         });
       }
       setPassengerScreen("driver-matching");
