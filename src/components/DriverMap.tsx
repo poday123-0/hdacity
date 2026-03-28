@@ -1779,11 +1779,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                       notes: fullNotes,
                       severity: reportSeverity,
                       expires_at: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
-                      status: "pending",
+                      status: "approved",
                       reported_by: user?.id,
                       reported_by_type: "driver",
                     });
-                    toast({ title: "Report submitted", description: "Dispatch will review your report" });
+                    toast({ title: "Report submitted", description: "Your report is now live on the map" });
                     setShowReportForm(false);
                     setReportCoords(null);
                   } catch {
