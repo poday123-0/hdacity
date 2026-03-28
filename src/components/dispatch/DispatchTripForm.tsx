@@ -1007,11 +1007,19 @@ const DispatchTripForm = ({
                   onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
                   onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
                   onKeyDown={e => {
-                    if (e.key === "Enter") {
+                    if (e.key === "ArrowDown") {
                       e.preventDefault();
+                      setResultHighlight(prev => Math.min(prev + 1, osmResults.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setResultHighlight(prev => Math.max(prev - 1, -1));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const idx = resultHighlight >= 0 ? resultHighlight : 0;
                       if (osmResults.length > 0 && !pickup) {
-                        selectLocation(osmResults[0]);
+                        selectLocation(osmResults[idx]);
                       }
+                      setResultHighlight(-1);
                       setTimeout(() => toButtonsRef.current?.focus(), 50);
                     }
                   }}
