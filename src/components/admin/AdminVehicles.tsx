@@ -540,7 +540,7 @@ const AdminVehicles = () => {
                 statusFilter === s.value ? `${s.color} ring-2 ring-primary/30 shadow-sm` : "bg-surface text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}>
               {s.label}
-              {s.value !== "all" && <span className="ml-1.5 text-[10px] opacity-70">({vehicles.filter(v => v.vehicle_status === s.value).length})</span>}
+              {s.value !== "all" && <span className="ml-1.5 text-[10px] opacity-70">({vehicles.filter(v => s.value === "online" ? (v.driver_id && onlineDriverIds.has(v.driver_id)) : v.vehicle_status === s.value).length})</span>}
             </button>
           ))}
           <span className="text-muted-foreground text-[10px] mx-1">|</span>
