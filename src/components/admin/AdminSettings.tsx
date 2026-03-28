@@ -57,6 +57,21 @@ const sections: { id: SettingsSection; label: string; icon: typeof Settings; des
   { id: "system", label: "System", icon: Download, description: "Icons, updates & advanced" },
 ];
 
+const SectionCard = ({ title, description, icon: Icon, children }: { title: string; description?: string; icon: any; children: React.ReactNode }) => (
+  <div className="bg-card border border-border rounded-2xl overflow-hidden">
+    <div className="px-6 py-4 border-b border-border bg-muted/30">
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center"><Icon className="w-4 h-4 text-primary" /></div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          {description && <p className="text-[11px] text-muted-foreground">{description}</p>}
+        </div>
+      </div>
+    </div>
+    <div className="p-6">{children}</div>
+  </div>
+);
+
 const AdminSettings = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
     return (localStorage.getItem("hda_settings_tab") as SettingsSection) || "branding";
