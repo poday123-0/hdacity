@@ -1,0 +1,1 @@
+ALTER TABLE public.named_locations ADD COLUMN group_name text DEFAULT NULL;
