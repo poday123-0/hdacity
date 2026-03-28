@@ -290,7 +290,17 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           // Deduplicate: remove Google results that match admin location names
           const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
           const uniqueGoogle = detailedResults.filter(r => !adminNames.has(r.name.toLowerCase()));
-          setPlaceResults([...adminMatches, ...uniqueGoogle]);
+          const combined = [...adminMatches, ...uniqueGoogle];
+          // Sort by relevance: exact match > starts-with > contains
+          const ql = q;
+          combined.sort((a, b) => {
+            const an = a.name.toLowerCase();
+            const bn = b.name.toLowerCase();
+            const aScore = an === ql ? 0 : an.startsWith(ql) ? 1 : 2;
+            const bScore = bn === ql ? 0 : bn.startsWith(ql) ? 1 : 2;
+            return aScore - bScore;
+          });
+          setPlaceResults(combined);
         } catch {
           setPlaceResults(adminMatches);
         }
