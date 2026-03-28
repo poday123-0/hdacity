@@ -101,6 +101,16 @@ const AdminDrivers = () => {
     });
     setDriverVehicles(vMap);
 
+    // Build bank accounts map for search
+    const baMap: Record<string, any[]> = {};
+    (allBankAccRes.data || []).forEach((ba: any) => {
+      if (ba.driver_id) {
+        if (!baMap[ba.driver_id]) baMap[ba.driver_id] = [];
+        baMap[ba.driver_id].push(ba);
+      }
+    });
+    setAllBankAccountsMap(baMap);
+
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const [ratedTripsRes, declinesRes] = await Promise.all([
