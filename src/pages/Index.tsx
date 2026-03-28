@@ -1330,7 +1330,7 @@ const Index = () => {
           />
         )}
         {passengerScreen === "home" && (
-          <div className="fixed top-16 left-3 right-3 z-[600] pointer-events-auto max-w-md mx-auto md:hidden">
+          <div className="fixed top-20 left-3 right-3 z-[600] pointer-events-auto max-w-lg mx-auto capacitor-safe-top">
             <AdBanner audience="passengers" />
           </div>
         )}
