@@ -4310,6 +4310,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "vehicles", label: "Vehicles", icon: Car },
                 { key: "banks", label: "Banks", icon: Landmark },
                 { key: "favara", label: "Favara", icon: Wallet },
+                { key: "swipe", label: "Swipe", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
                 { key: "billing", label: "Billing", icon: DollarSign },
                 { key: "settings", label: "Settings", icon: Settings }] as
