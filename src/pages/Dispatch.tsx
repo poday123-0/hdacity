@@ -1291,6 +1291,47 @@ const Dispatch = () => {
             {/* SOS Alerts */}
             <SOSAlertPanel />
 
+            {/* Road closure alert banner */}
+            {roadAlert && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="mb-3 relative overflow-hidden rounded-xl border-2 border-orange-400 bg-gradient-to-r from-orange-500/20 via-amber-500/15 to-yellow-500/20 shadow-lg shadow-orange-500/10"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-amber-500/5 animate-pulse" />
+                <div className="relative flex items-center gap-3 px-4 py-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-xl animate-bounce">
+                    🚧
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-orange-300">
+                      Driver Road Report
+                    </p>
+                    <p className="text-xs text-foreground/80 truncate">
+                      <span className="font-semibold">{roadAlert.reporter}</span> reported: <span className="font-bold text-orange-200">{roadAlert.type}</span>
+                      {roadAlert.notes && <span className="text-muted-foreground"> — {roadAlert.notes}</span>}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setRoadAlert(null); if (roadAlertTimerRef.current) clearTimeout(roadAlertTimerRef.current); }}
+                    className="flex-shrink-0 w-7 h-7 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5 text-foreground/60" />
+                  </button>
+                </div>
+                {/* Auto-dismiss progress bar */}
+                <div className="h-0.5 bg-orange-500/30">
+                  <motion.div
+                    initial={{ width: "100%" }}
+                    animate={{ width: "0%" }}
+                    transition={{ duration: 12, ease: "linear" }}
+                    className="h-full bg-orange-400"
+                  />
+                </div>
+              </motion.div>
+            )}
+
             {/* Layout: Left tables column | 3 Bid forms right */}
             <div className="flex flex-col lg:flex-row gap-2 mt-2">
               {/* Left Column — IN LOSS + Todays Booking (narrower on desktop) */}
