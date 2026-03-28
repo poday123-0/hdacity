@@ -440,53 +440,7 @@ const DispatchGoogleMap = () => {
     });
   }, [closures, isLoaded]);
 
-  // Render pending (driver-reported) closures with pulsing markers
-  const pendingMarkersRef = useRef<any[]>([]);
-  useEffect(() => {
-    if (!mapInstance.current || !isLoaded) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
-
-    pendingMarkersRef.current.forEach((m) => m.setMap(null));
-    pendingMarkersRef.current = [];
-
-    pendingClosures.forEach((c) => {
-      const coords = c.coordinates;
-      if (coords.length === 0) return;
-      const sev = SEVERITY_OPTIONS.find((s) => s.value === c.severity) || SEVERITY_OPTIONS[0];
-      const pos = coords[0];
-
-      const marker = new g.maps.Marker({
-        map: mapInstance.current,
-        position: pos,
-        icon: {
-          path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
-          fillColor: "#3b82f6",
-          fillOpacity: 0.8,
-          strokeColor: "#fff",
-          strokeWeight: 2,
-          scale: 1.5,
-          anchor: new g.maps.Point(12, 12),
-        },
-        zIndex: 2100,
-        animation: g.maps.Animation.BOUNCE,
-      });
-
-      const iw = new g.maps.InfoWindow({
-        content: `<div style="font-size:12px;padding:4px;max-width:220px">
-          <div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">📋 DRIVER REPORT (pending)</div>
-          <strong style="color:${sev.color}">${sev.label}</strong>
-          ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
-          <div style="display:flex;gap:6px;margin-top:6px">
-            <button onclick="window.__approveClosure__('${c.id}')" style="font-size:11px;color:#22c55e;cursor:pointer;background:none;border:1px solid #22c55e;border-radius:4px;padding:2px 8px;font-weight:600">✓ Approve</button>
-            <button onclick="window.__rejectClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Reject</button>
-          </div>
-        </div>`,
-      });
-      marker.addListener("click", () => iw.open(mapInstance.current, marker));
-      pendingMarkersRef.current.push(marker);
-    });
-  }, [pendingClosures, isLoaded]);
+  // Pending driver closures no longer needed — driver reports are auto-approved
 
   // Global remove/approve/reject handlers
   useEffect(() => {
