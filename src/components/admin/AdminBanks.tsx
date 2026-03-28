@@ -13,6 +13,7 @@ const AdminBanks = () => {
   const [form, setForm] = useState({ name: "", logo_url: "" });
   const [uploading, setUploading] = useState(false);
   const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
+  const [swipeLogoUrl, setSwipeLogoUrl] = useState<string | null>(null);
 
   const fetchBanks = async () => {
     setLoading(true);
