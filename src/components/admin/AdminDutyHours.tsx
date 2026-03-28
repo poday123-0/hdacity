@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight } from "lucide-react";
+import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign } from "lucide-react";
 
 const AdminDutyHours = () => {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -13,6 +13,16 @@ const AdminDutyHours = () => {
   const [allowedIps, setAllowedIps] = useState<string[]>([]);
   const [newIp, setNewIp] = useState("");
   const [ipLoading, setIpLoading] = useState(false);
+
+  // Editing session
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editClockIn, setEditClockIn] = useState("");
+  const [editClockOut, setEditClockOut] = useState("");
+
+  // Salary config per dispatcher
+  const [salaryRates, setSalaryRates] = useState<Record<string, number>>({});
+  const [editingSalaryId, setEditingSalaryId] = useState<string | null>(null);
+  const [editSalaryVal, setEditSalaryVal] = useState("");
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -37,7 +47,6 @@ const AdminDutyHours = () => {
 
     const { data } = await query;
 
-    // Enrich with dispatcher names
     const ids = [...new Set((data || []).map((s: any) => s.dispatcher_id))];
     let profileMap: Record<string, any> = {};
     if (ids.length > 0) {
@@ -72,9 +81,21 @@ const AdminDutyHours = () => {
     }
   };
 
+  const fetchSalaryRates = async () => {
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "dispatcher_salary_rates")
+      .single();
+    if (data?.value && typeof data.value === "object") {
+      setSalaryRates(data.value as Record<string, number>);
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
     fetchIpSettings();
+    fetchSalaryRates();
   }, [dateFilter]);
 
   const saveIpSettings = async () => {
@@ -122,6 +143,81 @@ const AdminDutyHours = () => {
     return `${hrs}h ${mins}m`;
   };
 
+  const getDurationMs = (clockIn: string, clockOut: string | null) => {
+    const start = new Date(clockIn).getTime();
+    const end = clockOut ? new Date(clockOut).getTime() : Date.now();
+    return end - start;
+  };
+
+  // Edit session handlers
+  const startEdit = (s: any) => {
+    setEditingId(s.id);
+    // Format for datetime-local input
+    setEditClockIn(toLocalDatetime(s.clock_in));
+    setEditClockOut(s.clock_out ? toLocalDatetime(s.clock_out) : "");
+  };
+
+  const toLocalDatetime = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editClockIn) {
+      toast({ title: "Clock in time is required", variant: "destructive" });
+      return;
+    }
+    const update: any = { clock_in: new Date(editClockIn).toISOString() };
+    if (editClockOut) {
+      update.clock_out = new Date(editClockOut).toISOString();
+    } else {
+      update.clock_out = null;
+    }
+    const { error } = await supabase
+      .from("dispatch_duty_sessions")
+      .update(update)
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Session updated" });
+      setEditingId(null);
+      fetchSessions();
+    }
+  };
+
+  // Salary handlers
+  const saveSalaryRate = async (dispatcherId: string) => {
+    const rate = parseFloat(editSalaryVal);
+    if (isNaN(rate) || rate < 0) {
+      toast({ title: "Invalid salary rate", variant: "destructive" });
+      return;
+    }
+    const newRates = { ...salaryRates, [dispatcherId]: rate };
+    const { data: existing } = await supabase
+      .from("system_settings")
+      .select("id")
+      .eq("key", "dispatcher_salary_rates")
+      .single();
+
+    if (existing) {
+      await supabase
+        .from("system_settings")
+        .update({ value: newRates as any, updated_at: new Date().toISOString() })
+        .eq("key", "dispatcher_salary_rates");
+    } else {
+      await supabase.from("system_settings").insert({
+        key: "dispatcher_salary_rates",
+        value: newRates as any,
+        description: "Hourly salary rates per dispatcher",
+      });
+    }
+    setSalaryRates(newRates);
+    setEditingSalaryId(null);
+    toast({ title: "Salary rate saved" });
+  };
+
   // Group sessions by dispatcher
   const dispatcherSummary = sessions.reduce((acc: any, s: any) => {
     const id = s.dispatcher_id;
@@ -132,9 +228,7 @@ const AdminDutyHours = () => {
         sessionCount: 0,
       };
     }
-    const start = new Date(s.clock_in).getTime();
-    const end = s.clock_out ? new Date(s.clock_out).getTime() : Date.now();
-    acc[id].totalMs += end - start;
+    acc[id].totalMs += getDurationMs(s.clock_in, s.clock_out);
     acc[id].sessionCount++;
     return acc;
   }, {} as Record<string, any>);
@@ -223,19 +317,64 @@ const AdminDutyHours = () => {
           </select>
         </div>
 
-        {/* Summary cards */}
+        {/* Summary cards with salary */}
         {Object.keys(dispatcherSummary).length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {Object.entries(dispatcherSummary).map(([id, info]: [string, any]) => {
               const hrs = Math.floor(info.totalMs / 3600000);
               const mins = Math.floor((info.totalMs % 3600000) / 60000);
+              const totalHours = info.totalMs / 3600000;
+              const rate = salaryRates[id] || 0;
+              const salary = rate > 0 ? (totalHours * rate).toFixed(2) : null;
+
               return (
-                <div key={id} className="bg-surface rounded-lg p-3 text-center">
+                <div key={id} className="bg-surface rounded-lg p-3 text-center space-y-1">
                   <p className="text-xs font-semibold text-foreground">
                     {info.dispatcher ? `${info.dispatcher.first_name} ${info.dispatcher.last_name}` : "Unknown"}
                   </p>
                   <p className="text-lg font-bold text-primary">{hrs}h {mins}m</p>
                   <p className="text-[10px] text-muted-foreground">{info.sessionCount} session{info.sessionCount !== 1 ? "s" : ""}</p>
+
+                  {/* Salary rate */}
+                  {editingSalaryId === id ? (
+                    <div className="flex items-center gap-1 mt-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editSalaryVal}
+                        onChange={(e) => setEditSalaryVal(e.target.value)}
+                        placeholder="Rate/hr"
+                        className="w-16 px-1 py-0.5 text-[10px] bg-background border border-border rounded text-foreground text-center"
+                        onKeyDown={(e) => e.key === "Enter" && saveSalaryRate(id)}
+                      />
+                      <button onClick={() => saveSalaryRate(id)} className="text-primary hover:text-primary/80">
+                        <Check className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => setEditingSalaryId(null)} className="text-muted-foreground hover:text-foreground">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1 mt-1">
+                      {rate > 0 ? (
+                        <p className="text-[10px] text-muted-foreground">
+                          <DollarSign className="w-2.5 h-2.5 inline" />
+                          {rate}/hr • <span className="font-semibold text-foreground">${salary}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground italic">No rate set</p>
+                      )}
+                      <button
+                        onClick={() => {
+                          setEditingSalaryId(id);
+                          setEditSalaryVal(rate > 0 ? rate.toString() : "");
+                        }}
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -252,23 +391,42 @@ const AdminDutyHours = () => {
                 <th className="text-left py-2 px-2 font-medium">Clock Out</th>
                 <th className="text-left py-2 px-2 font-medium">Duration</th>
                 <th className="text-left py-2 px-2 font-medium">IP</th>
+                <th className="text-left py-2 px-2 font-medium w-16">Edit</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-6 text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">Loading...</td></tr>
               ) : sessions.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-6 text-muted-foreground">No duty sessions found</td></tr>
+                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No duty sessions found</td></tr>
               ) : sessions.map((s: any) => (
                 <tr key={s.id} className="border-b border-border/50 hover:bg-surface/50">
                   <td className="py-2 px-2 font-medium text-foreground">
                     {s.dispatcher ? `${s.dispatcher.first_name} ${s.dispatcher.last_name}` : s.dispatcher_id.slice(0, 8)}
                   </td>
-                  <td className="py-2 px-2 text-muted-foreground">
-                    {new Date(s.clock_in).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                  <td className="py-2 px-2">
+                    {editingId === s.id ? (
+                      <input
+                        type="datetime-local"
+                        value={editClockIn}
+                        onChange={(e) => setEditClockIn(e.target.value)}
+                        className="px-1 py-0.5 text-[10px] bg-background border border-border rounded text-foreground w-36"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {new Date(s.clock_in).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                      </span>
+                    )}
                   </td>
                   <td className="py-2 px-2">
-                    {s.clock_out ? (
+                    {editingId === s.id ? (
+                      <input
+                        type="datetime-local"
+                        value={editClockOut}
+                        onChange={(e) => setEditClockOut(e.target.value)}
+                        className="px-1 py-0.5 text-[10px] bg-background border border-border rounded text-foreground w-36"
+                      />
+                    ) : s.clock_out ? (
                       <span className="text-muted-foreground">
                         {new Date(s.clock_out).toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
                       </span>
@@ -281,6 +439,22 @@ const AdminDutyHours = () => {
                   </td>
                   <td className="py-2 px-2 font-semibold text-foreground">{formatDuration(s.clock_in, s.clock_out)}</td>
                   <td className="py-2 px-2 text-muted-foreground font-mono text-[10px]">{s.ip_address || "-"}</td>
+                  <td className="py-2 px-2">
+                    {editingId === s.id ? (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
