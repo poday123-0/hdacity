@@ -102,6 +102,7 @@ const DispatchTripForm = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [osmResults, setOsmResults] = useState<NominatimResult[]>([]);
   const [osmSearching, setOsmSearching] = useState(false);
+  const [resultHighlight, setResultHighlight] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>("");
@@ -495,7 +496,8 @@ const DispatchTripForm = ({
 
   // Search: local DB + Google Places (filtered to service areas only)
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
+    if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); setResultHighlight(-1); return; }
+    setResultHighlight(-1);
     const q = searchQuery.toLowerCase();
 
     // 1. Instant local matches from DB + recent bookings
@@ -1005,11 +1007,19 @@ const DispatchTripForm = ({
                   onChange={e => { setSelecting("pickup"); setSearchQuery(e.target.value); setPickupQuery(e.target.value); }}
                   onFocus={() => { setSelecting("pickup"); setSearchQuery(pickupQuery); }}
                   onKeyDown={e => {
-                    if (e.key === "Enter") {
+                    if (e.key === "ArrowDown") {
                       e.preventDefault();
+                      setResultHighlight(prev => Math.min(prev + 1, osmResults.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setResultHighlight(prev => Math.max(prev - 1, -1));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const idx = resultHighlight >= 0 ? resultHighlight : 0;
                       if (osmResults.length > 0 && !pickup) {
-                        selectLocation(osmResults[0]);
+                        selectLocation(osmResults[idx]);
                       }
+                      setResultHighlight(-1);
                       setTimeout(() => toButtonsRef.current?.focus(), 50);
                     }
                   }}
@@ -1033,8 +1043,8 @@ const DispatchTripForm = ({
             </div>
             {selecting === "pickup" && osmResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {osmResults.map(r => (
-                  <button key={r.place_id} onClick={() => { selectLocation(r); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                {osmResults.map((r, idx) => (
+                  <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
                     <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
@@ -1108,11 +1118,19 @@ const DispatchTripForm = ({
                   onChange={e => { setSelecting("dropoff"); setSearchQuery(e.target.value); }}
                   onFocus={() => { setSelecting("dropoff"); setSearchQuery(""); }}
                   onKeyDown={e => {
-                    if (e.key === "Enter") {
+                    if (e.key === "ArrowDown") {
                       e.preventDefault();
+                      setResultHighlight(prev => Math.min(prev + 1, osmResults.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setResultHighlight(prev => Math.max(prev - 1, -1));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const idx = resultHighlight >= 0 ? resultHighlight : 0;
                       if (osmResults.length > 0 && !dropoff) {
-                        selectLocation(osmResults[0]);
+                        selectLocation(osmResults[idx]);
                       }
+                      setResultHighlight(-1);
                       setTimeout(() => phoneInputRef.current?.focus(), 50);
                     }
                   }}
@@ -1128,8 +1146,8 @@ const DispatchTripForm = ({
             </div>
             {selecting === "dropoff" && osmResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {osmResults.map(r => (
-                  <button key={r.place_id} onClick={() => { selectLocation(r); setTimeout(() => phoneInputRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                {osmResults.map((r, idx) => (
+                  <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); setTimeout(() => phoneInputRef.current?.focus(), 50); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
                     <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
@@ -1161,9 +1179,17 @@ const DispatchTripForm = ({
                         onChange={e => { setSelecting(i); setSearchQuery(e.target.value); }}
                         onFocus={() => { setSelecting(i); setSearchQuery(""); }}
                         onKeyDown={e => {
-                          if (e.key === "Enter") {
+                          if (e.key === "ArrowDown") {
                             e.preventDefault();
-                            if (osmResults.length > 0 && !stop.address) selectLocation(osmResults[0]);
+                            setResultHighlight(prev => Math.min(prev + 1, osmResults.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setResultHighlight(prev => Math.max(prev - 1, -1));
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const selIdx = resultHighlight >= 0 ? resultHighlight : 0;
+                            if (osmResults.length > 0 && !stop.address) selectLocation(osmResults[selIdx]);
+                            setResultHighlight(-1);
                             setTimeout(() => phoneInputRef.current?.focus(), 50);
                           }
                         }}
@@ -1175,8 +1201,8 @@ const DispatchTripForm = ({
                   </div>
                   {selecting === i && osmResults.length > 0 && (
                     <div className="absolute left-0 right-6 z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                      {osmResults.map(r => (
-                        <button key={r.place_id} onClick={() => selectLocation(r)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                      {osmResults.map((r, idx) => (
+                        <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
                           <Navigation className="w-3 h-3 text-primary shrink-0" />
                           <p className="text-xs text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
                         </button>
