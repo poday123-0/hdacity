@@ -562,7 +562,14 @@ const AdminNamedLocations = () => {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-surface">
+              <th className="px-3 py-3 w-8">
+                <input type="checkbox" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={e => {
+                  if (e.target.checked) setSelectedIds(new Set(filtered.map(l => l.id)));
+                  else setSelectedIds(new Set());
+                }} className="rounded" />
+              </th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Name</th>
+              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Group</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Address</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Source</th>
               <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
@@ -571,13 +578,20 @@ const AdminNamedLocations = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
             ) : filtered.map(loc => {
               const isInlineEditing = inlineEditId === loc.id;
               return (
-              <tr key={loc.id} className="border-b border-border last:border-0">
+              <tr key={loc.id} className={`border-b border-border last:border-0 ${selectedIds.has(loc.id) ? "bg-primary/5" : ""}`}>
+                <td className="px-3 py-3">
+                  <input type="checkbox" checked={selectedIds.has(loc.id)} onChange={e => {
+                    const next = new Set(selectedIds);
+                    if (e.target.checked) next.add(loc.id); else next.delete(loc.id);
+                    setSelectedIds(next);
+                  }} className="rounded" />
+                </td>
                 <td className="px-4 py-3">
                   {isInlineEditing ? (
                     <input value={inlineEdit.name} onChange={e => setInlineEdit(p => ({ ...p, name: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
