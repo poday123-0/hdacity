@@ -641,7 +641,7 @@ const AdminNamedLocations = () => {
                     {isInlineEditing ? (
                       <>
                         <button onClick={async () => {
-                          const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address }).eq("id", loc.id);
+                          const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address, group_name: inlineEdit.group_name || null } as any).eq("id", loc.id);
                           if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
                           else { toast({ title: "Updated" }); setInlineEditId(null); fetchLocations(); }
                         }} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Save"><Check className="w-3.5 h-3.5" /></button>
