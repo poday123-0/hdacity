@@ -210,14 +210,14 @@ const AdminSettings = () => {
   };
 
   // Helper for setting field with inline save
-  const SettingField = ({ label, settingKey, type = "text", placeholder = "" }: { label: string; settingKey: string; type?: string; placeholder?: string }) => (
-    <div className="space-y-1.5">
+  const renderSettingField = (label: string, settingKey: string, type = "text", placeholder = "") => (
+    <div className="space-y-1.5" key={settingKey}>
       <label className="text-xs font-semibold text-foreground">{label}</label>
       <div className="flex items-center gap-2">
         <input
           type={type}
           value={settings[settingKey] ?? ""}
-          onChange={(e) => setSettings({ ...settings, [settingKey]: type === "number" ? (parseFloat(e.target.value) || 0) : e.target.value })}
+          onChange={(e) => setSettings((prev: any) => ({ ...prev, [settingKey]: type === "number" ? (parseFloat(e.target.value) || 0) : e.target.value }))}
           placeholder={placeholder}
           className="flex-1 px-3 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
@@ -228,12 +228,12 @@ const AdminSettings = () => {
     </div>
   );
 
-  const SettingTextarea = ({ label, settingKey, placeholder = "", rows = 5 }: { label: string; settingKey: string; placeholder?: string; rows?: number }) => (
-    <div className="space-y-1.5">
+  const renderSettingTextarea = (label: string, settingKey: string, placeholder = "", rows = 5) => (
+    <div className="space-y-1.5" key={settingKey}>
       <label className="text-xs font-semibold text-foreground">{label}</label>
       <textarea
         value={typeof settings[settingKey] === "string" ? settings[settingKey] : (settings[settingKey] ?? "")}
-        onChange={(e) => setSettings({ ...settings, [settingKey]: e.target.value })}
+        onChange={(e) => setSettings((prev: any) => ({ ...prev, [settingKey]: e.target.value }))}
         rows={rows}
         placeholder={placeholder}
         className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-y"
@@ -244,12 +244,12 @@ const AdminSettings = () => {
     </div>
   );
 
-  const SettingSelect = ({ label, settingKey, options }: { label: string; settingKey: string; options: { value: string; label: string }[] }) => (
-    <div className="space-y-1.5">
+  const renderSettingSelect = (label: string, settingKey: string, options: { value: string; label: string }[]) => (
+    <div className="space-y-1.5" key={settingKey}>
       <label className="text-xs font-semibold text-foreground">{label}</label>
       <select
         value={JSON.stringify(settings[settingKey])}
-        onChange={(e) => { const val = JSON.parse(e.target.value); setSettings({ ...settings, [settingKey]: val }); updateSetting(settingKey, val); }}
+        onChange={(e) => { const val = JSON.parse(e.target.value); setSettings((prev: any) => ({ ...prev, [settingKey]: val })); updateSetting(settingKey, val); }}
         className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
       >
         {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -396,41 +396,41 @@ const AdminSettings = () => {
     <div className="space-y-5">
       <SectionCard title="App Identity" description="App name and basic configuration" icon={Globe}>
         <div className="space-y-5">
-          <SettingField label="App Name (shown in PWA install prompt)" settingKey="system_app_name" />
+          {renderSettingField('App Name (shown in PWA install prompt)', 'system_app_name')}
         </div>
       </SectionCard>
 
       <SectionCard title="Legal" description="Privacy policy, terms of service" icon={Settings}>
         <div className="space-y-6">
-          <SettingTextarea label="Privacy Notice" settingKey="privacy_notice" placeholder="Enter your privacy policy..." rows={8} />
-          <SettingTextarea label="Terms of Service" settingKey="terms_of_service" placeholder="Enter terms of service..." rows={8} />
+          {renderSettingTextarea('Privacy Notice', 'privacy_notice', 'Enter your privacy policy...', 8)}
+          {renderSettingTextarea('Terms of Service', 'terms_of_service', 'Enter terms of service...', 8)}
         </div>
       </SectionCard>
 
       <SectionCard title="Display" description="Font sizes for driver and passenger apps" icon={User}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <SettingField label="Default Driver Font Size (%)" settingKey="default_driver_font_size" type="number" />
-          <SettingField label="Default Passenger Font Size (%)" settingKey="default_passenger_font_size" type="number" />
+          {renderSettingField('Default Driver Font Size (%)', 'default_driver_font_size', 'number')}
+          {renderSettingField('Default Passenger Font Size (%)', 'default_passenger_font_size', 'number')}
         </div>
       </SectionCard>
 
       <SectionCard title="Location & Battery" description="GPS intervals, accuracy and battery optimization for drivers" icon={Globe}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingField label="Driver Location Update Interval (ms)" settingKey="driver_location_interval_ms" type="number" placeholder="30000" />
-            <SettingField label="Passenger Location Update Interval (ms)" settingKey="passenger_location_interval_ms" type="number" placeholder="5000" />
+            {renderSettingField("Driver Location Update Interval (ms)", "driver_location_interval_ms", "number", "30000")}
+            {renderSettingField("Passenger Location Update Interval (ms)", "passenger_location_interval_ms", "number", "5000")}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingSelect label="Driver GPS Accuracy" settingKey="driver_gps_accuracy" options={[
+            {renderSettingSelect('Driver GPS Accuracy', 'driver_gps_accuracy', [
               { value: '"high"', label: "High (Best accuracy, more battery)" },
               { value: '"balanced"', label: "Balanced (Default — good accuracy, less battery)" },
               { value: '"low"', label: "Low (Approximate, least battery)" },
-            ]} />
-            <SettingField label="GPS Max Age (ms)" settingKey="driver_gps_max_age_ms" type="number" placeholder="15000" />
+            ])}
+            {renderSettingField("GPS Max Age (ms)", "driver_gps_max_age_ms", "number", "15000")}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingField label="Session Check Interval (ms)" settingKey="session_check_interval_ms" type="number" placeholder="15000" />
-            <SettingField label="Map Auto-Follow Resume (sec)" settingKey="map_auto_follow_resume_sec" type="number" placeholder="8" />
+            {renderSettingField("Session Check Interval (ms)", "session_check_interval_ms", "number", "15000")}
+            {renderSettingField("Map Auto-Follow Resume (sec)", "map_auto_follow_resume_sec", "number", "8")}
           </div>
           <p className="text-[11px] text-muted-foreground">
             💡 Higher intervals = less battery drain. Recommended: Driver GPS 10000ms, GPS Max Age 3000-5000ms, Balanced accuracy.
@@ -444,33 +444,33 @@ const AdminSettings = () => {
     <div className="space-y-5">
       <SectionCard title="Dispatch Configuration" description="How trips are matched to drivers" icon={Car}>
         <div className="space-y-5">
-          <SettingSelect label="Dispatch Mode" settingKey="dispatch_mode" options={[
+          {renderSettingSelect('Dispatch Mode', 'dispatch_mode', [
             { value: '"broadcast"', label: "Broadcast to All Nearby" },
             { value: '"auto_nearest"', label: "Auto - Nearest Driver First" },
             { value: '"auto_rating"', label: "Auto - Highest Rated Driver First" },
             { value: '"auto_rating_nearest"', label: "Auto - Highest Rated + Nearest" },
             { value: '"manual"', label: "Manual Admin Dispatch" },
-          ]} />
+          ])}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingField label="Surge Multiplier" settingKey="surge_multiplier" type="number" />
-            <SettingField label="Max Search Radius (km)" settingKey="max_search_radius_km" type="number" />
-            <SettingField label="Driver Accept Timeout (sec)" settingKey="driver_accept_timeout_seconds" type="number" />
-            <SettingField label="Dispatch Broadcast Timeout (sec)" settingKey="dispatch_broadcast_timeout_seconds" type="number" placeholder="60" />
-            <SettingField label="Max Drivers to Try (0 = unlimited)" settingKey="max_auto_drivers" type="number" />
-            <SettingField label="Default Driver Trip Radius (km)" settingKey="default_trip_radius_km" type="number" />
-            <SettingField label="Min Scheduled Lead Time (min)" settingKey="min_scheduled_lead_minutes" type="number" placeholder="30" />
+            {renderSettingField('Surge Multiplier', 'surge_multiplier', 'number')}
+            {renderSettingField('Max Search Radius (km)', 'max_search_radius_km', 'number')}
+            {renderSettingField('Driver Accept Timeout (sec)', 'driver_accept_timeout_seconds', 'number')}
+            {renderSettingField("Dispatch Broadcast Timeout (sec)", "dispatch_broadcast_timeout_seconds", "number", "60")}
+            {renderSettingField('Max Drivers to Try (0 = unlimited)', 'max_auto_drivers', 'number')}
+            {renderSettingField('Default Driver Trip Radius (km)', 'default_trip_radius_km', 'number')}
+            {renderSettingField("Min Scheduled Lead Time (min)", "min_scheduled_lead_minutes", "number", "30")}
           </div>
         </div>
       </SectionCard>
 
       <SectionCard title="No Vehicle SMS" description="SMS sent to passenger when no driver is available" icon={MessageSquare}>
-        <SettingField label="SMS Message Text" settingKey="no_vehicle_sms_text" placeholder="HDA: No drivers available right now. Book directly & find available drivers at https://hda.taxi" />
+        {renderSettingField("SMS Message Text", "no_vehicle_sms_text", "text", "HDA: No drivers available right now. Book directly & find available drivers at https://hda.taxi")}
       </SectionCard>
 
       <SectionCard title="Emergency Numbers" description="Shown in SOS dialog for passengers and drivers" icon={Phone}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <SettingField label="Call Center Phone Number" settingKey="call_center_number" placeholder="e.g. 3001234" />
-          <SettingField label="Local Police Number" settingKey="local_police_number" placeholder="e.g. 119" />
+          {renderSettingField('Call Center Phone Number', 'call_center_number', 'text', 'e.g. 3001234')}
+          {renderSettingField('Local Police Number', 'local_police_number', 'text', 'e.g. 119')}
         </div>
       </SectionCard>
 
@@ -531,23 +531,23 @@ const AdminSettings = () => {
       <SectionCard title="Trip Rewards" description="Reward passengers and drivers per trip" icon={Wallet}>
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <SettingField label="Passenger Trip Reward" settingKey="passenger_trip_reward" placeholder="e.g. 5" />
-            <SettingSelect label="Passenger Reward Type" settingKey="passenger_trip_reward_type" options={[
+            {renderSettingField('Passenger Trip Reward', 'passenger_trip_reward', 'text', 'e.g. 5')}
+            {renderSettingSelect('Passenger Reward Type', 'passenger_trip_reward_type', [
               { value: '"fixed"', label: "Fixed Amount (MVR)" }, { value: '"percentage"', label: "Percentage of Fare" },
-            ]} />
-            <SettingField label="Driver Trip Reward" settingKey="driver_trip_reward" placeholder="e.g. 5" />
-            <SettingSelect label="Driver Reward Type" settingKey="driver_trip_reward_type" options={[
+            ])}
+            {renderSettingField('Driver Trip Reward', 'driver_trip_reward', 'text', 'e.g. 5')}
+            {renderSettingSelect('Driver Reward Type', 'driver_trip_reward_type', [
               { value: '"fixed"', label: "Fixed Amount (MVR)" }, { value: '"percentage"', label: "Percentage of Fare" },
-            ]} />
+            ])}
           </div>
         </div>
       </SectionCard>
 
       <SectionCard title="Wallet Settings" description="Withdrawal limits and passenger boost" icon={Wallet}>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <SettingField label="Min Withdrawal Amount (MVR)" settingKey="min_withdrawal_amount" type="number" />
-          <SettingField label="Max Passenger Boost (MVR)" settingKey="max_passenger_boost" type="number" />
-          <SettingField label="Boost Step Amount (MVR)" settingKey="boost_step_amount" type="number" />
+          {renderSettingField('Min Withdrawal Amount (MVR)', 'min_withdrawal_amount', 'number')}
+          {renderSettingField('Max Passenger Boost (MVR)', 'max_passenger_boost', 'number')}
+          {renderSettingField('Boost Step Amount (MVR)', 'boost_step_amount', 'number')}
         </div>
       </SectionCard>
 
