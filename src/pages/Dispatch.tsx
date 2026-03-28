@@ -1714,12 +1714,14 @@ const Dispatch = () => {
                                             <button
                                               onClick={async (e) => {
                                                 e.stopPropagation();
+                                                const completionFare = (t.actual_fare || t.estimated_fare || 0) + (t.passenger_bonus || 0);
                                                 await supabase
                                                   .from("trips")
                                                   .update({
                                                     status: "completed",
                                                     completed_at: new Date().toISOString(),
-                                                  })
+                                                    actual_fare: completionFare || null,
+                                                  } as any)
                                                   .eq("id", t.id);
                                                 await supabase
                                                   .from("driver_locations")

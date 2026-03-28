@@ -187,13 +187,26 @@ Deno.serve(async (req) => {
     // ========== 5. Auto-complete assigned trips after 30 minutes ==========
     const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
 
-    const { data: autoCompleted } = await supabase
+    // First fetch trips to auto-complete so we can set actual_fare from estimated_fare
+    const { data: tripsToAutoComplete } = await supabase
       .from("trips")
-      .update({ status: "completed", completed_at: nowISO })
+      .select("id, driver_id, estimated_fare, passenger_bonus")
       .in("status", ["accepted", "started"])
       .eq("dispatch_type", "operator")
-      .lt("created_at", thirtyMinAgo)
-      .select("id, driver_id");
+      .lt("created_at", thirtyMinAgo);
+
+    const autoCompleted: any[] = [];
+    if (tripsToAutoComplete && tripsToAutoComplete.length > 0) {
+      for (const trip of tripsToAutoComplete) {
+        const fare = (trip.estimated_fare || 0) + (trip.passenger_bonus || 0);
+        const { data: updated } = await supabase
+          .from("trips")
+          .update({ status: "completed", completed_at: nowISO, actual_fare: fare || null })
+          .eq("id", trip.id)
+          .select("id, driver_id");
+        if (updated) autoCompleted.push(...updated);
+      }
+    }
 
     // Free up drivers from auto-completed trips
     if (autoCompleted && autoCompleted.length > 0) {
