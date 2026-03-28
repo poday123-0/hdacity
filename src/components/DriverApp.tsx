@@ -4536,10 +4536,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                 {profileTab === "banks" &&
               <div className="space-y-3">
+                    {/* Bank Accounts Section */}
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                          <Landmark className="w-3.5 h-3.5" />
+                          Bank Accounts ({bankAccounts.length})
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="space-y-3 mt-2">
                     {bankAccounts.length === 0 && !showAddBank &&
-                <div className="text-center py-6">
-                        <Landmark className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No bank accounts added yet</p>
+                <div className="text-center py-4 bg-surface rounded-xl">
+                        <p className="text-xs text-muted-foreground">No bank accounts added</p>
                       </div>
                 }
                     {bankAccounts.map((bank) =>
