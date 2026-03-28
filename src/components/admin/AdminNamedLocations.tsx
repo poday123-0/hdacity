@@ -496,8 +496,8 @@ const AdminNamedLocations = () => {
       )}
 
       {/* Search and filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search locations..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
@@ -508,7 +508,54 @@ const AdminNamedLocations = () => {
             </button>
           ))}
         </div>
+        <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="all">All Groups</option>
+          <option value="__none__">Ungrouped</option>
+          {groups.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
       </div>
+
+      {/* Bulk group assignment */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex-wrap">
+          <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+          <div className="flex-1" />
+          <input
+            value={bulkGroupName}
+            onChange={e => setBulkGroupName(e.target.value)}
+            placeholder="Group name..."
+            list="group-suggestions"
+            className="px-3 py-1.5 bg-surface border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-48"
+          />
+          <datalist id="group-suggestions">
+            {groups.map(g => <option key={g} value={g} />)}
+          </datalist>
+          <button
+            onClick={async () => {
+              if (!bulkGroupName.trim()) { toast({ title: "Enter a group name", variant: "destructive" }); return; }
+              const ids = [...selectedIds];
+              const { error } = await supabase.from("named_locations").update({ group_name: bulkGroupName.trim() } as any).in("id", ids);
+              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+              else { toast({ title: `${ids.length} locations grouped as "${bulkGroupName.trim()}"` }); setSelectedIds(new Set()); setBulkGroupName(""); fetchLocations(); }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-xl text-xs font-semibold"
+          >
+            <Tag className="w-3.5 h-3.5" /> Assign Group
+          </button>
+          <button
+            onClick={async () => {
+              const ids = [...selectedIds];
+              const { error } = await supabase.from("named_locations").update({ group_name: null } as any).in("id", ids);
+              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+              else { toast({ title: `${ids.length} locations ungrouped` }); setSelectedIds(new Set()); fetchLocations(); }
+            }}
+            className="px-3 py-1.5 bg-muted text-muted-foreground rounded-xl text-xs font-semibold hover:text-foreground"
+          >
+            Remove Group
+          </button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
+        </div>
+      )}
 
       {/* Locations table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
