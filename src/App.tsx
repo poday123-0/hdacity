@@ -15,6 +15,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import { useBranding } from "@/hooks/use-branding";
+import AppVersionCheck from "@/components/AppVersionCheck";
 
 const queryClient = new QueryClient();
 
