@@ -1242,8 +1242,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     roadClosureMarkersRef.current = [];
     roadClosureLinesRef.current = [];
 
-    const sevColors: Record<string, string> = { closed: "#ef4444", lane_closed: "#f59e0b", hazard: "#f97316" };
-    const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard" };
+    const sevColors: Record<string, string> = { closed: "#ef4444", lane_closed: "#f59e0b", hazard: "#f97316", cones: "#f59e0b", accident: "#dc2626" };
+    const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard", cones: "Cones", accident: "Accident" };
 
     roadClosures.forEach((c) => {
       const coords = c.coordinates;
