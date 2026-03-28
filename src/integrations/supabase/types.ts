@@ -541,6 +541,44 @@ export type Database = {
           },
         ]
       }
+      driver_swipe_accounts: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          swipe_name: string
+          swipe_username: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          swipe_name?: string
+          swipe_username: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          swipe_name?: string
+          swipe_username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_swipe_accounts_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_vehicle_types: {
         Row: {
           created_at: string

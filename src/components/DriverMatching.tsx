@@ -22,6 +22,13 @@ interface FavaraAccountInfo {
   is_primary: boolean;
 }
 
+interface SwipeAccountInfo {
+  id: string;
+  swipe_username: string;
+  swipe_name: string;
+  is_primary: boolean;
+}
+
 interface DriverInfo {
   id?: string;
   name?: string;
@@ -36,6 +43,7 @@ interface DriverInfo {
   map_icon_url?: string | null;
   bank_accounts?: BankAccountInfo[];
   favara_accounts?: FavaraAccountInfo[];
+  swipe_accounts?: SwipeAccountInfo[];
 }
 
 interface DriverMatchingProps {
@@ -65,9 +73,11 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   useEffect(() => { if (driver?.map_icon_url) setResolvedMapIconUrl(driver.map_icon_url); }, [driver?.map_icon_url]);
   const bankAccounts = driver?.bank_accounts || [];
   const favaraAccounts = driver?.favara_accounts || [];
+  const swipeAccounts = driver?.swipe_accounts || [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllBanks, setShowAllBanks] = useState(false);
   const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
+  const [swipeLogoUrl, setSwipeLogoUrl] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const showChatRef = useRef(false);
@@ -159,6 +169,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     });
     supabase.from("system_settings").select("value").eq("key", "favara_logo_url").maybeSingle().then(({ data }) => {
       if (data?.value && typeof data.value === "string") setFavaraLogoUrl(data.value);
+    });
+    supabase.from("system_settings").select("value").eq("key", "swipe_logo_url").maybeSingle().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") setSwipeLogoUrl(data.value);
     });
   }, []);
 
@@ -654,7 +667,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
           </div>
 
           {/* Payment accounts - compact */}
-          {(showBankDetails || tripStatus === "in_progress") && (primaryBank || favaraAccounts.length > 0) && (
+          {(showBankDetails || tripStatus === "in_progress") && (primaryBank || favaraAccounts.length > 0 || swipeAccounts.length > 0) && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <Landmark className="w-3.5 h-3.5 text-primary" />
@@ -662,7 +675,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               </div>
 
               {(() => {
-                const totalItems = (primaryBank ? 1 : 0) + otherBanks.length + favaraAccounts.length;
+                const totalItems = (primaryBank ? 1 : 0) + otherBanks.length + favaraAccounts.length + swipeAccounts.length;
                 const useGrid = totalItems > 1;
                 const allItems: React.ReactNode[] = [];
                 if (primaryBank) allItems.push(<BankCard key={primaryBank.id} bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />);
@@ -685,6 +698,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                       className="w-7 h-7 rounded-lg bg-card flex items-center justify-center active:scale-90 transition-transform shrink-0"
                     >
                       {copiedId === favara.id ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </button>
+                  </div>
+                ));
+                swipeAccounts.forEach((swipe) => allItems.push(
+                  <div key={swipe.id} className="bg-surface rounded-lg px-3 py-2 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-5 h-5 rounded object-contain shrink-0" /> : <Landmark className="w-4 h-4 text-primary shrink-0" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-foreground">Swipe</span>
+                          {swipe.is_primary && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-px rounded-full">Primary</span>}
+                        </div>
+                        <p className="text-xs font-mono font-semibold text-foreground truncate">{swipe.swipe_username}</p>
+                        {swipe.swipe_name && <p className="text-[10px] text-muted-foreground truncate">{swipe.swipe_name}</p>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(swipe.swipe_username, swipe.id)}
+                      className="w-7 h-7 rounded-lg bg-card flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                    >
+                      {copiedId === swipe.id ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
                   </div>
                 ));

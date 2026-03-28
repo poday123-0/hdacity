@@ -89,7 +89,7 @@ import AnimatedTimer from "./AnimatedTimer";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
-type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
+type ProfileTab = "info" | "documents" | "banks" | "favara" | "swipe" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
@@ -202,6 +202,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showAddFavara, setShowAddFavara] = useState(false);
   const [newFavara, setNewFavara] = useState({ favara_id: "", favara_name: "" });
   const [favaraLogoUrl, setFavaraLogoUrl] = useState<string | null>(null);
+  const [swipeAccounts, setSwipeAccounts] = useState<Array<{id: string;swipe_username: string;swipe_name: string;is_primary: boolean;}>>([]);
+  const [showAddSwipe, setShowAddSwipe] = useState(false);
+  const [newSwipe, setNewSwipe] = useState({ swipe_username: "", swipe_name: "" });
+  const [swipeLogoUrl, setSwipeLogoUrl] = useState<string | null>(null);
   const [availableBanks, setAvailableBanks] = useState<Array<{id: string;name: string;logo_url: string | null;}>>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [submittingProfileDocs, setSubmittingProfileDocs] = useState(false);
@@ -1869,6 +1873,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const { data: favaraLogoSetting } = await supabase.from("system_settings").select("value").eq("key", "favara_logo_url").maybeSingle();
         if (favaraLogoSetting?.value && typeof favaraLogoSetting.value === "string") setFavaraLogoUrl(favaraLogoSetting.value);
 
+        // Fetch Swipe accounts
+        const { data: swipes } = await supabase.from("driver_swipe_accounts").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("is_primary", { ascending: false });
+        setSwipeAccounts((swipes || []) as any);
+
+        // Fetch Swipe logo
+        const { data: swipeLogoSetting } = await supabase.from("system_settings").select("value").eq("key", "swipe_logo_url").maybeSingle();
+        if (swipeLogoSetting?.value && typeof swipeLogoSetting.value === "string") setSwipeLogoUrl(swipeLogoSetting.value);
+
         // Check if no bank accounts
         if (!banks || banks.length === 0) issues.push("At least one bank account required");
         setVerificationIssues(issues);
@@ -2216,6 +2228,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     await supabase.from("driver_favara_accounts").update({ is_primary: false } as any).eq("driver_id", userProfile.id);
     await supabase.from("driver_favara_accounts").update({ is_primary: true } as any).eq("id", id);
     setFavaraAccounts(favaraAccounts.map((f) => ({ ...f, is_primary: f.id === id })));
+  };
+
+  // Swipe account CRUD
+  const addSwipeAccount = async () => {
+    if (!userProfile?.id || !newSwipe.swipe_username) return;
+    const isPrimary = swipeAccounts.length === 0;
+    const { data, error } = await supabase.from("driver_swipe_accounts").insert({
+      driver_id: userProfile.id,
+      swipe_username: newSwipe.swipe_username,
+      swipe_name: newSwipe.swipe_name,
+      is_primary: isPrimary
+    } as any).select().single();
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setSwipeAccounts([...swipeAccounts, data as any]);
+    setNewSwipe({ swipe_username: "", swipe_name: "" });
+    setShowAddSwipe(false);
+    toast({ title: "Swipe account added" });
+  };
+
+  const deleteSwipeAccount = async (id: string) => {
+    await supabase.from("driver_swipe_accounts").update({ is_active: false } as any).eq("id", id);
+    setSwipeAccounts(swipeAccounts.filter((s) => s.id !== id));
+    toast({ title: "Swipe account removed" });
+  };
+
+  const setPrimarySwipe = async (id: string) => {
+    if (!userProfile?.id) return;
+    await supabase.from("driver_swipe_accounts").update({ is_primary: false } as any).eq("driver_id", userProfile.id);
+    await supabase.from("driver_swipe_accounts").update({ is_primary: true } as any).eq("id", id);
+    setSwipeAccounts(swipeAccounts.map((s) => ({ ...s, is_primary: s.id === id })));
   };
 
   const addVehicle = async () => {
@@ -4268,6 +4310,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "vehicles", label: "Vehicles", icon: Car },
                 { key: "banks", label: "Banks", icon: Landmark },
                 { key: "favara", label: "Favara", icon: Wallet },
+                { key: "swipe", label: "Swipe", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
                 { key: "billing", label: "Billing", icon: DollarSign },
                 { key: "settings", label: "Settings", icon: Settings }] as
@@ -4631,6 +4674,63 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </div> :
                 <button onClick={() => setShowAddFavara(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
                         <Plus className="w-4 h-4" />Add Favara account
+                      </button>}
+                  </div>
+              }
+
+                {profileTab === "swipe" &&
+              <div className="space-y-3">
+                    {swipeAccounts.length === 0 && !showAddSwipe &&
+                <div className="text-center py-6">
+                        <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No Swipe accounts added yet</p>
+                      </div>
+                }
+                    {swipeAccounts.map((swipe) =>
+                <div key={swipe.id} className="bg-surface rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {swipeLogoUrl ?
+                      <img src={swipeLogoUrl} alt="Swipe" className="w-6 h-6 rounded object-contain" /> :
+                      <Wallet className="w-4 h-4 text-primary" />}
+                            <span className="text-sm font-semibold text-foreground">Swipe</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {swipe.is_primary &&
+                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Primary</span>}
+                            <button onClick={() => deleteSwipeAccount(swipe.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <p>Username: <span className="font-medium text-foreground font-mono">{swipe.swipe_username}</span></p>
+                          {swipe.swipe_name && <p>Name: <span className="font-medium text-foreground">{swipe.swipe_name}</span></p>}
+                        </div>
+                        {!swipe.is_primary &&
+                  <button onClick={() => setPrimarySwipe(swipe.id)} className="text-xs text-primary font-semibold">Set as primary</button>}
+                      </div>
+                )}
+                    {showAddSwipe ?
+                <div className="bg-surface rounded-xl p-3 space-y-2">
+                        <p className="text-xs font-semibold text-foreground">Add Swipe account</p>
+                        <input
+                    placeholder="Swipe username"
+                    value={newSwipe.swipe_username}
+                    onChange={(e) => setNewSwipe({ ...newSwipe, swipe_username: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <input
+                    placeholder="Account name (optional)"
+                    value={newSwipe.swipe_name}
+                    onChange={(e) => setNewSwipe({ ...newSwipe, swipe_name: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <div className="flex gap-2">
+                          <button onClick={() => setShowAddSwipe(false)} className="flex-1 py-2.5 rounded-xl bg-card text-sm font-semibold text-foreground active:scale-95 transition-transform">Cancel</button>
+                          <button onClick={addSwipeAccount} disabled={!newSwipe.swipe_username} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95 transition-transform">Add</button>
+                        </div>
+                      </div> :
+                <button onClick={() => setShowAddSwipe(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
+                        <Plus className="w-4 h-4" />Add Swipe account
                       </button>}
                   </div>
               }
