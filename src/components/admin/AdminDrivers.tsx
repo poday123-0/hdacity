@@ -14,7 +14,7 @@ const AdminDrivers = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [driverVehicles, setDriverVehicles] = useState<Record<string, any[]>>({});
-  const [driverBankAccounts, setDriverBankAccounts] = useState<Record<string, any[]>>({});
+  const [allBankAccountsMap, setAllBankAccountsMap] = useState<Record<string, any[]>>({});
   const [allVehicles, setAllVehicles] = useState<any[]>([]);
   const [driverRatings, setDriverRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [driverDeclines, setDriverDeclines] = useState<Record<string, { today: number; total: number }>>({});
