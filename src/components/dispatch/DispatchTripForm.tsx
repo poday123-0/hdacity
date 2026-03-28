@@ -550,6 +550,18 @@ const DispatchTripForm = ({
       }
       return true;
     });
+    // Sort by relevance: exact match > starts with > contains
+    deduped.sort((a, b) => {
+      const aName = (a.name || "").toLowerCase();
+      const bName = (b.name || "").toLowerCase();
+      const aExact = aName === q ? 0 : aName.startsWith(q) ? 1 : 2;
+      const bExact = bName === q ? 0 : bName.startsWith(q) ? 1 : 2;
+      if (aExact !== bExact) return aExact - bExact;
+      // Secondary: service locations first, then named, then recent
+      const aPrio = a.place_id >= 900000 ? 0 : a.place_id >= 800000 ? 1 : 2;
+      const bPrio = b.place_id >= 900000 ? 0 : b.place_id >= 800000 ? 1 : 2;
+      return aPrio - bPrio;
+    });
     setOsmResults(deduped);
 
     // Cancel previous external requests
@@ -567,7 +579,18 @@ const DispatchTripForm = ({
           setOsmResults(prev => {
             const existingCoords = new Set(prev.map(r => `${parseFloat(r.lat).toFixed(4)},${parseFloat(r.lon).toFixed(4)}`));
             const filtered = newResults.filter(nr => !existingCoords.has(`${parseFloat(nr.lat).toFixed(4)},${parseFloat(nr.lon).toFixed(4)}`));
-            return [...prev, ...filtered];
+            const merged = [...prev, ...filtered];
+            merged.sort((a, b) => {
+              const aName = (a.name || "").toLowerCase();
+              const bName = (b.name || "").toLowerCase();
+              const aExact = aName === q ? 0 : aName.startsWith(q) ? 1 : 2;
+              const bExact = bName === q ? 0 : bName.startsWith(q) ? 1 : 2;
+              if (aExact !== bExact) return aExact - bExact;
+              const aPrio = a.place_id >= 900000 ? 0 : a.place_id >= 800000 ? 1 : 2;
+              const bPrio = b.place_id >= 900000 ? 0 : b.place_id >= 800000 ? 1 : 2;
+              return aPrio - bPrio;
+            });
+            return merged;
           });
         }
       };
