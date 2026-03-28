@@ -2769,7 +2769,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       )}
       {/* Ad Banner for drivers */}
       {screen === "online" && !isFreeNavigating && (
-        <div className="fixed top-16 left-3 right-3 z-[600] pointer-events-auto max-w-md mx-auto md:hidden">
+        <div className="fixed top-20 left-3 right-3 z-[600] pointer-events-auto max-w-lg mx-auto capacitor-safe-top">
           <AdBanner audience="drivers" />
         </div>
       )}
