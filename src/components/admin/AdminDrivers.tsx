@@ -70,12 +70,13 @@ const AdminDrivers = () => {
       if (data.length < pageSize) break;
       from += pageSize;
     }
-    const [banksRes, companiesRes, vtRes, vehiclesRes, settingsRes] = await Promise.all([
+    const [banksRes, companiesRes, vtRes, vehiclesRes, settingsRes, allBankAccRes] = await Promise.all([
       supabase.from("banks").select("*").eq("is_active", true).order("name"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
       supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("*, vehicle_types(name, image_url)").order("created_at", { ascending: false }),
       supabase.from("system_settings").select("key, value").in("key", ["default_company_id", "blocked_center_codes"]),
+      supabase.from("driver_bank_accounts").select("driver_id, account_number, account_name").eq("is_active", true),
     ]);
     setDrivers(allDrivers);
     setBanks(banksRes.data || []);
