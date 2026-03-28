@@ -526,6 +526,8 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     <span className="text-[10px] font-semibold text-foreground">Lost Item</span>
                   </button>
                   {(() => {
+                    const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+                    if (isNative) return null;
                     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
                     if (isStandalone) {
                       return (
