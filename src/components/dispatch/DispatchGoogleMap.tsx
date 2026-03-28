@@ -455,6 +455,12 @@ const DispatchGoogleMap = () => {
       await removeClosure(id);
       toast({ title: "Closure removed" });
     };
+    (window as any).__editClosure__ = (id: string, severity: string, notes: string, expiresAt: string) => {
+      setEditingClosureId(id);
+      setEditClosureSeverity(severity);
+      setEditClosureNotes(notes);
+      setEditClosureExpiry(expiresAt);
+    };
     (window as any).__approveClosure__ = async (id: string) => {
       await approveClosure(id);
       toast({ title: "Closure approved — now visible to drivers" });
@@ -465,6 +471,7 @@ const DispatchGoogleMap = () => {
     };
     return () => {
       delete (window as any).__removeClosure__;
+      delete (window as any).__editClosure__;
       delete (window as any).__approveClosure__;
       delete (window as any).__rejectClosure__;
     };
