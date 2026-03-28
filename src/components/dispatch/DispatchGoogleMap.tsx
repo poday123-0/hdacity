@@ -394,6 +394,7 @@ const DispatchGoogleMap = () => {
           </div>`,
         });
         infoMarker.addListener("click", () => iw.open(mapInstance.current, infoMarker));
+        line.addListener("click", () => iw.open(mapInstance.current, infoMarker));
 
         closureLinesRef.current.push(line);
         closureMarkersRef.current.push(infoMarker);
