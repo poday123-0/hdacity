@@ -1043,8 +1043,8 @@ const DispatchTripForm = ({
             </div>
             {selecting === "pickup" && osmResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {osmResults.map(r => (
-                  <button key={r.place_id} onClick={() => { selectLocation(r); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                {osmResults.map((r, idx) => (
+                  <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
                     <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
