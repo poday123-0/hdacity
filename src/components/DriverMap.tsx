@@ -1797,7 +1797,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                 {reportSubmitting ? "Submitting…" : "Submit Report"}
               </button>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">Report will be reviewed by dispatch before going live</p>
+            <p className="text-[10px] text-muted-foreground text-center">Your report will appear on the map immediately</p>
           </div>
         </div>
       )}
