@@ -3502,7 +3502,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Ride Request */}
       {screen === "ride-request" && currentTrip &&
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[500] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm ride-request-overlay">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[9990] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm ride-request-overlay">
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden max-h-[90dvh] flex flex-col">
             {/* Header with countdown */}
             <div className="bg-gradient-to-b from-primary to-primary/90 px-5 py-5 text-center relative overflow-hidden">
