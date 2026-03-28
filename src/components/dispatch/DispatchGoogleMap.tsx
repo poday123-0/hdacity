@@ -387,7 +387,10 @@ const DispatchGoogleMap = () => {
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
-            <br/><button onclick="window.__removeClosure__('${c.id}')" style="margin-top:4px;font-size:11px;color:#ef4444;cursor:pointer;background:none;border:none;text-decoration:underline">Remove</button>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${(c.notes || '').replace(/'/g, "\\'")}','${c.expires_at || ''}')" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
+              <button onclick="window.__removeClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
+            </div>
           </div>`,
         });
         infoMarker.addListener("click", () => iw.open(mapInstance.current, infoMarker));
