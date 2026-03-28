@@ -88,7 +88,7 @@ const DispatchGoogleMap = () => {
   const { isLoaded, error } = useGoogleMaps();
 
   // Road closure state
-  const { closures, pendingClosures, addClosure, removeClosure, approveClosure, rejectClosure } = useRoadClosures();
+  const { closures, pendingClosures, addClosure, removeClosure, updateClosure, approveClosure, rejectClosure } = useRoadClosures();
   const [drawMode, setDrawMode] = useState<DrawMode>(null);
   const [linePoints, setLinePoints] = useState<Array<{ lat: number; lng: number }>>([]);
   const [showClosureForm, setShowClosureForm] = useState(false);
@@ -102,6 +102,12 @@ const DispatchGoogleMap = () => {
   const [scheduleStartTime, setScheduleStartTime] = useState("08:00");
   const [scheduleEndTime, setScheduleEndTime] = useState("17:00");
   const [scheduledDate, setScheduledDate] = useState("");
+
+  // Edit closure state
+  const [editingClosureId, setEditingClosureId] = useState<string | null>(null);
+  const [editClosureNotes, setEditClosureNotes] = useState("");
+  const [editClosureSeverity, setEditClosureSeverity] = useState("closed");
+  const [editClosureExpiry, setEditClosureExpiry] = useState("");
 
   // Refs for map objects
   const closureMarkersRef = useRef<any[]>([]);
