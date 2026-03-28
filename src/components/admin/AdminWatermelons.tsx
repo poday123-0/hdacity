@@ -795,7 +795,7 @@ const AdminWatermelons = () => {
       {/* Items List */}
       {items.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
-          <span className="text-5xl block mb-3 opacity-30">🎁</span>
+          <Gift className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No promo items on the map yet. Drop some!</p>
         </div>
       ) : (
