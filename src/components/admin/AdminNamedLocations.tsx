@@ -26,8 +26,11 @@ const AdminNamedLocations = () => {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
-  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "" });
+  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "", group_name: "" });
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [bulkGroupName, setBulkGroupName] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
