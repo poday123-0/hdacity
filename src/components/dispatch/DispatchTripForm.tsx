@@ -496,7 +496,8 @@ const DispatchTripForm = ({
 
   // Search: local DB + Google Places (filtered to service areas only)
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); return; }
+    if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); setResultHighlight(-1); return; }
+    setResultHighlight(-1);
     const q = searchQuery.toLowerCase();
 
     // 1. Instant local matches from DB + recent bookings
