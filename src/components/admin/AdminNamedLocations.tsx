@@ -598,93 +598,150 @@ const AdminNamedLocations = () => {
               <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
-            ) : filtered.map(loc => {
-              const isInlineEditing = inlineEditId === loc.id;
+            ) : (() => {
+              // Group locations by group_name
+              const grouped: Record<string, typeof filtered> = {};
+              const ungrouped: typeof filtered = [];
+              filtered.forEach(loc => {
+                if (loc.group_name) {
+                  if (!grouped[loc.group_name]) grouped[loc.group_name] = [];
+                  grouped[loc.group_name].push(loc);
+                } else {
+                  ungrouped.push(loc);
+                }
+              });
+              const groupNames = Object.keys(grouped).sort();
+              const toggleGroup = (name: string) => {
+                setExpandedGroups(prev => {
+                  const next = new Set(prev);
+                  next.has(name) ? next.delete(name) : next.add(name);
+                  return next;
+                });
+              };
+              const renderRow = (loc: any) => {
+                const isInlineEditing = inlineEditId === loc.id;
+                return (
+                  <tr key={loc.id} className={`border-b border-border last:border-0 ${selectedIds.has(loc.id) ? "bg-primary/5" : ""}`}>
+                    <td className="px-3 py-3">
+                      <input type="checkbox" checked={selectedIds.has(loc.id)} onChange={e => {
+                        const next = new Set(selectedIds);
+                        if (e.target.checked) next.add(loc.id); else next.delete(loc.id);
+                        setSelectedIds(next);
+                      }} className="rounded" />
+                    </td>
+                    <td className="px-4 py-3">
+                      {isInlineEditing ? (
+                        <input value={inlineEdit.name} onChange={e => setInlineEdit(p => ({ ...p, name: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-primary shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{loc.name}</p>
+                            {loc.description && <p className="text-[10px] text-muted-foreground">{loc.description}</p>}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isInlineEditing ? (
+                        <input value={inlineEdit.group_name} onChange={e => setInlineEdit(p => ({ ...p, group_name: e.target.value }))} list="group-suggestions" placeholder="Group..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                      ) : (
+                        loc.group_name ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{loc.group_name}</span> : <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isInlineEditing ? (
+                        <input value={inlineEdit.address} onChange={e => setInlineEdit(p => ({ ...p, address: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{loc.address || "—"}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        loc.suggested_by_type === "admin" ? "bg-primary/10 text-primary" :
+                        loc.suggested_by_type === "driver" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" :
+                        "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                      }`}>
+                        {loc.suggested_by_type === "admin" ? "Admin" : loc.suggested_by_type === "driver" ? "Driver" : "Passenger"}
+                      </span>
+                      {loc.profiles && <p className="text-[10px] text-muted-foreground mt-0.5">{loc.profiles.first_name} {loc.profiles.last_name}</p>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        loc.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
+                        loc.status === "pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" :
+                        "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                      }`}>{loc.status}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        {isInlineEditing ? (
+                          <>
+                            <button onClick={async () => {
+                              const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address, group_name: inlineEdit.group_name || null } as any).eq("id", loc.id);
+                              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                              else { toast({ title: "Updated" }); setInlineEditId(null); fetchLocations(); }
+                            }} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setInlineEditId(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                          </>
+                        ) : (
+                          <>
+                            {loc.status === "pending" && (
+                              <>
+                                <button onClick={() => approveLocation(loc.id)} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Approve"><Check className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => rejectLocation(loc.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10" title="Reject"><XCircle className="w-3.5 h-3.5" /></button>
+                              </>
+                            )}
+                            <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "", group_name: loc.group_name || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => openEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Full Edit"><MapPin className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => toggleActive(loc.id, loc.is_active)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${loc.is_active ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                              {loc.is_active ? "Active" : "Inactive"}
+                            </button>
+                            <button onClick={() => handleDelete(loc.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              };
               return (
-              <tr key={loc.id} className={`border-b border-border last:border-0 ${selectedIds.has(loc.id) ? "bg-primary/5" : ""}`}>
-                <td className="px-3 py-3">
-                  <input type="checkbox" checked={selectedIds.has(loc.id)} onChange={e => {
-                    const next = new Set(selectedIds);
-                    if (e.target.checked) next.add(loc.id); else next.delete(loc.id);
-                    setSelectedIds(next);
-                  }} className="rounded" />
-                </td>
-                <td className="px-4 py-3">
-                  {isInlineEditing ? (
-                    <input value={inlineEdit.name} onChange={e => setInlineEdit(p => ({ ...p, name: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                  ) : (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-primary shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{loc.name}</p>
-                      {loc.description && <p className="text-[10px] text-muted-foreground">{loc.description}</p>}
-                    </div>
-                  </div>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  {isInlineEditing ? (
-                    <input value={inlineEdit.group_name} onChange={e => setInlineEdit(p => ({ ...p, group_name: e.target.value }))} list="group-suggestions" placeholder="Group..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                  ) : (
-                    loc.group_name ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{loc.group_name}</span> : <span className="text-[10px] text-muted-foreground">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  {isInlineEditing ? (
-                    <input value={inlineEdit.address} onChange={e => setInlineEdit(p => ({ ...p, address: e.target.value }))} className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                  ) : (
-                    <span className="text-sm text-muted-foreground">{loc.address || "—"}</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    loc.suggested_by_type === "admin" ? "bg-primary/10 text-primary" :
-                    loc.suggested_by_type === "driver" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" :
-                    "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-                  }`}>
-                    {loc.suggested_by_type === "admin" ? "Admin" : loc.suggested_by_type === "driver" ? "Driver" : "Passenger"}
-                  </span>
-                  {loc.profiles && <p className="text-[10px] text-muted-foreground mt-0.5">{loc.profiles.first_name} {loc.profiles.last_name}</p>}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    loc.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
-                    loc.status === "pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" :
-                    "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                  }`}>{loc.status}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    {isInlineEditing ? (
-                      <>
-                        <button onClick={async () => {
-                          const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address, group_name: inlineEdit.group_name || null } as any).eq("id", loc.id);
-                          if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-                          else { toast({ title: "Updated" }); setInlineEditId(null); fetchLocations(); }
-                        }} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Save"><Check className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setInlineEditId(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted" title="Cancel"><X className="w-3.5 h-3.5" /></button>
-                      </>
-                    ) : (
-                    <>
-                    {loc.status === "pending" && (
-                      <>
-                        <button onClick={() => approveLocation(loc.id)} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Approve"><Check className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => rejectLocation(loc.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10" title="Reject"><XCircle className="w-3.5 h-3.5" /></button>
-                      </>
-                    )}
-                    <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "", group_name: loc.group_name || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => openEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Full Edit"><MapPin className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => toggleActive(loc.id, loc.is_active)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${loc.is_active ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                      {loc.is_active ? "Active" : "Inactive"}
-                    </button>
-                    <button onClick={() => handleDelete(loc.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </>
-                    )}
-                  </div>
-                </td>
-              </tr>
+                <>
+                  {groupNames.map(groupName => {
+                    const items = grouped[groupName];
+                    const isExpanded = expandedGroups.has(groupName);
+                    return (
+                      <React.Fragment key={`group-${groupName}`}>
+                        <tr
+                          className="border-b border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => toggleGroup(groupName)}
+                        >
+                          <td className="px-3 py-2.5">
+                            <input type="checkbox" checked={items.every(l => selectedIds.has(l.id))} onChange={e => {
+                              e.stopPropagation();
+                              const next = new Set(selectedIds);
+                              if (e.target.checked) items.forEach(l => next.add(l.id));
+                              else items.forEach(l => next.delete(l.id));
+                              setSelectedIds(next);
+                            }} onClick={e => e.stopPropagation()} className="rounded" />
+                          </td>
+                          <td colSpan={6} className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                              <FolderOpen className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-semibold text-foreground">{groupName}</span>
+                              <span className="text-[10px] text-muted-foreground font-medium">({items.length})</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && items.map(renderRow)}
+                      </React.Fragment>
+                    );
+                  })}
+                  {ungrouped.map(renderRow)}
+                </>
               );
-            })}
+            })()}
           </tbody>
         </table>
       </div>
