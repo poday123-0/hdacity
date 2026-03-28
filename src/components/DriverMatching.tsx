@@ -701,6 +701,27 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                     </button>
                   </div>
                 ));
+                swipeAccounts.forEach((swipe) => allItems.push(
+                  <div key={swipe.id} className="bg-surface rounded-lg px-3 py-2 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-5 h-5 rounded object-contain shrink-0" /> : <Landmark className="w-4 h-4 text-primary shrink-0" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-foreground">Swipe</span>
+                          {swipe.is_primary && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-px rounded-full">Primary</span>}
+                        </div>
+                        <p className="text-xs font-mono font-semibold text-foreground truncate">{swipe.swipe_username}</p>
+                        {swipe.swipe_name && <p className="text-[10px] text-muted-foreground truncate">{swipe.swipe_name}</p>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(swipe.swipe_username, swipe.id)}
+                      className="w-7 h-7 rounded-lg bg-card flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                    >
+                      {copiedId === swipe.id ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </button>
+                  </div>
+                ));
                 return (
                   <div className={`grid gap-1.5 ${useGrid ? "grid-cols-2" : "grid-cols-1"}`}>
                     {allItems.map((item, idx) => {
