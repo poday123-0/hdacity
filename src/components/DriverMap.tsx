@@ -335,7 +335,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         travelMode: g.maps.TravelMode.DRIVING,
         provideRouteAlternatives: true,
       }).then((raw: any) => {
-        const result = selectShortestRoute(raw);
+        const result = selectShortestRoute(raw, roadClosures);
         const leg = result.routes?.[0]?.legs?.[0];
         if (!leg) return;
 
