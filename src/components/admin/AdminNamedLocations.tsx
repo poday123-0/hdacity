@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag } from "lucide-react";
@@ -339,14 +340,29 @@ const AdminNamedLocations = () => {
         </div>
         <div className="flex items-center gap-2">
           {locations.length > 0 && !batchMode && !showForm && (
-            <button onClick={async () => {
-              if (!confirm(`Delete ALL ${locations.length} named locations? This cannot be undone.`)) return;
-              const { error } = await supabase.from("named_locations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-              else { toast({ title: "All locations deleted" }); fetchLocations(); }
-            }} className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-              <Trash2 className="w-4 h-4" /> Delete All
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+                  <Trash2 className="w-4 h-4" /> Delete All
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete All Locations?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all {locations.length} named locations. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+                    const { error } = await supabase.from("named_locations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                    else { toast({ title: "All locations deleted" }); fetchLocations(); }
+                  }}>Delete All</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
             {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
