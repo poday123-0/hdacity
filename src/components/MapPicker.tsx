@@ -164,9 +164,8 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [center.lat, center.lng]);
 
-  // Use pre-loaded named/service locations for nearby chips instead of deprecated PlacesService
+  // Use pre-loaded named/service locations for nearby chips, fallback to Google Places
   useEffect(() => {
-    if (!searchLocations.length) { setNearbyPlaces([]); return; }
     const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       const R = 6371000;
       const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -174,12 +173,50 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
+
+    // First try local named/service locations
     const nearby = searchLocations
       .map(l => ({ name: l.name, vicinity: l.address || "", lat: Number(l.lat), lng: Number(l.lng), dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
       .filter(l => l.dist <= 300 && l.name !== placeName)
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 3);
-    setNearbyPlaces(nearby);
+
+    if (nearby.length > 0) {
+      setNearbyPlaces(nearby);
+      return;
+    }
+
+    // Fallback: fetch nearby places from Google Places
+    const g = (window as any).google;
+    if (!g?.maps?.places?.PlacesService || !mapInstance.current) {
+      setNearbyPlaces([]);
+      return;
+    }
+
+    const svc = new g.maps.places.PlacesService(mapInstance.current);
+    svc.nearbySearch(
+      {
+        location: new g.maps.LatLng(center.lat, center.lng),
+        rankBy: g.maps.places.RankBy.DISTANCE,
+        type: "point_of_interest",
+      },
+      (results: any[] | null, status: string) => {
+        if (status === "OK" && results) {
+          const places = results
+            .filter((p: any) => p.name && p.geometry?.location)
+            .slice(0, 4)
+            .map((p: any) => ({
+              name: p.name,
+              vicinity: p.vicinity || "",
+              lat: p.geometry.location.lat(),
+              lng: p.geometry.location.lng(),
+            }));
+          setNearbyPlaces(places);
+        } else {
+          setNearbyPlaces([]);
+        }
+      }
+    );
   }, [center.lat, center.lng, searchLocations, placeName]);
 
   const handleRecenter = () => {
