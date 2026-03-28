@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers, Calendar, Repeat, Construction, Car, TriangleAlert, Cone } from "lucide-react";
+import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers, Calendar, Repeat, Construction, Car, TriangleAlert, Cone, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 // Waze-inspired map style
@@ -88,7 +88,7 @@ const DispatchGoogleMap = () => {
   const { isLoaded, error } = useGoogleMaps();
 
   // Road closure state
-  const { closures, pendingClosures, addClosure, removeClosure, approveClosure, rejectClosure } = useRoadClosures();
+  const { closures, pendingClosures, addClosure, removeClosure, updateClosure, approveClosure, rejectClosure } = useRoadClosures();
   const [drawMode, setDrawMode] = useState<DrawMode>(null);
   const [linePoints, setLinePoints] = useState<Array<{ lat: number; lng: number }>>([]);
   const [showClosureForm, setShowClosureForm] = useState(false);
@@ -102,6 +102,12 @@ const DispatchGoogleMap = () => {
   const [scheduleStartTime, setScheduleStartTime] = useState("08:00");
   const [scheduleEndTime, setScheduleEndTime] = useState("17:00");
   const [scheduledDate, setScheduledDate] = useState("");
+
+  // Edit closure state
+  const [editingClosureId, setEditingClosureId] = useState<string | null>(null);
+  const [editClosureNotes, setEditClosureNotes] = useState("");
+  const [editClosureSeverity, setEditClosureSeverity] = useState("closed");
+  const [editClosureExpiry, setEditClosureExpiry] = useState("");
 
   // Refs for map objects
   const closureMarkersRef = useRef<any[]>([]);
@@ -335,7 +341,10 @@ const DispatchGoogleMap = () => {
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
-            <br/><button onclick="window.__removeClosure__('${c.id}')" style="margin-top:4px;font-size:11px;color:#ef4444;cursor:pointer;background:none;border:none;text-decoration:underline">Remove</button>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${(c.notes || '').replace(/'/g, "\\'")}','${c.expires_at || ''}')" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
+              <button onclick="window.__removeClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
+            </div>
           </div>`,
         });
         marker.addListener("click", () => iw.open(mapInstance.current, marker));
@@ -378,7 +387,10 @@ const DispatchGoogleMap = () => {
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
-            <br/><button onclick="window.__removeClosure__('${c.id}')" style="margin-top:4px;font-size:11px;color:#ef4444;cursor:pointer;background:none;border:none;text-decoration:underline">Remove</button>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${(c.notes || '').replace(/'/g, "\\'")}','${c.expires_at || ''}')" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
+              <button onclick="window.__removeClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
+            </div>
           </div>`,
         });
         infoMarker.addListener("click", () => iw.open(mapInstance.current, infoMarker));
@@ -443,6 +455,12 @@ const DispatchGoogleMap = () => {
       await removeClosure(id);
       toast({ title: "Closure removed" });
     };
+    (window as any).__editClosure__ = (id: string, severity: string, notes: string, expiresAt: string) => {
+      setEditingClosureId(id);
+      setEditClosureSeverity(severity);
+      setEditClosureNotes(notes);
+      setEditClosureExpiry(expiresAt);
+    };
     (window as any).__approveClosure__ = async (id: string) => {
       await approveClosure(id);
       toast({ title: "Closure approved — now visible to drivers" });
@@ -453,6 +471,7 @@ const DispatchGoogleMap = () => {
     };
     return () => {
       delete (window as any).__removeClosure__;
+      delete (window as any).__editClosure__;
       delete (window as any).__approveClosure__;
       delete (window as any).__rejectClosure__;
     };
@@ -864,6 +883,108 @@ const DispatchGoogleMap = () => {
                 className="flex-1 py-2.5 text-xs rounded-xl bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90 shadow-sm transition-all"
               >
                 Add Closure
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit closure modal */}
+      {editingClosureId && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-2xl shadow-2xl w-96 max-w-[92vw]">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-border">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Pencil className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Edit Closure</h3>
+                <p className="text-xs text-muted-foreground">Update road closure details</p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Severity */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Type</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {SEVERITY_OPTIONS.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => setEditClosureSeverity(s.value)}
+                      className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 transition-all text-center ${
+                        editClosureSeverity === s.value
+                          ? "border-foreground bg-accent shadow-sm"
+                          : "border-transparent bg-muted/50 hover:bg-accent/50"
+                      }`}
+                    >
+                      <span className="text-base leading-none">{s.icon}</span>
+                      <span className="text-[10px] font-medium leading-tight">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Notes</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Construction on main road"
+                  value={editClosureNotes}
+                  onChange={(e) => setEditClosureNotes(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40"
+                />
+              </div>
+
+              {/* Expiry */}
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <select
+                  value={editClosureExpiry ? "" : ""}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const d = new Date();
+                      d.setHours(d.getHours() + parseInt(e.target.value));
+                      setEditClosureExpiry(d.toISOString());
+                    } else {
+                      setEditClosureExpiry("");
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 rounded-xl border border-border bg-muted/30 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">{editClosureExpiry ? `Current: ${new Date(editClosureExpiry).toLocaleString()}` : "No expiry"}</option>
+                  {EXPIRY_OPTIONS.filter(o => o.value).map((o) => (
+                    <option key={o.value} value={o.value}>Reset to {o.label} from now</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 px-5 pb-5 pt-2 border-t border-border">
+              <button
+                onClick={() => setEditingClosureId(null)}
+                className="flex-1 py-2.5 text-xs rounded-xl border border-border text-muted-foreground hover:bg-accent font-medium transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await updateClosure(editingClosureId, {
+                      severity: editClosureSeverity,
+                      notes: editClosureNotes,
+                      expires_at: editClosureExpiry || null,
+                    });
+                    toast({ title: "Closure updated" });
+                    setEditingClosureId(null);
+                  } catch {
+                    toast({ title: "Failed to update", variant: "destructive" });
+                  }
+                }}
+                className="flex-1 py-2.5 text-xs rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm transition-all"
+              >
+                Save Changes
               </button>
             </div>
           </div>

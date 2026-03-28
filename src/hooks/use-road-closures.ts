@@ -121,6 +121,20 @@ export const useRoadClosures = () => {
     await supabase.from("road_closures").update({ is_active: false } as any).eq("id", id);
   };
 
+  const updateClosure = async (id: string, updates: {
+    notes?: string;
+    severity?: string;
+    expires_at?: string | null;
+    schedule_type?: string;
+    schedule_days?: string[];
+    schedule_start_time?: string | null;
+    schedule_end_time?: string | null;
+    scheduled_date?: string | null;
+  }) => {
+    const { error } = await supabase.from("road_closures").update(updates as any).eq("id", id);
+    if (error) throw error;
+  };
+
   const approveClosure = async (id: string) => {
     await supabase.from("road_closures").update({ status: "approved" } as any).eq("id", id);
   };
@@ -129,5 +143,5 @@ export const useRoadClosures = () => {
     await supabase.from("road_closures").update({ is_active: false, status: "rejected" } as any).eq("id", id);
   };
 
-  return { closures, pendingClosures, loading, addClosure, removeClosure, approveClosure, rejectClosure, refetch: fetchClosures };
+  return { closures, pendingClosures, loading, addClosure, removeClosure, updateClosure, approveClosure, rejectClosure, refetch: fetchClosures };
 };
