@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, ArrowUpRight, ArrowDownLeft, Clock, RefreshCw, Loader2, Banknote, TrendingUp, ChevronDown } from "lucide-react";
+import { Wallet, ArrowUpRight, ArrowDownLeft, Clock, RefreshCw, Loader2, Banknote, TrendingUp, ChevronDown, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 
 interface WalletTransaction {
