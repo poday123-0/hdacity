@@ -2983,6 +2983,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           } catch {}
                         }
                       }
+                      // Sort by relevance: exact match first, starts-with next, then contains
+                      const ql = q.toLowerCase();
+                      results.sort((a, b) => {
+                        const an = a.name.toLowerCase();
+                        const bn = b.name.toLowerCase();
+                        const aExact = an === ql ? 0 : an.startsWith(ql) ? 1 : 2;
+                        const bExact = bn === ql ? 0 : bn.startsWith(ql) ? 1 : 2;
+                        if (aExact !== bExact) return aExact - bExact;
+                        // Within same tier, prioritize service areas
+                        const aType = a.type === "service" ? 0 : a.type === "named" ? 1 : 2;
+                        const bType = b.type === "service" ? 0 : b.type === "named" ? 1 : 2;
+                        return aType - bType;
+                      });
                       setLocationSearchResults(results);
                     }}
                   />
