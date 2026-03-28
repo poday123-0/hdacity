@@ -2230,6 +2230,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setFavaraAccounts(favaraAccounts.map((f) => ({ ...f, is_primary: f.id === id })));
   };
 
+  // Swipe account CRUD
+  const addSwipeAccount = async () => {
+    if (!userProfile?.id || !newSwipe.swipe_username) return;
+    const isPrimary = swipeAccounts.length === 0;
+    const { data, error } = await supabase.from("driver_swipe_accounts").insert({
+      driver_id: userProfile.id,
+      swipe_username: newSwipe.swipe_username,
+      swipe_name: newSwipe.swipe_name,
+      is_primary: isPrimary
+    } as any).select().single();
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setSwipeAccounts([...swipeAccounts, data as any]);
+    setNewSwipe({ swipe_username: "", swipe_name: "" });
+    setShowAddSwipe(false);
+    toast({ title: "Swipe account added" });
+  };
+
+  const deleteSwipeAccount = async (id: string) => {
+    await supabase.from("driver_swipe_accounts").update({ is_active: false } as any).eq("id", id);
+    setSwipeAccounts(swipeAccounts.filter((s) => s.id !== id));
+    toast({ title: "Swipe account removed" });
+  };
+
+  const setPrimarySwipe = async (id: string) => {
+    if (!userProfile?.id) return;
+    await supabase.from("driver_swipe_accounts").update({ is_primary: false } as any).eq("driver_id", userProfile.id);
+    await supabase.from("driver_swipe_accounts").update({ is_primary: true } as any).eq("id", id);
+    setSwipeAccounts(swipeAccounts.map((s) => ({ ...s, is_primary: s.id === id })));
+  };
+
   const addVehicle = async () => {
     if (!userProfile?.id || !newVehicle.plate_number || !newVehicle.vehicle_type_id) return;
     // Check for duplicate plate number
