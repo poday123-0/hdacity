@@ -183,7 +183,9 @@ const AdminDrivers = () => {
       const plateMatch = dVehicles.some((v: any) => v.plate_number?.toLowerCase().includes(q));
       const centerMatch = dVehicles.some((v: any) => v.center_code?.toLowerCase().includes(q));
       const bankMatch = d.bank_account_number?.toLowerCase().includes(q) || d.bank_account_name?.toLowerCase().includes(q);
-      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch && !bankMatch) return false;
+      const dBankAccounts = allBankAccountsMap[d.id] || [];
+      const driverBankMatch = dBankAccounts.some((ba: any) => ba.account_number?.toLowerCase().includes(q) || ba.account_name?.toLowerCase().includes(q));
+      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch && !bankMatch && !driverBankMatch) return false;
     }
     return true;
   });
