@@ -735,12 +735,7 @@ const AdminWatermelons = () => {
               Delete Active ({activeItems.length})
             </Button>
           )}
-          {claimedItems.length > 0 && (
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDeleteAll("claimed")}>
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear Claimed ({claimedItems.length})
-            </Button>
-          )}
+          
         </div>
       )}
 
