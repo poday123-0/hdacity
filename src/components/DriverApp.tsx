@@ -89,7 +89,7 @@ import AnimatedTimer from "./AnimatedTimer";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
-type ProfileTab = "info" | "documents" | "banks" | "favara" | "swipe" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
+type ProfileTab = "info" | "documents" | "banks" | "wallets" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
@@ -4309,8 +4309,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 { key: "documents", label: "Docs", icon: IdCard },
                 { key: "vehicles", label: "Vehicles", icon: Car },
                 { key: "banks", label: "Banks", icon: Landmark },
-                { key: "favara", label: "Favara", icon: Wallet },
-                { key: "swipe", label: "Swipe", icon: Wallet },
+                { key: "wallets", label: "Wallets", icon: Wallet },
                 { key: "sounds", label: "Sounds", icon: Volume2 },
                 { key: "billing", label: "Billing", icon: DollarSign },
                 { key: "settings", label: "Settings", icon: Settings }] as
@@ -4621,12 +4620,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
               }
 
-                {profileTab === "favara" &&
-              <div className="space-y-3">
+                {profileTab === "wallets" &&
+              <div className="space-y-4">
+                    {/* Favara Section */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        {favaraLogoUrl ? <img src={favaraLogoUrl} alt="Favara" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
+                        Favara
+                      </p>
                     {favaraAccounts.length === 0 && !showAddFavara &&
-                <div className="text-center py-6">
-                        <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No Favara accounts added yet</p>
+                <div className="text-center py-4 bg-surface rounded-xl">
+                        <p className="text-xs text-muted-foreground">No Favara accounts added</p>
                       </div>
                 }
                     {favaraAccounts.map((favara) =>
@@ -4672,18 +4676,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <button onClick={addFavaraAccount} disabled={!newFavara.favara_id} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95 transition-transform">Add</button>
                         </div>
                       </div> :
-                <button onClick={() => setShowAddFavara(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
-                        <Plus className="w-4 h-4" />Add Favara account
+                <button onClick={() => setShowAddFavara(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
+                        <Plus className="w-3.5 h-3.5" />Add Favara
                       </button>}
-                  </div>
-              }
+                    </div>
 
-                {profileTab === "swipe" &&
-              <div className="space-y-3">
+                    <div className="border-t border-border" />
+
+                    {/* Swipe Section */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
+                        Swipe
+                      </p>
                     {swipeAccounts.length === 0 && !showAddSwipe &&
-                <div className="text-center py-6">
-                        <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No Swipe accounts added yet</p>
+                <div className="text-center py-4 bg-surface rounded-xl">
+                        <p className="text-xs text-muted-foreground">No Swipe accounts added</p>
                       </div>
                 }
                     {swipeAccounts.map((swipe) =>
@@ -4729,9 +4737,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <button onClick={addSwipeAccount} disabled={!newSwipe.swipe_username} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-95 transition-transform">Add</button>
                         </div>
                       </div> :
-                <button onClick={() => setShowAddSwipe(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-semibold text-muted-foreground active:scale-95 transition-transform">
-                        <Plus className="w-4 h-4" />Add Swipe account
+                <button onClick={() => setShowAddSwipe(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
+                        <Plus className="w-3.5 h-3.5" />Add Swipe
                       </button>}
+                    </div>
                   </div>
               }
 
