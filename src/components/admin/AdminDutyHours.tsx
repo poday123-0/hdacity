@@ -6,7 +6,7 @@ import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, 
 const AdminDutyHours = () => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState("today");
+  const [dateFilter, setDateFilter] = useState("month");
 
   // IP Allowlist
   const [ipEnabled, setIpEnabled] = useState(false);
