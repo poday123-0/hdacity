@@ -131,7 +131,10 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
           <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
-              <h3 className="font-bold text-foreground">Earnings</h3>
+              <div>
+                <h3 className="font-bold text-foreground">Earnings</h3>
+                {vehiclePlate && <p className="text-[10px] text-muted-foreground">Vehicle: {vehiclePlate}</p>}
+              </div>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center">
               <X className="w-4 h-4 text-foreground" />
