@@ -102,6 +102,7 @@ const DispatchTripForm = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [osmResults, setOsmResults] = useState<NominatimResult[]>([]);
   const [osmSearching, setOsmSearching] = useState(false);
+  const [resultHighlight, setResultHighlight] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>("");
