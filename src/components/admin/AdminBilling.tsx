@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -18,6 +18,7 @@ const AdminBilling = () => {
   const [billingDueDay, setBillingDueDay] = useState(25);
   const [tab, setTab] = useState<"drivers" | "payments">("drivers");
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
+  const [showBillingSettings, setShowBillingSettings] = useState(false);
   const [driverPayments, setDriverPayments] = useState<any[]>([]);
 
   // Bulk fee-free state
@@ -260,22 +261,29 @@ const AdminBilling = () => {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Driver Billing</h2>
 
-      {/* Billing Settings */}
-      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Billing Settings</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Billing Due Day (of month)</label>
-            <input type="number" min={1} max={28} value={billingDueDay} onChange={(e) => setBillingDueDay(parseInt(e.target.value) || 25)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-            <p className="text-[10px] text-muted-foreground mt-1">Drivers not paid by this date will be deactivated</p>
+      {/* Billing Settings - Collapsible */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <button onClick={() => setShowBillingSettings(p => !p)} className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-muted/50 transition-colors">
+          {showBillingSettings ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          <span className="text-sm font-bold text-foreground">Billing Settings</span>
+        </button>
+        {showBillingSettings && (
+          <div className="p-5 space-y-4 border-t border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Billing Due Day (of month)</label>
+                <input type="number" min={1} max={28} value={billingDueDay} onChange={(e) => setBillingDueDay(parseInt(e.target.value) || 25)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                <p className="text-[10px] text-muted-foreground mt-1">Drivers not paid by this date will be deactivated</p>
+              </div>
+              <div className="flex items-end">
+                <button onClick={saveBillingSettings} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold">Save Settings</button>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground bg-surface rounded-lg px-3 py-2">
+              💡 Admin notification phones are managed in <strong>Settings → Admin Notification Recipients</strong>
+            </p>
           </div>
-          <div className="flex items-end">
-            <button onClick={saveBillingSettings} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold">Save Settings</button>
-          </div>
-        </div>
-        <p className="text-[11px] text-muted-foreground bg-surface rounded-lg px-3 py-2">
-          💡 Admin notification phones are managed in <strong>Settings → Admin Notification Recipients</strong>
-        </p>
+        )}
       </div>
 
       {/* Vehicle Type Fee Summary */}
