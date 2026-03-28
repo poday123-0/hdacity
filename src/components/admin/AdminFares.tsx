@@ -66,6 +66,11 @@ const AdminFares = () => {
   const [surchargeForm, setSurchargeForm] = useState(emptySurchargeForm);
   const [importingCsv, setImportingCsv] = useState(false);
   const csvFileRef = useRef<HTMLInputElement>(null);
+  const zoneFormRef = useRef<HTMLDivElement>(null);
+  const [routeSearch, setRouteSearch] = useState("");
+  const [routeFromFilter, setRouteFromFilter] = useState("all");
+  const [routeVtFilter, setRouteVtFilter] = useState("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const fetchAll = async () => {
     setLoading(true);
