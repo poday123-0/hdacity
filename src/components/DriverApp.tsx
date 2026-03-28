@@ -4697,14 +4697,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       </CollapsibleContent>
                     </Collapsible>
 
-                    <div className="border-t border-border" />
-
                     {/* Swipe Section */}
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                        {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
-                        Swipe
-                      </p>
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                          {swipeLogoUrl ? <img src={swipeLogoUrl} alt="Swipe" className="w-4 h-4 rounded object-contain" /> : <Wallet className="w-3.5 h-3.5" />}
+                          Swipe ({swipeAccounts.length})
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="space-y-3 mt-2">
                     {swipeAccounts.length === 0 && !showAddSwipe &&
                 <div className="text-center py-4 bg-surface rounded-xl">
                         <p className="text-xs text-muted-foreground">No Swipe accounts added</p>
@@ -4756,7 +4759,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <button onClick={() => setShowAddSwipe(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground active:scale-95 transition-transform">
                         <Plus className="w-3.5 h-3.5" />Add Swipe
                       </button>}
-                    </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
               }
 
