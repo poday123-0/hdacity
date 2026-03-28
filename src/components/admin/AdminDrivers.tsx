@@ -14,6 +14,7 @@ const AdminDrivers = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [driverVehicles, setDriverVehicles] = useState<Record<string, any[]>>({});
+  const [allBankAccountsMap, setAllBankAccountsMap] = useState<Record<string, any[]>>({});
   const [allVehicles, setAllVehicles] = useState<any[]>([]);
   const [driverRatings, setDriverRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [driverDeclines, setDriverDeclines] = useState<Record<string, { today: number; total: number }>>({});
@@ -69,12 +70,13 @@ const AdminDrivers = () => {
       if (data.length < pageSize) break;
       from += pageSize;
     }
-    const [banksRes, companiesRes, vtRes, vehiclesRes, settingsRes] = await Promise.all([
+    const [banksRes, companiesRes, vtRes, vehiclesRes, settingsRes, allBankAccRes] = await Promise.all([
       supabase.from("banks").select("*").eq("is_active", true).order("name"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
       supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("*, vehicle_types(name, image_url)").order("created_at", { ascending: false }),
       supabase.from("system_settings").select("key, value").in("key", ["default_company_id", "blocked_center_codes"]),
+      supabase.from("driver_bank_accounts").select("driver_id, account_number, account_name").eq("is_active", true),
     ]);
     setDrivers(allDrivers);
     setBanks(banksRes.data || []);
@@ -98,6 +100,16 @@ const AdminDrivers = () => {
       }
     });
     setDriverVehicles(vMap);
+
+    // Build bank accounts map for search
+    const baMap: Record<string, any[]> = {};
+    (allBankAccRes.data || []).forEach((ba: any) => {
+      if (ba.driver_id) {
+        if (!baMap[ba.driver_id]) baMap[ba.driver_id] = [];
+        baMap[ba.driver_id].push(ba);
+      }
+    });
+    setAllBankAccountsMap(baMap);
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -171,7 +183,9 @@ const AdminDrivers = () => {
       const plateMatch = dVehicles.some((v: any) => v.plate_number?.toLowerCase().includes(q));
       const centerMatch = dVehicles.some((v: any) => v.center_code?.toLowerCase().includes(q));
       const bankMatch = d.bank_account_number?.toLowerCase().includes(q) || d.bank_account_name?.toLowerCase().includes(q);
-      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch && !bankMatch) return false;
+      const dBankAccounts = allBankAccountsMap[d.id] || [];
+      const driverBankMatch = dBankAccounts.some((ba: any) => ba.account_number?.toLowerCase().includes(q) || ba.account_name?.toLowerCase().includes(q));
+      if (!nameMatch && !phoneMatch && !plateMatch && !centerMatch && !bankMatch && !driverBankMatch) return false;
     }
     return true;
   });
