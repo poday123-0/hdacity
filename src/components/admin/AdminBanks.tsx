@@ -23,7 +23,12 @@ const AdminBanks = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchBanks(); }, [search]);
+  const fetchFavaraLogo = async () => {
+    const { data } = await supabase.from("system_settings").select("value").eq("key", "favara_logo_url").single();
+    if (data?.value) setFavaraLogoUrl(data.value as string);
+  };
+
+  useEffect(() => { fetchBanks(); fetchFavaraLogo(); }, [search]);
 
   const uploadLogo = async (rawFile: File) => {
     setUploading(true);
