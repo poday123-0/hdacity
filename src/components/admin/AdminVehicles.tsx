@@ -564,8 +564,8 @@ const AdminVehicles = () => {
       )}
 
       {/* Vehicle Table */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <table className="w-full">
+      <div className="bg-card border border-border rounded-2xl overflow-x-auto">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr className="border-b border-border bg-surface/50">
               <th className="px-4 py-3 w-10">
