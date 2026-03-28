@@ -1179,9 +1179,17 @@ const DispatchTripForm = ({
                         onChange={e => { setSelecting(i); setSearchQuery(e.target.value); }}
                         onFocus={() => { setSelecting(i); setSearchQuery(""); }}
                         onKeyDown={e => {
-                          if (e.key === "Enter") {
+                          if (e.key === "ArrowDown") {
                             e.preventDefault();
-                            if (osmResults.length > 0 && !stop.address) selectLocation(osmResults[0]);
+                            setResultHighlight(prev => Math.min(prev + 1, osmResults.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setResultHighlight(prev => Math.max(prev - 1, -1));
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const selIdx = resultHighlight >= 0 ? resultHighlight : 0;
+                            if (osmResults.length > 0 && !stop.address) selectLocation(osmResults[selIdx]);
+                            setResultHighlight(-1);
                             setTimeout(() => phoneInputRef.current?.focus(), 50);
                           }
                         }}
@@ -1193,8 +1201,8 @@ const DispatchTripForm = ({
                   </div>
                   {selecting === i && osmResults.length > 0 && (
                     <div className="absolute left-0 right-6 z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                      {osmResults.map(r => (
-                        <button key={r.place_id} onClick={() => selectLocation(r)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-surface text-left transition-colors border-b border-border last:border-0">
+                      {osmResults.map((r, idx) => (
+                        <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
                           <Navigation className="w-3 h-3 text-primary shrink-0" />
                           <p className="text-xs text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
                         </button>
