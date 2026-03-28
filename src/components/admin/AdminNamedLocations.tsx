@@ -328,6 +328,16 @@ const AdminNamedLocations = () => {
           <p className="text-sm text-muted-foreground">{filtered.length} of {locations.length} locations{pendingCount > 0 && ` · ${pendingCount} pending approval`}</p>
         </div>
         <div className="flex items-center gap-2">
+          {locations.length > 0 && !batchMode && !showForm && (
+            <button onClick={async () => {
+              if (!confirm(`Delete ALL ${locations.length} named locations? This cannot be undone.`)) return;
+              const { error } = await supabase.from("named_locations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+              if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+              else { toast({ title: "All locations deleted" }); fetchLocations(); }
+            }} className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-xl text-sm font-semibold">
+              <Trash2 className="w-4 h-4" /> Delete All
+            </button>
+          )}
           <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
             {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
             {batchMode ? "Cancel Batch" : "Batch Add"}
