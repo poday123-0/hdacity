@@ -4735,7 +4735,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </div>
               }
 
-
+                {profileTab === "vehicles" &&
               <div className="space-y-3">
                     {driverVehicles.length === 0 && !showAddVehicle &&
                 <div className="text-center py-6">
