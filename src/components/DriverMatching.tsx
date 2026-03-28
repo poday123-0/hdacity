@@ -675,7 +675,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
               </div>
 
               {(() => {
-                const totalItems = (primaryBank ? 1 : 0) + otherBanks.length + favaraAccounts.length;
+                const totalItems = (primaryBank ? 1 : 0) + otherBanks.length + favaraAccounts.length + swipeAccounts.length;
                 const useGrid = totalItems > 1;
                 const allItems: React.ReactNode[] = [];
                 if (primaryBank) allItems.push(<BankCard key={primaryBank.id} bank={primaryBank} copiedId={copiedId} onCopy={copyToClipboard} logoUrl={bankLogos[primaryBank.bank_name]} />);
