@@ -18,6 +18,7 @@ const AdminBilling = () => {
   const [billingDueDay, setBillingDueDay] = useState(25);
   const [tab, setTab] = useState<"drivers" | "payments">("drivers");
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
+  const [showBillingSettings, setShowBillingSettings] = useState(false);
   const [driverPayments, setDriverPayments] = useState<any[]>([]);
 
   // Bulk fee-free state
