@@ -43,6 +43,7 @@ interface DriverInfo {
   map_icon_url?: string | null;
   bank_accounts?: BankAccountInfo[];
   favara_accounts?: FavaraAccountInfo[];
+  swipe_accounts?: SwipeAccountInfo[];
 }
 
 interface DriverMatchingProps {
