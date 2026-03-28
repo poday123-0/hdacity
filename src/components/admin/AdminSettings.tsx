@@ -165,6 +165,10 @@ const AdminSettings = () => {
     if (map["system_logo_url"] && typeof map["system_logo_url"] === "string") setSystemLogoUrl(map["system_logo_url"]);
     if (map["system_share_image_url"] && typeof map["system_share_image_url"] === "string") setShareImageUrl(map["system_share_image_url"]);
     if (map["system_favicon_url"] && typeof map["system_favicon_url"] === "string") setFaviconUrl(map["system_favicon_url"]);
+    if (map["app_version_control"]) {
+      const vc = typeof map["app_version_control"] === "string" ? JSON.parse(map["app_version_control"]) : map["app_version_control"];
+      setVersionConfig(prev => ({ ...prev, ...vc }));
+    }
     setLoading(false);
   };
 
