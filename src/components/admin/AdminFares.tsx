@@ -431,96 +431,100 @@ const AdminFares = () => {
       </div>
 
       {/* ─── Surcharges (Time-based & Luggage) ─── */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Surcharges</h3>
-          <button onClick={() => { showSurchargeForm ? resetSurchargeForm() : setShowSurchargeForm(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-            {showSurchargeForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {showSurchargeForm ? "Cancel" : "Add Surcharge"}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center bg-surface">
+          <button onClick={() => setShowSurcharges(p => !p)} className="flex-1 flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors">
+            {showSurcharges ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            <span className="text-sm font-bold text-foreground">Surcharges</span>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{surcharges.length}</span>
+          </button>
+          <button onClick={() => { showSurchargeForm ? resetSurchargeForm() : setShowSurchargeForm(true); setShowSurcharges(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-3 py-1.5 rounded-xl text-xs font-semibold mr-3">
+            {showSurchargeForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            {showSurchargeForm ? "Cancel" : "Add"}
           </button>
         </div>
-
-        {showSurchargeForm && (
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <h3 className="font-semibold text-foreground">{editingSurchargeId ? "Edit Surcharge" : "New Surcharge"}</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Name</label>
-                <input value={surchargeForm.name} onChange={(e) => setSurchargeForm({ ...surchargeForm, name: e.target.value })} placeholder="Night Surcharge" className={inputCls} />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Type</label>
-                <select value={surchargeForm.surcharge_type} onChange={(e) => setSurchargeForm({ ...surchargeForm, surcharge_type: e.target.value })} className={inputCls}>
-                  <option value="time_based">Time-Based</option>
-                  <option value="luggage">Luggage</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Amount (MVR)</label>
-                <input type="number" value={surchargeForm.amount} onChange={(e) => setSurchargeForm({ ...surchargeForm, amount: e.target.value })} placeholder="5" className={inputCls} />
-              </div>
-              {surchargeForm.surcharge_type === "time_based" && (
-                <>
+        {showSurcharges && (
+          <div className="border-t border-border">
+            {showSurchargeForm && (
+              <div className="p-5 space-y-4 border-b border-border">
+                <h3 className="font-semibold text-foreground">{editingSurchargeId ? "Edit Surcharge" : "New Surcharge"}</h3>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">From Time</label>
-                    <input type="time" value={surchargeForm.start_time} onChange={(e) => setSurchargeForm({ ...surchargeForm, start_time: e.target.value })} className={inputCls} />
+                    <label className="text-xs font-medium text-muted-foreground">Name</label>
+                    <input value={surchargeForm.name} onChange={(e) => setSurchargeForm({ ...surchargeForm, name: e.target.value })} placeholder="Night Surcharge" className={inputCls} />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">To Time</label>
-                    <input type="time" value={surchargeForm.end_time} onChange={(e) => setSurchargeForm({ ...surchargeForm, end_time: e.target.value })} className={inputCls} />
+                    <label className="text-xs font-medium text-muted-foreground">Type</label>
+                    <select value={surchargeForm.surcharge_type} onChange={(e) => setSurchargeForm({ ...surchargeForm, surcharge_type: e.target.value })} className={inputCls}>
+                      <option value="time_based">Time-Based</option>
+                      <option value="luggage">Luggage</option>
+                    </select>
                   </div>
-                </>
-              )}
-              {surchargeForm.surcharge_type === "luggage" && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Free Luggage Limit (pcs)</label>
-                  <input type="number" value={surchargeForm.luggage_threshold} onChange={(e) => setSurchargeForm({ ...surchargeForm, luggage_threshold: e.target.value })} placeholder="3" className={inputCls} />
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Amount (MVR)</label>
+                    <input type="number" value={surchargeForm.amount} onChange={(e) => setSurchargeForm({ ...surchargeForm, amount: e.target.value })} placeholder="5" className={inputCls} />
+                  </div>
+                  {surchargeForm.surcharge_type === "time_based" && (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">From Time</label>
+                        <input type="time" value={surchargeForm.start_time} onChange={(e) => setSurchargeForm({ ...surchargeForm, start_time: e.target.value })} className={inputCls} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">To Time</label>
+                        <input type="time" value={surchargeForm.end_time} onChange={(e) => setSurchargeForm({ ...surchargeForm, end_time: e.target.value })} className={inputCls} />
+                      </div>
+                    </>
+                  )}
+                  {surchargeForm.surcharge_type === "luggage" && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Free Luggage Limit (pcs)</label>
+                      <input type="number" value={surchargeForm.luggage_threshold} onChange={(e) => setSurchargeForm({ ...surchargeForm, luggage_threshold: e.target.value })} placeholder="3" className={inputCls} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <button onClick={saveSurcharge} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-              {editingSurchargeId ? "Update Surcharge" : "Save Surcharge"}
-            </button>
+                <button onClick={saveSurcharge} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
+                  {editingSurchargeId ? "Update Surcharge" : "Save Surcharge"}
+                </button>
+              </div>
+            )}
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface/50">
+                  <th className={thCls}>Name</th>
+                  <th className={thCls}>Type</th>
+                  <th className={thCls}>Amount (MVR)</th>
+                  <th className={thCls}>Condition</th>
+                  <th className={thCls}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {surcharges.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No surcharges configured</td></tr>
+                ) : surcharges.map((s) => (
+                  <tr key={s.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{s.name}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{s.surcharge_type === "time_based" ? "Time-Based" : "Luggage"}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-foreground">{s.amount} MVR</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {s.surcharge_type === "time_based" && s.start_time && s.end_time
+                        ? `${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`
+                        : s.surcharge_type === "luggage"
+                          ? `Above ${s.luggage_threshold} pcs`
+                          : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openEditSurcharge(s)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => deleteSurcharge(s.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface">
-                <th className={thCls}>Name</th>
-                <th className={thCls}>Type</th>
-                <th className={thCls}>Amount (MVR)</th>
-                <th className={thCls}>Condition</th>
-                <th className={thCls}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {surcharges.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No surcharges configured</td></tr>
-              ) : surcharges.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{s.name}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{s.surcharge_type === "time_based" ? "Time-Based" : "Luggage"}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-foreground">{s.amount} MVR</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {s.surcharge_type === "time_based" && s.start_time && s.end_time
-                      ? `${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`
-                      : s.surcharge_type === "luggage"
-                        ? `Above ${s.luggage_threshold} pcs`
-                        : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openEditSurcharge(s)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => deleteSurcharge(s.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );
