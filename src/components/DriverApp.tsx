@@ -89,7 +89,7 @@ import AnimatedTimer from "./AnimatedTimer";
 
 type DriverScreen = "offline" | "online" | "ride-request" | "navigating" | "complete";
 type DriverTripPhase = "heading_to_pickup" | "arrived" | "in_progress";
-type ProfileTab = "info" | "documents" | "banks" | "favara" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
+type ProfileTab = "info" | "documents" | "banks" | "favara" | "swipe" | "vehicles" | "sounds" | "billing" | "messages" | "settings";
 type TextSize = number; // 0.75 to 1.35 scale factor
 
 interface TripRequest {
