@@ -1138,7 +1138,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           trafficModel: g.maps.TrafficModel?.BEST_GUESS || "bestguess",
         },
       }).then((raw: any) => {
-        const result = selectShortestRoute(raw);
+        const result = selectShortestRoute(raw, roadClosures);
         if (directionsRendererRef.current === dr && routeRequestSeqRef.current === requestSeq) {
           dr.setDirections(result);
           parseNavStepsRef.current(result);
