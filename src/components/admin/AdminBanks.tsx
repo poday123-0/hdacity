@@ -28,8 +28,12 @@ const AdminBanks = () => {
     const { data } = await supabase.from("system_settings").select("value").eq("key", "favara_logo_url").single();
     if (data?.value) setFavaraLogoUrl(data.value as string);
   };
+  const fetchSwipeLogo = async () => {
+    const { data } = await supabase.from("system_settings").select("value").eq("key", "swipe_logo_url").single();
+    if (data?.value) setSwipeLogoUrl(data.value as string);
+  };
 
-  useEffect(() => { fetchBanks(); fetchFavaraLogo(); }, [search]);
+  useEffect(() => { fetchBanks(); fetchFavaraLogo(); fetchSwipeLogo(); }, [search]);
 
   const uploadLogo = async (rawFile: File) => {
     setUploading(true);
