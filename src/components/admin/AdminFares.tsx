@@ -378,7 +378,7 @@ const AdminFares = () => {
                 <div className="bg-card border border-border rounded-xl px-4 py-8 text-center text-muted-foreground">No route fares found</div>
               ) : groupKeys.map(fromArea => {
                 const items = grouped[fromArea];
-                const isCollapsed = collapsedGroups.has(fromArea);
+                const isExpanded = expandedGroups.has(fromArea);
                 // Sub-group by to_area within each from_area
                 const subGrouped: Record<string, typeof items> = {};
                 items.forEach(fz => {
