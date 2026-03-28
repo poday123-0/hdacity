@@ -72,6 +72,7 @@ const AdminFares = () => {
   const [routeVtFilter, setRouteVtFilter] = useState("all");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showVehicleRates, setShowVehicleRates] = useState(false);
+  const [showSurcharges, setShowSurcharges] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
