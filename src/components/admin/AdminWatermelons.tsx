@@ -584,6 +584,7 @@ const AdminWatermelons = () => {
                   <th className="text-left py-2 px-2 font-medium">User</th>
                   <th className="text-left py-2 px-2 font-medium">Type</th>
                   <th className="text-left py-2 px-2 font-medium">Reward</th>
+                  <th className="text-left py-2 px-2 font-medium">Details</th>
                   <th className="text-left py-2 px-2 font-medium">Claimed</th>
                 </tr>
               </thead>
@@ -592,17 +593,31 @@ const AdminWatermelons = () => {
                   .filter(c => claimedFilter === "all" || c.promo_type === claimedFilter)
                   .map(c => {
                     const claimer = claimerProfiles.get(c.claimed_by || "");
+                    // Calculate fee-free effective period (starts 1st of next month from claim date)
+                    let feeFreeInfo = "";
+                    if (c.promo_type === "fee_free" && c.claimed_at) {
+                      const claimDate = new Date(c.claimed_at);
+                      const freeFrom = new Date(claimDate.getFullYear(), claimDate.getMonth() + 1, 1);
+                      const freeUntil = new Date(freeFrom);
+                      freeUntil.setMonth(freeUntil.getMonth() + c.fee_free_months);
+                      feeFreeInfo = `${freeFrom.toLocaleDateString(undefined, { month: "short", year: "numeric" })} → ${freeUntil.toLocaleDateString(undefined, { month: "short", year: "numeric" })}`;
+                    }
                     return (
-                      <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
+                      <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
                         <td className="py-2 px-2">
                           {claimer ? (
                             <div>
                               <p className="font-semibold text-foreground">{claimer.first_name} {claimer.last_name}</p>
-                              <p className="text-[10px] text-muted-foreground">{claimer.phone_number} • {claimer.user_type}</p>
+                              <p className="text-[10px] text-muted-foreground">{claimer.phone_number}</p>
                             </div>
                           ) : (
                             <span className="text-muted-foreground font-mono">{c.claimed_by?.slice(0, 8)}…</span>
                           )}
+                        </td>
+                        <td className="py-2 px-2">
+                          <Badge variant={claimer?.user_type === "driver" ? "default" : "secondary"} className="text-[10px]">
+                            {claimer?.user_type === "driver" ? "🚗 Driver" : claimer?.user_type === "passenger" ? "👤 Passenger" : claimer?.user_type || "—"}
+                          </Badge>
                         </td>
                         <td className="py-2 px-2">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -612,9 +627,18 @@ const AdminWatermelons = () => {
                           }`}>
                             {c.promo_type === "fee_free" ? "Free Fee" : c.promo_type === "wallet_amount" ? "Wallet" : "Free Trip"}
                           </span>
+                          <span className="ml-1.5 font-semibold text-foreground">{promoLabel(c)}</span>
                         </td>
-                        <td className="py-2 px-2 font-semibold text-foreground">{promoLabel(c)}</td>
-                        <td className="py-2 px-2 text-muted-foreground">{c.claimed_at ? new Date(c.claimed_at).toLocaleString() : "—"}</td>
+                        <td className="py-2 px-2 text-[10px] text-muted-foreground">
+                          {c.promo_type === "fee_free" && feeFreeInfo ? (
+                            <span className="text-primary font-semibold">📅 {feeFreeInfo}</span>
+                          ) : c.promo_type === "wallet_amount" ? (
+                            <span>+{c.amount} MVR to wallet</span>
+                          ) : c.promo_type === "free_trip" ? (
+                            <span>{c.free_trips} trip{c.free_trips > 1 ? "s" : ""}</span>
+                          ) : "—"}
+                        </td>
+                        <td className="py-2 px-2 text-muted-foreground whitespace-nowrap">{c.claimed_at ? new Date(c.claimed_at).toLocaleString() : "—"}</td>
                       </tr>
                     );
                   })}
@@ -735,12 +759,7 @@ const AdminWatermelons = () => {
               Delete Active ({activeItems.length})
             </Button>
           )}
-          {claimedItems.length > 0 && (
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDeleteAll("claimed")}>
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear Claimed ({claimedItems.length})
-            </Button>
-          )}
+          
         </div>
       )}
 

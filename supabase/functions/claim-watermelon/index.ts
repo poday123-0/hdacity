@@ -105,22 +105,33 @@ Deno.serve(async (req) => {
         reward_description = `${melon.amount} MVR added to wallet!`;
       }
     } else if (melon.promo_type === "fee_free") {
-      const freeUntil = new Date();
+      // Fee-free starts from the 1st of NEXT month
+      const now = new Date();
+      const freeFrom = new Date(now.getFullYear(), now.getMonth() + 1, 1); // 1st of next month
+      const freeUntil = new Date(freeFrom);
       freeUntil.setMonth(freeUntil.getMonth() + melon.fee_free_months);
-      await supabase.from("profiles").update({ fee_free_until: freeUntil.toISOString() }).eq("id", user_id);
+
+      // Check if driver already has a fee_free_until that extends beyond our new date
+      const { data: currentProfile } = await supabase.from("profiles").select("fee_free_until").eq("id", user_id).single();
+      const existingUntil = currentProfile?.fee_free_until ? new Date(currentProfile.fee_free_until) : null;
+      const effectiveUntil = existingUntil && existingUntil > freeUntil ? existingUntil : freeUntil;
+
+      await supabase.from("profiles").update({ fee_free_until: effectiveUntil.toISOString() }).eq("id", user_id);
       // Log a wallet transaction for admin visibility
       let { data: wallet } = await supabase.from("wallets").select("id").eq("user_id", user_id).single();
       if (!wallet) {
         const { data: nw } = await supabase.from("wallets").insert({ user_id, balance: 0 }).select().single();
         wallet = nw;
       }
+      const fromStr = freeFrom.toLocaleDateString();
+      const untilStr = effectiveUntil.toLocaleDateString();
       if (wallet) {
         await supabase.from("wallet_transactions").insert({
           wallet_id: wallet.id, user_id, amount: 0, type: "credit",
-          reason: "🏷️ Free Center Fee", notes: `${melon.fee_free_months} month${melon.fee_free_months > 1 ? "s" : ""} free fee from map reward (until ${freeUntil.toLocaleDateString()})`, status: "completed",
+          reason: "🏷️ Free Center Fee", notes: `${melon.fee_free_months} month${melon.fee_free_months > 1 ? "s" : ""} free fee from map reward (${fromStr} → ${untilStr})`, status: "completed",
         });
       }
-      reward_description = `${melon.fee_free_months} month${melon.fee_free_months > 1 ? "s" : ""} center fee-free!`;
+      reward_description = `${melon.fee_free_months} month${melon.fee_free_months > 1 ? "s" : ""} center fee-free starting next month!`;
     } else if (melon.promo_type === "free_trip") {
       let { data: wallet } = await supabase.from("wallets").select("id, balance").eq("user_id", user_id).single();
       if (!wallet) {
