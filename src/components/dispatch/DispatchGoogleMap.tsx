@@ -335,6 +335,8 @@ const DispatchGoogleMap = () => {
         const driverInfo = c.reported_by_type === "driver" && c.reporter_name
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
+        const ptEditId = `edit-pt-${c.id}`;
+        const ptRemoveId = `remove-pt-${c.id}`;
         const iw = new g.maps.InfoWindow({
           content: `<div style="font-size:12px;padding:4px;max-width:220px">
             ${driverInfo}
@@ -342,10 +344,18 @@ const DispatchGoogleMap = () => {
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
             <div style="display:flex;gap:6px;margin-top:6px">
-              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${(c.notes || '').replace(/'/g, "\\'")}','${c.expires_at || ''}')" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
-              <button onclick="window.__removeClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
+              <button id="${ptEditId}" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
+              <button id="${ptRemoveId}" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
             </div>
           </div>`,
+        });
+        iw.addListener("domready", () => {
+          document.getElementById(ptEditId)?.addEventListener("click", () => {
+            (window as any).__editClosure__?.(c.id, c.severity, c.notes || '', c.expires_at || '');
+          });
+          document.getElementById(ptRemoveId)?.addEventListener("click", () => {
+            (window as any).__removeClosure__?.(c.id);
+          });
         });
         marker.addListener("click", () => iw.open(mapInstance.current, marker));
         closureMarkersRef.current.push(marker);
@@ -381,6 +391,8 @@ const DispatchGoogleMap = () => {
         const lineDriverInfo = c.reported_by_type === "driver" && c.reporter_name
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
+        const lineEditId = `edit-line-${c.id}`;
+        const lineRemoveId = `remove-line-${c.id}`;
         const iw = new g.maps.InfoWindow({
           content: `<div style="font-size:12px;padding:4px;max-width:220px">
             ${lineDriverInfo}
@@ -388,10 +400,18 @@ const DispatchGoogleMap = () => {
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString()}</span>` : ""}
             <div style="display:flex;gap:6px;margin-top:6px">
-              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${(c.notes || '').replace(/'/g, "\\'")}','${c.expires_at || ''}')" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
-              <button onclick="window.__removeClosure__('${c.id}')" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
+              <button id="${lineEditId}" style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600">✎ Edit</button>
+              <button id="${lineRemoveId}" style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600">✕ Remove</button>
             </div>
           </div>`,
+        });
+        iw.addListener("domready", () => {
+          document.getElementById(lineEditId)?.addEventListener("click", () => {
+            (window as any).__editClosure__?.(c.id, c.severity, c.notes || '', c.expires_at || '');
+          });
+          document.getElementById(lineRemoveId)?.addEventListener("click", () => {
+            (window as any).__removeClosure__?.(c.id);
+          });
         });
         infoMarker.addListener("click", () => iw.open(mapInstance.current, infoMarker));
         line.addListener("click", () => iw.open(mapInstance.current, infoMarker));
