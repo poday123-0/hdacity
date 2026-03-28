@@ -5,6 +5,7 @@ import { X, QrCode, Camera, Keyboard, Check, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Capacitor } from "@capacitor/core";
 
 interface QRScannerProps {
   userId: string;
@@ -13,11 +14,14 @@ interface QRScannerProps {
   onClaimed?: (amount: number) => void;
 }
 
+const isNative = Capacitor.isNativePlatform();
+
 const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
   const [mode, setMode] = useState<"scan" | "manual">("scan");
   const [manualCode, setManualCode] = useState("");
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState<{ amount: number; balance: number } | null>(null);
+  const [nativeScanning, setNativeScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -26,13 +30,78 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
 
   useEffect(() => {
     if (isOpen && mode === "scan") {
-      startCamera();
+      if (isNative) {
+        startNativeScan();
+      } else {
+        startCamera();
+      }
     }
     return () => {
-      stopCamera();
+      if (isNative) {
+        stopNativeScan();
+      } else {
+        stopCamera();
+      }
     };
   }, [isOpen, mode]);
 
+  // ── Native Capacitor MLKit scanner ──
+  const startNativeScan = async () => {
+    try {
+      const { BarcodeScanner, BarcodeFormat } = await import("@capacitor-mlkit/barcode-scanning");
+
+      // Check / request permission
+      const { camera } = await BarcodeScanner.checkPermissions();
+      if (camera !== "granted") {
+        const req = await BarcodeScanner.requestPermissions();
+        if (req.camera !== "granted") {
+          toast({ title: "Camera permission denied", description: "Enter the code manually." });
+          setMode("manual");
+          return;
+        }
+      }
+
+      setNativeScanning(true);
+
+      // Use the simple scan() method which opens a native scan view
+      try {
+        const { barcodes } = await BarcodeScanner.scan({
+          formats: [BarcodeFormat.QrCode],
+        });
+
+        setNativeScanning(false);
+
+        if (barcodes.length > 0) {
+          const value = barcodes[0].rawValue || "";
+          if (value.startsWith("HDATOPUP:")) {
+            const code = value.replace("HDATOPUP:", "");
+            handleClaim(code);
+          } else {
+            toast({ title: "Invalid QR", description: "This is not a valid topup card QR code.", variant: "destructive" });
+          }
+        }
+      } catch (scanErr: any) {
+        // User cancelled the scan
+        setNativeScanning(false);
+        console.log("Scan cancelled:", scanErr?.message);
+      }
+    } catch (err: any) {
+      console.error("Native scan error:", err);
+      setNativeScanning(false);
+      // Fall back to web camera
+      startCamera();
+    }
+  };
+
+  const stopNativeScan = async () => {
+    try {
+      const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
+      await BarcodeScanner.stopScan();
+    } catch {}
+    setNativeScanning(false);
+  };
+
+  // ── Web camera fallback ──
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -72,7 +141,6 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0);
 
-      // Try BarcodeDetector API (available in modern browsers)
       if ("BarcodeDetector" in window) {
         const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
         detector.detect(canvas).then((barcodes: any[]) => {
@@ -106,15 +174,26 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
       toast({ title: "🎉 Card Redeemed!", description: `${data.amount} MVR added to your wallet!` });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
-      scanningRef.current = true;
-      if (mode === "scan") scanFrame();
+      // Resume scanning
+      if (mode === "scan") {
+        if (isNative) {
+          startNativeScan();
+        } else {
+          scanningRef.current = true;
+          scanFrame();
+        }
+      }
     } finally {
       setClaiming(false);
     }
   };
 
   const handleClose = () => {
-    stopCamera();
+    if (isNative) {
+      stopNativeScan();
+    } else {
+      stopCamera();
+    }
     setClaimed(null);
     setManualCode("");
     setMode("scan");
@@ -166,9 +245,11 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
             </motion.div>
           ) : mode === "scan" ? (
             <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-[300px]">
-              {/* Camera view */}
+              {/* Camera view — native uses transparent WebView, web uses video element */}
               <div className="relative aspect-square rounded-3xl overflow-hidden bg-black mb-6">
-                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                {!nativeScanning && (
+                  <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                )}
                 <canvas ref={canvasRef} className="hidden" />
                 {/* Scan overlay */}
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -185,6 +266,11 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
                     />
                   </div>
                 </div>
+                {nativeScanning && (
+                  <div className="absolute inset-0 flex items-end justify-center pb-4">
+                    <p className="text-white/80 text-xs bg-black/40 px-3 py-1 rounded-full">Native camera active</p>
+                  </div>
+                )}
                 {claiming && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -193,7 +279,10 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
               </div>
               <p className="text-white/60 text-sm text-center mb-4">Point your camera at the QR code on the topup card</p>
               <button
-                onClick={() => { stopCamera(); setMode("manual"); }}
+                onClick={() => {
+                  if (isNative) stopNativeScan(); else stopCamera();
+                  setMode("manual");
+                }}
                 className="w-full py-3 text-white/80 text-sm font-medium flex items-center justify-center gap-2 hover:text-white transition-colors"
               >
                 <Keyboard className="w-4 h-4" />
