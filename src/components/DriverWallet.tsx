@@ -162,69 +162,93 @@ const DriverWallet = ({ driverId, walletId, balance, onRequestWithdraw, minWithd
 
       {/* Tab content */}
       {activeTab === "overview" && (
-        <div className="space-y-1.5">
-          {transactions.length === 0 ? (
-            <div className="text-center py-8">
-              <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No transactions yet</p>
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+            <span className="text-xs font-semibold text-foreground">Recent Transactions</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-1.5 mt-1.5">
+              {transactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No transactions yet</p>
+                </div>
+              ) : (
+                transactions.slice(0, 10).map(tx => <TransactionRow key={tx.id} tx={tx} />)
+              )}
             </div>
-          ) : (
-            transactions.slice(0, 10).map(tx => <TransactionRow key={tx.id} tx={tx} />)
-          )}
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {activeTab === "transactions" && (
-        <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
-          {transactions.length === 0 ? (
-            <div className="text-center py-8">
-              <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No transactions</p>
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+            <span className="text-xs font-semibold text-foreground">All Transactions ({transactions.length})</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-1.5 max-h-[40vh] overflow-y-auto mt-1.5">
+              {transactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No transactions</p>
+                </div>
+              ) : (
+                transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)
+              )}
             </div>
-          ) : (
-            transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)
-          )}
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {activeTab === "withdrawals" && (
-        <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
-          {withdrawals.length === 0 ? (
-            <div className="text-center py-8">
-              <Banknote className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No withdrawal requests</p>
-            </div>
-          ) : (
-            withdrawals.map(w => (
-              <div key={w.id} className="bg-surface rounded-xl px-3 py-2.5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-foreground">{Number(w.amount).toFixed(2)} MVR</p>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    w.status === "pending" ? "bg-amber-500/10 text-amber-600" :
-                    w.status === "approved" || w.status === "completed" ? "bg-green-500/10 text-green-600" :
-                    "bg-destructive/10 text-destructive"
-                  }`}>
-                    {w.status}
-                  </span>
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+            <span className="text-xs font-semibold text-foreground">Withdrawals ({withdrawals.length})</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-1.5 max-h-[40vh] overflow-y-auto mt-1.5">
+              {withdrawals.length === 0 ? (
+                <div className="text-center py-8">
+                  <Banknote className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No withdrawal requests</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Requested: {format(new Date(w.created_at), "MMM d, yyyy h:mm a")}
-                </p>
-                {w.processed_at && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Processed: {format(new Date(w.processed_at), "MMM d, yyyy h:mm a")}
-                  </p>
-                )}
-                {w.admin_notes && (
-                  <p className="text-[10px] text-primary italic">{w.admin_notes}</p>
-                )}
-                {w.notes && (
-                  <p className="text-[10px] text-muted-foreground italic">Note: {w.notes}</p>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+              ) : (
+                withdrawals.map(w => (
+                  <div key={w.id} className="bg-surface rounded-xl px-3 py-2.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-foreground">{Number(w.amount).toFixed(2)} MVR</p>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        w.status === "pending" ? "bg-amber-500/10 text-amber-600" :
+                        w.status === "approved" || w.status === "completed" ? "bg-green-500/10 text-green-600" :
+                        "bg-destructive/10 text-destructive"
+                      }`}>
+                        {w.status}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Requested: {format(new Date(w.created_at), "MMM d, yyyy h:mm a")}
+                    </p>
+                    {w.processed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Processed: {format(new Date(w.processed_at), "MMM d, yyyy h:mm a")}
+                      </p>
+                    )}
+                    {w.admin_notes && (
+                      <p className="text-[10px] text-primary italic">{w.admin_notes}</p>
+                    )}
+                    {w.notes && (
+                      <p className="text-[10px] text-muted-foreground italic">Note: {w.notes}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );
