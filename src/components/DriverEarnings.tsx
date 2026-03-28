@@ -99,7 +99,7 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
       setLoading(false);
     };
     fetchTrips();
-  }, [isOpen, driverId, dateRange]);
+  }, [isOpen, driverId, dateRange, vehicleId]);
 
   const completedTrips = trips.filter(t => t.status === "completed");
   const totalEarnings = completedTrips.reduce((sum, t) => sum + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
