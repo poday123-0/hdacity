@@ -170,6 +170,9 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
     supabase.from("system_settings").select("value").eq("key", "favara_logo_url").maybeSingle().then(({ data }) => {
       if (data?.value && typeof data.value === "string") setFavaraLogoUrl(data.value);
     });
+    supabase.from("system_settings").select("value").eq("key", "swipe_logo_url").maybeSingle().then(({ data }) => {
+      if (data?.value && typeof data.value === "string") setSwipeLogoUrl(data.value);
+    });
   }, []);
 
   // Fetch vehicle map icon from trip
