@@ -562,18 +562,36 @@ const AdminWatermelons = () => {
       {/* Claimed Rewards Summary */}
       {claimedItems.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            ✅ Claimed Rewards ({claimedItems.length})
-          </h3>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-primary" />
+              Claimed Rewards ({claimedItems.length})
+            </h3>
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search name, phone..."
+                value={claimedSearch}
+                onChange={e => setClaimedSearch(e.target.value)}
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+          </div>
           <div className="flex gap-2 flex-wrap text-[10px]">
-            {["all", "fee_free", "wallet_amount", "free_trip"].map(filter => {
-              const count = filter === "all" ? claimedItems.length : claimedItems.filter(c => c.promo_type === filter).length;
-              if (count === 0 && filter !== "all") return null;
+            {[
+              { key: "all", label: "All", icon: null },
+              { key: "fee_free", label: "Free Fee", icon: <Tag className="w-3 h-3" /> },
+              { key: "wallet_amount", label: "Wallet", icon: <Wallet className="w-3 h-3" /> },
+              { key: "free_trip", label: "Free Trip", icon: <Navigation className="w-3 h-3" /> },
+            ].map(filter => {
+              const count = filter.key === "all" ? claimedItems.length : claimedItems.filter(c => c.promo_type === filter.key).length;
+              if (count === 0 && filter.key !== "all") return null;
               return (
-                <button key={filter} className={`px-2.5 py-1 rounded-full font-semibold border transition-colors ${
-                  claimedFilter === filter ? "bg-primary text-primary-foreground border-primary" : "bg-surface border-border text-muted-foreground hover:text-foreground"
-                }`} onClick={() => setClaimedFilter(filter)}>
-                  {filter === "all" ? "All" : filter === "fee_free" ? "🏷️ Free Fee" : filter === "wallet_amount" ? "💰 Wallet" : "🚗 Free Trip"} ({count})
+                <button key={filter.key} className={`px-2.5 py-1 rounded-full font-semibold border transition-colors flex items-center gap-1 ${
+                  claimedFilter === filter.key ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                }`} onClick={() => setClaimedFilter(filter.key)}>
+                  {filter.icon}
+                  {filter.label} ({count})
                 </button>
               );
             })}
@@ -592,9 +610,19 @@ const AdminWatermelons = () => {
               <tbody>
                 {claimedItems
                   .filter(c => claimedFilter === "all" || c.promo_type === claimedFilter)
+                  .filter(c => {
+                    if (!claimedSearch.trim()) return true;
+                    const q = claimedSearch.toLowerCase();
+                    const claimer = claimerProfiles.get(c.claimed_by || "");
+                    if (!claimer) return c.claimed_by?.toLowerCase().includes(q);
+                    return (
+                      `${claimer.first_name} ${claimer.last_name}`.toLowerCase().includes(q) ||
+                      claimer.phone_number.toLowerCase().includes(q) ||
+                      claimer.user_type.toLowerCase().includes(q)
+                    );
+                  })
                   .map(c => {
                     const claimer = claimerProfiles.get(c.claimed_by || "");
-                    // Calculate fee-free effective period (starts 1st of next month from claim date)
                     let feeFreeInfo = "";
                     if (c.promo_type === "fee_free" && c.claimed_at) {
                       const claimDate = new Date(c.claimed_at);
@@ -616,23 +644,23 @@ const AdminWatermelons = () => {
                           )}
                         </td>
                         <td className="py-2 px-2">
-                          <Badge variant={claimer?.user_type === "driver" ? "default" : "secondary"} className="text-[10px]">
-                            {claimer?.user_type === "driver" ? "🚗 Driver" : claimer?.user_type === "passenger" ? "👤 Passenger" : claimer?.user_type || "—"}
+                          <Badge variant={claimer?.user_type === "driver" ? "default" : "secondary"} className="text-[10px] gap-1">
+                            {claimer?.user_type === "driver" ? <><Car className="w-2.5 h-2.5" /> Driver</> : claimer?.user_type === "passenger" ? <><Users className="w-2.5 h-2.5" /> Passenger</> : claimer?.user_type || "—"}
                           </Badge>
                         </td>
                         <td className="py-2 px-2">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                             c.promo_type === "fee_free" ? "bg-primary/10 text-primary" :
-                            c.promo_type === "wallet_amount" ? "bg-green-500/10 text-green-600" :
-                            "bg-amber-500/10 text-amber-600"
+                            c.promo_type === "wallet_amount" ? "bg-primary/10 text-primary" :
+                            "bg-primary/10 text-primary"
                           }`}>
-                            {c.promo_type === "fee_free" ? "Free Fee" : c.promo_type === "wallet_amount" ? "Wallet" : "Free Trip"}
+                            {c.promo_type === "fee_free" ? <><Tag className="w-2.5 h-2.5" /> Free Fee</> : c.promo_type === "wallet_amount" ? <><Wallet className="w-2.5 h-2.5" /> Wallet</> : <><Navigation className="w-2.5 h-2.5" /> Free Trip</>}
                           </span>
                           <span className="ml-1.5 font-semibold text-foreground">{promoLabel(c)}</span>
                         </td>
                         <td className="py-2 px-2 text-[10px] text-muted-foreground">
                           {c.promo_type === "fee_free" && feeFreeInfo ? (
-                            <span className="text-primary font-semibold">📅 {feeFreeInfo}</span>
+                            <span className="text-primary font-semibold flex items-center gap-1"><Calendar className="w-3 h-3" /> {feeFreeInfo}</span>
                           ) : c.promo_type === "wallet_amount" ? (
                             <span>+{c.amount} MVR to wallet</span>
                           ) : c.promo_type === "free_trip" ? (
