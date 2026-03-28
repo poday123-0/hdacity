@@ -114,6 +114,14 @@ const AdminSettings = () => {
   const brandingInputRef = useRef<HTMLInputElement>(null);
   const [brandingUploadKey, setBrandingUploadKey] = useState("");
   const [clearingData, setClearingData] = useState<string | null>(null);
+  const [versionConfig, setVersionConfig] = useState({
+    latest_version: "1.0.0",
+    min_version: "1.0.0",
+    force_update: false,
+    play_store_url: "",
+    app_store_url: "",
+    update_message: "",
+  });
 
   useEffect(() => {
     localStorage.setItem("hda_settings_tab", activeSection);
