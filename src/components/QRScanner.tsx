@@ -97,9 +97,7 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
     try {
       const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
       await BarcodeScanner.stopScan();
-      await BarcodeScanner.removeAllListeners();
     } catch {}
-    document.body.classList.remove("barcode-scanner-active");
     setNativeScanning(false);
   };
 
