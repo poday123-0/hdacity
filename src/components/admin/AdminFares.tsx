@@ -70,7 +70,7 @@ const AdminFares = () => {
   const [routeSearch, setRouteSearch] = useState("");
   const [routeFromFilter, setRouteFromFilter] = useState("all");
   const [routeVtFilter, setRouteVtFilter] = useState("all");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showVehicleRates, setShowVehicleRates] = useState(false);
 
   const fetchAll = async () => {
@@ -365,7 +365,7 @@ const AdminFares = () => {
           const groupKeys = Object.keys(grouped).sort();
 
           const toggleGroup = (key: string) => {
-            setCollapsedGroups(prev => {
+            setExpandedGroups(prev => {
               const next = new Set(prev);
               if (next.has(key)) next.delete(key); else next.add(key);
               return next;
@@ -378,7 +378,7 @@ const AdminFares = () => {
                 <div className="bg-card border border-border rounded-xl px-4 py-8 text-center text-muted-foreground">No route fares found</div>
               ) : groupKeys.map(fromArea => {
                 const items = grouped[fromArea];
-                const isCollapsed = collapsedGroups.has(fromArea);
+                const isExpanded = expandedGroups.has(fromArea);
                 // Sub-group by to_area within each from_area
                 const subGrouped: Record<string, typeof items> = {};
                 items.forEach(fz => {
@@ -393,11 +393,11 @@ const AdminFares = () => {
                       onClick={() => toggleGroup(fromArea)}
                       className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-muted/50 transition-colors"
                     >
-                      {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                       <span className="text-sm font-bold text-foreground">From: {fromArea}</span>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{items.length} routes</span>
                     </button>
-                    {!isCollapsed && (
+                    {isExpanded && (
                       <div className="divide-y divide-border">
                         {subKeys.map(toArea => {
                           const routes = subGrouped[toArea];
