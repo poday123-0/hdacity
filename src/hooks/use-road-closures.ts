@@ -13,6 +13,8 @@ export interface RoadClosure {
   status: string;
   reported_by: string | null;
   reported_by_type: string;
+  reporter_name?: string;
+  reporter_phone?: string;
 }
 
 export const useRoadClosures = () => {
@@ -32,10 +34,39 @@ export const useRoadClosures = () => {
       const active = (data as any[]).filter(
         (c) => !c.expires_at || c.expires_at > now
       );
+
+      // Fetch reporter profiles for driver-reported closures
+      const driverReportedIds = active
+        .filter((c) => c.reported_by_type === "driver" && c.reported_by)
+        .map((c) => c.reported_by);
+
+      let profileMap: Record<string, { first_name: string; last_name: string; phone_number: string }> = {};
+      if (driverReportedIds.length > 0) {
+        const uniqueIds = [...new Set(driverReportedIds)];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, phone_number")
+          .in("id", uniqueIds);
+        if (profiles) {
+          profiles.forEach((p: any) => {
+            profileMap[p.id] = p;
+          });
+        }
+      }
+
+      const enriched = active.map((c) => {
+        const profile = c.reported_by ? profileMap[c.reported_by] : null;
+        return {
+          ...c,
+          reporter_name: profile ? `${profile.first_name} ${profile.last_name}` : undefined,
+          reporter_phone: profile?.phone_number || undefined,
+        };
+      });
+
       // Approved closures visible to everyone
-      setClosures(active.filter((c) => (c.status || "approved") === "approved") as RoadClosure[]);
+      setClosures(enriched.filter((c) => (c.status || "approved") === "approved") as RoadClosure[]);
       // Pending closures for dispatch review
-      setPendingClosures(active.filter((c) => c.status === "pending") as RoadClosure[]);
+      setPendingClosures(enriched.filter((c) => c.status === "pending") as RoadClosure[]);
     }
     setLoading(false);
   }, []);
