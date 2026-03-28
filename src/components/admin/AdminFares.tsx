@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Download, Loader2 } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Download, Loader2, Search, ChevronDown, ChevronRight, Filter } from "lucide-react";
 
 const emptyZoneForm = { from_area: "", to_area: "", vehicle_type_id: "", fixed_fare: "" };
 const emptySurchargeForm = { name: "", surcharge_type: "time_based", amount: "", start_time: "", end_time: "", luggage_threshold: "3" };
@@ -66,6 +66,11 @@ const AdminFares = () => {
   const [surchargeForm, setSurchargeForm] = useState(emptySurchargeForm);
   const [importingCsv, setImportingCsv] = useState(false);
   const csvFileRef = useRef<HTMLInputElement>(null);
+  const zoneFormRef = useRef<HTMLDivElement>(null);
+  const [routeSearch, setRouteSearch] = useState("");
+  const [routeFromFilter, setRouteFromFilter] = useState("all");
+  const [routeVtFilter, setRouteVtFilter] = useState("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const fetchAll = async () => {
     setLoading(true);
@@ -95,6 +100,7 @@ const AdminFares = () => {
     setZoneForm({ from_area: fz.from_area || "", to_area: fz.to_area || "", vehicle_type_id: fz.vehicle_type_id || "", fixed_fare: fz.fixed_fare?.toString() || "" });
     setEditingZoneId(fz.id);
     setShowZoneForm(true);
+    setTimeout(() => zoneFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
   };
   const resetZoneForm = () => { setZoneForm(emptyZoneForm); setEditingZoneId(null); setShowZoneForm(false); };
   const saveZone = async () => {
@@ -276,7 +282,7 @@ const AdminFares = () => {
         </div>
 
         {showZoneForm && (
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div ref={zoneFormRef} className="bg-card border-2 border-primary/30 rounded-xl p-5 space-y-4 shadow-lg">
             <h3 className="font-semibold text-foreground">{editingZoneId ? "Edit Route" : "New Route"}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -305,41 +311,113 @@ const AdminFares = () => {
                 </select>
               </div>
             </div>
-            <button onClick={saveZone} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
-              {editingZoneId ? "Update Route" : "Save Route"}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={saveZone} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
+                {editingZoneId ? "Update Route" : "Save Route"}
+              </button>
+              <button onClick={resetZoneForm} className="bg-muted text-muted-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:text-foreground">Cancel</button>
+            </div>
           </div>
         )}
 
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface">
-                <th className={thCls}>Route</th>
-                <th className={thCls}>Vehicle Type</th>
-                <th className={thCls}>Fare (MVR)</th>
-                <th className={thCls}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fareZones.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No route fares configured</td></tr>
-              ) : fareZones.map((fz) => (
-                <tr key={fz.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{fz.from_area} → {fz.to_area}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{fz.vehicle_types?.name || "All"}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-foreground">{fz.fixed_fare} MVR</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openEditZone(fz)} className="text-muted-foreground hover:text-primary"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => deleteZone(fz.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Search & Filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={routeSearch} onChange={e => setRouteSearch(e.target.value)} placeholder="Search routes..." className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <select value={routeFromFilter} onChange={e => setRouteFromFilter(e.target.value)} className="px-3 py-2 bg-card border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="all">All Origins</option>
+            {[...new Set(fareZones.map(fz => fz.from_area))].sort().map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={routeVtFilter} onChange={e => setRouteVtFilter(e.target.value)} className="px-3 py-2 bg-card border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="all">All Vehicle Types</option>
+            {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+          </select>
         </div>
+
+        {/* Grouped Route Table */}
+        {(() => {
+          const q = routeSearch.toLowerCase();
+          const filtered = fareZones.filter(fz => {
+            if (routeFromFilter !== "all" && fz.from_area !== routeFromFilter) return false;
+            if (routeVtFilter !== "all" && fz.vehicle_type_id !== routeVtFilter) return false;
+            if (q && !fz.from_area.toLowerCase().includes(q) && !fz.to_area.toLowerCase().includes(q) && !(fz.vehicle_types?.name || "").toLowerCase().includes(q)) return false;
+            return true;
+          });
+          // Group by from_area
+          const grouped: Record<string, typeof filtered> = {};
+          filtered.forEach(fz => {
+            const key = fz.from_area;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(fz);
+          });
+          const groupKeys = Object.keys(grouped).sort();
+
+          const toggleGroup = (key: string) => {
+            setCollapsedGroups(prev => {
+              const next = new Set(prev);
+              if (next.has(key)) next.delete(key); else next.add(key);
+              return next;
+            });
+          };
+
+          return (
+            <div className="space-y-3">
+              {filtered.length === 0 ? (
+                <div className="bg-card border border-border rounded-xl px-4 py-8 text-center text-muted-foreground">No route fares found</div>
+              ) : groupKeys.map(fromArea => {
+                const items = grouped[fromArea];
+                const isCollapsed = collapsedGroups.has(fromArea);
+                // Sub-group by to_area within each from_area
+                const subGrouped: Record<string, typeof items> = {};
+                items.forEach(fz => {
+                  if (!subGrouped[fz.to_area]) subGrouped[fz.to_area] = [];
+                  subGrouped[fz.to_area].push(fz);
+                });
+                const subKeys = Object.keys(subGrouped).sort();
+
+                return (
+                  <div key={fromArea} className="bg-card border border-border rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => toggleGroup(fromArea)}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-surface hover:bg-muted/50 transition-colors"
+                    >
+                      {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      <span className="text-sm font-bold text-foreground">From: {fromArea}</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{items.length} routes</span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="divide-y divide-border">
+                        {subKeys.map(toArea => {
+                          const routes = subGrouped[toArea];
+                          return (
+                            <div key={toArea} className="px-4 py-2">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="text-xs font-semibold text-muted-foreground">→ {toArea}</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                                {routes.map(fz => (
+                                  <div key={fz.id} className="flex items-center gap-2 bg-surface rounded-lg px-3 py-2 group">
+                                    <span className="text-xs text-muted-foreground flex-1 truncate">{fz.vehicle_types?.name || "All Types"}</span>
+                                    <span className="text-xs font-bold text-foreground whitespace-nowrap">{fz.fixed_fare} MVR</span>
+                                    <button onClick={() => openEditZone(fz)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity"><Pencil className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => deleteZone(fz.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <p className="text-[10px] text-muted-foreground text-right">{filtered.length} route fares total</p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ─── Surcharges (Time-based & Luggage) ─── */}
