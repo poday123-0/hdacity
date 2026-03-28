@@ -68,22 +68,67 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     load();
   }, []);
 
-  // Filter search results
+  // Filter search results — local first, then Google Places fallback
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
-    const q = searchQuery.toLowerCase();
-    const matches = searchLocations
-      .filter(l => l.name.toLowerCase().includes(q) || (l.address || "").toLowerCase().includes(q))
-      .sort((a, b) => {
-        const an = a.name.toLowerCase();
-        const bn = b.name.toLowerCase();
-        const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
-        const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
-        return aScore - bScore;
-      })
-      .slice(0, 8)
-      .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
-    setSearchResults(matches);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    searchDebounceRef.current = setTimeout(async () => {
+      const q = searchQuery.toLowerCase();
+      const localMatches = searchLocations
+        .filter(l => l.name.toLowerCase().includes(q) || (l.address || "").toLowerCase().includes(q))
+        .sort((a, b) => {
+          const an = a.name.toLowerCase();
+          const bn = b.name.toLowerCase();
+          const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
+          const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
+          return aScore - bScore;
+        })
+        .slice(0, 8)
+        .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
+
+      // If fewer than 3 local results, fetch from Google Places
+      if (localMatches.length < 3) {
+        const g = (window as any).google;
+        if (g?.maps?.places?.AutocompleteService) {
+          try {
+            const autoSvc = new g.maps.places.AutocompleteService();
+            const predictions = await new Promise<any[]>((resolve) => {
+              autoSvc.getPlacePredictions(
+                { input: searchQuery, componentRestrictions: { country: "mv" } },
+                (res: any[] | null, status: string) => resolve(status === "OK" && res ? res : [])
+              );
+            });
+
+            const mapDiv = document.createElement("div");
+            const placesSvc = new g.maps.places.PlacesService(mapDiv);
+            const existingNames = new Set(localMatches.map(r => r.name.toLowerCase()));
+
+            for (const pred of predictions.slice(0, 5)) {
+              const detail = await new Promise<any>((resolve) => {
+                placesSvc.getDetails(
+                  { placeId: pred.place_id, fields: ["geometry", "name", "formatted_address"] },
+                  (place: any, st: string) => resolve(st === "OK" ? place : null)
+                );
+              });
+              if (detail?.geometry?.location && !existingNames.has((detail.name || "").toLowerCase())) {
+                localMatches.push({
+                  name: detail.name || pred.structured_formatting?.main_text || "",
+                  lat: detail.geometry.location.lat(),
+                  lng: detail.geometry.location.lng(),
+                  tag: "Google",
+                });
+                existingNames.add((detail.name || "").toLowerCase());
+              }
+            }
+          } catch {}
+        }
+      }
+
+      setSearchResults(localMatches.slice(0, 10));
+    }, 300);
+
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchQuery, searchLocations]);
 
   // Get user location on mount
