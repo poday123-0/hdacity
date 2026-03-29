@@ -549,7 +549,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-4">
-            <h4 className="text-sm font-semibold text-foreground mb-3">Trip Status (30 days)</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-3">Trip Status</h4>
             <div className="h-[160px]">
               {statusBreakdown.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
