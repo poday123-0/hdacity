@@ -63,36 +63,30 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
 
       setNativeScanning(true);
 
-      // Make the WebView transparent so native camera shows through
-      document.body.classList.add("barcode-scanning-active");
+      // scan() opens a native full-screen camera overlay
+      try {
+        const { barcodes } = await BarcodeScanner.scan({
+          formats: [BarcodeFormat.QrCode],
+        });
 
-      // Start continuous scan — the camera renders behind the transparent WebView
-      await BarcodeScanner.startScan({
-        formats: [BarcodeFormat.QrCode],
-        lensFacing: "BACK" as any,
-      });
+        setNativeScanning(false);
 
-      // addListener for barcodeScanned to handle results
-      const listener = await BarcodeScanner.addListener("barcodeScanned", (result) => {
-        if (result.barcode?.rawValue) {
-          const value = result.barcode.rawValue;
+        if (barcodes.length > 0) {
+          const value = barcodes[0].rawValue || "";
           if (value.startsWith("HDATOPUP:")) {
             const code = value.replace("HDATOPUP:", "");
-            stopNativeScan();
             handleClaim(code);
           } else {
             toast({ title: "Invalid QR", description: "This is not a valid topup card QR code.", variant: "destructive" });
           }
         }
-      });
-
-      // Store listener ref for cleanup
-      (window as any).__barcodeScanListener = listener;
+      } catch (scanErr: any) {
+        setNativeScanning(false);
+        console.log("Scan cancelled:", scanErr?.message);
+      }
     } catch (err: any) {
       console.error("Native scan error:", err);
-      document.body.classList.remove("barcode-scanning-active");
       setNativeScanning(false);
-      // Fall back to web camera
       startCamera();
     }
   };
@@ -100,7 +94,8 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
   const stopNativeScan = async () => {
     try {
       const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
-      await BarcodeScanner.stopScan();
+      // Cancel any in-progress scan
+      await BarcodeScanner.stopScan().catch(() => {});
     } catch {}
     setNativeScanning(false);
   };
