@@ -303,7 +303,7 @@ export const usePushNotifications = (
         if ("Notification" in window && Notification.permission === "granted") {
           setupWeb();
         }
-      }, 2000);
+      }, 10000); // was 2s — permission changes rarely, 10s is plenty
 
       return () => {
         clearInterval(interval);
