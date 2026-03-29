@@ -168,14 +168,15 @@ const AdminDashboard = () => {
       setTopAreas(sortedAreas);
 
       // Weekly revenue (last 7 days, Maldives time)
+      // Get today's Maldives date as a base
+      const maldivesNow = new Date(Date.now() + 5 * 3600000);
+      const maldivesTodayStr = maldivesNow.toISOString().split("T")[0]; // e.g. "2026-03-29"
       const last7 = [];
       for (let i = 6; i >= 0; i--) {
-        const nowUTC = Date.now();
-        const maldivesMs = nowUTC + 5 * 3600000;
-        const targetDate = new Date(maldivesMs);
-        targetDate.setUTCDate(targetDate.getUTCDate() - i);
-        const dateStr = targetDate.toISOString().split("T")[0]; // Maldives date string
-        const dayLabel = targetDate.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+        const d = new Date(maldivesTodayStr + "T00:00:00Z");
+        d.setUTCDate(d.getUTCDate() - i);
+        const dateStr = d.toISOString().split("T")[0];
+        const dayLabel = `${d.getUTCDate()} ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getUTCDay()]}`;
 
         const dayRevTotal = analyticsTrips
           .filter(t => {
