@@ -63,7 +63,7 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
 
       setNativeScanning(true);
 
-      // Use the simple scan() method which opens a native scan view
+      // scan() opens a native full-screen camera overlay
       try {
         const { barcodes } = await BarcodeScanner.scan({
           formats: [BarcodeFormat.QrCode],
@@ -81,14 +81,12 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
           }
         }
       } catch (scanErr: any) {
-        // User cancelled the scan
         setNativeScanning(false);
         console.log("Scan cancelled:", scanErr?.message);
       }
     } catch (err: any) {
       console.error("Native scan error:", err);
       setNativeScanning(false);
-      // Fall back to web camera
       startCamera();
     }
   };
@@ -96,7 +94,8 @@ const QRScanner = ({ userId, isOpen, onClose, onClaimed }: QRScannerProps) => {
   const stopNativeScan = async () => {
     try {
       const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
-      await BarcodeScanner.stopScan();
+      // Cancel any in-progress scan
+      await BarcodeScanner.stopScan().catch(() => {});
     } catch {}
     setNativeScanning(false);
   };
