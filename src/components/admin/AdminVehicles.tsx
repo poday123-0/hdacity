@@ -338,7 +338,9 @@ const AdminVehicles = () => {
     const matchesSearch = !q || v.plate_number?.toLowerCase().includes(q) || v.make?.toLowerCase().includes(q) || v.model?.toLowerCase().includes(q) || (v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}`.toLowerCase().includes(q) : false) || v.center_code?.toLowerCase().includes(q);
     const matchesStatus = statusFilter === "all" || (statusFilter === "online" ? (v.driver_id && onlineDriverIds.has(v.driver_id)) : v.vehicle_status === statusFilter);
     const matchesType = !typeFilter || v.vehicle_type_id === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    const driverCompanyId = v.profiles?.company_id || null;
+    const matchesCompany = !companyFilter || driverCompanyId === companyFilter;
+    return matchesSearch && matchesStatus && matchesType && matchesCompany;
   });
 
   return (
