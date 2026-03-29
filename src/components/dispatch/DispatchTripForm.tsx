@@ -954,7 +954,7 @@ const DispatchTripForm = ({
       </div>
 
       {!collapsed && (
-        <div className="p-2 space-y-1.5 overflow-y-auto flex-1 min-h-0">
+        <div className="p-1.5 space-y-1 overflow-y-auto flex-1 min-h-0">
           {/* Vehicle type - buttons with keyboard navigation */}
           <div className="space-y-1">
             <div
