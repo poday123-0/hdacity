@@ -4,6 +4,7 @@ import { Bell, MapPin, X, Check, ChevronRight } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 
 const SNOOZE_UNTIL_KEY = "hda_permissions_snooze_until";
+const PERMS_GRANTED_KEY = "hda_permissions_all_granted";
 
 type PermissionStep = "intro" | "location" | "notification" | "done";
 
@@ -83,14 +84,19 @@ const NotificationPermissionPrompt = () => {
     let cancelled = false;
 
     const checkPermissions = async () => {
+      // If we previously confirmed all permissions granted, don't show again
+      try {
+        if (localStorage.getItem(PERMS_GRANTED_KEY) === "true") return;
+      } catch {}
+
       const notifAlready = await isNotifGranted();
       
       let locGranted = false;
       if (isNative) {
-        // On native, probe geolocation with a fast timeout
+        // On native, probe geolocation with a longer timeout to avoid false negatives
         try {
           await new Promise<void>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(() => resolve(), () => reject(), { timeout: 2000 });
+            navigator.geolocation.getCurrentPosition(() => resolve(), () => reject(), { timeout: 5000 });
           });
           locGranted = true;
         } catch {
@@ -105,7 +111,11 @@ const NotificationPermissionPrompt = () => {
         } catch {}
       }
 
-      if (notifAlready && locGranted) return; // All good
+      if (notifAlready && locGranted) {
+        // Both granted — remember permanently so we never show again
+        try { localStorage.setItem(PERMS_GRANTED_KEY, "true"); } catch {}
+        return;
+      }
 
       // Check snooze
       try {
@@ -138,8 +148,14 @@ const NotificationPermissionPrompt = () => {
       setNotifGranted(false);
     }
     setStep("done");
+    // If both ended up granted, remember permanently
+    const finalNotif = await isNotifGranted();
+    const finalLoc = locationGranted;
+    if (finalNotif && finalLoc) {
+      try { localStorage.setItem(PERMS_GRANTED_KEY, "true"); } catch {}
+    }
     setTimeout(() => setVisible(false), 1800);
-  }, []);
+  }, [locationGranted]);
 
   const advanceAfterLocation = useCallback(async () => {
     const canPrompt = await isNotifPromptable();
