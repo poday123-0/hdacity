@@ -78,6 +78,10 @@ let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones
 let _locationsCacheTs = 0;
 const LOC_CACHE_TTL = 30_000; // 30 sec
 
+// Google Places result cache to avoid redundant API calls
+const _placesCache = new Map<string, { results: any[]; ts: number }>();
+const PLACES_CACHE_TTL = 60_000; // 1 min
+
 const DispatchTripForm = ({
   formIndex,
   dispatcherProfile,
@@ -595,19 +599,19 @@ const DispatchTripForm = ({
         }
       };
 
-      // Google Places — only show results WITHIN admin service areas
-      if (mapsKeyRef.current) {
-        supabase.functions.invoke("google-places-search", {
-          body: { query: searchQuery, key: mapsKeyRef.current },
-        }).then(({ data }) => {
+      // Google Places — use JS SDK directly (faster than edge function)
+      if (typeof google !== "undefined" && google.maps?.places) {
+        const cacheKey = searchQuery.toLowerCase().trim();
+        const cached = _placesCache.get(cacheKey);
+        const processGoogleResults = (results: any[]) => {
           if (googleAbort.signal.aborted) return;
-          if (!data?.results?.length) return;
-          const googleResults: NominatimResult[] = data.results
-            .filter((p: any) => p.geometry?.location)
+          if (!results?.length) return;
+          const googleResults: NominatimResult[] = results
             .map((p: any, i: number) => {
-              const lat = p.geometry.location.lat;
-              const lng = p.geometry.location.lng;
-              // ONLY include places within admin service areas
+              const loc = p.geometry?.location;
+              if (!loc) return null;
+              const lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
+              const lng = typeof loc.lng === "function" ? loc.lng() : loc.lng;
               if (!isWithinServiceArea(lat, lng)) return null;
               const areaName = findNearestServiceAreaName(lat, lng);
               const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
@@ -624,7 +628,33 @@ const DispatchTripForm = ({
             })
             .filter(Boolean) as NominatimResult[];
           mergeResults(googleResults);
-        }).catch(() => {});
+        };
+
+        if (cached && Date.now() - cached.ts < PLACES_CACHE_TTL) {
+          processGoogleResults(cached.results);
+        } else {
+          // Use PlacesService for text search (no CORS issues, direct SDK)
+          const div = document.createElement("div");
+          const service = new google.maps.places.PlacesService(div);
+          const request = {
+            query: searchQuery,
+            location: new google.maps.LatLng(4.1755, 73.5093),
+            radius: 50000,
+          };
+          service.textSearch(request, (results, status) => {
+            if (googleAbort.signal.aborted) return;
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              // Cache raw results (serialize lat/lng)
+              const serialized = results.map(r => ({
+                name: r.name,
+                formatted_address: r.formatted_address,
+                geometry: { location: { lat: r.geometry?.location?.lat(), lng: r.geometry?.location?.lng() } },
+              }));
+              _placesCache.set(cacheKey, { results: serialized, ts: Date.now() });
+              processGoogleResults(serialized);
+            }
+          });
+        }
       }
     }, 150);
 
