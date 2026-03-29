@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
     const perTokenResults: any[] = [];
 
     // Pre-fetch driver-specific trip_sound_id preferences for all target drivers
-    const driverUserIds = tokens
+    const driverUserIds = filteredTokens
       .filter((t: any) => t.user_type === "driver")
       .map((t: any) => t.user_id);
     const driverSoundPrefs: Record<string, { sound_url: string }> = {};
