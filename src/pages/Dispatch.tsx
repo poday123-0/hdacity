@@ -872,22 +872,38 @@ const Dispatch = () => {
     const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
-    const [{ data }, { data: appReq }, { data: lost }] = await Promise.all([
-      supabase
-        .from("trips")
-        .select(tripSelect)
-        .eq("dispatch_type", "operator")
-.in("status", ["requested", "accepted", "arrived", "started", "completed"])
-         .gte("created_at", todayISO)
-         .order("created_at", { ascending: false })
-        .limit(200),
+
+    // Fetch ALL today's operator bookings (paginated to avoid 1000-row cap)
+    const fetchAllToday = async () => {
+      let all: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("trips")
+          .select(tripSelect)
+          .eq("dispatch_type", "operator")
+          .in("status", ["requested", "accepted", "arrived", "started", "completed"])
+          .gte("created_at", todayISO)
+          .order("created_at", { ascending: false })
+          .range(from, from + batchSize - 1);
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < batchSize) break;
+        from += batchSize;
+      }
+      return all;
+    };
+
+    const [todayTrips, { data: appReq }, { data: lost }] = await Promise.all([
+      fetchAllToday(),
       supabase
         .from("trips")
         .select(tripSelect)
         .eq("dispatch_type", "dispatch_broadcast")
-.in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
-         .order("updated_at", { ascending: false })
-         .limit(300),
+        .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+        .order("updated_at", { ascending: false })
+        .limit(300),
       supabase
         .from("trips")
         .select(
@@ -899,7 +915,7 @@ const Dispatch = () => {
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
-    setRecentTrips(data || []);
+    setRecentTrips(todayTrips);
     setAppRequestTrips(appReq || []);
     setLostTrips(lost || []);
   };
