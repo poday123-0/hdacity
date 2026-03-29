@@ -416,8 +416,8 @@ const AdminDrivers = () => {
     const payload: any = {
       plate_number: vehicleForm.plate_number, make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
       year: vehicleForm.year ? parseInt(vehicleForm.year) : null, vehicle_type_id: vehicleForm.vehicle_type_id || null,
-      driver_id: expandedDriver, image_url: vehicleForm.image_url || null,
-      registration_url: vehicleForm.registration_url || null, insurance_url: vehicleForm.insurance_url || null,
+      driver_id: expandedDriver, image_url: vehicleForm.image_url || DEFAULT_VEHICLE_IMAGE,
+      registration_url: vehicleForm.registration_url || DEFAULT_VEHICLE_IMAGE, insurance_url: vehicleForm.insurance_url || DEFAULT_VEHICLE_IMAGE,
       vehicle_status: vehicleForm.vehicle_status || "pending", rejection_reason: vehicleForm.rejection_reason || null,
       center_code: vehicleForm.center_code || null,
     };
