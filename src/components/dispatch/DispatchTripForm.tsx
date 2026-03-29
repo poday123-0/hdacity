@@ -923,7 +923,7 @@ const DispatchTripForm = ({
   return (
     <div className={`bg-card border border-border rounded-lg overflow-hidden flex flex-col min-w-[260px] max-w-[320px] ${centerCodeResults.length > 0 ? "" : "max-h-[calc(100vh-120px)]"}`}>
       {/* Form header */}
-      <div className="border-b border-border px-2.5 py-1.5 flex items-center justify-between gap-2">
+      <div className="border-b border-border px-2.5 py-1 flex items-center justify-between gap-2">
         <button onClick={() => setCollapsed(!collapsed)} className="flex items-center gap-1.5 shrink-0">
           <h3 className="text-xs font-bold text-foreground">{formLabels[formIndex]}</h3>
           {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -954,7 +954,7 @@ const DispatchTripForm = ({
       </div>
 
       {!collapsed && (
-        <div className="p-2 space-y-1.5 overflow-y-auto flex-1 min-h-0">
+        <div className="p-1.5 space-y-1 overflow-y-auto flex-1 min-h-0">
           {/* Vehicle type - buttons with keyboard navigation */}
           <div className="space-y-1">
             <div
