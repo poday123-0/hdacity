@@ -112,11 +112,19 @@ export const usePushNotifications = (
           }
         }
 
+        // For trip_requested: dispatch a custom event so DriverApp can trigger
+        // an immediate trip check as a backup in case realtime is stale.
+        // This ensures the trip shows up even if the WebSocket missed it.
+        if (notifType === "trip_requested" || notifType === "trip_accepted" || notifType === "sos_alert") {
+          window.dispatchEvent(new CustomEvent("fcm-foreground-trip", { detail: { type: notifType, data: payload.data } }));
+        }
+
         // Show drop-down browser notification (clickable to open app)
         if ("Notification" in window && Notification.permission === "granted") {
           // For trip requests: always show with sound so the driver sees the drop-down
           const isCritical = ["trip_requested", "sos_alert"].includes(notifType);
-          const shouldBeSilent = isCritical ? false : !document.hidden;
+          // For trip_requested: silent=true since DriverApp's realtime/backup will play the custom sound
+          const shouldBeSilent = notifType === "trip_requested" ? true : (isCritical ? false : !document.hidden);
           const notif = new Notification(msgTitle, {
             body: msgBody,
             icon: "/pwa-192x192.png",
