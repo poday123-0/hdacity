@@ -152,11 +152,21 @@ function updateManifest() {
     }
   }
 
+  // Add Firebase default notification icon meta-data inside <application>
+  if (!content.includes('default_notification_icon')) {
+    content = content.replace(
+      '</application>',
+      `\n        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/ic_stat_notification" />\n    </application>`
+    );
+    added++;
+    logDone('Added Firebase default_notification_icon meta-data');
+  }
+
   fs.writeFileSync(manifestPath, content, 'utf8');
   if (added > 0) {
-    logDone(`Added ${added} permissions`);
+    logDone(`Added ${added} permissions/meta-data entries`);
   } else {
-    logSkip('All permissions already present');
+    logSkip('All permissions and meta-data already present');
   }
 }
 
