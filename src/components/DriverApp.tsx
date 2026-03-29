@@ -1298,8 +1298,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 30s for new requested/scheduled trips AND direct-assigned trips
-    // Realtime handles most cases — this is just a safety net
+    // Fallback: Poll every 60s for new requested/scheduled trips AND direct-assigned trips
+    // Realtime handles most cases — this is just a safety net (reduced from 30s to save battery)
     const pollInterval = setInterval(async () => {
       if (!isActive || screen !== "online") return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -1341,7 +1341,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 30000);
+    }, 60000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
     const doForegroundTripCheck = async () => {
@@ -1414,13 +1414,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      // Fire immediately + aggressive retries to handle WebView/network resume lag on native
+      // Fire immediately + 2 retries (reduced from 6 to save battery/CPU)
       doForegroundTripCheck();
-      setTimeout(doForegroundTripCheck, 300);
-      setTimeout(doForegroundTripCheck, 800);
-      setTimeout(doForegroundTripCheck, 1500);
-      setTimeout(doForegroundTripCheck, 3000);
-      setTimeout(doForegroundTripCheck, 5000);
+      setTimeout(doForegroundTripCheck, 500);
+      setTimeout(doForegroundTripCheck, 2000);
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
