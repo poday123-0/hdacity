@@ -419,7 +419,7 @@ Deno.serve(async (req) => {
         success: true,
         sent: totalSent,
         failed: failedTokens.length,
-        total_tokens: tokens.length,
+        total_tokens: filteredTokens.length,
         details: perTokenResults,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
