@@ -37,6 +37,7 @@ const AdminVehicles = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
   const [importing, setImporting] = useState(false);
   const [driverSearch, setDriverSearch] = useState("");
   const [onlineDriverIds, setOnlineDriverIds] = useState<Set<string>>(new Set());
