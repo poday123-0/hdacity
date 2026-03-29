@@ -3578,15 +3578,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               {/* Customer/Passenger info */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-foreground shrink-0 overflow-hidden">
-                  {passengerProfile?.avatar_url ?
-                <img src={passengerProfile.avatar_url} alt="" className="w-full h-full object-cover" /> :
-                currentTrip.customer_name ?
-                `${currentTrip.customer_name[0] || ""}` :
-                passengerProfile ? `${passengerProfile.first_name?.[0] || ""}${passengerProfile.last_name?.[0] || ""}` : "?"}
+                  {currentTrip.dispatch_type === "operator" ? (
+                    <Navigation className="w-5 h-5 text-primary" />
+                  ) : (
+                    <User className="w-5 h-5 text-muted-foreground" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-sm text-foreground truncate">
-                    {currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}
+                    {currentTrip.dispatch_type === "operator" ? "Dispatch Booking" : "Passenger"}
                   </p>
                   {currentTrip.dispatch_type === "operator" &&
                 <span className="text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
