@@ -1412,8 +1412,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Expose for native notification tap / SW focus message
     doForegroundTripCheckRef.current = doForegroundTripCheck;
 
-    const onVisibilityChange = () => {
+    const onVisibilityChange = async () => {
       if (document.visibilityState !== "visible") return;
+      // On native, clear delivered notifications to stop OS-level sound
+      // before the foreground loop starts (prevents double sound)
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+          await PushNotifications.removeAllDeliveredNotifications();
+        }
+      } catch {}
       // Fire immediately + 2 retries (reduced from 6 to save battery/CPU)
       doForegroundTripCheck();
       setTimeout(doForegroundTripCheck, 500);
@@ -1451,8 +1460,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const { Capacitor } = await import("@capacitor/core");
         if (!Capacitor.isNativePlatform()) return;
         const { PushNotifications } = await import("@capacitor/push-notifications");
-        const listener = await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+        const listener = await PushNotifications.addListener("pushNotificationActionPerformed", async (action) => {
           console.log("Native notification tapped:", action);
+          // Clear all delivered notifications to stop OS-level sound
+          try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
           triggerCheck();
         });
         nativeCleanup = () => listener.remove();
