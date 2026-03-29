@@ -1093,29 +1093,34 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       console.log(`[RADIUS CHECK] No GPS or no pickup coords — fail-open, allowing trip through`);
     }
 
-    // Check if driver's vehicle is temporarily blocked
-    if (userProfile?.id) {
-      const { data: blockedVehicle } = await supabase
-        .from("vehicles")
-        .select("blocked_until")
-        .eq("driver_id", userProfile.id)
-        .eq("is_active", true)
-        .not("blocked_until", "is", null)
-        .limit(1)
-        .maybeSingle();
-      if (blockedVehicle?.blocked_until && new Date(blockedVehicle.blocked_until as string) > new Date()) {
-        console.log(`[BLOCK CHECK] Driver vehicle is blocked until ${blockedVehicle.blocked_until} — skipping trip`);
-        return;
-      }
+    // Run vehicle block check and fresh trip validation in parallel for speed
+    const [blockResult, freshTripResult] = await Promise.all([
+      // Check if driver's vehicle is temporarily blocked
+      userProfile?.id
+        ? supabase
+            .from("vehicles")
+            .select("blocked_until")
+            .eq("driver_id", userProfile.id)
+            .eq("is_active", true)
+            .not("blocked_until", "is", null)
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      // Verify the trip is still valid before showing it
+      supabase
+        .from("trips")
+        .select("id, status, driver_id, requested_at")
+        .eq("id", trip.id)
+        .single(),
+    ]);
+
+    const blockedVehicle = blockResult.data;
+    if (blockedVehicle?.blocked_until && new Date(blockedVehicle.blocked_until as string) > new Date()) {
+      console.log(`[BLOCK CHECK] Driver vehicle is blocked until ${blockedVehicle.blocked_until} — skipping trip`);
+      return;
     }
 
-    // Verify the trip is still valid before showing it (prevents stale/old trip requests)
-    const { data: freshTrip } = await supabase.
-    from("trips").
-    select("id, status, driver_id, requested_at").
-    eq("id", trip.id).
-    single();
-
+    const freshTrip = freshTripResult.data;
     if (!freshTrip) return;
     // Skip if trip is no longer requestable or already taken
     if (!(freshTrip.status === "requested" || freshTrip.status === "scheduled")) return;
@@ -1411,11 +1416,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      // Fire immediately + multiple retries to handle WebView resume lag on native
+      // Fire immediately + aggressive retries to handle WebView/network resume lag on native
       doForegroundTripCheck();
-      setTimeout(doForegroundTripCheck, 500);
+      setTimeout(doForegroundTripCheck, 300);
+      setTimeout(doForegroundTripCheck, 800);
       setTimeout(doForegroundTripCheck, 1500);
       setTimeout(doForegroundTripCheck, 3000);
+      setTimeout(doForegroundTripCheck, 5000);
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -1436,11 +1443,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (!userProfile?.id) return;
 
     const triggerCheck = () => {
+      // Fire immediately + aggressive retries to handle WebView/network resume lag
       doForegroundTripCheckRef.current?.();
-      // Retry after delays to handle WebView resume lag
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 300);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 1000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 200);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 600);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 1200);
       setTimeout(() => doForegroundTripCheckRef.current?.(), 2500);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 4000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 6000);
     };
 
     // Native Capacitor: listen for notification tap
