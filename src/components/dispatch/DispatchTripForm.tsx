@@ -599,18 +599,19 @@ const DispatchTripForm = ({
         }
       };
 
-      // Google Places — direct API call (faster than edge function)
-      if (mapsKeyRef.current) {
+      // Google Places — use JS SDK directly (faster than edge function)
+      if (typeof google !== "undefined" && google.maps?.places) {
         const cacheKey = searchQuery.toLowerCase().trim();
         const cached = _placesCache.get(cacheKey);
         const processGoogleResults = (results: any[]) => {
           if (googleAbort.signal.aborted) return;
           if (!results?.length) return;
           const googleResults: NominatimResult[] = results
-            .filter((p: any) => p.geometry?.location)
             .map((p: any, i: number) => {
-              const lat = p.geometry.location.lat;
-              const lng = p.geometry.location.lng;
+              const loc = p.geometry?.location;
+              if (!loc) return null;
+              const lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
+              const lng = typeof loc.lng === "function" ? loc.lng() : loc.lng;
               if (!isWithinServiceArea(lat, lng)) return null;
               const areaName = findNearestServiceAreaName(lat, lng);
               const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
@@ -632,16 +633,27 @@ const DispatchTripForm = ({
         if (cached && Date.now() - cached.ts < PLACES_CACHE_TTL) {
           processGoogleResults(cached.results);
         } else {
-          const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=4.1755,73.5093&radius=50000&key=${mapsKeyRef.current}`;
-          fetch(url, { signal: googleAbort.signal })
-            .then(r => r.json())
-            .then(data => {
-              if (data.results) {
-                _placesCache.set(cacheKey, { results: data.results, ts: Date.now() });
-              }
-              processGoogleResults(data.results || []);
-            })
-            .catch(() => {});
+          // Use PlacesService for text search (no CORS issues, direct SDK)
+          const div = document.createElement("div");
+          const service = new google.maps.places.PlacesService(div);
+          const request = {
+            query: searchQuery,
+            location: new google.maps.LatLng(4.1755, 73.5093),
+            radius: 50000,
+          };
+          service.textSearch(request, (results, status) => {
+            if (googleAbort.signal.aborted) return;
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              // Cache raw results (serialize lat/lng)
+              const serialized = results.map(r => ({
+                name: r.name,
+                formatted_address: r.formatted_address,
+                geometry: { location: { lat: r.geometry?.location?.lat(), lng: r.geometry?.location?.lng() } },
+              }));
+              _placesCache.set(cacheKey, { results: serialized, ts: Date.now() });
+              processGoogleResults(serialized);
+            }
+          });
         }
       }
     }, 150);
