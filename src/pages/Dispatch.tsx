@@ -877,9 +877,9 @@ const Dispatch = () => {
         .from("trips")
         .select(tripSelect)
         .eq("dispatch_type", "operator")
-        .in("status", ["requested", "accepted", "started", "completed"])
-        .gte("created_at", todayISO)
-        .order("created_at", { ascending: false })
+.in("status", ["requested", "accepted", "arrived", "started", "completed"])
+         .gte("created_at", todayISO)
+         .order("created_at", { ascending: false })
         .limit(200),
       supabase
         .from("trips")
