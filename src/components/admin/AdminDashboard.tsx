@@ -59,16 +59,17 @@ const AdminDashboard = () => {
       maldivesMidnight.setUTCHours(0, 0, 0, 0);
       const todayStartUTC = new Date(maldivesMidnight.getTime() - 5 * 3600000);
 
+      const todayISO = todayStartUTC.toISOString();
       const [drivers, vehicles, trips, activeTrips, passengers, onlineDrivers, completedToday, cancelledToday, todayRevenueData] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }),
-        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started"]),
+        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started", "arrived"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("created_at", todayStartUTC.toISOString()),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("created_at", todayStartUTC.toISOString()),
-        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("created_at", todayStartUTC.toISOString()),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayISO),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayISO),
+        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayISO),
       ]);
 
       const revenue = (todayRevenueData.data || []).reduce((sum: number, t: any) => sum + (t.actual_fare || 0), 0);
@@ -109,18 +110,33 @@ const AdminDashboard = () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: analyticsTrips } = await supabase
-        .from("trips")
-        .select("created_at, status, actual_fare, pickup_address, completed_at")
-        .gte("created_at", thirtyDaysAgo.toISOString())
-        .order("created_at", { ascending: true });
+      // Fetch all trips (handle 1000-row limit by paginating)
+      let allTrips: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("trips")
+          .select("created_at, status, actual_fare, pickup_address, completed_at")
+          .gte("created_at", thirtyDaysAgo.toISOString())
+          .order("created_at", { ascending: true })
+          .range(from, from + batchSize - 1);
+        if (!data || data.length === 0) break;
+        allTrips = allTrips.concat(data);
+        if (data.length < batchSize) break;
+        from += batchSize;
+      }
 
-      if (!analyticsTrips) return;
+      if (allTrips.length === 0) return;
+      const analyticsTrips = allTrips;
 
-      // Hourly distribution
+      // Helper: convert UTC date to Maldives hour/day
+      const toMaldivesDate = (utcStr: string) => new Date(new Date(utcStr).getTime() + 5 * 3600000);
+
+      // Hourly distribution (Maldives time)
       const hourCounts = new Array(24).fill(0);
       analyticsTrips.forEach(t => {
-        const hour = new Date(t.created_at).getHours();
+        const hour = toMaldivesDate(t.created_at).getUTCHours();
         hourCounts[hour]++;
       });
       setHourlyData(HOURS.map(h => ({
@@ -128,17 +144,17 @@ const AdminDashboard = () => {
         trips: hourCounts[h],
       })));
 
-      // Weekday distribution
+      // Weekday distribution (Maldives time)
       const dayCounts = new Array(7).fill(0);
       const dayRevenue = new Array(7).fill(0);
       analyticsTrips.forEach(t => {
-        const day = new Date(t.created_at).getDay();
+        const day = toMaldivesDate(t.created_at).getUTCDay();
         dayCounts[day]++;
         if (t.status === "completed" && t.actual_fare) dayRevenue[day] += t.actual_fare;
       });
       setWeekdayData(WEEKDAYS.map((d, i) => ({ day: d, trips: dayCounts[i], revenue: Math.round(dayRevenue[i]) })));
 
-      // Top pickup areas (extract first part of address)
+      // Top pickup areas
       const areaCounts: Record<string, number> = {};
       analyticsTrips.forEach(t => {
         if (!t.pickup_address) return;
@@ -151,15 +167,22 @@ const AdminDashboard = () => {
         .map(([name, count]) => ({ name, count }));
       setTopAreas(sortedAreas);
 
-      // Weekly revenue (last 7 days)
+      // Weekly revenue (last 7 days, Maldives time)
       const last7 = [];
       for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split("T")[0];
-        const dayLabel = d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+        const nowUTC = Date.now();
+        const maldivesMs = nowUTC + 5 * 3600000;
+        const targetDate = new Date(maldivesMs);
+        targetDate.setUTCDate(targetDate.getUTCDate() - i);
+        const dateStr = targetDate.toISOString().split("T")[0]; // Maldives date string
+        const dayLabel = targetDate.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+
         const dayRevTotal = analyticsTrips
-          .filter(t => t.status === "completed" && t.actual_fare && t.completed_at && t.completed_at.startsWith(dateStr))
+          .filter(t => {
+            if (t.status !== "completed" || !t.actual_fare || !t.completed_at) return false;
+            const completedMaldives = toMaldivesDate(t.completed_at);
+            return completedMaldives.toISOString().split("T")[0] === dateStr;
+          })
           .reduce((s, t) => s + (t.actual_fare || 0), 0);
         last7.push({ date: dayLabel, revenue: Math.round(dayRevTotal) });
       }
@@ -267,7 +290,7 @@ const AdminDashboard = () => {
     { label: "Online Drivers", value: stats.onlineDrivers, icon: Navigation, accent: true, pulse: true },
     { label: "Active Trips", value: stats.activeTrips, icon: MapPin, accent: true, pulse: true },
     { label: "Completed Today", value: stats.completedToday, icon: TrendingUp, accent: false },
-    { label: "Today Revenue", value: `MVR ${stats.todayRevenue.toFixed(0)}`, icon: DollarSign, accent: false },
+    { label: "Today Revenue", value: `MVR ${Math.round(stats.todayRevenue).toLocaleString()}`, icon: DollarSign, accent: false },
   ];
 
   const secondaryCards = [
