@@ -3591,9 +3591,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   {currentTrip.dispatch_type === "operator" &&
                 <span className="text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
                 }
-                  {currentTrip.dispatch_type === "operator" &&
-                <span className="ml-2 text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
-                }
                 </div>
               </div>
 
