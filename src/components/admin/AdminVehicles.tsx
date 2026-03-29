@@ -570,6 +570,10 @@ const AdminVehicles = () => {
             <option value="">All Types</option>
             {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
           </select>
+          <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="px-3 py-1.5 bg-surface border border-border rounded-full text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">All Companies</option>
+            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
         </div>
       </div>
 
