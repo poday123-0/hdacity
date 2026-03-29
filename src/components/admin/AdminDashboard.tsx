@@ -50,6 +50,9 @@ const AdminDashboard = () => {
   const [recentTrips, setRecentTrips] = useState<RecentTrip[]>([]);
 
   // Analytics state
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>("month");
+  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [hourlyData, setHourlyData] = useState<{ hour: string; trips: number }[]>([]);
   const [weekdayData, setWeekdayData] = useState<{ day: string; trips: number; revenue: number }[]>([]);
   const [topAreas, setTopAreas] = useState<{ name: string; count: number }[]>([]);
