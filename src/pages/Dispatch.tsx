@@ -1541,21 +1541,25 @@ const Dispatch = () => {
                         ? recentTrips.filter((t: any) => {
                             const centerCode =
                               t.vehicle?.center_code?.toLowerCase() ||
-                              t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() ||
+                              t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.split(",")[0]?.trim()?.toLowerCase() ||
                               "";
                             const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
                             const pickup = (t.pickup_address || "").toLowerCase();
                             const dropoff = (t.dropoff_address || "").toLowerCase();
+                            const customerName = (t.customer_name || "").toLowerCase();
+                            const customerPhone = (t.customer_phone || "").toLowerCase();
                             return (
                               centerCode.includes(q) ||
                               plateNumber.includes(q) ||
                               pickup.includes(q) ||
-                              dropoff.includes(q)
+                              dropoff.includes(q) ||
+                              customerName.includes(q) ||
+                              customerPhone.includes(q)
                             );
                           })
                         : recentTrips;
 
-                      const displayTrips = filtered.slice(0, 5);
+                      const displayTrips = q ? filtered : filtered.slice(0, 5);
 
                       if (filtered.length === 0) {
                         return (
