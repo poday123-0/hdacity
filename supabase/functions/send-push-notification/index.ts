@@ -198,15 +198,48 @@ Deno.serve(async (req) => {
       throw new Error("user_ids array is required");
     }
 
+    // For trip_requested notifications, filter out drivers who are offline or not in driver mode
+    const isTripRequestType = data?.type === "trip_requested";
+    let filteredUserIds = user_ids;
+
+    if (isTripRequestType && user_ids.length > 0) {
+      // Check driver_locations to see who is actually online and available
+      const { data: onlineDrivers } = await supabase
+        .from("driver_locations")
+        .select("driver_id")
+        .in("driver_id", user_ids)
+        .eq("is_online", true);
+
+      const onlineSet = new Set((onlineDrivers || []).map((d: any) => d.driver_id));
+
+      // Also check device_tokens user_type — only send to tokens registered as "driver"
+      filteredUserIds = user_ids.filter((id: string) => onlineSet.has(id));
+
+      if (filteredUserIds.length === 0) {
+        console.log("No online drivers found among user_ids — skipping trip_requested notification");
+        return new Response(
+          JSON.stringify({ success: true, sent: 0, message: "No online drivers found" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log(`Filtered ${user_ids.length} → ${filteredUserIds.length} online driver(s) for trip_requested`);
+    }
+
     const { data: tokens, error: tokenError } = await supabase
       .from("device_tokens")
       .select("token, user_id, device_type, user_type")
-      .in("user_id", user_ids)
+      .in("user_id", filteredUserIds)
       .eq("is_active", true);
 
     if (tokenError) throw tokenError;
-    if (!tokens || tokens.length === 0) {
-      console.log("No active tokens found for user_ids:", user_ids);
+
+    // For trip requests, only send to tokens registered as "driver" user_type
+    const filteredTokens = isTripRequestType
+      ? (tokens || []).filter((t: any) => t.user_type === "driver")
+      : (tokens || []);
+
+    if (filteredTokens.length === 0) {
+      console.log("No active tokens found for user_ids:", filteredUserIds);
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: "No active tokens found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
