@@ -1608,13 +1608,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Polling fallback every 30s in case realtime misses the event
+    // Polling fallback every 60s in case realtime misses the event (reduced from 30s)
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
         await handleTripCancelledOrTaken(data);
       }
-    }, 30000);
+    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
