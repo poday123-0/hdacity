@@ -59,16 +59,17 @@ const AdminDashboard = () => {
       maldivesMidnight.setUTCHours(0, 0, 0, 0);
       const todayStartUTC = new Date(maldivesMidnight.getTime() - 5 * 3600000);
 
+      const todayISO = todayStartUTC.toISOString();
       const [drivers, vehicles, trips, activeTrips, passengers, onlineDrivers, completedToday, cancelledToday, todayRevenueData] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }),
-        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started"]),
+        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started", "arrived"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
         supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("created_at", todayStartUTC.toISOString()),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("created_at", todayStartUTC.toISOString()),
-        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("created_at", todayStartUTC.toISOString()),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayISO),
+        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayISO),
+        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayISO),
       ]);
 
       const revenue = (todayRevenueData.data || []).reduce((sum: number, t: any) => sum + (t.actual_fare || 0), 0);
