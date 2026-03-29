@@ -1070,15 +1070,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Block new trips if driver already has an active (non-scheduled) trip
     if (currentTrip) return;
 
-    // Note: Scheduled trips no longer block normal trip acceptance.
-    // The driver can accept normal trips and start scheduled rides from the banner.
-
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
       console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} does not match active vehicle type ${activeVehicleTypeIdRef.current} — skipping`);
       return;
     }
-    // Fallback: if no active vehicle type set, check against all eligible types
     if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
       console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} not in driver's eligible types — skipping`);
       return;
@@ -1093,9 +1089,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       console.log(`[RADIUS CHECK] No GPS or no pickup coords — fail-open, allowing trip through`);
     }
 
-    // Run vehicle block check and fresh trip validation in parallel for speed
-    const [blockResult, freshTripResult] = await Promise.all([
-      // Check if driver's vehicle is temporarily blocked
+    // === SHOW UI IMMEDIATELY for fastest response ===
+    // Vibrate to alert driver
+    try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
+
+    // Play sound immediately
+    if (tripRequestSoundUrl) {
+      try {
+        stopAllSounds();
+        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
+      } catch {}
+    }
+
+    // Show trip request screen with available data right away
+    setCurrentTrip(trip);
+    setScreen("ride-request");
+
+    toast({
+      title: "🚗 New Ride Request!",
+      description: `${trip.pickup_address} → ${trip.dropoff_address}`
+    });
+
+    // === VALIDATE + FETCH EXTRA DATA IN PARALLEL (non-blocking for UI) ===
+    const [blockResult, freshTripResult, pProfileRes, stopsRes, timeoutRes] = await Promise.all([
       userProfile?.id
         ? supabase
             .from("vehicles")
@@ -1106,62 +1122,44 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             .limit(1)
             .maybeSingle()
         : Promise.resolve({ data: null }),
-      // Verify the trip is still valid before showing it
       supabase
         .from("trips")
         .select("id, status, driver_id, requested_at")
         .eq("id", trip.id)
         .single(),
+      trip.passenger_id
+        ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single()
+        : Promise.resolve({ data: null }),
+      supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
+      supabase.from("system_settings").select("value").eq("key", "driver_accept_timeout_seconds").single(),
     ]);
 
+    // If trip is invalid, dismiss the UI
     const blockedVehicle = blockResult.data;
-    if (blockedVehicle?.blocked_until && new Date(blockedVehicle.blocked_until as string) > new Date()) {
-      console.log(`[BLOCK CHECK] Driver vehicle is blocked until ${blockedVehicle.blocked_until} — skipping trip`);
+    const freshTrip = freshTripResult.data;
+    const isBlocked = blockedVehicle?.blocked_until && new Date(blockedVehicle.blocked_until as string) > new Date();
+    const isInvalid = !freshTrip
+      || !(freshTrip.status === "requested" || freshTrip.status === "scheduled")
+      || freshTrip.driver_id
+      || (Date.now() - new Date(freshTrip.requested_at).getTime() > 5 * 60 * 1000);
+
+    if (isBlocked || isInvalid) {
+      console.log(isBlocked ? `[BLOCK CHECK] Vehicle blocked — dismissing` : `[TRIP CHECK] Trip invalid — dismissing`);
+      setScreen("online");
+      setCurrentTrip(null);
+      setPassengerProfile(null);
+      setTripStops([]);
+      stopAllSounds();
+      tripSoundRef.current = null;
       return;
     }
 
-    const freshTrip = freshTripResult.data;
-    if (!freshTrip) return;
-    // Skip if trip is no longer requestable or already taken
-    if (!(freshTrip.status === "requested" || freshTrip.status === "scheduled")) return;
-    if (freshTrip.driver_id) return;
-    // Skip if trip is older than 5 minutes
-    const tripAge = Date.now() - new Date(freshTrip.requested_at).getTime();
-    if (tripAge > 5 * 60 * 1000) return;
-
-    // Vibrate to alert driver
-    try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
-
-    // Play sound
-    if (tripRequestSoundUrl) {
-      try {
-        stopAllSounds();
-        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
-      } catch {}
-    }
-
-    // Fetch passenger profile, trip stops, and timeout in parallel
-    const [pProfileRes, stopsRes, timeoutRes] = await Promise.all([
-    trip.passenger_id ?
-    supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single() :
-    Promise.resolve({ data: null }),
-    supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
-    supabase.from("system_settings").select("value").eq("key", "driver_accept_timeout_seconds").single()]
-    );
-
+    // Update with fetched data
     const timeout = timeoutRes.data?.value ? Number(timeoutRes.data.value) : 30;
     setAcceptTimeoutSeconds(timeout);
     setRideRequestCountdown(timeout);
-
-    toast({
-      title: "🚗 New Ride Request!",
-      description: `${trip.pickup_address} → ${trip.dropoff_address}`
-    });
-
-    setCurrentTrip(trip);
     setPassengerProfile(pProfileRes.data);
     setTripStops(stopsRes.data as any[] || []);
-    setScreen("ride-request");
 
     // Start countdown timer
     if (rideRequestTimerRef.current) clearInterval(rideRequestTimerRef.current);

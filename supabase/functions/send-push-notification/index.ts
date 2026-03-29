@@ -198,29 +198,62 @@ Deno.serve(async (req) => {
       throw new Error("user_ids array is required");
     }
 
+    // For trip_requested notifications, filter out drivers who are offline or not in driver mode
+    const isTripRequestType = data?.type === "trip_requested";
+    let filteredUserIds = user_ids;
+
+    if (isTripRequestType && user_ids.length > 0) {
+      // Check driver_locations to see who is actually online and available
+      const { data: onlineDrivers } = await supabase
+        .from("driver_locations")
+        .select("driver_id")
+        .in("driver_id", user_ids)
+        .eq("is_online", true);
+
+      const onlineSet = new Set((onlineDrivers || []).map((d: any) => d.driver_id));
+
+      // Also check device_tokens user_type — only send to tokens registered as "driver"
+      filteredUserIds = user_ids.filter((id: string) => onlineSet.has(id));
+
+      if (filteredUserIds.length === 0) {
+        console.log("No online drivers found among user_ids — skipping trip_requested notification");
+        return new Response(
+          JSON.stringify({ success: true, sent: 0, message: "No online drivers found" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log(`Filtered ${user_ids.length} → ${filteredUserIds.length} online driver(s) for trip_requested`);
+    }
+
     const { data: tokens, error: tokenError } = await supabase
       .from("device_tokens")
       .select("token, user_id, device_type, user_type")
-      .in("user_id", user_ids)
+      .in("user_id", filteredUserIds)
       .eq("is_active", true);
 
     if (tokenError) throw tokenError;
-    if (!tokens || tokens.length === 0) {
-      console.log("No active tokens found for user_ids:", user_ids);
+
+    // For trip requests, only send to tokens registered as "driver" user_type
+    const filteredTokens = isTripRequestType
+      ? (tokens || []).filter((t: any) => t.user_type === "driver")
+      : (tokens || []);
+
+    if (filteredTokens.length === 0) {
+      console.log("No active tokens found for user_ids:", filteredUserIds);
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: "No active tokens found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Found ${tokens.length} active token(s) for user_ids:`, user_ids);
+    console.log(`Found ${filteredTokens.length} active token(s) for user_ids:`, filteredUserIds);
 
     let totalSent = 0;
     const failedTokens: string[] = [];
     const perTokenResults: any[] = [];
 
     // Pre-fetch driver-specific trip_sound_id preferences for all target drivers
-    const driverUserIds = tokens
+    const driverUserIds = filteredTokens
       .filter((t: any) => t.user_type === "driver")
       .map((t: any) => t.user_id);
     const driverSoundPrefs: Record<string, { sound_url: string }> = {};
@@ -257,7 +290,7 @@ Deno.serve(async (req) => {
     console.log(`Loaded ${Object.keys(driverSoundPrefs).length} driver-specific sound preference(s)`);
 
     const results = await Promise.allSettled(
-      tokens.map(async (t: any) => {
+      filteredTokens.map(async (t: any) => {
         const type = data?.type || "default";
         const isTripRequest = type === "trip_requested";
         const isSOS = type === "sos_alert";
@@ -285,9 +318,10 @@ Deno.serve(async (req) => {
         // For native devices, include the notification payload for OS-level display.
         const isWebDevice = t.device_type === "web";
 
-        // Use default OS sound for background native notifications for reliability.
-        // Foreground/custom sounds are still handled via sound_url in app code.
-        const nativeBackgroundSound = "default";
+        // For trip requests on native: suppress OS notification sound to prevent double-play
+        // (the app's foreground handler plays the custom sound via sound_url).
+        // For other notifications, use default OS sound for background reliability.
+        const nativeBackgroundSound = isTripRequest ? "" : "default";
 
         const fcmMessage: any = {
           token: t.token,
@@ -308,9 +342,10 @@ Deno.serve(async (req) => {
             priority: "high",
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
-              sound: isNative ? nativeBackgroundSound : "default",
-              default_sound: true,
+              sound: nativeBackgroundSound || undefined,
+              default_sound: !isTripRequest,
               channel_id: isTripRequest ? "trip_requests_v2" : isSOS ? "sos_alerts_v2" : "general_v2",
+              notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               vibrate_timings: isTripRequest
                 ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
@@ -325,7 +360,7 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                sound: isNative ? nativeBackgroundSound : "default",
+                sound: isTripRequest ? "" : (isNative ? nativeBackgroundSound : "default"),
                 badge: 1,
                 "content-available": 1,
                 "interruption-level": isUrgent ? "time-sensitive" : "active",
@@ -386,7 +421,7 @@ Deno.serve(async (req) => {
         success: true,
         sent: totalSent,
         failed: failedTokens.length,
-        total_tokens: tokens.length,
+        total_tokens: filteredTokens.length,
         details: perTokenResults,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
