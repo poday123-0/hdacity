@@ -112,12 +112,53 @@ const AdminDashboard = () => {
     };
   }, []);
 
+  const getAnalyticsDateRange = useCallback(() => {
+    const maldivesNow = new Date(Date.now() + 5 * 3600000);
+    const maldivesToday = maldivesNow.toISOString().split("T")[0];
+
+    if (analyticsPeriod === "today") {
+      const start = new Date(maldivesToday + "T00:00:00Z");
+      start.setTime(start.getTime() - 5 * 3600000); // convert to UTC
+      return { start, days: 1 };
+    } else if (analyticsPeriod === "week") {
+      const start = new Date(maldivesToday + "T00:00:00Z");
+      start.setUTCDate(start.getUTCDate() - 6);
+      start.setTime(start.getTime() - 5 * 3600000);
+      return { start, days: 7 };
+    } else if (analyticsPeriod === "custom" && customRange.from) {
+      const fromStr = format(customRange.from, "yyyy-MM-dd");
+      const toStr = customRange.to ? format(customRange.to, "yyyy-MM-dd") : fromStr;
+      const start = new Date(fromStr + "T00:00:00Z");
+      start.setTime(start.getTime() - 5 * 3600000);
+      const end = new Date(toStr + "T23:59:59Z");
+      end.setTime(end.getTime() - 5 * 3600000);
+      const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
+      return { start, days };
+    } else {
+      // month (default)
+      const start = new Date(maldivesToday + "T00:00:00Z");
+      start.setUTCDate(start.getUTCDate() - 29);
+      start.setTime(start.getTime() - 5 * 3600000);
+      return { start, days: 30 };
+    }
+  }, [analyticsPeriod, customRange]);
+
+  const getPeriodLabel = () => {
+    if (analyticsPeriod === "today") return "Today";
+    if (analyticsPeriod === "week") return "Last 7 days";
+    if (analyticsPeriod === "custom" && customRange.from) {
+      const from = format(customRange.from, "MMM d");
+      const to = customRange.to ? format(customRange.to, "MMM d") : from;
+      return `${from} – ${to}`;
+    }
+    return "Last 30 days";
+  };
+
   // Fetch analytics data
   useEffect(() => {
     const fetchAnalytics = async () => {
-      // Last 30 days of trips for analytics
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      setAnalyticsLoading(true);
+      const { start, days } = getAnalyticsDateRange();
 
       // Fetch all trips (handle 1000-row limit by paginating)
       let allTrips: any[] = [];
@@ -127,7 +168,7 @@ const AdminDashboard = () => {
         const { data } = await supabase
           .from("trips")
           .select("created_at, status, actual_fare, pickup_address, completed_at")
-          .gte("created_at", thirtyDaysAgo.toISOString())
+          .gte("created_at", start.toISOString())
           .order("created_at", { ascending: true })
           .range(from, from + batchSize - 1);
         if (!data || data.length === 0) break;
@@ -136,7 +177,15 @@ const AdminDashboard = () => {
         from += batchSize;
       }
 
-      if (allTrips.length === 0) return;
+      if (allTrips.length === 0) {
+        setHourlyData([]);
+        setWeekdayData([]);
+        setTopAreas([]);
+        setWeeklyRevenue([]);
+        setStatusBreakdown([]);
+        setAnalyticsLoading(false);
+        return;
+      }
       const analyticsTrips = allTrips;
 
       // Helper: convert UTC date to Maldives hour/day
@@ -176,13 +225,18 @@ const AdminDashboard = () => {
         .map(([name, count]) => ({ name, count }));
       setTopAreas(sortedAreas);
 
-      // Weekly revenue (last 7 days, Maldives time)
-      // Get today's Maldives date as a base
+      // Revenue trend per day
       const maldivesNow = new Date(Date.now() + 5 * 3600000);
-      const maldivesTodayStr = maldivesNow.toISOString().split("T")[0]; // e.g. "2026-03-29"
-      const last7 = [];
-      for (let i = 6; i >= 0; i--) {
+      const maldivesTodayStr = maldivesNow.toISOString().split("T")[0];
+      const trendDays = Math.min(days, 30); // cap at 30 for chart readability
+      const revTrend = [];
+      for (let i = trendDays - 1; i >= 0; i--) {
         const d = new Date(maldivesTodayStr + "T00:00:00Z");
+        if (analyticsPeriod === "custom" && customRange.to) {
+          const toStr = format(customRange.to, "yyyy-MM-dd");
+          const baseDate = new Date(toStr + "T00:00:00Z");
+          d.setTime(baseDate.getTime());
+        }
         d.setUTCDate(d.getUTCDate() - i);
         const dateStr = d.toISOString().split("T")[0];
         const dayLabel = `${d.getUTCDate()} ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getUTCDay()]}`;
@@ -194,9 +248,9 @@ const AdminDashboard = () => {
             return completedMaldives.toISOString().split("T")[0] === dateStr;
           })
           .reduce((s, t) => s + (t.actual_fare || 0), 0);
-        last7.push({ date: dayLabel, revenue: Math.round(dayRevTotal) });
+        revTrend.push({ date: dayLabel, revenue: Math.round(dayRevTotal) });
       }
-      setWeeklyRevenue(last7);
+      setWeeklyRevenue(revTrend);
 
       // Status breakdown
       const statusCounts: Record<string, number> = {};
@@ -207,9 +261,10 @@ const AdminDashboard = () => {
         name: name.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
         value,
       })));
+      setAnalyticsLoading(false);
     };
     fetchAnalytics();
-  }, []);
+  }, [analyticsPeriod, customRange, getAnalyticsDateRange]);
 
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
