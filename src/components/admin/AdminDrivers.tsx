@@ -278,8 +278,11 @@ const AdminDrivers = () => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
     const driver = drivers.find(d => d.id === id);
     if (newStatus === "Active") {
-      const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
-      if (docCount < 4 && !confirm(`Driver has only ${docCount}/4 documents uploaded. Approve anyway? They can submit documents later.`)) return;
+      const isDefaultCompany = driver?.company_id === defaultCompanyId;
+      if (!isDefaultCompany) {
+        const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
+        if (docCount < 4 && !confirm(`Driver has only ${docCount}/4 documents uploaded. Approve anyway? They can submit documents later.`)) return;
+      }
     }
     await supabase.from("profiles").update({ status: newStatus }).eq("id", id);
     toast({ title: `Driver ${newStatus === "Active" ? "approved ✅" : "deactivated"}` });
