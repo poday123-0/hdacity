@@ -721,6 +721,13 @@ const Dispatch = () => {
         },
         (payload) => {
           const newTrip = payload.new as any;
+          // Enrich with vehicle data from center code index if available
+          if (newTrip.vehicle_id && !newTrip.vehicle) {
+            const code = Object.values(centerCodeIndex).find((v: any) => v.vehicle_id === newTrip.vehicle_id);
+            if (code) {
+              newTrip.vehicle = { center_code: (code as any).code, plate_number: (code as any).plate_number, color: (code as any).color };
+            }
+          }
           // Immediately add to the correct list so it doesn't disappear
           if (newTrip.dispatch_type === "operator") {
             setRecentTrips((prev) => {
