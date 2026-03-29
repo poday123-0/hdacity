@@ -224,6 +224,8 @@ function updateMainActivity() {
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.media.AudioAttributes;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
@@ -239,13 +241,25 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = getSystemService(NotificationManager.class);
 
-            // Trip Requests — MAX priority for immediate driver alerts
+            // Delete old channel so sound setting takes effect
+            // (Android won't update sound on an existing channel)
+            manager.deleteNotificationChannel("trip_requests_v2");
+
+            // Custom sound URI pointing to res/raw/trip_request.mp3
+            Uri tripSoundUri = Uri.parse("android.resource://" + getPackageName() + "/raw/trip_request");
+            AudioAttributes audioAttr = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build();
+
+            // Trip Requests — MAX priority with custom sound
             NotificationChannel tripChannel = new NotificationChannel(
                 "trip_requests_v2",
                 "Trip Requests",
                 NotificationManager.IMPORTANCE_MAX
             );
             tripChannel.setDescription("Incoming trip request alerts");
+            tripChannel.setSound(tripSoundUri, audioAttr);
             tripChannel.enableVibration(true);
             tripChannel.setShowBadge(true);
             tripChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
