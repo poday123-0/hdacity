@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Found ${tokens.length} active token(s) for user_ids:`, user_ids);
+    console.log(`Found ${filteredTokens.length} active token(s) for user_ids:`, filteredUserIds);
 
     let totalSent = 0;
     const failedTokens: string[] = [];
