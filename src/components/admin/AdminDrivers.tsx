@@ -1439,10 +1439,7 @@ const AdminDrivers = () => {
                                     <div className="flex items-start gap-3">
                                       {/* Vehicle photo */}
                                       <div className="w-16 h-12 rounded-xl bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
-                                        {v.image_url ? (
-                                          <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
-                                        ) : (
-                                          <Car className="w-5 h-5 text-muted-foreground/30" />
+                                        <img src={v.image_url || DEFAULT_VEHICLE_IMAGE} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => v.image_url && setPreviewImg(v.image_url)} />
                                         )}
                                       </div>
 
