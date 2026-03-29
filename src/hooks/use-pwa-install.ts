@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -98,8 +99,8 @@ export function usePWAInstall() {
     return outcome === "accepted";
   }, [deferredPrompt]);
 
-  // canInstall: true when NOT already installed (running in browser)
-  const canInstall = !isInstalled;
+  // canInstall: false on native apps, otherwise true when NOT already installed
+  const canInstall = Capacitor.isNativePlatform() ? false : !isInstalled;
 
   // hasNativePrompt: true when the browser supports beforeinstallprompt
   const hasNativePrompt = !!deferredPrompt;
