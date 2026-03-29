@@ -1098,10 +1098,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     routePolylineRef.current = polyline;
 
     const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
-      ? { interval: 3000, movement: 10 }
+      ? { interval: 8000, movement: 15 }   // was 3s/10m — too aggressive, drains battery
       : navSettings.rerouteAggressiveness === "relaxed"
-      ? { interval: 10000, movement: 40 }
-      : { interval: 5000, movement: 20 };
+      ? { interval: 20000, movement: 50 }  // was 10s/40m
+      : { interval: 12000, movement: 25 };  // was 5s/20m — balanced default
     const MIN_REROUTE_INTERVAL_MS = rerouteConfig.interval;
     const MIN_REROUTE_MOVEMENT_M = rerouteConfig.movement;
 
