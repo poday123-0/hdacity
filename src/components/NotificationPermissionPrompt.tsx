@@ -4,6 +4,7 @@ import { Bell, MapPin, X, Check, ChevronRight } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 
 const SNOOZE_UNTIL_KEY = "hda_permissions_snooze_until";
+const PERMS_GRANTED_KEY = "hda_permissions_all_granted";
 
 type PermissionStep = "intro" | "location" | "notification" | "done";
 
