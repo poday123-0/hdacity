@@ -148,8 +148,14 @@ const NotificationPermissionPrompt = () => {
       setNotifGranted(false);
     }
     setStep("done");
+    // If both ended up granted, remember permanently
+    const finalNotif = await isNotifGranted();
+    const finalLoc = locationGranted;
+    if (finalNotif && finalLoc) {
+      try { localStorage.setItem(PERMS_GRANTED_KEY, "true"); } catch {}
+    }
     setTimeout(() => setVisible(false), 1800);
-  }, []);
+  }, [locationGranted]);
 
   const advanceAfterLocation = useCallback(async () => {
     const canPrompt = await isNotifPromptable();
