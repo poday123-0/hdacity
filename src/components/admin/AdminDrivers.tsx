@@ -213,7 +213,7 @@ const AdminDrivers = () => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
     if (status === "Active") {
-      const incomplete = drivers.filter(d => ids.includes(d.id) && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4);
+      const incomplete = drivers.filter(d => ids.includes(d.id) && d.company_id !== defaultCompanyId && [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length < 4);
       if (incomplete.length > 0) {
         if (!confirm(`${incomplete.length} driver(s) have incomplete documents. Approve anyway? They can submit documents later.`)) return;
       }
@@ -278,8 +278,11 @@ const AdminDrivers = () => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
     const driver = drivers.find(d => d.id === id);
     if (newStatus === "Active") {
-      const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
-      if (docCount < 4 && !confirm(`Driver has only ${docCount}/4 documents uploaded. Approve anyway? They can submit documents later.`)) return;
+      const isDefaultCompany = driver?.company_id === defaultCompanyId;
+      if (!isDefaultCompany) {
+        const docCount = [driver?.license_front_url, driver?.license_back_url, driver?.id_card_front_url, driver?.id_card_back_url].filter(Boolean).length;
+        if (docCount < 4 && !confirm(`Driver has only ${docCount}/4 documents uploaded. Approve anyway? They can submit documents later.`)) return;
+      }
     }
     await supabase.from("profiles").update({ status: newStatus }).eq("id", id);
     toast({ title: `Driver ${newStatus === "Active" ? "approved ✅" : "deactivated"}` });
