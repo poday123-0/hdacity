@@ -1460,8 +1460,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const { Capacitor } = await import("@capacitor/core");
         if (!Capacitor.isNativePlatform()) return;
         const { PushNotifications } = await import("@capacitor/push-notifications");
-        const listener = await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+        const listener = await PushNotifications.addListener("pushNotificationActionPerformed", async (action) => {
           console.log("Native notification tapped:", action);
+          // Clear all delivered notifications to stop OS-level sound
+          try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
           triggerCheck();
         });
         nativeCleanup = () => listener.remove();
