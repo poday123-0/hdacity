@@ -492,9 +492,9 @@ const Dispatch = () => {
                 .select("vehicle_id, booking_notes")
                 .in("vehicle_id", vehicleIds)
                 .gte("created_at", todayISO)
-                .in("status", ["requested", "accepted", "started", "completed"])
-                .eq("dispatch_type", "operator")
-                .eq("is_loss", false)
+.in("status", ["requested", "accepted", "arrived", "started", "completed"])
+                 .eq("dispatch_type", "operator")
+                 .eq("is_loss", false)
             : Promise.resolve({ data: [] as any[] }),
           vehicleIds.length
             ? supabase
@@ -628,17 +628,17 @@ const Dispatch = () => {
           .from("trips")
           .select(tripSelect)
           .eq("dispatch_type", "operator")
-          .in("status", ["requested", "accepted", "started", "completed"])
-          .gte("created_at", todayISO)
-          .order("created_at", { ascending: false })
+.in("status", ["requested", "accepted", "arrived", "started", "completed"])
+           .gte("created_at", todayISO)
+           .order("created_at", { ascending: false })
           .limit(200),
         supabase
           .from("trips")
           .select(tripSelect)
           .eq("dispatch_type", "dispatch_broadcast")
-          .in("status", ["requested", "accepted", "started", "in_progress", "completed", "cancelled"])
-          .order("updated_at", { ascending: false })
-          .limit(300),
+.in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+           .order("updated_at", { ascending: false })
+           .limit(300),
         supabase
           .from("trips")
           .select(
@@ -877,17 +877,17 @@ const Dispatch = () => {
         .from("trips")
         .select(tripSelect)
         .eq("dispatch_type", "operator")
-        .in("status", ["requested", "accepted", "started", "completed"])
-        .gte("created_at", todayISO)
-        .order("created_at", { ascending: false })
+.in("status", ["requested", "accepted", "arrived", "started", "completed"])
+         .gte("created_at", todayISO)
+         .order("created_at", { ascending: false })
         .limit(200),
       supabase
         .from("trips")
         .select(tripSelect)
         .eq("dispatch_type", "dispatch_broadcast")
-        .in("status", ["requested", "accepted", "started", "in_progress", "completed", "cancelled"])
-        .order("updated_at", { ascending: false })
-        .limit(300),
+.in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+         .order("updated_at", { ascending: false })
+         .limit(300),
       supabase
         .from("trips")
         .select(
