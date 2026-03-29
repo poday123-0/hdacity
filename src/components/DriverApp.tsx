@@ -350,7 +350,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
     tick();
-    onlineTimerRef.current = setInterval(tick, 30000);
+    onlineTimerRef.current = setInterval(tick, 60000); // 60s — was 30s, saves CPU
 
     // Schedule a tick at exactly midnight to reset the display
     const now = new Date();
