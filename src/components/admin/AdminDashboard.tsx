@@ -465,10 +465,57 @@ const AdminDashboard = () => {
 
       {/* Analytics Section */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-bold text-foreground">Analytics</h3>
-          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Last 30 days</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-bold text-foreground">Analytics</h3>
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{getPeriodLabel()}</span>
+            {analyticsLoading && <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(["today", "week", "month"] as AnalyticsPeriod[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setAnalyticsPeriod(p)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  analyticsPeriod === p
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {p === "today" ? "Today" : p === "week" ? "Week" : "Month"}
+              </button>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
+                    analyticsPeriod === "custom"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <CalendarDays className="w-3 h-3" />
+                  Custom
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <CalendarPicker
+                  mode="range"
+                  selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
+                  onSelect={(range: any) => {
+                    setCustomRange({ from: range?.from, to: range?.to });
+                    if (range?.from) setAnalyticsPeriod("custom");
+                  }}
+                  disabled={(date) => date > new Date()}
+                  numberOfMonths={1}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         {/* Revenue Trend + Status Breakdown */}
@@ -476,7 +523,7 @@ const AdminDashboard = () => {
           <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Activity className="w-4 h-4 text-primary" /> Revenue Trend (7 days)
+                <Activity className="w-4 h-4 text-primary" /> Revenue Trend
               </h4>
             </div>
             <div className="h-[200px]">
