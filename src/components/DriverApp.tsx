@@ -1093,8 +1093,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Vibrate to alert driver
     try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
 
-    // Play sound immediately
-    if (tripRequestSoundUrl) {
+    // Play sound immediately — but on native, skip if app is backgrounded
+    // because the OS notification channel already plays trip_request.mp3
+    const isNativeBg = typeof (window as any).Capacitor !== "undefined"
+      && (window as any).Capacitor?.isNativePlatform?.()
+      && document.visibilityState !== "visible";
+
+    if (tripRequestSoundUrl && !isNativeBg) {
       try {
         stopAllSounds();
         tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
