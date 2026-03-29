@@ -572,7 +572,7 @@ const AdminDrivers = () => {
   const DocUpload = ({ field, label }: { field: string; label: string }) => (
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-2 mt-1">
+      <div className="flex items-center gap-2 mt-1 flex-wrap">
         {editForm[field] ? (
           <button onClick={() => setPreviewImg(editForm[field])} className="text-xs text-primary hover:underline flex items-center gap-1">
             <Eye className="w-3 h-3" /> View
@@ -583,6 +583,11 @@ const AdminDrivers = () => {
           {uploading === field ? "..." : "Upload"}
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadDoc(field, e.target.files[0])} disabled={uploading === field} />
         </label>
+        {!editForm[field] && (
+          <button type="button" onClick={() => setEditForm((prev: any) => ({ ...prev, [field]: DEFAULT_VEHICLE_IMAGE }))} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
+            <Image className="w-3 h-3" /> Default
+          </button>
+        )}
       </div>
     </div>
   );
