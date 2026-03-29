@@ -164,10 +164,15 @@ const topUpPool = () => {
 };
 
 /**
+/**
  * Call this inside a user-gesture handler (click, tap, etc.) to
  * pre-unlock Audio elements for later background playback.
  * Also starts the silent heartbeat to keep audio alive when minimized.
  * Safe to call multiple times — it only tops up the pool.
+ *
+ * On native platforms (Capacitor), skip the heartbeat entirely — the OS
+ * handles push notification audio natively and keeping a silent oscillator
+ * running drains battery and heats up the device.
  */
 export const unlockAudioPool = () => {
   const needed = POOL_SIZE - unlockedPool.length;
@@ -183,6 +188,10 @@ export const unlockAudioPool = () => {
       unlockedPool.push(a);
     } catch {}
   }
+
+  // Skip heartbeat on native — OS handles push audio, heartbeat just drains battery
+  const isNative = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor?.isNativePlatform?.();
+  if (isNative) return;
 
   // Resume/create Web Audio context on user gesture (critical for iOS)
   if (audioCtxHeartbeat) {
