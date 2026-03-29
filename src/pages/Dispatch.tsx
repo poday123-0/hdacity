@@ -593,10 +593,22 @@ const Dispatch = () => {
     };
   }, [isAuthed]);
 
+  // Helper: get Maldives (UTC+5) start-of-day as ISO string
+  const getMaldivesTodayISO = () => {
+    const now = new Date();
+    const maldivesOffset = 5 * 60;
+    const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
+    const todayStart = new Date(maldivesNow);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
+    return todayStartUTC.toISOString();
+  };
+
   // Load vehicle types, drivers, recent trips
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
+      const todayISO = getMaldivesTodayISO();
       const tripSelect =
         "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
       const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
@@ -617,7 +629,7 @@ const Dispatch = () => {
           .select(tripSelect)
           .eq("dispatch_type", "operator")
           .in("status", ["requested", "accepted", "started", "completed"])
-          .gte("created_at", startOfDay(new Date()).toISOString())
+          .gte("created_at", todayISO)
           .order("created_at", { ascending: false })
           .limit(200),
         supabase
@@ -634,7 +646,7 @@ const Dispatch = () => {
           )
           .eq("dispatch_type", "operator")
           .eq("is_loss", true)
-          .gte("created_at", startOfDay(new Date()).toISOString())
+          .gte("created_at", todayISO)
           .order("created_at", { ascending: false })
           .limit(200),
       ]);
@@ -709,6 +721,13 @@ const Dispatch = () => {
         },
         (payload) => {
           const newTrip = payload.new as any;
+          // Enrich with vehicle data from center code index if available
+          if (newTrip.vehicle_id && !newTrip.vehicle) {
+            const code = Object.values(centerCodeIndex).find((v: any) => v.vehicle_id === newTrip.vehicle_id);
+            if (code) {
+              newTrip.vehicle = { center_code: (code as any).code, plate_number: (code as any).plate_number, color: (code as any).color };
+            }
+          }
           // Immediately add to the correct list so it doesn't disappear
           if (newTrip.dispatch_type === "operator") {
             setRecentTrips((prev) => {
@@ -850,6 +869,7 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
+    const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
     const [{ data }, { data: appReq }, { data: lost }] = await Promise.all([
@@ -858,7 +878,7 @@ const Dispatch = () => {
         .select(tripSelect)
         .eq("dispatch_type", "operator")
         .in("status", ["requested", "accepted", "started", "completed"])
-        .gte("created_at", startOfDay(new Date()).toISOString())
+        .gte("created_at", todayISO)
         .order("created_at", { ascending: false })
         .limit(200),
       supabase
@@ -875,7 +895,7 @@ const Dispatch = () => {
         )
         .eq("dispatch_type", "operator")
         .eq("is_loss", true)
-        .gte("created_at", startOfDay(new Date()).toISOString())
+        .gte("created_at", todayISO)
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
@@ -1528,21 +1548,25 @@ const Dispatch = () => {
                         ? recentTrips.filter((t: any) => {
                             const centerCode =
                               t.vehicle?.center_code?.toLowerCase() ||
-                              t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.toLowerCase() ||
+                              t.booking_notes?.match(/Center:\s*(.+)/)?.[1]?.split(",")[0]?.trim()?.toLowerCase() ||
                               "";
                             const plateNumber = t.vehicle?.plate_number?.toLowerCase() || "";
                             const pickup = (t.pickup_address || "").toLowerCase();
                             const dropoff = (t.dropoff_address || "").toLowerCase();
+                            const customerName = (t.customer_name || "").toLowerCase();
+                            const customerPhone = (t.customer_phone || "").toLowerCase();
                             return (
                               centerCode.includes(q) ||
                               plateNumber.includes(q) ||
                               pickup.includes(q) ||
-                              dropoff.includes(q)
+                              dropoff.includes(q) ||
+                              customerName.includes(q) ||
+                              customerPhone.includes(q)
                             );
                           })
                         : recentTrips;
 
-                      const displayTrips = filtered.slice(0, 5);
+                      const displayTrips = q ? filtered : filtered.slice(0, 5);
 
                       if (filtered.length === 0) {
                         return (
