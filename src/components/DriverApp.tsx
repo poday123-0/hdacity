@@ -1487,11 +1487,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.serviceWorker.addEventListener("message", onSwMessage);
     }
 
+    // PWA foreground: listen for FCM foreground push events as a backup
+    // in case the realtime WebSocket missed the trip insert
+    const onFcmForegroundTrip = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type === "trip_requested") {
+        console.log("FCM foreground trip_requested received — triggering backup trip check");
+        triggerCheck();
+      }
+    };
+    window.addEventListener("fcm-foreground-trip", onFcmForegroundTrip);
+
     return () => {
       nativeCleanup?.();
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.removeEventListener("message", onSwMessage);
       }
+      window.removeEventListener("fcm-foreground-trip", onFcmForegroundTrip);
     };
   }, [userProfile?.id]);
 
