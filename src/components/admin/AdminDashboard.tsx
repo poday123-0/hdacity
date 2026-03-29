@@ -290,7 +290,7 @@ const AdminDashboard = () => {
     { label: "Online Drivers", value: stats.onlineDrivers, icon: Navigation, accent: true, pulse: true },
     { label: "Active Trips", value: stats.activeTrips, icon: MapPin, accent: true, pulse: true },
     { label: "Completed Today", value: stats.completedToday, icon: TrendingUp, accent: false },
-    { label: "Today Revenue", value: `MVR ${stats.todayRevenue.toFixed(0)}`, icon: DollarSign, accent: false },
+    { label: "Today Revenue", value: `MVR ${Math.round(stats.todayRevenue).toLocaleString()}`, icon: DollarSign, accent: false },
   ];
 
   const secondaryCards = [
