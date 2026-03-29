@@ -105,15 +105,11 @@ const AdminVehicles = () => {
         return;
       }
     }
-    // Auto-fill empty doc fields with default image
-    const regUrl = form.registration_url || DEFAULT_VEHICLE_IMAGE;
-    const insUrl = form.insurance_url || DEFAULT_VEHICLE_IMAGE;
-    const imgUrl = form.image_url || DEFAULT_VEHICLE_IMAGE;
     const payload: any = {
       plate_number: form.plate_number, make: form.make, model: form.model, color: form.color,
       year: form.year ? parseInt(form.year) : null, driver_id: form.driver_id || null,
-      vehicle_type_id: form.vehicle_type_id || null, registration_url: regUrl,
-      insurance_url: insUrl, image_url: imgUrl,
+      vehicle_type_id: form.vehicle_type_id || null, registration_url: form.registration_url || null,
+      insurance_url: form.insurance_url || null, image_url: form.image_url || null,
       center_code: form.center_code || null,
     };
     const { error } = editingId
