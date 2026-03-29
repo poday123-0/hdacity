@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX, BarChart3, Calendar, Activity } from "lucide-react";
+import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX, BarChart3, Calendar, Activity, CalendarDays } from "lucide-react";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import MaldivesMap from "@/components/MaldivesMap";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from "recharts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+
+type AnalyticsPeriod = "today" | "week" | "month" | "custom";
 
 interface TripRoute {
   id: string;
@@ -44,6 +50,9 @@ const AdminDashboard = () => {
   const [recentTrips, setRecentTrips] = useState<RecentTrip[]>([]);
 
   // Analytics state
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>("month");
+  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [hourlyData, setHourlyData] = useState<{ hour: string; trips: number }[]>([]);
   const [weekdayData, setWeekdayData] = useState<{ day: string; trips: number; revenue: number }[]>([]);
   const [topAreas, setTopAreas] = useState<{ name: string; count: number }[]>([]);
@@ -103,12 +112,53 @@ const AdminDashboard = () => {
     };
   }, []);
 
+  const getAnalyticsDateRange = useCallback(() => {
+    const maldivesNow = new Date(Date.now() + 5 * 3600000);
+    const maldivesToday = maldivesNow.toISOString().split("T")[0];
+
+    if (analyticsPeriod === "today") {
+      const start = new Date(maldivesToday + "T00:00:00Z");
+      start.setTime(start.getTime() - 5 * 3600000); // convert to UTC
+      return { start, days: 1 };
+    } else if (analyticsPeriod === "week") {
+      const start = new Date(maldivesToday + "T00:00:00Z");
+      start.setUTCDate(start.getUTCDate() - 6);
+      start.setTime(start.getTime() - 5 * 3600000);
+      return { start, days: 7 };
+    } else if (analyticsPeriod === "custom" && customRange.from) {
+      const fromStr = format(customRange.from, "yyyy-MM-dd");
+      const toStr = customRange.to ? format(customRange.to, "yyyy-MM-dd") : fromStr;
+      const start = new Date(fromStr + "T00:00:00Z");
+      start.setTime(start.getTime() - 5 * 3600000);
+      const end = new Date(toStr + "T23:59:59Z");
+      end.setTime(end.getTime() - 5 * 3600000);
+      const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
+      return { start, days };
+    } else {
+      // month (default)
+      const start = new Date(maldivesToday + "T00:00:00Z");
+      start.setUTCDate(start.getUTCDate() - 29);
+      start.setTime(start.getTime() - 5 * 3600000);
+      return { start, days: 30 };
+    }
+  }, [analyticsPeriod, customRange]);
+
+  const getPeriodLabel = () => {
+    if (analyticsPeriod === "today") return "Today";
+    if (analyticsPeriod === "week") return "Last 7 days";
+    if (analyticsPeriod === "custom" && customRange.from) {
+      const from = format(customRange.from, "MMM d");
+      const to = customRange.to ? format(customRange.to, "MMM d") : from;
+      return `${from} – ${to}`;
+    }
+    return "Last 30 days";
+  };
+
   // Fetch analytics data
   useEffect(() => {
     const fetchAnalytics = async () => {
-      // Last 30 days of trips for analytics
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      setAnalyticsLoading(true);
+      const { start, days } = getAnalyticsDateRange();
 
       // Fetch all trips (handle 1000-row limit by paginating)
       let allTrips: any[] = [];
@@ -118,7 +168,7 @@ const AdminDashboard = () => {
         const { data } = await supabase
           .from("trips")
           .select("created_at, status, actual_fare, pickup_address, completed_at")
-          .gte("created_at", thirtyDaysAgo.toISOString())
+          .gte("created_at", start.toISOString())
           .order("created_at", { ascending: true })
           .range(from, from + batchSize - 1);
         if (!data || data.length === 0) break;
@@ -127,7 +177,15 @@ const AdminDashboard = () => {
         from += batchSize;
       }
 
-      if (allTrips.length === 0) return;
+      if (allTrips.length === 0) {
+        setHourlyData([]);
+        setWeekdayData([]);
+        setTopAreas([]);
+        setWeeklyRevenue([]);
+        setStatusBreakdown([]);
+        setAnalyticsLoading(false);
+        return;
+      }
       const analyticsTrips = allTrips;
 
       // Helper: convert UTC date to Maldives hour/day
@@ -167,13 +225,18 @@ const AdminDashboard = () => {
         .map(([name, count]) => ({ name, count }));
       setTopAreas(sortedAreas);
 
-      // Weekly revenue (last 7 days, Maldives time)
-      // Get today's Maldives date as a base
+      // Revenue trend per day
       const maldivesNow = new Date(Date.now() + 5 * 3600000);
-      const maldivesTodayStr = maldivesNow.toISOString().split("T")[0]; // e.g. "2026-03-29"
-      const last7 = [];
-      for (let i = 6; i >= 0; i--) {
+      const maldivesTodayStr = maldivesNow.toISOString().split("T")[0];
+      const trendDays = Math.min(days, 30); // cap at 30 for chart readability
+      const revTrend = [];
+      for (let i = trendDays - 1; i >= 0; i--) {
         const d = new Date(maldivesTodayStr + "T00:00:00Z");
+        if (analyticsPeriod === "custom" && customRange.to) {
+          const toStr = format(customRange.to, "yyyy-MM-dd");
+          const baseDate = new Date(toStr + "T00:00:00Z");
+          d.setTime(baseDate.getTime());
+        }
         d.setUTCDate(d.getUTCDate() - i);
         const dateStr = d.toISOString().split("T")[0];
         const dayLabel = `${d.getUTCDate()} ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getUTCDay()]}`;
@@ -185,9 +248,9 @@ const AdminDashboard = () => {
             return completedMaldives.toISOString().split("T")[0] === dateStr;
           })
           .reduce((s, t) => s + (t.actual_fare || 0), 0);
-        last7.push({ date: dayLabel, revenue: Math.round(dayRevTotal) });
+        revTrend.push({ date: dayLabel, revenue: Math.round(dayRevTotal) });
       }
-      setWeeklyRevenue(last7);
+      setWeeklyRevenue(revTrend);
 
       // Status breakdown
       const statusCounts: Record<string, number> = {};
@@ -198,9 +261,10 @@ const AdminDashboard = () => {
         name: name.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
         value,
       })));
+      setAnalyticsLoading(false);
     };
     fetchAnalytics();
-  }, []);
+  }, [analyticsPeriod, customRange, getAnalyticsDateRange]);
 
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
@@ -401,10 +465,57 @@ const AdminDashboard = () => {
 
       {/* Analytics Section */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-bold text-foreground">Analytics</h3>
-          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Last 30 days</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-bold text-foreground">Analytics</h3>
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{getPeriodLabel()}</span>
+            {analyticsLoading && <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(["today", "week", "month"] as AnalyticsPeriod[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setAnalyticsPeriod(p)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  analyticsPeriod === p
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {p === "today" ? "Today" : p === "week" ? "Week" : "Month"}
+              </button>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
+                    analyticsPeriod === "custom"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <CalendarDays className="w-3 h-3" />
+                  Custom
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <CalendarPicker
+                  mode="range"
+                  selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
+                  onSelect={(range: any) => {
+                    setCustomRange({ from: range?.from, to: range?.to });
+                    if (range?.from) setAnalyticsPeriod("custom");
+                  }}
+                  disabled={(date) => date > new Date()}
+                  numberOfMonths={1}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         {/* Revenue Trend + Status Breakdown */}
@@ -412,7 +523,7 @@ const AdminDashboard = () => {
           <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Activity className="w-4 h-4 text-primary" /> Revenue Trend (7 days)
+                <Activity className="w-4 h-4 text-primary" /> Revenue Trend
               </h4>
             </div>
             <div className="h-[200px]">
@@ -438,7 +549,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-4">
-            <h4 className="text-sm font-semibold text-foreground mb-3">Trip Status (30 days)</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-3">Trip Status</h4>
             <div className="h-[160px]">
               {statusBreakdown.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
