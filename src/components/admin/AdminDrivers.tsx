@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff } from "lucide-react";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
+import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
 
@@ -802,11 +803,7 @@ const AdminDrivers = () => {
                   {/* Vehicle row */}
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-10 rounded-lg bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
-                      {v.image_url ? (
-                        <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
-                      ) : (
-                        <Car className="w-5 h-5 text-muted-foreground/30" />
-                      )}
+                      <img src={v.image_url || DEFAULT_VEHICLE_IMAGE} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => v.image_url && setPreviewImg(v.image_url)} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-foreground truncate">{v.plate_number} — {v.make} {v.model}</p>
@@ -1442,11 +1439,7 @@ const AdminDrivers = () => {
                                     <div className="flex items-start gap-3">
                                       {/* Vehicle photo */}
                                       <div className="w-16 h-12 rounded-xl bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
-                                        {v.image_url ? (
-                                          <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImg(v.image_url)} />
-                                        ) : (
-                                          <Car className="w-5 h-5 text-muted-foreground/30" />
-                                        )}
+                                        <img src={v.image_url || DEFAULT_VEHICLE_IMAGE} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => v.image_url && setPreviewImg(v.image_url)} />
                                       </div>
 
                                       <div className="flex-1 min-w-0">

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer } from "lucide-react";
 import * as XLSX from "xlsx";
+import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
 type VehicleForm = typeof emptyForm;
@@ -608,11 +609,7 @@ const AdminVehicles = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="w-10 h-8 rounded-xl bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
-                          {v.image_url ? (
-                            <img src={v.image_url} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewDoc(v.image_url)} />
-                          ) : (
-                            <Car className="w-4 h-4 text-muted-foreground/40" />
-                          )}
+                          <img src={v.image_url || DEFAULT_VEHICLE_IMAGE} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => v.image_url && setPreviewDoc(v.image_url)} />
                         </div>
                         <div>
                           <p className="text-sm font-bold text-foreground">{v.plate_number}</p>
