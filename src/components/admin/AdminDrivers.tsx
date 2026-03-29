@@ -803,7 +803,6 @@ const AdminDrivers = () => {
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-10 rounded-lg bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
                       <img src={v.image_url || DEFAULT_VEHICLE_IMAGE} alt="Vehicle" className="w-full h-full object-cover cursor-pointer" onClick={() => v.image_url && setPreviewImg(v.image_url)} />
-                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-foreground truncate">{v.plate_number} — {v.make} {v.model}</p>
