@@ -1436,11 +1436,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (!userProfile?.id) return;
 
     const triggerCheck = () => {
+      // Fire immediately + aggressive retries to handle WebView/network resume lag
       doForegroundTripCheckRef.current?.();
-      // Retry after delays to handle WebView resume lag
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 300);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 1000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 200);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 600);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 1200);
       setTimeout(() => doForegroundTripCheckRef.current?.(), 2500);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 4000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 6000);
     };
 
     // Native Capacitor: listen for notification tap
