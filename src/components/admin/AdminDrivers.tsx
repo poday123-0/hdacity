@@ -335,19 +335,14 @@ const AdminDrivers = () => {
   const saveEdit = async () => {
     if (!editingId) return;
     const bankObj = banks.find((b) => b.id === editForm.bank_id);
-    // Auto-fill empty document fields with default image
-    const licF = editForm.license_front_url || DEFAULT_VEHICLE_IMAGE;
-    const licB = editForm.license_back_url || DEFAULT_VEHICLE_IMAGE;
-    const idF = editForm.id_card_front_url || DEFAULT_VEHICLE_IMAGE;
-    const idB = editForm.id_card_back_url || DEFAULT_VEHICLE_IMAGE;
     const { error } = await supabase.from("profiles").update({
       first_name: editForm.first_name, last_name: editForm.last_name, email: editForm.email || null, phone_number: editForm.phone_number,
       company_id: editForm.company_id || null, company_name: companies.find((c) => c.id === editForm.company_id)?.name || "",
       monthly_fee: parseFloat(editForm.monthly_fee) || 0,
       bank_id: editForm.bank_id || null, bank_name: bankObj?.name || "",
       bank_account_number: editForm.bank_account_number || "", bank_account_name: editForm.bank_account_name || "",
-      license_front_url: licF, license_back_url: licB,
-      id_card_front_url: idF, id_card_back_url: idB,
+      license_front_url: editForm.license_front_url || null, license_back_url: editForm.license_back_url || null,
+      id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
       taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
       id_card_expiry: editForm.id_card_expiry || null, license_expiry: editForm.license_expiry || null,
     } as any).eq("id", editingId);
