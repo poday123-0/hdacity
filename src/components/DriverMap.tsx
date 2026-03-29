@@ -1098,10 +1098,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     routePolylineRef.current = polyline;
 
     const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
-      ? { interval: 3000, movement: 10 }
+      ? { interval: 8000, movement: 15 }   // was 3s/10m — too aggressive, drains battery
       : navSettings.rerouteAggressiveness === "relaxed"
-      ? { interval: 10000, movement: 40 }
-      : { interval: 5000, movement: 20 };
+      ? { interval: 20000, movement: 50 }  // was 10s/40m
+      : { interval: 12000, movement: 25 };  // was 5s/20m — balanced default
     const MIN_REROUTE_INTERVAL_MS = rerouteConfig.interval;
     const MIN_REROUTE_MOVEMENT_M = rerouteConfig.movement;
 
@@ -1355,10 +1355,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       passengerPulseIntervalRef.current = setInterval(() => {
         if (!passengerPulseRef.current) return;
         if (growing) {
-          currentRadius += 2;
+          currentRadius += 4; // larger steps = fewer iterations needed
           if (currentRadius >= 60) growing = false;
         } else {
-          currentRadius -= 2;
+          currentRadius -= 4;
           if (currentRadius <= 30) growing = true;
         }
         passengerPulseRef.current.setRadius(currentRadius);
@@ -1366,7 +1366,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           fillOpacity: 0.25 - (currentRadius - 30) * 0.006,
           strokeOpacity: 0.4 - (currentRadius - 30) * 0.01,
         });
-      }, 50);
+      }, 150); // was 50ms (20fps) — 150ms (6.6fps) is plenty for a subtle pulse
     }
 
     // Update or create the main marker

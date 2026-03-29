@@ -350,7 +350,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     };
     tick();
-    onlineTimerRef.current = setInterval(tick, 30000);
+    onlineTimerRef.current = setInterval(tick, 60000); // 60s — was 30s, saves CPU
 
     // Schedule a tick at exactly midnight to reset the display
     const now = new Date();
@@ -1438,14 +1438,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (!userProfile?.id) return;
 
     const triggerCheck = () => {
-      // Fire immediately + aggressive retries to handle WebView/network resume lag
+      // Fire immediately + 2 retries (reduced from 7 to save battery/CPU)
       doForegroundTripCheckRef.current?.();
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 200);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 600);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 1200);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 2500);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 4000);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 6000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 500);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 2000);
     };
 
     // Native Capacitor: listen for notification tap
@@ -1612,13 +1608,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Polling fallback every 30s in case realtime misses the event
+    // Polling fallback every 60s in case realtime misses the event (reduced from 30s)
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
         await handleTripCancelledOrTaken(data);
       }
-    }, 30000);
+    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
