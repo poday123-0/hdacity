@@ -3588,10 +3588,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   <p className="font-semibold text-sm text-foreground truncate">
                     {currentTrip.customer_name || (passengerProfile ? `${passengerProfile.first_name} ${passengerProfile.last_name}` : "Passenger")}
                   </p>
-                  {(currentTrip.customer_phone || passengerProfile?.phone_number) &&
-                <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : `+${passengerProfile?.country_code || "960"}${passengerProfile?.phone_number}`}`} className="text-xs text-primary font-medium">
-                      {currentTrip.customer_phone ? `+960 ${currentTrip.customer_phone}` : `+${passengerProfile?.country_code || "960"} ${passengerProfile?.phone_number}`}
-                    </a>
+                  {currentTrip.dispatch_type === "operator" &&
+                <span className="text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
                 }
                   {currentTrip.dispatch_type === "operator" &&
                 <span className="ml-2 text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
