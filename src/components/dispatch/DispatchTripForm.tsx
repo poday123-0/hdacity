@@ -599,19 +599,18 @@ const DispatchTripForm = ({
         }
       };
 
-      // Google Places — only show results WITHIN admin service areas
+      // Google Places — direct API call (faster than edge function)
       if (mapsKeyRef.current) {
-        supabase.functions.invoke("google-places-search", {
-          body: { query: searchQuery, key: mapsKeyRef.current },
-        }).then(({ data }) => {
+        const cacheKey = searchQuery.toLowerCase().trim();
+        const cached = _placesCache.get(cacheKey);
+        const processGoogleResults = (results: any[]) => {
           if (googleAbort.signal.aborted) return;
-          if (!data?.results?.length) return;
-          const googleResults: NominatimResult[] = data.results
+          if (!results?.length) return;
+          const googleResults: NominatimResult[] = results
             .filter((p: any) => p.geometry?.location)
             .map((p: any, i: number) => {
               const lat = p.geometry.location.lat;
               const lng = p.geometry.location.lng;
-              // ONLY include places within admin service areas
               if (!isWithinServiceArea(lat, lng)) return null;
               const areaName = findNearestServiceAreaName(lat, lng);
               const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
@@ -628,7 +627,22 @@ const DispatchTripForm = ({
             })
             .filter(Boolean) as NominatimResult[];
           mergeResults(googleResults);
-        }).catch(() => {});
+        };
+
+        if (cached && Date.now() - cached.ts < PLACES_CACHE_TTL) {
+          processGoogleResults(cached.results);
+        } else {
+          const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=4.1755,73.5093&radius=50000&key=${mapsKeyRef.current}`;
+          fetch(url, { signal: googleAbort.signal })
+            .then(r => r.json())
+            .then(data => {
+              if (data.results) {
+                _placesCache.set(cacheKey, { results: data.results, ts: Date.now() });
+              }
+              processGoogleResults(data.results || []);
+            })
+            .catch(() => {});
+        }
       }
     }, 150);
 
