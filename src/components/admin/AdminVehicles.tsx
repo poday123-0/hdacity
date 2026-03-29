@@ -37,6 +37,7 @@ const AdminVehicles = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
   const [importing, setImporting] = useState(false);
   const [driverSearch, setDriverSearch] = useState("");
   const [onlineDriverIds, setOnlineDriverIds] = useState<Set<string>>(new Set());
@@ -337,7 +338,9 @@ const AdminVehicles = () => {
     const matchesSearch = !q || v.plate_number?.toLowerCase().includes(q) || v.make?.toLowerCase().includes(q) || v.model?.toLowerCase().includes(q) || (v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}`.toLowerCase().includes(q) : false) || v.center_code?.toLowerCase().includes(q);
     const matchesStatus = statusFilter === "all" || (statusFilter === "online" ? (v.driver_id && onlineDriverIds.has(v.driver_id)) : v.vehicle_status === statusFilter);
     const matchesType = !typeFilter || v.vehicle_type_id === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    const driverCompanyId = v.profiles?.company_id || null;
+    const matchesCompany = !companyFilter || driverCompanyId === companyFilter;
+    return matchesSearch && matchesStatus && matchesType && matchesCompany;
   });
 
   return (
@@ -566,6 +569,10 @@ const AdminVehicles = () => {
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-1.5 bg-surface border border-border rounded-full text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">All Types</option>
             {vehicleTypes.map(vt => <option key={vt.id} value={vt.id}>{vt.name}</option>)}
+          </select>
+          <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="px-3 py-1.5 bg-surface border border-border rounded-full text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">All Companies</option>
+            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
       </div>
