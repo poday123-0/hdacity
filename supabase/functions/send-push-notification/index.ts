@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                sound: isNative ? nativeBackgroundSound : "default",
+                sound: isTripRequest ? "" : (isNative ? nativeBackgroundSound : "default"),
                 badge: 1,
                 "content-available": 1,
                 "interruption-level": isUrgent ? "time-sensitive" : "active",
