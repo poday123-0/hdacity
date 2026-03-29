@@ -104,11 +104,15 @@ const AdminVehicles = () => {
         return;
       }
     }
+    // Auto-fill empty doc fields with default image
+    const regUrl = form.registration_url || DEFAULT_VEHICLE_IMAGE;
+    const insUrl = form.insurance_url || DEFAULT_VEHICLE_IMAGE;
+    const imgUrl = form.image_url || DEFAULT_VEHICLE_IMAGE;
     const payload: any = {
       plate_number: form.plate_number, make: form.make, model: form.model, color: form.color,
       year: form.year ? parseInt(form.year) : null, driver_id: form.driver_id || null,
-      vehicle_type_id: form.vehicle_type_id || null, registration_url: form.registration_url || null,
-      insurance_url: form.insurance_url || null, image_url: form.image_url || null,
+      vehicle_type_id: form.vehicle_type_id || null, registration_url: regUrl,
+      insurance_url: insUrl, image_url: imgUrl,
       center_code: form.center_code || null,
     };
     const { error } = editingId
@@ -521,6 +525,20 @@ const AdminVehicles = () => {
                   <span className="text-[10px] font-medium text-muted-foreground text-center">{uploading === key ? "Uploading..." : label}</span>
                 </button>
               ))}
+              {/* Use Default button for empty fields */}
+              {["registration_url", "insurance_url", "image_url"].some(k => !(form as any)[k]) && (
+                <button type="button" onClick={() => {
+                  const updated = { ...form };
+                  if (!updated.registration_url) updated.registration_url = DEFAULT_VEHICLE_IMAGE;
+                  if (!updated.insurance_url) updated.insurance_url = DEFAULT_VEHICLE_IMAGE;
+                  if (!updated.image_url) updated.image_url = DEFAULT_VEHICLE_IMAGE;
+                  setForm(updated);
+                  toast({ title: "Default image applied to empty fields" });
+                }} className="flex flex-col items-center gap-1.5 p-3 bg-accent/30 border border-dashed border-primary/30 rounded-xl hover:bg-accent/50 transition-colors col-span-3">
+                  <Image className="w-4 h-4 text-primary" />
+                  <span className="text-[10px] font-semibold text-primary">Use Default for Empty</span>
+                </button>
+              )}
             </div>
           </div>
           <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl text-sm font-semibold">{editingId ? "Update Vehicle" : "Save Vehicle"}</button>

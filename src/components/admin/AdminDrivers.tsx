@@ -335,14 +335,19 @@ const AdminDrivers = () => {
   const saveEdit = async () => {
     if (!editingId) return;
     const bankObj = banks.find((b) => b.id === editForm.bank_id);
+    // Auto-fill empty document fields with default image
+    const licF = editForm.license_front_url || DEFAULT_VEHICLE_IMAGE;
+    const licB = editForm.license_back_url || DEFAULT_VEHICLE_IMAGE;
+    const idF = editForm.id_card_front_url || DEFAULT_VEHICLE_IMAGE;
+    const idB = editForm.id_card_back_url || DEFAULT_VEHICLE_IMAGE;
     const { error } = await supabase.from("profiles").update({
       first_name: editForm.first_name, last_name: editForm.last_name, email: editForm.email || null, phone_number: editForm.phone_number,
       company_id: editForm.company_id || null, company_name: companies.find((c) => c.id === editForm.company_id)?.name || "",
       monthly_fee: parseFloat(editForm.monthly_fee) || 0,
       bank_id: editForm.bank_id || null, bank_name: bankObj?.name || "",
       bank_account_number: editForm.bank_account_number || "", bank_account_name: editForm.bank_account_name || "",
-      license_front_url: editForm.license_front_url || null, license_back_url: editForm.license_back_url || null,
-      id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
+      license_front_url: licF, license_back_url: licB,
+      id_card_front_url: idF, id_card_back_url: idB,
       taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
       id_card_expiry: editForm.id_card_expiry || null, license_expiry: editForm.license_expiry || null,
     } as any).eq("id", editingId);
@@ -411,8 +416,8 @@ const AdminDrivers = () => {
     const payload: any = {
       plate_number: vehicleForm.plate_number, make: vehicleForm.make, model: vehicleForm.model, color: vehicleForm.color,
       year: vehicleForm.year ? parseInt(vehicleForm.year) : null, vehicle_type_id: vehicleForm.vehicle_type_id || null,
-      driver_id: expandedDriver, image_url: vehicleForm.image_url || null,
-      registration_url: vehicleForm.registration_url || null, insurance_url: vehicleForm.insurance_url || null,
+      driver_id: expandedDriver, image_url: vehicleForm.image_url || DEFAULT_VEHICLE_IMAGE,
+      registration_url: vehicleForm.registration_url || DEFAULT_VEHICLE_IMAGE, insurance_url: vehicleForm.insurance_url || DEFAULT_VEHICLE_IMAGE,
       vehicle_status: vehicleForm.vehicle_status || "pending", rejection_reason: vehicleForm.rejection_reason || null,
       center_code: vehicleForm.center_code || null,
     };
@@ -572,7 +577,7 @@ const AdminDrivers = () => {
   const DocUpload = ({ field, label }: { field: string; label: string }) => (
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-2 mt-1">
+      <div className="flex items-center gap-2 mt-1 flex-wrap">
         {editForm[field] ? (
           <button onClick={() => setPreviewImg(editForm[field])} className="text-xs text-primary hover:underline flex items-center gap-1">
             <Eye className="w-3 h-3" /> View
@@ -583,6 +588,11 @@ const AdminDrivers = () => {
           {uploading === field ? "..." : "Upload"}
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadDoc(field, e.target.files[0])} disabled={uploading === field} />
         </label>
+        {!editForm[field] && (
+          <button type="button" onClick={() => setEditForm((prev: any) => ({ ...prev, [field]: DEFAULT_VEHICLE_IMAGE }))} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
+            <Image className="w-3 h-3" /> Default
+          </button>
+        )}
       </div>
     </div>
   );
