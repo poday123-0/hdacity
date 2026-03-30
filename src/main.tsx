@@ -7,7 +7,9 @@ import { checkOTAUpdate } from "@/lib/ota-update";
 checkOTAUpdate();
 
 // Show update banner when a new APP SW version is detected (one-time only)
-if ("serviceWorker" in navigator) {
+// Skip entirely on native Capacitor — no service workers needed
+const isNative = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor?.isNativePlatform?.();
+if ("serviceWorker" in navigator && !isNative) {
   let bannerShown = false;
   const hadControllerAtLoad = !!navigator.serviceWorker.controller;
 
