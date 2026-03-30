@@ -25,7 +25,7 @@ const Terms = () => {
   return (
     <div className="fixed inset-0 z-[9999] bg-background flex flex-col overflow-y-auto" style={{ height: '100dvh' }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b px-4 pt-[env(safe-area-inset-top,12px)] pb-3 flex items-center gap-3">
         <button
           onClick={() => navigate("/")}
           className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
