@@ -1311,10 +1311,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 60s for new requested/scheduled trips AND direct-assigned trips
-    // Realtime handles most cases — this is just a safety net (reduced from 30s to save battery)
+    // Fallback: Poll every 15s for new requested/scheduled trips AND direct-assigned trips
+    // Realtime handles most cases — this is a safety net for when WebSocket is slow/stale
     const pollInterval = setInterval(async () => {
-      if (!isActive || screen !== "online") return;
+      if (!isActive || screenRef.current !== "online") return;
+      if (handlingTripRef.current) return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Poll for broadcast trips
@@ -1330,7 +1331,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (data && data.length > 0) {
         const trip = data[0] as any;
         if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
         }
@@ -1349,12 +1350,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (assignedTrips && assignedTrips.length > 0) {
         const trip = assignedTrips[0] as any;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 60000);
+    }, 15000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
     const doForegroundTripCheck = async () => {
