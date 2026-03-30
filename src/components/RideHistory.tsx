@@ -148,11 +148,24 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
     setExporting(true);
     try {
       const dataUrl = await toPng(receiptRef.current, { pixelRatio: 3, backgroundColor: "#ffffff" });
-      const link = document.createElement("a");
-      link.download = `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`;
-      link.href = dataUrl;
-      link.click();
-      toast({ title: "Receipt downloaded ✅" });
+      const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+      if (isNative) {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`, { type: "image/png" });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: "Trip Receipt" });
+        } else {
+          const w = window.open();
+          if (w) { w.document.write(`<img src="${dataUrl}" style="max-width:100%"/>`); }
+        }
+      } else {
+        const link = document.createElement("a");
+        link.download = `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
+      toast({ title: "Receipt exported ✅" });
     } catch {
       toast({ title: "Export failed", variant: "destructive" });
     } finally {
