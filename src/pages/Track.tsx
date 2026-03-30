@@ -288,13 +288,46 @@ const Track = () => {
 
       {/* Info panel */}
       <div className="bg-card border-t border-border p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <SystemLogo className="w-8 h-8" />
-            <div>
-              <p className={`font-bold text-sm ${statusColor}`}>{statusLabel}</p>
-              {driver && <p className="text-xs text-muted-foreground">{driver.first_name} {driver.last_name}</p>}
-            </div>
+        {/* Trip status steps */}
+        <div className="flex items-center justify-between px-2">
+          {[
+            { key: "accepted", label: "Accepted" },
+            { key: "arrived", label: "Arrived" },
+            { key: "started", label: "Started" },
+            { key: "completed", label: "Completed" },
+          ].map((step, i, arr) => {
+            const statusOrder = ["accepted", "arrived", "started", "in_progress", "completed"];
+            const currentIdx = statusOrder.indexOf(trip?.status || "");
+            const stepIdx = statusOrder.indexOf(step.key);
+            const isActive = currentIdx >= stepIdx;
+            const isCurrent = trip?.status === step.key || (step.key === "started" && trip?.status === "in_progress");
+            return (
+              <div key={step.key} className="flex items-center flex-1">
+                <div className="flex flex-col items-center gap-1">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                    isCurrent ? "bg-primary text-primary-foreground border-primary scale-110" :
+                    isActive ? "bg-primary/20 text-primary border-primary/40" :
+                    "bg-muted text-muted-foreground border-border"
+                  }`}>
+                    {isActive ? <CheckCircle className="w-4 h-4" /> : i + 1}
+                  </div>
+                  <span className={`text-[10px] font-medium ${isCurrent ? "text-primary" : isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                    {step.label}
+                  </span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 mt-[-16px] ${isActive ? "bg-primary/40" : "bg-border"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <SystemLogo className="w-8 h-8" />
+          <div>
+            <p className={`font-bold text-sm ${statusColor}`}>{statusLabel}</p>
+            {driver && <p className="text-xs text-muted-foreground">{driver.first_name} {driver.last_name}</p>}
           </div>
         </div>
 
