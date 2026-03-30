@@ -1,5 +1,5 @@
 {
-  "appId": "com.hda.app",
+  "appId": "com.hdataxi.passenger",
   "appName": "HDA APP",
   "webDir": "dist",
   "plugins": {

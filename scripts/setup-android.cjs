@@ -14,7 +14,7 @@ const APP_DIR = path.join(ANDROID_DIR, 'app');
 
 // ─── Config ───────────────────────────────────────────────────────
 const CONFIG = {
-  appId: 'com.hda.app',
+  appId: 'com.hdataxi.passenger',
   appName: 'HDA APP',
   targetSdk: 35,
   minSdk: 22,
