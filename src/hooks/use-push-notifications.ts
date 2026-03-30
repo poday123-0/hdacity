@@ -199,13 +199,13 @@ export const usePushNotifications = (
     registeredRef.current = false;
 
     if (Capacitor.isNativePlatform()) {
-      // Native: unregister any leftover web Firebase SW to prevent browser notifications
+      // Native: unregister ALL service workers to prevent browser-style notifications
+      // The WebView can register Firebase messaging SWs that intercept FCM pushes
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (const reg of registrations) {
-            if (reg.scope.includes("firebase") || reg.active?.scriptURL?.includes("firebase")) {
-              reg.unregister().then(() => console.log("Unregistered web Firebase SW on native"));
-            }
+            console.log("Native: unregistering SW:", reg.scope, reg.active?.scriptURL);
+            reg.unregister().then(() => console.log("Unregistered SW on native:", reg.scope));
           }
         }).catch(() => {});
       }
