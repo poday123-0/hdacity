@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Embedded at build time — bump this when you publish + want native users to update
 export const WEB_BUNDLE_VERSION = import.meta.env.VITE_WEB_BUNDLE_VERSION || "1.0.0";
 
-const PUBLISHED_URL = "https://hdacity.lovable.app";
+const PUBLISHED_URL = "https://app.hda.taxi";
 const OTA_CHECK_KEY = "ota_last_check";
 const OTA_THROTTLE_MS = 5 * 60 * 1000; // Don't check more than once every 5 min
 
