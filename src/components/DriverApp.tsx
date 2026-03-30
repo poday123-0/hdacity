@@ -1194,6 +1194,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setTripStops([]);
         stopAllSounds();
         tripSoundRef.current = null;
+        handlingTripRef.current = null;
       }
     }, 1000);
   };
