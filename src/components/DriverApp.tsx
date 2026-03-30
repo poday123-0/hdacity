@@ -1596,7 +1596,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Trip accepted by ANOTHER driver while we're on ride-request screen
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
-      stopAllSounds(); tripSoundRef.current = null;
+      stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
       toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
       setScreen("online");
