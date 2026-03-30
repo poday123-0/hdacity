@@ -1607,7 +1607,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Trip cancelled by passenger (or auto-expired)
     if (updated.status === "cancelled") {
-      stopAllSounds(); tripSoundRef.current = null;
+      stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
       // Fetch cancel sound from notification_sounds table
       const { data: cancelSound } = await supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_cancelled").eq("is_default", true).eq("is_active", true).single();
