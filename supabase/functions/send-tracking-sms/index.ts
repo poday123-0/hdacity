@@ -94,7 +94,7 @@ serve(async (req) => {
     }
 
     // Fetch published URL from system settings or use default
-    let baseUrl = "https://hdacity.lovable.app";
+    let baseUrl = "https://app.hda.taxi";
     const { data: urlSetting } = await supabaseAdmin
       .from("system_settings")
       .select("value")
