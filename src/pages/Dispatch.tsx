@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useOfflineDispatch } from "@/hooks/use-offline-dispatch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
