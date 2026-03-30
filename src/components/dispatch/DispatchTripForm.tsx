@@ -59,6 +59,8 @@ interface DispatchTripFormProps {
   onlineDrivers: OnlineDriver[];
   centerCodeIndex: Record<string, CenterCodeIndexEntry>;
   onTripCreated: () => void;
+  isOnline?: boolean;
+  onOfflineQueue?: (payload: Record<string, any>) => void;
 }
 
 const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
