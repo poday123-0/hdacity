@@ -346,82 +346,128 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div ref={(el) => { tripDetailRefs.current[trip.id] = el; }} className="pt-2 mt-2 border-t border-border space-y-2">
+                          <div ref={(el) => { tripDetailRefs.current[trip.id] = el; }} style={{ background: "#ffffff", borderRadius: "16px", padding: "20px", fontFamily: "'Inter', system-ui, sans-serif" }}>
+                            {/* Branded header */}
+                            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+                              <p style={{ fontSize: "18px", fontWeight: "800", color: "#1a1a2e", letterSpacing: "0.05em" }}>TRIP RECEIPT</p>
+                              <p style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{format(new Date(trip.created_at), "dd MMM yyyy • h:mm a")}</p>
+                            </div>
+
                             {/* Route Map */}
                             {trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng && (
-                              <TripRouteMapMini
-                                pickupLat={trip.pickup_lat}
-                                pickupLng={trip.pickup_lng}
-                                dropoffLat={trip.dropoff_lat}
-                                dropoffLng={trip.dropoff_lng}
-                              />
-                            )}
-
-                            {/* Passenger */}
-                            {trip.customer_name && (
-                              <div className="flex items-center gap-2">
-                                <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                <p className="text-xs text-foreground">{trip.customer_name}</p>
+                              <div style={{ marginBottom: "16px", borderRadius: "12px", overflow: "hidden" }}>
+                                <TripRouteMapMini
+                                  pickupLat={trip.pickup_lat}
+                                  pickupLng={trip.pickup_lng}
+                                  dropoffLat={trip.dropoff_lat}
+                                  dropoffLng={trip.dropoff_lng}
+                                />
                               </div>
                             )}
 
-                            {/* Trip details grid */}
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="bg-card rounded-lg px-2.5 py-1.5">
-                                <p className="text-[10px] text-muted-foreground">Passengers</p>
-                                <p className="text-xs font-semibold text-foreground">{trip.passenger_count}</p>
+                            {/* Route addresses */}
+                            <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", paddingTop: "4px" }}>
+                                <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#22c55e" }} />
+                                <div style={{ width: "2px", height: "24px", background: "#e2e8f0" }} />
+                                <div style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#ef4444" }} />
                               </div>
-                              <div className="bg-card rounded-lg px-2.5 py-1.5">
-                                <p className="text-[10px] text-muted-foreground">Luggage</p>
-                                <p className="text-xs font-semibold text-foreground">{trip.luggage_count}</p>
-                              </div>
-                              {trip.distance_km && (
-                                <div className="bg-card rounded-lg px-2.5 py-1.5">
-                                  <p className="text-[10px] text-muted-foreground">Distance</p>
-                                  <p className="text-xs font-semibold text-foreground">{Number(trip.distance_km).toFixed(1)} km</p>
-                                </div>
-                              )}
-                              <div className="bg-card rounded-lg px-2.5 py-1.5">
-                                <p className="text-[10px] text-muted-foreground">Fare Type</p>
-                                <p className="text-xs font-semibold text-foreground capitalize">{trip.fare_type}</p>
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pickup</p>
+                                <p style={{ fontSize: "13px", color: "#1e293b", fontWeight: "500", marginBottom: "8px" }}>{trip.pickup_address || "—"}</p>
+                                <p style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>Dropoff</p>
+                                <p style={{ fontSize: "13px", color: "#1e293b", fontWeight: "500" }}>{trip.dropoff_address || "—"}</p>
                               </div>
                             </div>
 
+                            {/* Fare highlight */}
+                            <div style={{ background: "linear-gradient(135deg, #40A3DB, #2d8abf)", borderRadius: "14px", padding: "16px", textAlign: "center", marginBottom: "16px" }}>
+                              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.8)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.1em" }}>Total Fare</p>
+                              <p style={{ fontSize: "32px", fontWeight: "800", color: "#ffffff", lineHeight: "1.1", marginTop: "4px" }}>{Number(trip.actual_fare || trip.estimated_fare || 0)} <span style={{ fontSize: "16px", fontWeight: "600" }}>MVR</span></p>
+                            </div>
+
+                            {/* Passenger */}
+                            {trip.customer_name && (
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", padding: "10px 12px", background: "#f8fafc", borderRadius: "10px" }}>
+                                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#e0f2fe", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <span style={{ fontSize: "12px" }}>👤</span>
+                                </div>
+                                <p style={{ fontSize: "13px", color: "#1e293b", fontWeight: "600" }}>{trip.customer_name}</p>
+                              </div>
+                            )}
+
+                            {/* Details grid */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
+                              {[
+                                { label: "Passengers", value: String(trip.passenger_count) },
+                                { label: "Luggage", value: String(trip.luggage_count) },
+                                ...(trip.distance_km ? [{ label: "Distance", value: `${Number(trip.distance_km).toFixed(1)} km` }] : []),
+                                { label: "Fare Type", value: trip.fare_type.charAt(0).toUpperCase() + trip.fare_type.slice(1) },
+                              ].map((item) => (
+                                <div key={item.label} style={{ background: "#f8fafc", borderRadius: "10px", padding: "10px 12px" }}>
+                                  <p style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</p>
+                                  <p style={{ fontSize: "14px", color: "#1e293b", fontWeight: "700", marginTop: "2px" }}>{item.value}</p>
+                                </div>
+                              ))}
+                            </div>
+
                             {/* Timeline */}
-                            <div className="space-y-1">
-                              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Timeline</p>
-                              <div className="space-y-0.5 text-[10px] text-muted-foreground">
-                                <p>Requested: {format(new Date(trip.created_at), "h:mm:ss a")}</p>
-                                {trip.accepted_at && <p>Accepted: {format(new Date(trip.accepted_at), "h:mm:ss a")}</p>}
-                                {trip.started_at && <p>Started: {format(new Date(trip.started_at), "h:mm:ss a")}</p>}
-                                {trip.completed_at && <p>Completed: {format(new Date(trip.completed_at), "h:mm:ss a")}</p>}
+                            <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px", marginBottom: "12px" }}>
+                              <p style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Timeline</p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {[
+                                  { label: "Requested", time: trip.created_at },
+                                  ...(trip.accepted_at ? [{ label: "Accepted", time: trip.accepted_at }] : []),
+                                  ...(trip.started_at ? [{ label: "Started", time: trip.started_at }] : []),
+                                  ...(trip.completed_at ? [{ label: "Completed", time: trip.completed_at }] : []),
+                                ].map((t) => (
+                                  <div key={t.label} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                                    <span style={{ color: "#64748b" }}>{t.label}</span>
+                                    <span style={{ color: "#1e293b", fontWeight: "600" }}>{format(new Date(t.time), "h:mm:ss a")}</span>
+                                  </div>
+                                ))}
                               </div>
                             </div>
 
                             {/* Fare breakdown */}
                             {(trip.estimated_fare || trip.actual_fare) && (
-                              <div className="space-y-0.5">
-                                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Fare</p>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-muted-foreground">Estimated</span>
-                                  <span className="text-foreground font-medium">{Number(trip.estimated_fare) || 0} MVR</span>
+                              <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px", marginBottom: "12px" }}>
+                                <p style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Fare Breakdown</p>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+                                  <span style={{ color: "#64748b" }}>Estimated</span>
+                                  <span style={{ color: "#1e293b", fontWeight: "500" }}>{Number(trip.estimated_fare) || 0} MVR</span>
                                 </div>
                                 {trip.actual_fare && (
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Actual</span>
-                                    <span className="text-foreground font-bold">{Number(trip.actual_fare)} MVR</span>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                                    <span style={{ color: "#64748b" }}>Actual</span>
+                                    <span style={{ color: "#1e293b", fontWeight: "700" }}>{Number(trip.actual_fare)} MVR</span>
                                   </div>
                                 )}
                               </div>
                             )}
 
-                            {/* Feedback */}
-                            {trip.feedback_text && (
-                              <div className="bg-card rounded-lg p-2.5">
-                                <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">Passenger Feedback</p>
-                                <p className="text-xs text-foreground italic">"{trip.feedback_text}"</p>
+                            {/* Rating */}
+                            {trip.rating && (
+                              <div style={{ display: "flex", justifyContent: "center", gap: "4px", padding: "8px 0" }}>
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <span key={s} style={{ fontSize: "18px" }}>{s <= (trip.rating || 0) ? "⭐" : "☆"}</span>
+                                ))}
                               </div>
                             )}
+
+                            {/* Feedback */}
+                            {trip.feedback_text && (
+                              <div style={{ background: "#f0f9ff", borderRadius: "10px", padding: "12px", marginTop: "8px" }}>
+                                <p style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "600", marginBottom: "4px" }}>Passenger Feedback</p>
+                                <p style={{ fontSize: "12px", color: "#1e293b", fontStyle: "italic" }}>"{trip.feedback_text}"</p>
+                              </div>
+                            )}
+
+                            {/* Footer */}
+                            <div style={{ textAlign: "center", marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #f1f5f9" }}>
+                              <p style={{ fontSize: "9px", color: "#cbd5e1", letterSpacing: "0.1em" }}>Trip ID: {trip.id.slice(0, 8).toUpperCase()}</p>
+                            </div>
+                          </div>
 
                             {/* Action buttons */}
                             <div className="flex gap-2">
