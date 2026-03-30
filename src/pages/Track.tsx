@@ -267,7 +267,21 @@ const Track = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Map */}
-      <div ref={mapRef} className="flex-1 min-h-[50vh]" />
+      <div className="flex-1 min-h-[50vh] relative">
+        <div ref={mapRef} className="absolute inset-0" />
+        {!mapsLoaded && !mapsError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+              <Car className="w-6 h-6 text-primary" />
+            </motion.div>
+          </div>
+        )}
+        {mapsError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <p className="text-xs text-muted-foreground">Map unavailable</p>
+          </div>
+        )}
+      </div>
 
       {/* Info panel */}
       <div className="bg-card border-t border-border p-4 space-y-4">
