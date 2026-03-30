@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { checkOTAUpdate } from "@/lib/ota-update";
+
+// Run OTA update check for native apps (before rendering to redirect early if needed)
+checkOTAUpdate();
 
 // Show update banner when a new APP SW version is detected (one-time only)
 if ("serviceWorker" in navigator) {
