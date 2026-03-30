@@ -8,7 +8,7 @@ import SystemLogo from "@/components/SystemLogo";
 
 const Track = () => {
   const { tripId } = useParams<{ tripId: string }>();
-  const { isLoaded: mapsLoaded } = useGoogleMaps();
+  const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMaps();
   const [trip, setTrip] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [vehicle, setVehicle] = useState<any>(null);
