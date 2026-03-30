@@ -583,11 +583,9 @@ const AdminDrivers = () => {
           {uploading === field ? "..." : "Upload"}
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadDoc(field, e.target.files[0])} disabled={uploading === field} />
         </label>
-        {!editForm[field] && (
-          <button type="button" onClick={() => setEditForm((prev: any) => ({ ...prev, [field]: DEFAULT_VEHICLE_IMAGE }))} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
-            <Image className="w-3 h-3" /> Default
-          </button>
-        )}
+        <button type="button" onClick={() => setEditForm((prev: any) => ({ ...prev, [field]: DEFAULT_VEHICLE_IMAGE }))} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
+          <Image className="w-3 h-3" /> Default
+        </button>
       </div>
     </div>
   );
@@ -1419,11 +1417,9 @@ const AdminDrivers = () => {
                                           {uploading === `vehicle_${item.field}` ? "..." : "Upload"}
                                           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadVehicleDoc(item.field, e.target.files[0])} disabled={uploading === `vehicle_${item.field}`} />
                                         </label>
-                                        {!(vehicleForm as any)[item.field] && (
-                                          <button type="button" onClick={() => setVehicleForm({ ...vehicleForm, [item.field]: DEFAULT_VEHICLE_IMAGE })} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
-                                            <Image className="w-3 h-3" /> Default
-                                          </button>
-                                        )}
+                                        <button type="button" onClick={() => setVehicleForm({ ...vehicleForm, [item.field]: DEFAULT_VEHICLE_IMAGE })} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
+                                          <Image className="w-3 h-3" /> Default
+                                        </button>
                                       </div>
                                     </div>
                                   ))}
