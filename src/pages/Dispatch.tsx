@@ -1297,7 +1297,39 @@ const Dispatch = () => {
         </div>
       </header>
 
-      {/* Tab navigation - scrollable */}
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between gap-2 shrink-0 animate-pulse">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4" />
+            <span className="text-sm font-bold">You are offline</span>
+            <span className="text-xs opacity-80">— Trips will be queued and auto-sent when connection returns</span>
+          </div>
+          {queuedTrips.length > 0 && (
+            <span className="text-xs font-mono bg-destructive-foreground/20 px-2 py-0.5 rounded">
+              {queuedTrips.length} queued
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Queued trips banner (when online but have pending) */}
+      {isOnline && queuedTrips.length > 0 && (
+        <div className="bg-warning/15 border-b border-warning/30 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <Upload className="w-4 h-4 text-warning" />
+            <span className="text-sm font-medium text-warning">{queuedTrips.length} queued trip(s) pending sync</span>
+          </div>
+          <button
+            onClick={syncQueue}
+            disabled={isSyncing}
+            className="text-xs font-bold text-warning hover:text-warning/80 px-2 py-1 rounded bg-warning/10 hover:bg-warning/20 transition-colors disabled:opacity-50"
+          >
+            {isSyncing ? "Syncing..." : "Sync Now"}
+          </button>
+        </div>
+      )}
+
       <div className="bg-card border-b border-border shrink-0 overflow-x-auto">
         <div className="flex px-2 py-1.5 gap-1 min-w-max">
           {dispatchTabs
