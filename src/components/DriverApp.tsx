@@ -187,6 +187,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [navPanelMinimized, setNavPanelMinimized] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [profileTab, setProfileTab] = useState<ProfileTab>("info");
   const [tripRadius, setTripRadius] = useState(10);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);

@@ -33,6 +33,7 @@ interface TopBarProps {
 const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfile, onNotificationPress, onProfileUpdate }: TopBarProps) => {
   useTheme();
   const [showProfile, setShowProfile] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
