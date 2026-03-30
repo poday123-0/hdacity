@@ -199,6 +199,16 @@ export const usePushNotifications = (
     registeredRef.current = false;
 
     if (Capacitor.isNativePlatform()) {
+      // Native: unregister any leftover web Firebase SW to prevent browser notifications
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) {
+            if (reg.scope.includes("firebase") || reg.active?.scriptURL?.includes("firebase")) {
+              reg.unregister().then(() => console.log("Unregistered web Firebase SW on native"));
+            }
+          }
+        }).catch(() => {});
+      }
       // Native: use Capacitor Push Notifications
       const setupNative = async () => {
         try {
