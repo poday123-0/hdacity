@@ -633,7 +633,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-border">
-                <h2 className="text-base font-bold text-foreground">📅 My Bookings</h2>
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2"><CalendarClock className="w-4.5 h-4.5 text-primary" /> My Bookings</h2>
                 <button onClick={() => setShowBookings(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                   <X className="w-4 h-4" />
                 </button>
