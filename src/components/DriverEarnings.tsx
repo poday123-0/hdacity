@@ -5,7 +5,7 @@ import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, 
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths, addDays, addWeeks, addMonths } from "date-fns";
 import { toPng } from "html-to-image";
 import { toast } from "@/hooks/use-toast";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+
 import TripChat from "@/components/TripChat";
 
 // Static map image for trip details (renders correctly in PNG export)
