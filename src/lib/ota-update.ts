@@ -50,8 +50,9 @@ function shouldThrottle(): boolean {
 }
 
 export async function checkOTAUpdate(): Promise<void> {
-  // Only run on native builds with local bundle
-  if (!isNative()) return;
+  // Disable OTA redirect for native apps — native should always use bundled code
+  // Users get updates by rebuilding the APK, not by redirecting to a browser URL
+  return;
 
   // Already loading from remote? Skip.
   if (window.location.origin === PUBLISHED_URL) return;
