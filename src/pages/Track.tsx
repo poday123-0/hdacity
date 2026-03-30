@@ -160,7 +160,7 @@ const Track = () => {
         zIndex: 1001,
       });
     }
-  }, [trip?.pickup_lat, mapsLoaded, isEnded]);
+  }, [trip?.pickup_lat, mapsLoaded, mapsError, isEnded]);
 
   // Update driver marker position
   useEffect(() => {
