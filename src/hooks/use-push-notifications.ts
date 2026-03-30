@@ -276,13 +276,33 @@ export const usePushNotifications = (
             console.error("Push registration error:", error);
           });
 
-          // Native foreground: play custom sound (skip trip_requested — DriverApp handles it)
-          PushNotifications.addListener("pushNotificationReceived", (notification) => {
+          // Native foreground: suppress OS notification (prevents double sound)
+          // and dispatch event so DriverApp can show trip screen immediately
+          PushNotifications.addListener("pushNotificationReceived", async (notification) => {
             try {
               console.log("Push received (foreground):", notification);
               const notifType = notification.data?.type || "";
-              const driverHandledTypes = ["trip_requested", "message_received", "trip_cancelled"];
-              if (driverHandledTypes.includes(notifType)) return;
+
+              // For trip_requested: immediately clear delivered notifications
+              // to suppress the OS-level notification sound — DriverApp's
+              // handleNewTrip will play the in-app sound instead
+              if (notifType === "trip_requested") {
+                try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
+                // Dispatch event so DriverApp triggers immediate trip check
+                window.dispatchEvent(new CustomEvent("fcm-foreground-trip", {
+                  detail: { type: notifType, data: notification.data }
+                }));
+                return;
+              }
+
+              // For trip_cancelled: dispatch event and skip sound (DriverApp handles)
+              if (notifType === "trip_cancelled" || notifType === "message_received") {
+                try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
+                return;
+              }
+
+              // Other notification types: clear OS notification, play in-app sound
+              try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
               const soundUrl = notification.data?.sound_url;
               if (soundUrl) {
                 playTrackedSound(soundUrl);

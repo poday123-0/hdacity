@@ -1463,10 +1463,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (!userProfile?.id) return;
 
     const triggerCheck = () => {
-      // Fire immediately + 2 retries (reduced from 7 to save battery/CPU)
+      // Fire immediately + more aggressive retries for faster trip screen display
       doForegroundTripCheckRef.current?.();
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 500);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 2000);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 300);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 800);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 1500);
+      setTimeout(() => doForegroundTripCheckRef.current?.(), 3000);
     };
 
     // Native Capacitor: listen for notification tap
