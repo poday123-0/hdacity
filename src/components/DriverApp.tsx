@@ -3895,16 +3895,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   {/* Quick actions row */}
                   <div className="flex items-center gap-2">
                     {/* Call */}
-                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-1 bg-sos/10 border border-sos/20 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 active:scale-95 transition-transform overflow-hidden">
+                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-[2] bg-sos/10 border border-sos/20 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                       <Phone className="w-3.5 h-3.5 text-sos shrink-0" />
-                      <span className="text-[11px] font-bold text-sos truncate">
+                      <span className="text-[11px] font-bold text-sos">
                         {currentTrip.customer_phone || passengerProfile?.phone_number || "Call"}
                       </span>
                     </a>
                     {/* Chat */}
-                    <button onClick={() => {setShowDriverChat(true);setUnreadDriverMessages(0);}} className="flex-1 bg-surface rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform relative">
+                    <button onClick={() => {setShowDriverChat(true);setUnreadDriverMessages(0);}} className="w-10 h-10 shrink-0 bg-surface rounded-xl flex items-center justify-center active:scale-95 transition-transform relative">
                       <MessageSquare className="w-4 h-4 text-foreground" />
-                      <span className="text-xs font-semibold text-foreground">Chat</span>
                       {unreadDriverMessages > 0 &&
                         <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
                           {unreadDriverMessages}
