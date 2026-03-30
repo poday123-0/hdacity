@@ -8,6 +8,7 @@ import SystemLogo from "@/components/SystemLogo";
 
 const Track = () => {
   const { tripId } = useParams<{ tripId: string }>();
+  const { isLoaded: mapsLoaded } = useGoogleMaps();
   const [trip, setTrip] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [vehicle, setVehicle] = useState<any>(null);
@@ -18,6 +19,7 @@ const Track = () => {
   const mapInstanceRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
   const pickupMarkerRef = useRef<any>(null);
+  const routeRendererRef = useRef<any>(null);
 
   const isCompleted = trip?.status === "completed";
   const isCancelled = trip?.status === "cancelled";
