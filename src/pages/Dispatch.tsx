@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useOfflineDispatch } from "@/hooks/use-offline-dispatch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
@@ -40,6 +41,9 @@ import {
   LogOut,
   Maximize,
   Minimize,
+  WifiOff,
+  Wifi,
+  Upload,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
@@ -208,6 +212,7 @@ const Dispatch = () => {
   const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
+  const { isOnline, queuedTrips, isSyncing, queueTrip, removeFromQueue, syncQueue, cacheDrivers, getCachedDrivers } = useOfflineDispatch();
   const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
   const [dutySessionId, setDutySessionId] = useState<string | null>(null);
   const [dutyClockIn, setDutyClockIn] = useState<string | null>(null);
@@ -665,6 +670,7 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      cacheDrivers(drivers);
     };
     load();
   }, [isAuthed]);
@@ -773,6 +779,7 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      cacheDrivers(drivers);
     };
     let driverDebounce: ReturnType<typeof setTimeout> | null = null;
     const driverChannel = supabase
@@ -1237,6 +1244,7 @@ const Dispatch = () => {
           <h1 className="text-base sm:text-lg font-extrabold text-foreground truncate">
             HDA <span className="text-primary">DISPATCH</span>
           </h1>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? "bg-green-500" : "bg-destructive animate-pulse"}`} title={isOnline ? "Online" : "Offline"} />
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {dutyElapsed && (
@@ -1290,7 +1298,39 @@ const Dispatch = () => {
         </div>
       </header>
 
-      {/* Tab navigation - scrollable */}
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between gap-2 shrink-0 animate-pulse">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4" />
+            <span className="text-sm font-bold">You are offline</span>
+            <span className="text-xs opacity-80">— Trips will be queued and auto-sent when connection returns</span>
+          </div>
+          {queuedTrips.length > 0 && (
+            <span className="text-xs font-mono bg-destructive-foreground/20 px-2 py-0.5 rounded">
+              {queuedTrips.length} queued
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Queued trips banner (when online but have pending) */}
+      {isOnline && queuedTrips.length > 0 && (
+        <div className="bg-warning/15 border-b border-warning/30 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <Upload className="w-4 h-4 text-warning" />
+            <span className="text-sm font-medium text-warning">{queuedTrips.length} queued trip(s) pending sync</span>
+          </div>
+          <button
+            onClick={syncQueue}
+            disabled={isSyncing}
+            className="text-xs font-bold text-warning hover:text-warning/80 px-2 py-1 rounded bg-warning/10 hover:bg-warning/20 transition-colors disabled:opacity-50"
+          >
+            {isSyncing ? "Syncing..." : "Sync Now"}
+          </button>
+        </div>
+      )}
+
       <div className="bg-card border-b border-border shrink-0 overflow-x-auto">
         <div className="flex px-2 py-1.5 gap-1 min-w-max">
           {dispatchTabs
@@ -2133,6 +2173,8 @@ const Dispatch = () => {
                   onlineDrivers={onlineDrivers}
                   centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
+                  isOnline={isOnline}
+                  onOfflineQueue={queueTrip}
                 />
 
                 {/* Bid 2 */}
@@ -2143,6 +2185,8 @@ const Dispatch = () => {
                   onlineDrivers={onlineDrivers}
                   centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
+                  isOnline={isOnline}
+                  onOfflineQueue={queueTrip}
                 />
 
                 {/* Bid 3 */}
@@ -2153,6 +2197,8 @@ const Dispatch = () => {
                   onlineDrivers={onlineDrivers}
                   centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
+                  isOnline={isOnline}
+                  onOfflineQueue={queueTrip}
                 />
               </div>
             </div>
