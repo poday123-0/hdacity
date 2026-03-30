@@ -13,6 +13,7 @@ import Install from "./pages/Install";
 import Track from "./pages/Track";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import DeleteAccount from "./pages/DeleteAccount";
 import NotFound from "./pages/NotFound";
 import { useBranding } from "@/hooks/use-branding";
 import AppVersionCheck from "@/components/AppVersionCheck";
