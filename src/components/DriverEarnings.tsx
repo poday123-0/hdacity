@@ -469,8 +469,8 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                             </div>
                           </div>
 
-                            {/* Action buttons */}
-                            <div className="flex gap-2">
+                            {/* Action buttons - outside receipt for export */}
+                            <div className="flex gap-2 mt-2">
                               {(messageCounts[trip.id] || 0) > 0 && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setChatTripId(trip.id); }}
@@ -490,14 +490,12 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                                     const dataUrl = await toPng(el, { pixelRatio: 3, backgroundColor: "#ffffff" });
                                     const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
                                     if (isNative) {
-                                      // Convert data URL to blob and use Web Share API
                                       const res = await fetch(dataUrl);
                                       const blob = await res.blob();
                                       const file = new File([blob], `trip-${trip.id.slice(0, 8)}.png`, { type: "image/png" });
                                       if (navigator.share && navigator.canShare?.({ files: [file] })) {
                                         await navigator.share({ files: [file], title: "Trip Receipt" });
                                       } else {
-                                        // Fallback: open in new tab
                                         const w = window.open();
                                         if (w) { w.document.write(`<img src="${dataUrl}" style="max-width:100%"/>`); }
                                       }
@@ -517,7 +515,6 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                                 <span className="text-[10px] font-semibold text-foreground">Export PNG</span>
                               </button>
                             </div>
-                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
