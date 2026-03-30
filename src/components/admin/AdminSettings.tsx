@@ -170,6 +170,10 @@ const AdminSettings = () => {
       const vc = typeof map["app_version_control"] === "string" ? JSON.parse(map["app_version_control"]) : map["app_version_control"];
       setVersionConfig(prev => ({ ...prev, ...vc }));
     }
+    if (map["web_bundle_version"]) {
+      const wbv = map["web_bundle_version"];
+      setOtaBundleVersion(typeof wbv === "object" && wbv.version ? wbv.version : typeof wbv === "string" ? wbv : "");
+    }
     setLoading(false);
   };
 
