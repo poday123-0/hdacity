@@ -877,6 +877,39 @@ const AdminSettings = () => {
         </div>
       </SectionCard>
 
+      {/* OTA Web Bundle Version */}
+      <SectionCard title="OTA Web Update" description="Push web updates to native app users without app store release" icon={Globe}>
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Native apps compare their built-in version against this value. If a newer version is set here, the app will load the latest code from <span className="font-mono text-foreground">app.hda.taxi</span> instead of the local bundle.
+          </p>
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1.5">Web Bundle Version</label>
+            <input
+              type="text"
+              value={otaBundleVersion}
+              onChange={e => setOtaBundleVersion(e.target.value)}
+              placeholder="1.0.0"
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground font-mono"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">Use semver (e.g. 1.1.0). Bump this after publishing changes to push OTA updates.</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!otaBundleVersion.trim()) {
+                toast({ title: "Enter a version", variant: "destructive" });
+                return;
+              }
+              await updateSetting("web_bundle_version", { version: otaBundleVersion.trim() });
+              toast({ title: "OTA version updated!", description: `Native apps will now load v${otaBundleVersion.trim()} from the web.` });
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold active:scale-95 transition-transform hover:opacity-90"
+          >
+            <Globe className="w-4 h-4" /> Push OTA Update
+          </button>
+        </div>
+      </SectionCard>
+
       {/* Native App Version Control */}
       <SectionCard title="Native App Version Control" description="Manage version requirements for iOS & Android apps" icon={Smartphone}>
         <div className="space-y-4">
