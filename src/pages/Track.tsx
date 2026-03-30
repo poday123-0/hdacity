@@ -8,7 +8,7 @@ import SystemLogo from "@/components/SystemLogo";
 
 const Track = () => {
   const { tripId } = useParams<{ tripId: string }>();
-  const { isLoaded: mapsLoaded } = useGoogleMaps();
+  const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMaps();
   const [trip, setTrip] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [vehicle, setVehicle] = useState<any>(null);
@@ -89,11 +89,14 @@ const Track = () => {
 
   // Initialize map using shared hook
   useEffect(() => {
-    if (!mapRef.current || !mapsLoaded || isEnded || !trip?.pickup_lat) return;
+    if (!mapRef.current || !mapsLoaded || isEnded || !trip?.pickup_lat) {
+      console.log("[Track Map] Skipping init:", { hasRef: !!mapRef.current, mapsLoaded, isEnded, hasPickup: !!trip?.pickup_lat, mapsError });
+      return;
+    }
     if (mapInstanceRef.current) return;
 
     const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!g?.maps) { console.error("[Track Map] google.maps not available despite mapsLoaded=true"); return; }
 
     const center = driverLocation || { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) };
     const map = new g.maps.Map(mapRef.current, {
@@ -157,7 +160,7 @@ const Track = () => {
         zIndex: 1001,
       });
     }
-  }, [trip?.pickup_lat, mapsLoaded, isEnded]);
+  }, [trip?.pickup_lat, mapsLoaded, mapsError, isEnded]);
 
   // Update driver marker position
   useEffect(() => {
@@ -267,7 +270,21 @@ const Track = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Map */}
-      <div ref={mapRef} className="flex-1 min-h-[50vh]" />
+      <div className="flex-1 min-h-[50vh] relative">
+        <div ref={mapRef} className="absolute inset-0" />
+        {!mapsLoaded && !mapsError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+              <Car className="w-6 h-6 text-primary" />
+            </motion.div>
+          </div>
+        )}
+        {mapsError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <p className="text-xs text-muted-foreground">Map unavailable</p>
+          </div>
+        )}
+      </div>
 
       {/* Info panel */}
       <div className="bg-card border-t border-border p-4 space-y-4">
