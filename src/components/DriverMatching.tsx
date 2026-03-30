@@ -486,7 +486,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
                 )}
               </div>
             </div>
-            {vehicleImageUrl && (
+            {vehicleImageUrl && !vehicleImageUrl.startsWith("/src/") && (
               <div className="shrink-0 w-20 h-14 rounded-xl bg-surface overflow-hidden border border-border/40">
                 <img src={vehicleImageUrl} alt="Vehicle" className="w-full h-full object-cover" />
               </div>
