@@ -779,6 +779,7 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      cacheDrivers(drivers);
     };
     let driverDebounce: ReturnType<typeof setTimeout> | null = null;
     const driverChannel = supabase
