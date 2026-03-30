@@ -3868,8 +3868,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <p className="text-[10px] text-primary-foreground/70">MVR{(currentTrip as any).passenger_bonus > 0 ? ` (+${(currentTrip as any).passenger_bonus})` : ""}</p>
               </div>
               {/* Minimize */}
-              <button onClick={() => setNavPanelMinimized(true)} className="w-7 h-7 rounded-lg bg-primary-foreground/20 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                <ChevronDown className="w-3.5 h-3.5 text-primary-foreground" />
+              <button onClick={() => setNavPanelMinimized(true)} className="w-8 h-8 rounded-full bg-primary-foreground/25 backdrop-blur-sm border border-primary-foreground/20 flex items-center justify-center active:scale-90 transition-all shadow-lg shadow-black/10 shrink-0 hover:bg-primary-foreground/35">
+                <ChevronDown className="w-4 h-4 text-primary-foreground drop-shadow-sm" />
               </button>
             </div>
             {/* Animated Timer Bar */}
