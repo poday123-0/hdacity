@@ -98,6 +98,7 @@ const AdminSettings = () => {
   const [driverAppIconUrl, setDriverAppIconUrl] = useState<string | null>(null);
   const [uploadingDriverIcon, setUploadingDriverIcon] = useState(false);
   const driverIconInputRef = useRef<HTMLInputElement>(null);
+  const [otaBundleVersion, setOtaBundleVersion] = useState("");
   const [quickReplies, setQuickReplies] = useState<{ text: string; target: string }[]>([]);
   const [newQuickReply, setNewQuickReply] = useState("");
   const [newQuickReplyTarget, setNewQuickReplyTarget] = useState("both");
