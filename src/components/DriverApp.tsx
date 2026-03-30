@@ -1376,7 +1376,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (data && data.length > 0) {
         const trip = data[0] as any;
         if (!(trip.target_driver_id && trip.target_driver_id !== userProfile.id)) {
-          if (!declinedTripIdsRef.current.has(trip.id)) {
+          if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
             lastSeenTripRef.current = trip.id;
             handleNewTrip(trip);
             return;
