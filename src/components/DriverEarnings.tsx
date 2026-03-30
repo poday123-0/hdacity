@@ -438,11 +438,26 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                                   setExporting(trip.id);
                                   try {
                                     const dataUrl = await toPng(el, { pixelRatio: 3, backgroundColor: "#ffffff" });
-                                    const link = document.createElement("a");
-                                    link.download = `trip-${trip.id.slice(0, 8)}.png`;
-                                    link.href = dataUrl;
-                                    link.click();
-                                    toast({ title: "Receipt downloaded ✅" });
+                                    const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+                                    if (isNative) {
+                                      // Convert data URL to blob and use Web Share API
+                                      const res = await fetch(dataUrl);
+                                      const blob = await res.blob();
+                                      const file = new File([blob], `trip-${trip.id.slice(0, 8)}.png`, { type: "image/png" });
+                                      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                                        await navigator.share({ files: [file], title: "Trip Receipt" });
+                                      } else {
+                                        // Fallback: open in new tab
+                                        const w = window.open();
+                                        if (w) { w.document.write(`<img src="${dataUrl}" style="max-width:100%"/>`); }
+                                      }
+                                    } else {
+                                      const link = document.createElement("a");
+                                      link.download = `trip-${trip.id.slice(0, 8)}.png`;
+                                      link.href = dataUrl;
+                                      link.click();
+                                    }
+                                    toast({ title: "Receipt exported ✅" });
                                   } catch { toast({ title: "Export failed", variant: "destructive" }); }
                                   finally { setExporting(null); }
                                 }}
