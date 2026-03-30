@@ -5,46 +5,50 @@ import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, 
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths, addDays, addWeeks, addMonths } from "date-fns";
 import { toPng } from "html-to-image";
 import { toast } from "@/hooks/use-toast";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+
 import TripChat from "@/components/TripChat";
 
-// Mini route map for trip details
+// Static map image for trip details (renders correctly in PNG export)
 const TripRouteMapMini = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
   pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number;
 }) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const { isLoaded, mapId } = useGoogleMaps();
-  const [mapReady, setMapReady] = useState(false);
+  const [mapsKey, setMapsKey] = useState<string | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
-    if (!isLoaded || !mapContainerRef.current || mapInstanceRef.current) return;
+    // Try cache first
     try {
-      const bounds = new google.maps.LatLngBounds();
-      bounds.extend({ lat: pickupLat, lng: pickupLng });
-      bounds.extend({ lat: dropoffLat, lng: dropoffLng });
-      const map = new google.maps.Map(mapContainerRef.current, {
-        mapId: mapId || undefined,
-        disableDefaultUI: true,
-        gestureHandling: "none",
-        zoomControl: false,
-        clickableIcons: false,
-      });
-      map.fitBounds(bounds, 30);
-      mapInstanceRef.current = map;
-      new google.maps.Marker({ position: { lat: pickupLat, lng: pickupLng }, map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, title: "Pickup" });
-      new google.maps.Marker({ position: { lat: dropoffLat, lng: dropoffLng }, map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, title: "Dropoff" });
-      const ds = new google.maps.DirectionsService();
-      const dr = new google.maps.DirectionsRenderer({ map, suppressMarkers: true, preserveViewport: true, polylineOptions: { strokeColor: "hsl(var(--primary))", strokeWeight: 3, strokeOpacity: 0.8 } });
-      ds.route({ origin: { lat: pickupLat, lng: pickupLng }, destination: { lat: dropoffLat, lng: dropoffLng }, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => { if (status === "OK" && result) dr.setDirections(result); });
-      setMapReady(true);
-    } catch (err) { console.error("TripRouteMapMini error:", err); }
-  }, [isLoaded, mapId, pickupLat, pickupLng, dropoffLat, dropoffLng]);
+      const cached = localStorage.getItem("hda_maps_key_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.key) { setMapsKey(parsed.key); return; }
+      }
+    } catch {}
+    supabase.functions.invoke("get-maps-key").then(({ data }) => {
+      if (data?.key) setMapsKey(data.key);
+    });
+  }, []);
+
+  if (!mapsKey) {
+    return (
+      <div className="w-full h-[120px] rounded-lg bg-surface flex items-center justify-center">
+        <Loader2 className="w-4 h-4 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x240&scale=2&maptype=roadmap&markers=color:green%7Csize:small%7C${pickupLat},${pickupLng}&markers=color:red%7Csize:small%7C${dropoffLat},${dropoffLng}&path=color:0x3b82f6ff%7Cweight:3%7C${pickupLat},${pickupLng}%7C${dropoffLat},${dropoffLng}&key=${mapsKey}`;
 
   return (
     <div className="relative w-full h-[120px] rounded-lg overflow-hidden bg-surface">
-      {!mapReady && <div className="absolute inset-0 flex items-center justify-center z-10"><Loader2 className="w-4 h-4 text-primary animate-spin" /></div>}
-      <div ref={mapContainerRef} className="w-full h-full" />
+      {!imgLoaded && <div className="absolute inset-0 flex items-center justify-center z-10"><Loader2 className="w-4 h-4 text-primary animate-spin" /></div>}
+      <img
+        src={staticUrl}
+        alt="Trip route"
+        className="w-full h-full object-cover"
+        crossOrigin="anonymous"
+        onLoad={() => setImgLoaded(true)}
+      />
       <div className="absolute bottom-1.5 left-1.5 flex items-center gap-2 bg-card/90 backdrop-blur-sm rounded px-2 py-1">
         <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500" /><span className="text-[8px] font-medium text-foreground">Pickup</span></div>
         <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /><span className="text-[8px] font-medium text-foreground">Drop</span></div>
