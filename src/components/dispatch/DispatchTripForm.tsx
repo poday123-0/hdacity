@@ -1363,7 +1363,7 @@ const DispatchTripForm = ({
 
                 // 1) Instant path: use preloaded index, but re-fetch today_trips live
                 const cached = centerCodeIndex?.[code];
-                  // Quick check vehicle is still active and not blocked
+                if (cached) {
                   const { data: vCheck } = await supabase
                     .from("vehicles")
                     .select("id, blocked_until")
