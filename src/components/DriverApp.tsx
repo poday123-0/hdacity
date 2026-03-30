@@ -3897,7 +3897,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {/* Call */}
                     <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-1 bg-primary/10 rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform">
                       <Phone className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-semibold text-primary">Call</span>
+                      <span className="text-xs font-semibold text-primary">
+                        {currentTrip.customer_phone || passengerProfile?.phone_number || "Call"}
+                      </span>
                     </a>
                     {/* Chat */}
                     <button onClick={() => {setShowDriverChat(true);setUnreadDriverMessages(0);}} className="flex-1 bg-surface rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform relative">
