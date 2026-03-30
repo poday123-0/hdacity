@@ -212,6 +212,7 @@ const Dispatch = () => {
   const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
+  const { isOnline, queuedTrips, isSyncing, queueTrip, removeFromQueue, syncQueue, cacheDrivers, getCachedDrivers } = useOfflineDispatch();
   const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
   const [dutySessionId, setDutySessionId] = useState<string | null>(null);
   const [dutyClockIn, setDutyClockIn] = useState<string | null>(null);
