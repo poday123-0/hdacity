@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { motion } from "framer-motion";
 import { Car, MapPin, Clock, CheckCircle, Download, ExternalLink } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
