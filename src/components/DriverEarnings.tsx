@@ -1,9 +1,57 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, TrendingUp, MapPin, Users, Luggage, Star, ChevronDown, MessageSquare } from "lucide-react";
+import { X, DollarSign, Navigation, Clock, ChevronLeft, ChevronRight, Calendar, TrendingUp, MapPin, Users, Luggage, Star, ChevronDown, MessageSquare, Download, Loader2 } from "lucide-react";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths, addDays, addWeeks, addMonths } from "date-fns";
+import { toPng } from "html-to-image";
+import { toast } from "@/hooks/use-toast";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 import TripChat from "@/components/TripChat";
+
+// Mini route map for trip details
+const TripRouteMapMini = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
+  pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number;
+}) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const { isLoaded, mapId } = useGoogleMaps();
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded || !mapContainerRef.current || mapInstanceRef.current) return;
+    try {
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend({ lat: pickupLat, lng: pickupLng });
+      bounds.extend({ lat: dropoffLat, lng: dropoffLng });
+      const map = new google.maps.Map(mapContainerRef.current, {
+        mapId: mapId || undefined,
+        disableDefaultUI: true,
+        gestureHandling: "none",
+        zoomControl: false,
+        clickableIcons: false,
+      });
+      map.fitBounds(bounds, 30);
+      mapInstanceRef.current = map;
+      new google.maps.Marker({ position: { lat: pickupLat, lng: pickupLng }, map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, title: "Pickup" });
+      new google.maps.Marker({ position: { lat: dropoffLat, lng: dropoffLng }, map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, title: "Dropoff" });
+      const ds = new google.maps.DirectionsService();
+      const dr = new google.maps.DirectionsRenderer({ map, suppressMarkers: true, preserveViewport: true, polylineOptions: { strokeColor: "hsl(var(--primary))", strokeWeight: 3, strokeOpacity: 0.8 } });
+      ds.route({ origin: { lat: pickupLat, lng: pickupLng }, destination: { lat: dropoffLat, lng: dropoffLng }, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => { if (status === "OK" && result) dr.setDirections(result); });
+      setMapReady(true);
+    } catch (err) { console.error("TripRouteMapMini error:", err); }
+  }, [isLoaded, mapId, pickupLat, pickupLng, dropoffLat, dropoffLng]);
+
+  return (
+    <div className="relative w-full h-[120px] rounded-lg overflow-hidden bg-surface">
+      {!mapReady && <div className="absolute inset-0 flex items-center justify-center z-10"><Loader2 className="w-4 h-4 text-primary animate-spin" /></div>}
+      <div ref={mapContainerRef} className="w-full h-full" />
+      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-2 bg-card/90 backdrop-blur-sm rounded px-2 py-1">
+        <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500" /><span className="text-[8px] font-medium text-foreground">Pickup</span></div>
+        <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /><span className="text-[8px] font-medium text-foreground">Drop</span></div>
+      </div>
+    </div>
+  );
+};
 
 type Period = "day" | "week" | "month" | "custom";
 
@@ -17,6 +65,10 @@ interface TripRecord {
   created_at: string;
   pickup_address: string;
   dropoff_address: string;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   completed_at: string | null;
   accepted_at: string | null;
   started_at: string | null;
@@ -46,6 +98,8 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const [chatTripId, setChatTripId] = useState<string | null>(null);
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  const [exporting, setExporting] = useState<string | null>(null);
+  const tripDetailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const dateRange = useMemo(() => {
     if (period === "custom" && customFrom && customTo) {
@@ -77,7 +131,7 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
       setLoading(true);
       let query = supabase
         .from("trips")
-        .select("id, actual_fare, estimated_fare, duration_minutes, distance_km, status, created_at, pickup_address, dropoff_address, completed_at, accepted_at, started_at, passenger_count, luggage_count, rating, feedback_text, customer_name, fare_type")
+        .select("id, actual_fare, estimated_fare, duration_minutes, distance_km, status, created_at, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, completed_at, accepted_at, started_at, passenger_count, luggage_count, rating, feedback_text, customer_name, fare_type")
         .eq("driver_id", driverId)
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString())
@@ -288,7 +342,17 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="pt-2 mt-2 border-t border-border space-y-2">
+                          <div ref={(el) => { tripDetailRefs.current[trip.id] = el; }} className="pt-2 mt-2 border-t border-border space-y-2">
+                            {/* Route Map */}
+                            {trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng && (
+                              <TripRouteMapMini
+                                pickupLat={trip.pickup_lat}
+                                pickupLng={trip.pickup_lng}
+                                dropoffLat={trip.dropoff_lat}
+                                dropoffLng={trip.dropoff_lng}
+                              />
+                            )}
+
                             {/* Passenger */}
                             {trip.customer_name && (
                               <div className="flex items-center gap-2">
@@ -355,16 +419,39 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                               </div>
                             )}
 
-                            {/* View Chat */}
-                            {(messageCounts[trip.id] || 0) > 0 && (
+                            {/* Action buttons */}
+                            <div className="flex gap-2">
+                              {(messageCounts[trip.id] || 0) > 0 && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setChatTripId(trip.id); }}
+                                  className="flex-1 py-2 rounded-lg bg-primary/10 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                                  <span className="text-[10px] font-semibold text-primary">{messageCounts[trip.id]} msgs</span>
+                                </button>
+                              )}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setChatTripId(trip.id); }}
-                                className="w-full py-2 rounded-lg bg-primary/10 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const el = tripDetailRefs.current[trip.id];
+                                  if (!el) return;
+                                  setExporting(trip.id);
+                                  try {
+                                    const dataUrl = await toPng(el, { pixelRatio: 3, backgroundColor: "#ffffff" });
+                                    const link = document.createElement("a");
+                                    link.download = `trip-${trip.id.slice(0, 8)}.png`;
+                                    link.href = dataUrl;
+                                    link.click();
+                                    toast({ title: "Receipt downloaded ✅" });
+                                  } catch { toast({ title: "Export failed", variant: "destructive" }); }
+                                  finally { setExporting(null); }
+                                }}
+                                className="flex-1 py-2 rounded-lg bg-surface border border-border flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                               >
-                                <MessageSquare className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-[10px] font-semibold text-primary">{messageCounts[trip.id]} messages</span>
+                                {exporting === trip.id ? <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" /> : <Download className="w-3.5 h-3.5 text-primary" />}
+                                <span className="text-[10px] font-semibold text-foreground">Export PNG</span>
                               </button>
-                            )}
+                            </div>
                           </div>
                         </motion.div>
                       )}
