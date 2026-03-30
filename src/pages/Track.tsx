@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 import { motion } from "framer-motion";
 import { Car, MapPin, Clock, CheckCircle, Download, ExternalLink } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 
 const Track = () => {
   const { tripId } = useParams<{ tripId: string }>();
+  const { isLoaded: mapsLoaded } = useGoogleMaps();
   const [trip, setTrip] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [vehicle, setVehicle] = useState<any>(null);
@@ -17,6 +19,7 @@ const Track = () => {
   const mapInstanceRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
   const pickupMarkerRef = useRef<any>(null);
+  const routeRendererRef = useRef<any>(null);
 
   const isCompleted = trip?.status === "completed";
   const isCancelled = trip?.status === "cancelled";
@@ -84,54 +87,93 @@ const Track = () => {
     };
   }, [tripId, trip?.driver_id]);
 
-  // Initialize map
+  // Initialize map using shared hook
   useEffect(() => {
-    if (!mapRef.current || isEnded || !trip?.pickup_lat) return;
+    if (!mapRef.current || !mapsLoaded || isEnded || !trip?.pickup_lat) return;
+    if (mapInstanceRef.current) return;
 
-    const initMap = async () => {
-      try {
-        const { data } = await supabase.functions.invoke("get-maps-key");
-        if (!data?.key) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
 
-        const { Loader } = await import("@googlemaps/js-api-loader");
-        const loader = new Loader({ apiKey: data.key, version: "weekly" });
-        const { Map } = await loader.importLibrary("maps");
-        const { AdvancedMarkerElement } = await loader.importLibrary("marker");
+    const center = driverLocation || { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) };
+    const map = new g.maps.Map(mapRef.current, {
+      center,
+      zoom: 15,
+      disableDefaultUI: true,
+      zoomControl: true,
+      gestureHandling: "greedy",
+    });
+    mapInstanceRef.current = map;
 
-        const center = driverLocation || { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) };
-        const map = new Map(mapRef.current!, {
-          center,
-          zoom: 15,
-          mapId: "track-map",
-          disableDefaultUI: true,
-          zoomControl: true,
-        });
-        mapInstanceRef.current = map;
+    // Pickup marker
+    pickupMarkerRef.current = new g.maps.Marker({
+      map,
+      position: { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) },
+      icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
+      zIndex: 1000,
+    });
 
-        // Pickup marker
-        const pickupEl = document.createElement("div");
-        pickupEl.innerHTML = `<div style="background:#22c55e;width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3)"></div>`;
-        pickupMarkerRef.current = new AdvancedMarkerElement({ map, position: { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) }, content: pickupEl });
+    // Dropoff marker
+    if (trip.dropoff_lat && trip.dropoff_lng) {
+      new g.maps.Marker({
+        map,
+        position: { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) },
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
+        zIndex: 999,
+      });
 
-        // Driver marker
-        if (driverLocation) {
-          const driverEl = document.createElement("div");
-          driverEl.innerHTML = `<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>`;
-          driverMarkerRef.current = new AdvancedMarkerElement({ map, position: driverLocation, content: driverEl });
+      // Draw route
+      const ds = new g.maps.DirectionsService();
+      ds.route({
+        origin: { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) },
+        destination: { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) },
+        travelMode: g.maps.TravelMode.DRIVING,
+      }).then((result: any) => {
+        if (mapInstanceRef.current) {
+          routeRendererRef.current = new g.maps.DirectionsRenderer({
+            map: mapInstanceRef.current,
+            directions: result,
+            suppressMarkers: true,
+            preserveViewport: false,
+            polylineOptions: { strokeColor: "#4285F4", strokeWeight: 4, strokeOpacity: 0.8 },
+          });
         }
-      } catch (e) {
-        console.error("Map init error:", e);
-      }
-    };
-    initMap();
-  }, [trip?.pickup_lat, isEnded]);
+      }).catch(() => {});
+
+      // Fit bounds
+      const bounds = new g.maps.LatLngBounds();
+      bounds.extend({ lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) });
+      bounds.extend({ lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) });
+      if (driverLocation) bounds.extend(driverLocation);
+      map.fitBounds(bounds, 40);
+    }
+
+    // Driver marker
+    if (driverLocation) {
+      driverMarkerRef.current = new g.maps.Marker({
+        map,
+        position: driverLocation,
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#3b82f6", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
+        zIndex: 1001,
+      });
+    }
+  }, [trip?.pickup_lat, mapsLoaded, isEnded]);
 
   // Update driver marker position
   useEffect(() => {
-    if (!driverMarkerRef.current || !driverLocation) return;
-    driverMarkerRef.current.position = driverLocation;
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.panTo(driverLocation);
+    if (!driverLocation || !mapInstanceRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    if (driverMarkerRef.current) {
+      driverMarkerRef.current.setPosition(driverLocation);
+    } else {
+      driverMarkerRef.current = new g.maps.Marker({
+        map: mapInstanceRef.current,
+        position: driverLocation,
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#3b82f6", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
+        zIndex: 1001,
+      });
     }
   }, [driverLocation]);
 
