@@ -19,7 +19,7 @@ const CONFIG = {
   targetSdk: 35,
   minSdk: 22,
   versionCode: 56,
-  versionName: '1.0.0',
+  versionName: '2.0.0',
 };
 
 let changesMade = 0;
