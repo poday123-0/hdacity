@@ -1410,7 +1410,7 @@ const AdminDrivers = () => {
                                   ].map((item) => (
                                     <div key={item.field}>
                                       <label className="text-xs text-muted-foreground">{item.label}</label>
-                                      <div className="flex items-center gap-2 mt-1">
+                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                                         {(vehicleForm as any)[item.field] ? (
                                           <button onClick={() => setPreviewImg((vehicleForm as any)[item.field])} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="w-3 h-3" /> View</button>
                                         ) : <span className="text-xs text-muted-foreground">None</span>}
@@ -1419,6 +1419,11 @@ const AdminDrivers = () => {
                                           {uploading === `vehicle_${item.field}` ? "..." : "Upload"}
                                           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadVehicleDoc(item.field, e.target.files[0])} disabled={uploading === `vehicle_${item.field}`} />
                                         </label>
+                                        {!(vehicleForm as any)[item.field] && (
+                                          <button type="button" onClick={() => setVehicleForm({ ...vehicleForm, [item.field]: DEFAULT_VEHICLE_IMAGE })} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
+                                            <Image className="w-3 h-3" /> Default
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   ))}
