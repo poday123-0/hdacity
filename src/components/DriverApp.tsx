@@ -1396,7 +1396,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (targetedTrips && targetedTrips.length > 0) {
         const trip = targetedTrips[0] as any;
-        if (!declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
           return;
@@ -1416,7 +1416,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (assignedTrips && assignedTrips.length > 0) {
         const trip = assignedTrips[0] as any;
-        if (!declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
         }
