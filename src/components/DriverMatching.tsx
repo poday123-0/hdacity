@@ -356,7 +356,7 @@ const DriverMatching = ({ onCancel, driver, tripId, userId, tripStatus, showBank
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/live-map?trip=${tripId}`;
+    const shareUrl = `https://app.hda.taxi/track/${tripId}`;
     const shareText = `🚕 Track my HDA Taxi ride live!\nDriver: ${driverName}\n${tripPickupName ? `From: ${tripPickupName}` : ""}${tripDropoffName ? `\nTo: ${tripDropoffName}` : ""}`;
     
     try {
