@@ -1066,9 +1066,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
+  // Ref-based guard to prevent concurrent handleNewTrip calls (state is stale in async closures)
+  const handlingTripRef = useRef<string | null>(null);
+
   const handleNewTrip = async (trip: TripRequest) => {
     // Block new trips if driver already has an active (non-scheduled) trip
     if (currentTrip) return;
+    // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
+    if (handlingTripRef.current === trip.id) return;
+    handlingTripRef.current = trip.id;
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
@@ -1156,6 +1162,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setTripStops([]);
       stopAllSounds();
       tripSoundRef.current = null;
+      handlingTripRef.current = null;
       return;
     }
 
@@ -1187,6 +1194,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setTripStops([]);
         stopAllSounds();
         tripSoundRef.current = null;
+        handlingTripRef.current = null;
       }
     }, 1000);
   };
@@ -1303,10 +1311,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Fallback: Poll every 60s for new requested/scheduled trips AND direct-assigned trips
-    // Realtime handles most cases — this is just a safety net (reduced from 30s to save battery)
+    // Fallback: Poll every 15s for new requested/scheduled trips AND direct-assigned trips
+    // Realtime handles most cases — this is a safety net for when WebSocket is slow/stale
     const pollInterval = setInterval(async () => {
-      if (!isActive || screen !== "online") return;
+      if (!isActive || screenRef.current !== "online") return;
+      if (handlingTripRef.current) return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Poll for broadcast trips
@@ -1322,7 +1331,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (data && data.length > 0) {
         const trip = data[0] as any;
         if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
         }
@@ -1341,18 +1350,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (assignedTrips && assignedTrips.length > 0) {
         const trip = assignedTrips[0] as any;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
         }
       }
-    }, 60000);
+    }, 15000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
     const doForegroundTripCheck = async () => {
       if (!isActive) return;
-      // Skip check if already showing a trip (use ref for latest value inside closure)
+      // Skip check if already showing/handling a trip
       if (screenRef.current !== "online" && screenRef.current !== "offline") return;
+      if (handlingTripRef.current) return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Check broadcast trips (no driver assigned yet)
@@ -1368,7 +1378,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (data && data.length > 0) {
         const trip = data[0] as any;
         if (!(trip.target_driver_id && trip.target_driver_id !== userProfile.id)) {
-          if (!declinedTripIdsRef.current.has(trip.id)) {
+          if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
             lastSeenTripRef.current = trip.id;
             handleNewTrip(trip);
             return;
@@ -1388,7 +1398,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (targetedTrips && targetedTrips.length > 0) {
         const trip = targetedTrips[0] as any;
-        if (!declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip);
           return;
@@ -1408,7 +1418,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       if (assignedTrips && assignedTrips.length > 0) {
         const trip = assignedTrips[0] as any;
-        if (!declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== lastSeenTripRef.current && trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleDirectAssignedTrip(trip);
         }
@@ -1588,7 +1598,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Trip accepted by ANOTHER driver while we're on ride-request screen
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
-      stopAllSounds(); tripSoundRef.current = null;
+      stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
       toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
       setScreen("online");
@@ -1599,7 +1609,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Trip cancelled by passenger (or auto-expired)
     if (updated.status === "cancelled") {
-      stopAllSounds(); tripSoundRef.current = null;
+      stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
       // Fetch cancel sound from notification_sounds table
       const { data: cancelSound } = await supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_cancelled").eq("is_default", true).eq("is_active", true).single();
@@ -3668,7 +3678,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="flex gap-2 px-4 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,8px)+0.5rem))] border-t border-border/30 shrink-0 bg-card">
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
-                stopAllSounds(); tripSoundRef.current = null;
+                stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
                 if (currentTrip?.id) {
                   declinedTripIdsRef.current.add(currentTrip.id);
                   if (userProfile?.id) {

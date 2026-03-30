@@ -276,10 +276,13 @@ export const usePushNotifications = (
             console.error("Push registration error:", error);
           });
 
-          // Native foreground: play custom sound
+          // Native foreground: play custom sound (skip trip_requested — DriverApp handles it)
           PushNotifications.addListener("pushNotificationReceived", (notification) => {
             try {
               console.log("Push received (foreground):", notification);
+              const notifType = notification.data?.type || "";
+              const driverHandledTypes = ["trip_requested", "message_received", "trip_cancelled"];
+              if (driverHandledTypes.includes(notifType)) return;
               const soundUrl = notification.data?.sound_url;
               if (soundUrl) {
                 playTrackedSound(soundUrl);
