@@ -780,6 +780,14 @@ const DispatchTripForm = ({
         booking_notes: (centerCodeResults.length > 0 && !isBroadcast) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
       };
 
+      // If offline, queue the trip instead of submitting
+      if (!isOnline && onOfflineQueue) {
+        onOfflineQueue(tripPayload);
+        clearForm();
+        onTripCreated();
+        return;
+      }
+
       // Fire trip insert + broadcast pre-fetch in parallel
       const tripInsertPromise = supabase.from("trips").insert(tripPayload).select("*").single();
 
