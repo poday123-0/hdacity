@@ -222,7 +222,7 @@ const Track = () => {
       </div>
       <div className="flex gap-2">
         <a
-          href="/install-passenger"
+          href="https://hda.taxi"
           className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold"
         >
           <Download className="w-4 h-4" />
