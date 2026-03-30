@@ -161,10 +161,19 @@ const Track = () => {
 
   // Update driver marker position
   useEffect(() => {
-    if (!driverMarkerRef.current || !driverLocation) return;
-    driverMarkerRef.current.position = driverLocation;
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.panTo(driverLocation);
+    if (!driverLocation || !mapInstanceRef.current) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    if (driverMarkerRef.current) {
+      driverMarkerRef.current.setPosition(driverLocation);
+    } else {
+      driverMarkerRef.current = new g.maps.Marker({
+        map: mapInstanceRef.current,
+        position: driverLocation,
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#3b82f6", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
+        zIndex: 1001,
+      });
     }
   }, [driverLocation]);
 
