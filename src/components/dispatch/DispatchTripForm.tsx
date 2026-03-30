@@ -91,6 +91,8 @@ const DispatchTripForm = ({
   onlineDrivers,
   centerCodeIndex,
   onTripCreated,
+  isOnline = true,
+  onOfflineQueue,
 }: DispatchTripFormProps) => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [pickupQuery, setPickupQuery] = useState("");
