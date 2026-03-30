@@ -3895,9 +3895,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   {/* Quick actions row */}
                   <div className="flex items-center gap-2">
                     {/* Call */}
-                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-1 bg-primary/10 rounded-xl py-2.5 flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                      <Phone className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-semibold text-primary">
+                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-1 bg-primary/10 rounded-xl py-2.5 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                      <Phone className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[10px] font-medium text-primary tracking-tight">
                         {currentTrip.customer_phone || passengerProfile?.phone_number || "Call"}
                       </span>
                     </a>
