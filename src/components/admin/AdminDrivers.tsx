@@ -569,21 +569,29 @@ const AdminDrivers = () => {
   const inputCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50";
   const selectCls = "w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
+  const setDefaultAndCleanup = async (field: string, currentUrl: string | undefined, setter: (fn: (prev: any) => any) => void) => {
+    if (currentUrl && currentUrl !== DEFAULT_VEHICLE_IMAGE && currentUrl.includes("supabase")) {
+      try {
+        const { deleteStorageFile } = await import("@/lib/storage-utils");
+        await deleteStorageFile(currentUrl);
+      } catch (e) { console.error("Failed to delete old file:", e); }
+    }
+    setter((prev: any) => ({ ...prev, [field]: DEFAULT_VEHICLE_IMAGE }));
+  };
+
   const DocUpload = ({ field, label }: { field: string; label: string }) => (
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <div className="flex items-center gap-2 mt-1 flex-wrap">
-        {editForm[field] ? (
-          <button onClick={() => setPreviewImg(editForm[field])} className="text-xs text-primary hover:underline flex items-center gap-1">
-            <Eye className="w-3 h-3" /> View
-          </button>
-        ) : <span className="text-xs text-muted-foreground">Not uploaded</span>}
+        {editForm[field] && (
+          <img src={editForm[field]} alt={label} className="w-8 h-8 rounded border border-border object-cover cursor-pointer" onClick={() => setPreviewImg(editForm[field])} />
+        )}
         <label className="flex items-center gap-1 px-2 py-1 bg-surface border border-border rounded-lg text-xs text-muted-foreground cursor-pointer hover:text-foreground">
           <Upload className="w-3 h-3" />
           {uploading === field ? "..." : "Upload"}
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadDoc(field, e.target.files[0])} disabled={uploading === field} />
         </label>
-        <button type="button" onClick={() => setEditForm((prev: any) => ({ ...prev, [field]: DEFAULT_VEHICLE_IMAGE }))} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={() => setDefaultAndCleanup(field, editForm[field], setEditForm)} className="flex items-center gap-1 px-2 py-1 bg-accent/50 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground">
           <Image className="w-3 h-3" /> Default
         </button>
       </div>
