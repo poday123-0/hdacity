@@ -65,6 +65,10 @@ interface TripRecord {
   created_at: string;
   pickup_address: string;
   dropoff_address: string;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   completed_at: string | null;
   accepted_at: string | null;
   started_at: string | null;
