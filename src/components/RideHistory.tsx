@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare, FileText } from "lucide-react";
+import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, MessageSquare, FileText, Loader2, Map } from "lucide-react";
 import { format } from "date-fns";
+import { toPng } from "html-to-image";
+import { toast } from "@/hooks/use-toast";
 import TripChat from "@/components/TripChat";
 import TripInvoice from "@/components/TripInvoice";
 
@@ -16,6 +18,10 @@ interface TripRecord {
   id: string;
   pickup_address: string;
   dropoff_address: string;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   status: string;
   estimated_fare: number | null;
   actual_fare: number | null;
@@ -29,6 +35,143 @@ interface TripRecord {
   vehicle_type: { name: string } | null;
 }
 
+// Mini map component using Google Maps Static/Embed API
+const TripRouteMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
+  pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number;
+}) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const [mapsKey, setMapsKey] = useState<string | null>(null);
+  const [mapId, setMapId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    supabase.functions.invoke("get-maps-key").then(({ data }) => {
+      if (data?.key) {
+        setMapsKey(data.key);
+        setMapId(data.mapId || "");
+      } else {
+        setError(true);
+        setLoading(false);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!mapsKey || !mapRef.current) return;
+
+    const loadMap = async () => {
+      try {
+        const { Loader } = await import("@googlemaps/js-api-loader");
+        const loader = new Loader({ apiKey: mapsKey, version: "weekly", libraries: ["routes"] });
+        const google = await loader.load();
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ lat: pickupLat, lng: pickupLng });
+        bounds.extend({ lat: dropoffLat, lng: dropoffLng });
+
+        const map = new google.maps.Map(mapRef.current!, {
+          mapId: mapId || undefined,
+          disableDefaultUI: true,
+          gestureHandling: "none",
+          zoomControl: false,
+          clickableIcons: false,
+        });
+        map.fitBounds(bounds, 40);
+        mapInstanceRef.current = map;
+
+        // Pickup marker
+        new google.maps.Marker({
+          position: { lat: pickupLat, lng: pickupLng },
+          map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 7,
+            fillColor: "#22c55e",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+          title: "Pickup",
+        });
+
+        // Dropoff marker
+        new google.maps.Marker({
+          position: { lat: dropoffLat, lng: dropoffLng },
+          map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 7,
+            fillColor: "#ef4444",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+          title: "Dropoff",
+        });
+
+        // Draw route
+        const directionsService = new google.maps.DirectionsService();
+        const directionsRenderer = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: true,
+          preserveViewport: true,
+          polylineOptions: {
+            strokeColor: "hsl(var(--primary))",
+            strokeWeight: 4,
+            strokeOpacity: 0.8,
+          },
+        });
+
+        directionsService.route(
+          {
+            origin: { lat: pickupLat, lng: pickupLng },
+            destination: { lat: dropoffLat, lng: dropoffLng },
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === "OK" && result) {
+              directionsRenderer.setDirections(result);
+            }
+          }
+        );
+
+        setLoading(false);
+      } catch {
+        setError(true);
+        setLoading(false);
+      }
+    };
+
+    loadMap();
+  }, [mapsKey, mapId, pickupLat, pickupLng, dropoffLat, dropoffLng]);
+
+  if (error) return null;
+
+  return (
+    <div className="relative w-full h-[160px] rounded-xl overflow-hidden bg-surface">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+        </div>
+      )}
+      <div ref={mapRef} className="w-full h-full" />
+      {/* Legend */}
+      <div className="absolute bottom-2 left-2 flex items-center gap-3 bg-card/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 shadow-sm">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-[9px] font-medium text-foreground">Pickup</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-[9px] font-medium text-foreground">Dropoff</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryProps) => {
   const [trips, setTrips] = useState<TripRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,12 +179,14 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
   const [chatTripId, setChatTripId] = useState<string | null>(null);
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
   const [invoiceTrip, setInvoiceTrip] = useState<TripRecord | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchTrips = async () => {
       const query = supabase
         .from("trips")
-        .select("id, pickup_address, dropoff_address, status, estimated_fare, actual_fare, created_at, completed_at, passenger_count, luggage_count, rating, distance_km, duration_minutes, vehicle_types(name)")
+        .select("id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, status, estimated_fare, actual_fare, created_at, completed_at, passenger_count, luggage_count, rating, distance_km, duration_minutes, vehicle_types(name)")
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -80,6 +225,26 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
     return "text-muted-foreground bg-surface";
   };
 
+  const handleDownloadReceipt = useCallback(async () => {
+    if (!receiptRef.current || !selectedTrip) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(receiptRef.current, { pixelRatio: 3, backgroundColor: "#ffffff" });
+      const link = document.createElement("a");
+      link.download = `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast({ title: "Receipt downloaded ✅" });
+    } catch {
+      toast({ title: "Export failed", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }, [selectedTrip]);
+
+  const hasCoords = (trip: TripRecord) =>
+    trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng;
+
   if (selectedTrip) {
     return (
       <>
@@ -92,14 +257,31 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
               <button onClick={() => setSelectedTrip(null)} className="w-9 h-9 rounded-full bg-surface flex items-center justify-center active:scale-90 transition-transform">
                 <ArrowLeft className="w-5 h-5 text-foreground" />
               </button>
-              <div>
+              <div className="flex-1">
                 <h2 className="text-lg font-bold text-foreground">Trip Receipt</h2>
                 <p className="text-xs text-muted-foreground">{format(new Date(selectedTrip.created_at), "dd MMM yyyy, hh:mm a")}</p>
               </div>
+              <button
+                onClick={handleDownloadReceipt}
+                disabled={exporting}
+                className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center active:scale-90 transition-transform"
+              >
+                {exporting ? <Loader2 className="w-4 h-4 text-primary animate-spin" /> : <Download className="w-4 h-4 text-primary" />}
+              </button>
             </div>
 
-            {/* Receipt card */}
-            <div className="bg-surface rounded-2xl p-4 space-y-4">
+            {/* Receipt card - used for PNG export */}
+            <div ref={receiptRef} className="bg-surface rounded-2xl p-4 space-y-4">
+              {/* Route Map */}
+              {hasCoords(selectedTrip) && (
+                <TripRouteMap
+                  pickupLat={selectedTrip.pickup_lat!}
+                  pickupLng={selectedTrip.pickup_lng!}
+                  dropoffLat={selectedTrip.dropoff_lat!}
+                  dropoffLng={selectedTrip.dropoff_lng!}
+                />
+              )}
+
               {/* Route */}
               <div className="flex items-start gap-3">
                 <div className="flex flex-col items-center gap-0.5 mt-1">
