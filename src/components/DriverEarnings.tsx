@@ -98,6 +98,8 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const [chatTripId, setChatTripId] = useState<string | null>(null);
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  const [exporting, setExporting] = useState<string | null>(null);
+  const tripDetailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const dateRange = useMemo(() => {
     if (period === "custom" && customFrom && customTo) {
