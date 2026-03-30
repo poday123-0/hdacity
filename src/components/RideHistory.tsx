@@ -5,6 +5,7 @@ import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, Mes
 import { format } from "date-fns";
 import { toPng } from "html-to-image";
 import { toast } from "@/hooks/use-toast";
+import { useGoogleMaps } from "@/hooks/use-google-maps";
 import TripChat from "@/components/TripChat";
 import TripInvoice from "@/components/TripInvoice";
 
@@ -35,128 +36,103 @@ interface TripRecord {
   vehicle_type: { name: string } | null;
 }
 
-// Mini map component using Google Maps Static/Embed API
+// Mini map component using existing Google Maps hook
 const TripRouteMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
   pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number;
 }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const [mapsKey, setMapsKey] = useState<string | null>(null);
-  const [mapId, setMapId] = useState<string>("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { isLoaded, mapId } = useGoogleMaps();
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
-    supabase.functions.invoke("get-maps-key").then(({ data }) => {
-      if (data?.key) {
-        setMapsKey(data.key);
-        setMapId(data.mapId || "");
-      } else {
-        setError(true);
-        setLoading(false);
-      }
-    });
-  }, []);
+    if (!isLoaded || !mapContainerRef.current || mapInstanceRef.current) return;
 
-  useEffect(() => {
-    if (!mapsKey || !mapRef.current) return;
+    try {
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend({ lat: pickupLat, lng: pickupLng });
+      bounds.extend({ lat: dropoffLat, lng: dropoffLng });
 
-    const loadMap = async () => {
-      try {
-        const { Loader } = await import("@googlemaps/js-api-loader");
-        const loader = new Loader({ apiKey: mapsKey, version: "weekly", libraries: ["routes"] });
-        const google = await loader.load();
+      const map = new google.maps.Map(mapContainerRef.current, {
+        mapId: mapId || undefined,
+        disableDefaultUI: true,
+        gestureHandling: "none",
+        zoomControl: false,
+        clickableIcons: false,
+      });
+      map.fitBounds(bounds, 40);
+      mapInstanceRef.current = map;
 
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend({ lat: pickupLat, lng: pickupLng });
-        bounds.extend({ lat: dropoffLat, lng: dropoffLng });
+      // Pickup marker
+      new google.maps.Marker({
+        position: { lat: pickupLat, lng: pickupLng },
+        map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 7,
+          fillColor: "#22c55e",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+        title: "Pickup",
+      });
 
-        const map = new google.maps.Map(mapRef.current!, {
-          mapId: mapId || undefined,
-          disableDefaultUI: true,
-          gestureHandling: "none",
-          zoomControl: false,
-          clickableIcons: false,
-        });
-        map.fitBounds(bounds, 40);
-        mapInstanceRef.current = map;
+      // Dropoff marker
+      new google.maps.Marker({
+        position: { lat: dropoffLat, lng: dropoffLng },
+        map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 7,
+          fillColor: "#ef4444",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+        title: "Dropoff",
+      });
 
-        // Pickup marker
-        new google.maps.Marker({
-          position: { lat: pickupLat, lng: pickupLng },
-          map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 7,
-            fillColor: "#22c55e",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-          title: "Pickup",
-        });
+      // Draw route
+      const directionsService = new google.maps.DirectionsService();
+      const directionsRenderer = new google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: true,
+        preserveViewport: true,
+        polylineOptions: {
+          strokeColor: "hsl(var(--primary))",
+          strokeWeight: 4,
+          strokeOpacity: 0.8,
+        },
+      });
 
-        // Dropoff marker
-        new google.maps.Marker({
-          position: { lat: dropoffLat, lng: dropoffLng },
-          map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 7,
-            fillColor: "#ef4444",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-          title: "Dropoff",
-        });
-
-        // Draw route
-        const directionsService = new google.maps.DirectionsService();
-        const directionsRenderer = new google.maps.DirectionsRenderer({
-          map,
-          suppressMarkers: true,
-          preserveViewport: true,
-          polylineOptions: {
-            strokeColor: "hsl(var(--primary))",
-            strokeWeight: 4,
-            strokeOpacity: 0.8,
-          },
-        });
-
-        directionsService.route(
-          {
-            origin: { lat: pickupLat, lng: pickupLng },
-            destination: { lat: dropoffLat, lng: dropoffLng },
-            travelMode: google.maps.TravelMode.DRIVING,
-          },
-          (result, status) => {
-            if (status === "OK" && result) {
-              directionsRenderer.setDirections(result);
-            }
+      directionsService.route(
+        {
+          origin: { lat: pickupLat, lng: pickupLng },
+          destination: { lat: dropoffLat, lng: dropoffLng },
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === "OK" && result) {
+            directionsRenderer.setDirections(result);
           }
-        );
+        }
+      );
 
-        setLoading(false);
-      } catch {
-        setError(true);
-        setLoading(false);
-      }
-    };
-
-    loadMap();
-  }, [mapsKey, mapId, pickupLat, pickupLng, dropoffLat, dropoffLng]);
-
-  if (error) return null;
+      setMapReady(true);
+    } catch (err) {
+      console.error("TripRouteMap error:", err);
+    }
+  }, [isLoaded, mapId, pickupLat, pickupLng, dropoffLat, dropoffLng]);
 
   return (
     <div className="relative w-full h-[160px] rounded-xl overflow-hidden bg-surface">
-      {loading && (
+      {!mapReady && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <Loader2 className="w-5 h-5 text-primary animate-spin" />
         </div>
       )}
-      <div ref={mapRef} className="w-full h-full" />
+      <div ref={mapContainerRef} className="w-full h-full" />
       {/* Legend */}
       <div className="absolute bottom-2 left-2 flex items-center gap-3 bg-card/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 shadow-sm">
         <div className="flex items-center gap-1">
@@ -170,7 +146,6 @@ const TripRouteMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
       </div>
     </div>
   );
-};
 
 const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryProps) => {
   const [trips, setTrips] = useState<TripRecord[]>([]);
