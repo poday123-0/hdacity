@@ -670,6 +670,7 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      cacheDrivers(drivers);
     };
     load();
   }, [isAuthed]);
