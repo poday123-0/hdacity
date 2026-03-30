@@ -1349,10 +1349,21 @@ const DispatchTripForm = ({
                   });
                 };
 
+                // OFFLINE fast-path: use cached index directly, skip all live DB checks
+                if (!isOnline) {
+                  const cached = centerCodeIndex?.[code];
+                  if (cached) {
+                    addEntry({ ...cached, code, today_trips: cached.today_trips || 0, has_loss: !!cached.has_loss });
+                    toast({ title: "Offline mode", description: `Using cached data for ${code}. Trip counts may be stale.` });
+                  } else {
+                    toast({ title: "Not found offline", description: `Code "${code}" not in cache. Try when online.`, variant: "destructive" });
+                  }
+                  return;
+                }
+
                 // 1) Instant path: use preloaded index, but re-fetch today_trips live
                 const cached = centerCodeIndex?.[code];
                 if (cached) {
-                  // Quick check vehicle is still active and not blocked
                   const { data: vCheck } = await supabase
                     .from("vehicles")
                     .select("id, blocked_until")
