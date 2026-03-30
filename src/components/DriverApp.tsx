@@ -4038,7 +4038,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             }
             toast({ title: "📍 Arrived", description: "Passenger has been notified" });
           }} className="w-full bg-accent text-accent-foreground font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-transform">
-                I've Arrived at Pickup
+                I've Arrived
               </button>
           }
 
