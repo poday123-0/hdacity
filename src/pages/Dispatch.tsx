@@ -41,6 +41,9 @@ import {
   LogOut,
   Maximize,
   Minimize,
+  WifiOff,
+  Wifi,
+  Upload,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
