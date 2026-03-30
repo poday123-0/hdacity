@@ -342,7 +342,17 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="pt-2 mt-2 border-t border-border space-y-2">
+                          <div ref={(el) => { tripDetailRefs.current[trip.id] = el; }} className="pt-2 mt-2 border-t border-border space-y-2">
+                            {/* Route Map */}
+                            {trip.pickup_lat && trip.pickup_lng && trip.dropoff_lat && trip.dropoff_lng && (
+                              <TripRouteMapMini
+                                pickupLat={trip.pickup_lat}
+                                pickupLng={trip.pickup_lng}
+                                dropoffLat={trip.dropoff_lat}
+                                dropoffLng={trip.dropoff_lng}
+                              />
+                            )}
+
                             {/* Passenger */}
                             {trip.customer_name && (
                               <div className="flex items-center gap-2">
@@ -409,16 +419,39 @@ const DriverEarnings = ({ driverId, isOpen, onClose, vehicleId, vehiclePlate }: 
                               </div>
                             )}
 
-                            {/* View Chat */}
-                            {(messageCounts[trip.id] || 0) > 0 && (
+                            {/* Action buttons */}
+                            <div className="flex gap-2">
+                              {(messageCounts[trip.id] || 0) > 0 && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setChatTripId(trip.id); }}
+                                  className="flex-1 py-2 rounded-lg bg-primary/10 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                                  <span className="text-[10px] font-semibold text-primary">{messageCounts[trip.id]} msgs</span>
+                                </button>
+                              )}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setChatTripId(trip.id); }}
-                                className="w-full py-2 rounded-lg bg-primary/10 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const el = tripDetailRefs.current[trip.id];
+                                  if (!el) return;
+                                  setExporting(trip.id);
+                                  try {
+                                    const dataUrl = await toPng(el, { pixelRatio: 3, backgroundColor: "#ffffff" });
+                                    const link = document.createElement("a");
+                                    link.download = `trip-${trip.id.slice(0, 8)}.png`;
+                                    link.href = dataUrl;
+                                    link.click();
+                                    toast({ title: "Receipt downloaded ✅" });
+                                  } catch { toast({ title: "Export failed", variant: "destructive" }); }
+                                  finally { setExporting(null); }
+                                }}
+                                className="flex-1 py-2 rounded-lg bg-surface border border-border flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                               >
-                                <MessageSquare className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-[10px] font-semibold text-primary">{messageCounts[trip.id]} messages</span>
+                                {exporting === trip.id ? <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" /> : <Download className="w-3.5 h-3.5 text-primary" />}
+                                <span className="text-[10px] font-semibold text-foreground">Export PNG</span>
                               </button>
-                            )}
+                            </div>
                           </div>
                         </motion.div>
                       )}
