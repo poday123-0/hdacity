@@ -535,7 +535,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                         <button
                           onClick={async () => {
                             setShowProfile(false);
-                            const shareData = { title: "HDA Taxi", text: "Book rides easily with HDA Taxi!", url: "https://hdacity.lovable.app" };
+                            const shareData = { title: "HDA App", text: "Book rides easily with HDA App!", url: "https://app.hda.taxi" };
                             if (navigator.share) {
                               try { await navigator.share(shareData); } catch {}
                             } else {
