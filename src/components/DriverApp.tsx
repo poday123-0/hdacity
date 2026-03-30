@@ -3676,7 +3676,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="flex gap-2 px-4 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,8px)+0.5rem))] border-t border-border/30 shrink-0 bg-card">
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
-                stopAllSounds(); tripSoundRef.current = null;
+                stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
                 if (currentTrip?.id) {
                   declinedTripIdsRef.current.add(currentTrip.id);
                   if (userProfile?.id) {
