@@ -202,51 +202,53 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
             </div>
 
             {/* Receipt card - used for PNG export */}
-            <div ref={receiptRef} className="bg-surface rounded-2xl p-4 space-y-4">
+            <div ref={receiptRef} style={{ background: "#ffffff", borderRadius: "16px", padding: "20px", fontFamily: "'Inter', system-ui, sans-serif" }}>
+              {/* Branded header */}
+              <div style={{ textAlign: "center", marginBottom: "16px" }}>
+                <p style={{ fontSize: "18px", fontWeight: "800", color: "#1a1a2e", letterSpacing: "0.05em" }}>TRIP RECEIPT</p>
+                <p style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{format(new Date(selectedTrip.created_at), "dd MMM yyyy • h:mm a")}</p>
+              </div>
+
               {/* Route Map */}
               {hasCoords(selectedTrip) && (
-                <TripRouteMap
-                  pickupLat={selectedTrip.pickup_lat!}
-                  pickupLng={selectedTrip.pickup_lng!}
-                  dropoffLat={selectedTrip.dropoff_lat!}
-                  dropoffLng={selectedTrip.dropoff_lng!}
-                />
+                <div style={{ marginBottom: "16px", borderRadius: "12px", overflow: "hidden" }}>
+                  <TripRouteMap
+                    pickupLat={selectedTrip.pickup_lat!}
+                    pickupLng={selectedTrip.pickup_lng!}
+                    dropoffLat={selectedTrip.dropoff_lat!}
+                    dropoffLng={selectedTrip.dropoff_lng!}
+                  />
+                </div>
               )}
 
-              {/* Route */}
-              <div className="flex items-start gap-3">
-                <div className="flex flex-col items-center gap-0.5 mt-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <div className="w-0.5 h-8 bg-border" />
-                  <div className="w-2.5 h-2.5 rounded-sm bg-foreground" />
+              {/* Route addresses */}
+              <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", paddingTop: "4px" }}>
+                  <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#22c55e" }} />
+                  <div style={{ width: "2px", height: "24px", background: "#e2e8f0" }} />
+                  <div style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#ef4444" }} />
                 </div>
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Pickup</p>
-                    <p className="text-sm font-medium text-foreground">{selectedTrip.pickup_address}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Dropoff</p>
-                    <p className="text-sm font-medium text-foreground">{selectedTrip.dropoff_address}</p>
-                  </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pickup</p>
+                  <p style={{ fontSize: "13px", color: "#1e293b", fontWeight: "500", marginBottom: "8px" }}>{selectedTrip.pickup_address}</p>
+                  <p style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>Dropoff</p>
+                  <p style={{ fontSize: "13px", color: "#1e293b", fontWeight: "500" }}>{selectedTrip.dropoff_address}</p>
                 </div>
               </div>
 
-              <div className="h-px bg-border" />
-
-              {/* Fare */}
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Total Fare</p>
-                <p className="text-3xl font-bold text-primary">{selectedTrip.actual_fare || selectedTrip.estimated_fare || 0} MVR</p>
+              {/* Fare highlight */}
+              <div style={{ background: "linear-gradient(135deg, #40A3DB, #2d8abf)", borderRadius: "14px", padding: "16px", textAlign: "center", marginBottom: "16px" }}>
+                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.8)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.1em" }}>Total Fare</p>
+                <p style={{ fontSize: "32px", fontWeight: "800", color: "#ffffff", lineHeight: "1.1", marginTop: "4px" }}>
+                  {selectedTrip.actual_fare || selectedTrip.estimated_fare || 0} <span style={{ fontSize: "16px", fontWeight: "600" }}>MVR</span>
+                </p>
                 {(selectedTrip as any).passenger_bonus > 0 && (
-                  <p className="text-xs text-primary/80 font-medium mt-0.5">Includes +{(selectedTrip as any).passenger_bonus} MVR boost</p>
+                  <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.7)", marginTop: "4px" }}>Includes +{(selectedTrip as any).passenger_bonus} MVR boost</p>
                 )}
               </div>
 
-              <div className="h-px bg-border" />
-
               {/* Details grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
                 {[
                   { label: "Status", value: selectedTrip.status.charAt(0).toUpperCase() + selectedTrip.status.slice(1) },
                   { label: "Vehicle", value: selectedTrip.vehicle_type?.name || "—" },
@@ -255,23 +257,26 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
                   { label: "Passengers", value: String(selectedTrip.passenger_count) },
                   { label: "Luggage", value: String(selectedTrip.luggage_count) },
                 ].map((item) => (
-                  <div key={item.label}>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">{item.label}</p>
-                    <p className="text-sm font-medium text-foreground">{item.value}</p>
+                  <div key={item.label} style={{ background: "#f8fafc", borderRadius: "10px", padding: "10px 12px" }}>
+                    <p style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</p>
+                    <p style={{ fontSize: "14px", color: "#1e293b", fontWeight: "700", marginTop: "2px" }}>{item.value}</p>
                   </div>
                 ))}
               </div>
 
+              {/* Rating */}
               {selectedTrip.rating && (
-                <>
-                  <div className="h-px bg-border" />
-                  <div className="flex items-center justify-center gap-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className={`w-5 h-5 ${s <= selectedTrip.rating! ? "text-primary fill-primary" : "text-border"}`} />
-                    ))}
-                  </div>
-                </>
+                <div style={{ display: "flex", justifyContent: "center", gap: "4px", padding: "8px 0", borderTop: "1px solid #f1f5f9" }}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <span key={s} style={{ fontSize: "20px" }}>{s <= selectedTrip.rating! ? "⭐" : "☆"}</span>
+                  ))}
+                </div>
               )}
+
+              {/* Footer */}
+              <div style={{ textAlign: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #f1f5f9" }}>
+                <p style={{ fontSize: "9px", color: "#cbd5e1", letterSpacing: "0.1em" }}>Trip ID: {selectedTrip.id.slice(0, 8).toUpperCase()}</p>
+              </div>
             </div>
 
             {/* View Chat button */}
