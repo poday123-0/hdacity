@@ -89,11 +89,14 @@ const Track = () => {
 
   // Initialize map using shared hook
   useEffect(() => {
-    if (!mapRef.current || !mapsLoaded || isEnded || !trip?.pickup_lat) return;
+    if (!mapRef.current || !mapsLoaded || isEnded || !trip?.pickup_lat) {
+      console.log("[Track Map] Skipping init:", { hasRef: !!mapRef.current, mapsLoaded, isEnded, hasPickup: !!trip?.pickup_lat, mapsError });
+      return;
+    }
     if (mapInstanceRef.current) return;
 
     const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!g?.maps) { console.error("[Track Map] google.maps not available despite mapsLoaded=true"); return; }
 
     const center = driverLocation || { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) };
     const map = new g.maps.Map(mapRef.current, {
