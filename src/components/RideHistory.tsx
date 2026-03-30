@@ -5,7 +5,7 @@ import { Clock, MapPin, ChevronRight, Receipt, ArrowLeft, X, Star, Download, Mes
 import { format } from "date-fns";
 import { toPng } from "html-to-image";
 import { toast } from "@/hooks/use-toast";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+
 import TripChat from "@/components/TripChat";
 import TripInvoice from "@/components/TripInvoice";
 
@@ -36,104 +36,46 @@ interface TripRecord {
   vehicle_type: { name: string } | null;
 }
 
-// Mini map component using existing Google Maps hook
+// Static map image for trip receipts (renders correctly in PNG export)
 const TripRouteMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
   pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number;
 }) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const { isLoaded, mapId } = useGoogleMaps();
-  const [mapReady, setMapReady] = useState(false);
+  const [mapsKey, setMapsKey] = useState<string | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
-    if (!isLoaded || !mapContainerRef.current || mapInstanceRef.current) return;
-
     try {
-      const bounds = new google.maps.LatLngBounds();
-      bounds.extend({ lat: pickupLat, lng: pickupLng });
-      bounds.extend({ lat: dropoffLat, lng: dropoffLng });
+      const cached = localStorage.getItem("hda_maps_key_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.key) { setMapsKey(parsed.key); return; }
+      }
+    } catch {}
+    supabase.functions.invoke("get-maps-key").then(({ data }) => {
+      if (data?.key) setMapsKey(data.key);
+    });
+  }, []);
 
-      const map = new google.maps.Map(mapContainerRef.current, {
-        mapId: mapId || undefined,
-        disableDefaultUI: true,
-        gestureHandling: "none",
-        zoomControl: false,
-        clickableIcons: false,
-      });
-      map.fitBounds(bounds, 40);
-      mapInstanceRef.current = map;
+  if (!mapsKey) {
+    return (
+      <div className="w-full h-[160px] rounded-xl bg-surface flex items-center justify-center">
+        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+      </div>
+    );
+  }
 
-      // Pickup marker
-      new google.maps.Marker({
-        position: { lat: pickupLat, lng: pickupLng },
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 7,
-          fillColor: "#22c55e",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
-        title: "Pickup",
-      });
-
-      // Dropoff marker
-      new google.maps.Marker({
-        position: { lat: dropoffLat, lng: dropoffLng },
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 7,
-          fillColor: "#ef4444",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
-        title: "Dropoff",
-      });
-
-      // Draw route
-      const directionsService = new google.maps.DirectionsService();
-      const directionsRenderer = new google.maps.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
-        preserveViewport: true,
-        polylineOptions: {
-          strokeColor: "hsl(var(--primary))",
-          strokeWeight: 4,
-          strokeOpacity: 0.8,
-        },
-      });
-
-      directionsService.route(
-        {
-          origin: { lat: pickupLat, lng: pickupLng },
-          destination: { lat: dropoffLat, lng: dropoffLng },
-          travelMode: google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === "OK" && result) {
-            directionsRenderer.setDirections(result);
-          }
-        }
-      );
-
-      setMapReady(true);
-    } catch (err) {
-      console.error("TripRouteMap error:", err);
-    }
-  }, [isLoaded, mapId, pickupLat, pickupLng, dropoffLat, dropoffLng]);
+  const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x320&scale=2&maptype=roadmap&markers=color:green%7Csize:small%7C${pickupLat},${pickupLng}&markers=color:red%7Csize:small%7C${dropoffLat},${dropoffLng}&path=color:0x3b82f6ff%7Cweight:3%7C${pickupLat},${pickupLng}%7C${dropoffLat},${dropoffLng}&key=${mapsKey}`;
 
   return (
     <div className="relative w-full h-[160px] rounded-xl overflow-hidden bg-surface">
-      {!mapReady && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <Loader2 className="w-5 h-5 text-primary animate-spin" />
-        </div>
-      )}
-      <div ref={mapContainerRef} className="w-full h-full" />
-      {/* Legend */}
+      {!imgLoaded && <div className="absolute inset-0 flex items-center justify-center z-10"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>}
+      <img
+        src={staticUrl}
+        alt="Trip route"
+        className="w-full h-full object-cover"
+        crossOrigin="anonymous"
+        onLoad={() => setImgLoaded(true)}
+      />
       <div className="absolute bottom-2 left-2 flex items-center gap-3 bg-card/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 shadow-sm">
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -206,11 +148,24 @@ const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryPro
     setExporting(true);
     try {
       const dataUrl = await toPng(receiptRef.current, { pixelRatio: 3, backgroundColor: "#ffffff" });
-      const link = document.createElement("a");
-      link.download = `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`;
-      link.href = dataUrl;
-      link.click();
-      toast({ title: "Receipt downloaded ✅" });
+      const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+      if (isNative) {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`, { type: "image/png" });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: "Trip Receipt" });
+        } else {
+          const w = window.open();
+          if (w) { w.document.write(`<img src="${dataUrl}" style="max-width:100%"/>`); }
+        }
+      } else {
+        const link = document.createElement("a");
+        link.download = `trip-receipt-${selectedTrip.id.slice(0, 8)}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
+      toast({ title: "Receipt exported ✅" });
     } catch {
       toast({ title: "Export failed", variant: "destructive" });
     } finally {
