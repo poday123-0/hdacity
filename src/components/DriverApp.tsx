@@ -1359,8 +1359,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
     const doForegroundTripCheck = async () => {
       if (!isActive) return;
-      // Skip check if already showing a trip (use ref for latest value inside closure)
+      // Skip check if already showing/handling a trip
       if (screenRef.current !== "online" && screenRef.current !== "offline") return;
+      if (handlingTripRef.current) return;
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Check broadcast trips (no driver assigned yet)
