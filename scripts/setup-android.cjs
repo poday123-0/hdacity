@@ -18,7 +18,7 @@ const CONFIG = {
   appName: 'HDA APP',
   targetSdk: 35,
   minSdk: 22,
-  versionCode: 1,
+  versionCode: 56,
   versionName: '1.0.0',
 };
 
