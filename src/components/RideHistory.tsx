@@ -146,6 +146,7 @@ const TripRouteMap = ({ pickupLat, pickupLng, dropoffLat, dropoffLng }: {
       </div>
     </div>
   );
+};
 
 const RideHistory = ({ userId, userType = "passenger", onClose }: RideHistoryProps) => {
   const [trips, setTrips] = useState<TripRecord[]>([]);
