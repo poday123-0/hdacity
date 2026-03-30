@@ -3869,7 +3869,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
               {/* Minimize */}
               <button onClick={() => setNavPanelMinimized(true)} className="w-8 h-8 rounded-full bg-primary-foreground/25 backdrop-blur-sm border border-primary-foreground/20 flex items-center justify-center active:scale-90 transition-all shadow-lg shadow-black/10 shrink-0 hover:bg-primary-foreground/35">
-                <ChevronDown className="w-4 h-4 text-primary-foreground drop-shadow-sm" />
+                <ChevronDown className="w-4 h-4 text-sos drop-shadow-sm" />
               </button>
             </div>
             {/* Animated Timer Bar */}
