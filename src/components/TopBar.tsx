@@ -601,6 +601,49 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                     </button>
                   )}
                 </div>
+                {/* Delete Account */}
+                {userProfile?.id && onLogout && (
+                  <div className="mt-2">
+                    {!showDeleteConfirm ? (
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full text-center text-[11px] text-muted-foreground/60 underline py-2"
+                      >
+                        Delete my account
+                      </button>
+                    ) : (
+                      <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 space-y-3">
+                        <p className="text-xs text-destructive font-semibold text-center">Are you sure you want to delete your account?</p>
+                        <p className="text-[10px] text-muted-foreground text-center">This action cannot be undone. All your data will be permanently removed.</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-muted text-foreground"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase.functions.invoke("delete-account", { body: { user_id: userProfile.id } });
+                                if (error) throw error;
+                                toast({ title: "Account deleted", description: "Your account has been removed." });
+                                setShowDeleteConfirm(false);
+                                setShowProfile(false);
+                                onLogout();
+                              } catch (err: any) {
+                                toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
+                              }
+                            }}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-destructive text-destructive-foreground"
+                          >
+                            Delete Account
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
