@@ -2184,6 +2184,8 @@ const Dispatch = () => {
                   onlineDrivers={onlineDrivers}
                   centerCodeIndex={centerCodeIndex}
                   onTripCreated={refreshTrips}
+                  isOnline={isOnline}
+                  onOfflineQueue={queueTrip}
                 />
 
                 {/* Bid 3 */}
