@@ -1066,9 +1066,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
+  // Ref-based guard to prevent concurrent handleNewTrip calls (state is stale in async closures)
+  const handlingTripRef = useRef<string | null>(null);
+
   const handleNewTrip = async (trip: TripRequest) => {
     // Block new trips if driver already has an active (non-scheduled) trip
     if (currentTrip) return;
+    // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
+    if (handlingTripRef.current === trip.id) return;
+    handlingTripRef.current = trip.id;
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
