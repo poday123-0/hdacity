@@ -3661,7 +3661,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="bg-surface rounded-xl p-3 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
-                  <p className="text-xs text-foreground truncate font-medium">{currentTrip.pickup_address}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-foreground truncate font-medium">{currentTrip.pickup_address}</p>
+                    {(currentTrip as any)._pickupRoad && <p className="text-[10px] text-muted-foreground truncate">🛣️ {(currentTrip as any)._pickupRoad}</p>}
+                  </div>
                 </div>
                 {tripStops.map((stop) =>
               <div key={stop.id}>
@@ -3675,7 +3678,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <div className="ml-1 w-0.5 h-2.5 bg-border" />
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
-                  <p className="text-xs text-foreground truncate font-medium">{currentTrip.dropoff_address}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-foreground truncate font-medium">{currentTrip.dropoff_address}</p>
+                    {(currentTrip as any)._dropoffRoad && <p className="text-[10px] text-muted-foreground truncate">🛣️ {(currentTrip as any)._dropoffRoad}</p>}
+                  </div>
                 </div>
               </div>
 
