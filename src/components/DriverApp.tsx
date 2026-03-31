@@ -1123,7 +1123,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
 
     // === VALIDATE + FETCH EXTRA DATA IN PARALLEL (non-blocking for UI) ===
-    const [blockResult, freshTripResult, pProfileRes, stopsRes, timeoutRes] = await Promise.all([
+    const [blockResult, freshTripResult, pProfileRes, stopsRes, timeoutRes, roadRes] = await Promise.all([
       userProfile?.id
         ? supabase
             .from("vehicles")
@@ -1144,6 +1144,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         : Promise.resolve({ data: null }),
       supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
       supabase.from("system_settings").select("value").eq("key", "driver_accept_timeout_seconds").single(),
+      // Fetch road names from named_locations matching pickup/dropoff addresses
+      supabase.from("named_locations").select("name, road_name, lat, lng").eq("status", "approved").eq("is_active", true).limit(500),
     ]);
 
     // If trip is invalid, dismiss the UI
