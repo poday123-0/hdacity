@@ -37,7 +37,8 @@ serve(async (req) => {
       );
     }
 
-    const fullNumber = phone_number.startsWith("960") ? phone_number : `960${phone_number}`;
+    const cleaned = phone_number.replace(/^\+/, "");
+    const fullNumber = cleaned.startsWith("960") ? cleaned : `960${cleaned}`;
 
     // Demo/test credential bypass for app store review — skip SMS
     if (fullNumber === "9607000000") {
