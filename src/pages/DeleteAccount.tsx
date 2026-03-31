@@ -44,7 +44,7 @@ const DeleteAccount = () => {
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-otp", {
         body: { phone_number: fullPhone, code: otp },
       });
-      if (verifyError || !verifyData?.valid) {
+      if (verifyError || !verifyData?.success) {
         toast({ title: "Invalid or expired code", variant: "destructive" });
         setLoading(false);
         return;
