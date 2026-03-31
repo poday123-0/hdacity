@@ -37,7 +37,7 @@ serve(async (req) => {
       );
     }
 
-    const cleaned = phone_number.replace(/^\+/, "");
+    const cleaned = String(phone_number).trim().replace(/[^\d]/g, "");
     const fullNumber = cleaned.startsWith("960") ? cleaned : `960${cleaned}`;
 
     // Demo/test credential bypass for app store review — skip SMS
