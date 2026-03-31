@@ -1359,11 +1359,40 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }, 15000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
-    const doForegroundTripCheck = async () => {
+    const doForegroundTripCheck = async (directTripId?: string) => {
       if (!isActive) return;
       // Skip check if already showing/handling a trip
       if (screenRef.current !== "online" && screenRef.current !== "offline") return;
       if (handlingTripRef.current) return;
+
+      // FAST PATH: If we have a specific trip_id from push notification, fetch it directly
+      // This avoids the slow generic poll and ensures sound+UI appear instantly
+      if (directTripId) {
+        const { data: directTrip } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("id", directTripId)
+          .single();
+
+        if (directTrip) {
+          const trip = directTrip as any;
+          const isValidStatus = trip.status === "requested" || trip.status === "scheduled" || trip.status === "accepted";
+          const isNotDeclined = !declinedTripIdsRef.current.has(trip.id);
+          const isNotHandling = trip.id !== handlingTripRef.current;
+          
+          if (isValidStatus && isNotDeclined && isNotHandling) {
+            lastSeenTripRef.current = trip.id;
+            if (trip.status === "accepted" && trip.driver_id === userProfile.id) {
+              handleDirectAssignedTrip(trip);
+            } else if (!trip.driver_id || trip.target_driver_id === userProfile.id) {
+              handleNewTrip(trip);
+            }
+            return;
+          }
+        }
+      }
+
+      // SLOW PATH: Generic poll (fallback)
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Check broadcast trips (no driver assigned yet)
