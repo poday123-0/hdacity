@@ -298,9 +298,10 @@ export const usePushNotifications = (
               // handleNewTrip will play the in-app sound instead
               if (notifType === "trip_requested") {
                 try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
-                // Dispatch event so DriverApp triggers immediate trip check
+                // Dispatch event with trip_id so DriverApp can fetch it directly
+                // instead of doing a generic poll (fixes sound/UI desync)
                 window.dispatchEvent(new CustomEvent("fcm-foreground-trip", {
-                  detail: { type: notifType, data: notification.data }
+                  detail: { type: notifType, trip_id: notification.data?.trip_id, data: notification.data }
                 }));
                 return;
               }
