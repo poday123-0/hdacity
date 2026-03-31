@@ -1,0 +1,1 @@
+ALTER TABLE public.named_locations ADD COLUMN road_name text DEFAULT '';

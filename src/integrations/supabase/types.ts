@@ -807,6 +807,7 @@ export type Database = {
           lat: number
           lng: number
           name: string
+          road_name: string | null
           status: string
           suggested_by: string | null
           suggested_by_type: string | null
@@ -824,6 +825,7 @@ export type Database = {
           lat: number
           lng: number
           name: string
+          road_name?: string | null
           status?: string
           suggested_by?: string | null
           suggested_by_type?: string | null
@@ -841,6 +843,7 @@ export type Database = {
           lat?: number
           lng?: number
           name?: string
+          road_name?: string | null
           status?: string
           suggested_by?: string | null
           suggested_by_type?: string | null
