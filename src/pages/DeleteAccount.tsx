@@ -65,10 +65,16 @@ const DeleteAccount = () => {
         return;
       }
 
+      // Try matching with multiple formats (raw, with country code, with +)
+      const rawPhone = phone.replace(/^0+/, "");
+      const withCountry = `960${rawPhone}`;
+      const withPlus = `+960${rawPhone}`;
       const { data: profile } = await supabase
         .from("profiles")
         .select("id, first_name, last_name, user_type")
-        .eq("phone_number", fullPhone)
+        .in("phone_number", [rawPhone, withCountry, withPlus, fullPhone])
+        .neq("status", "Deleted")
+        .limit(1)
         .single();
 
       if (!profile) {
