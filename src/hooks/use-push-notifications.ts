@@ -327,6 +327,14 @@ export const usePushNotifications = (
 
           PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
             console.log("Push action:", action);
+            const actionType = action.notification?.data?.type || "";
+            const actionTripId = action.notification?.data?.trip_id || "";
+            // Dispatch with trip_id so DriverApp can fetch directly
+            if (actionType === "trip_requested" && actionTripId) {
+              window.dispatchEvent(new CustomEvent("fcm-foreground-trip", {
+                detail: { type: actionType, trip_id: actionTripId, data: action.notification?.data }
+              }));
+            }
           });
         } catch (err) {
           console.error("Native push setup failed:", err);
