@@ -1169,6 +1169,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
 
+    // Look up road names from nearby named_locations
+    const namedLocs = (roadRes.data as any[]) || [];
+    const findRoadName = (lat: number | null, lng: number | null, addr: string) => {
+      if (!lat || !lng) return "";
+      // First try exact name match from address
+      const nameMatch = namedLocs.find(nl => nl.road_name && addr.toLowerCase().includes(nl.name.toLowerCase()));
+      if (nameMatch?.road_name) return nameMatch.road_name;
+      // Then try closest location within 200m
+      let closest: any = null;
+      let closestDist = Infinity;
+      for (const nl of namedLocs) {
+        if (!nl.road_name || !nl.lat || !nl.lng) continue;
+        const d = Math.sqrt(Math.pow((nl.lat - lat) * 111320, 2) + Math.pow((nl.lng - lng) * 111320 * Math.cos(lat * Math.PI / 180), 2));
+        if (d < 200 && d < closestDist) { closestDist = d; closest = nl; }
+      }
+      return closest?.road_name || "";
+    };
+
+    const pickupRoad = findRoadName(trip.pickup_lat ? Number(trip.pickup_lat) : null, trip.pickup_lng ? Number(trip.pickup_lng) : null, trip.pickup_address || "");
+    const dropoffRoad = findRoadName(trip.dropoff_lat ? Number(trip.dropoff_lat) : null, trip.dropoff_lng ? Number(trip.dropoff_lng) : null, trip.dropoff_address || "");
+    if (pickupRoad || dropoffRoad) {
+      setCurrentTrip(prev => prev ? { ...prev, _pickupRoad: pickupRoad, _dropoffRoad: dropoffRoad } as any : prev);
+    }
+
     // Update with fetched data
     const timeout = timeoutRes.data?.value ? Number(timeoutRes.data.value) : 30;
     setAcceptTimeoutSeconds(timeout);
