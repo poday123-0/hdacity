@@ -1491,11 +1491,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   useEffect(() => {
     if (!userProfile?.id) return;
 
-    const triggerCheck = () => {
-      // Fire immediately + more aggressive retries for faster trip screen display
-      doForegroundTripCheckRef.current?.();
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 300);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 800);
+    const triggerCheck = (tripId?: string) => {
+      // Fire immediately with direct trip_id for fastest response
+      doForegroundTripCheckRef.current?.(tripId);
+      setTimeout(() => doForegroundTripCheckRef.current?.(tripId), 300);
+      setTimeout(() => doForegroundTripCheckRef.current?.(tripId), 800);
       setTimeout(() => doForegroundTripCheckRef.current?.(), 1500);
       setTimeout(() => doForegroundTripCheckRef.current?.(), 3000);
     };
@@ -1511,7 +1511,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           console.log("Native notification tapped:", action);
           // Clear all delivered notifications to stop OS-level sound
           try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
-          triggerCheck();
+          const tappedTripId = action.notification?.data?.trip_id;
+          triggerCheck(tappedTripId);
         });
         nativeCleanup = () => listener.remove();
       } catch {}
@@ -1529,13 +1530,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.serviceWorker.addEventListener("message", onSwMessage);
     }
 
-    // PWA foreground: listen for FCM foreground push events as a backup
-    // in case the realtime WebSocket missed the trip insert
+    // Listen for FCM foreground push events (native + PWA)
+    // Uses trip_id from push payload for direct fetch (no slow generic poll)
     const onFcmForegroundTrip = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.type === "trip_requested") {
-        console.log("FCM foreground trip_requested received — triggering backup trip check");
-        triggerCheck();
+        const pushTripId = detail?.trip_id;
+        console.log("FCM foreground trip_requested received — direct fetch trip:", pushTripId);
+        triggerCheck(pushTripId);
       }
     };
     window.addEventListener("fcm-foreground-trip", onFcmForegroundTrip);
