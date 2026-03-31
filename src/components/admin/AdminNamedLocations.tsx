@@ -637,6 +637,7 @@ const AdminNamedLocations = () => {
                           <MapPin className="w-4 h-4 text-primary shrink-0" />
                           <div>
                             <p className="text-sm font-medium text-foreground">{loc.name}</p>
+                            {loc.road_name && <p className="text-[10px] text-primary/70 font-medium">{loc.road_name}</p>}
                             {loc.description && <p className="text-[10px] text-muted-foreground">{loc.description}</p>}
                           </div>
                         </div>
