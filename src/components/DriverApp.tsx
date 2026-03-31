@@ -1203,7 +1203,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   // Track last seen trip id and declined trips to avoid duplicate handling
   const lastSeenTripRef = useRef<string | null>(null);
   const declinedTripIdsRef = useRef<Set<string>>(new Set());
-  const doForegroundTripCheckRef = useRef<(() => void) | null>(null);
+  const doForegroundTripCheckRef = useRef<((tripId?: string) => void) | null>(null);
 
   // Load declined trips from DB on mount
   useEffect(() => {
@@ -1359,11 +1359,40 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }, 15000);
 
     // Immediately check for pending trips when app becomes visible (e.g. after push notification tap)
-    const doForegroundTripCheck = async () => {
+    const doForegroundTripCheck = async (directTripId?: string) => {
       if (!isActive) return;
       // Skip check if already showing/handling a trip
       if (screenRef.current !== "online" && screenRef.current !== "offline") return;
       if (handlingTripRef.current) return;
+
+      // FAST PATH: If we have a specific trip_id from push notification, fetch it directly
+      // This avoids the slow generic poll and ensures sound+UI appear instantly
+      if (directTripId) {
+        const { data: directTrip } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("id", directTripId)
+          .single();
+
+        if (directTrip) {
+          const trip = directTrip as any;
+          const isValidStatus = trip.status === "requested" || trip.status === "scheduled" || trip.status === "accepted";
+          const isNotDeclined = !declinedTripIdsRef.current.has(trip.id);
+          const isNotHandling = trip.id !== handlingTripRef.current;
+          
+          if (isValidStatus && isNotDeclined && isNotHandling) {
+            lastSeenTripRef.current = trip.id;
+            if (trip.status === "accepted" && trip.driver_id === userProfile.id) {
+              handleDirectAssignedTrip(trip);
+            } else if (!trip.driver_id || trip.target_driver_id === userProfile.id) {
+              handleNewTrip(trip);
+            }
+            return;
+          }
+        }
+      }
+
+      // SLOW PATH: Generic poll (fallback)
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       // Check broadcast trips (no driver assigned yet)
@@ -1462,11 +1491,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   useEffect(() => {
     if (!userProfile?.id) return;
 
-    const triggerCheck = () => {
-      // Fire immediately + more aggressive retries for faster trip screen display
-      doForegroundTripCheckRef.current?.();
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 300);
-      setTimeout(() => doForegroundTripCheckRef.current?.(), 800);
+    const triggerCheck = (tripId?: string) => {
+      // Fire immediately with direct trip_id for fastest response
+      doForegroundTripCheckRef.current?.(tripId);
+      setTimeout(() => doForegroundTripCheckRef.current?.(tripId), 300);
+      setTimeout(() => doForegroundTripCheckRef.current?.(tripId), 800);
       setTimeout(() => doForegroundTripCheckRef.current?.(), 1500);
       setTimeout(() => doForegroundTripCheckRef.current?.(), 3000);
     };
@@ -1482,7 +1511,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           console.log("Native notification tapped:", action);
           // Clear all delivered notifications to stop OS-level sound
           try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
-          triggerCheck();
+          const tappedTripId = action.notification?.data?.trip_id;
+          triggerCheck(tappedTripId);
         });
         nativeCleanup = () => listener.remove();
       } catch {}
@@ -1500,13 +1530,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       navigator.serviceWorker.addEventListener("message", onSwMessage);
     }
 
-    // PWA foreground: listen for FCM foreground push events as a backup
-    // in case the realtime WebSocket missed the trip insert
+    // Listen for FCM foreground push events (native + PWA)
+    // Uses trip_id from push payload for direct fetch (no slow generic poll)
     const onFcmForegroundTrip = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.type === "trip_requested") {
-        console.log("FCM foreground trip_requested received — triggering backup trip check");
-        triggerCheck();
+        const pushTripId = detail?.trip_id;
+        console.log("FCM foreground trip_requested received — direct fetch trip:", pushTripId);
+        triggerCheck(pushTripId);
       }
     };
     window.addEventListener("fcm-foreground-trip", onFcmForegroundTrip);

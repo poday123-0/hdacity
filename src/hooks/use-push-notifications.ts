@@ -298,9 +298,10 @@ export const usePushNotifications = (
               // handleNewTrip will play the in-app sound instead
               if (notifType === "trip_requested") {
                 try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
-                // Dispatch event so DriverApp triggers immediate trip check
+                // Dispatch event with trip_id so DriverApp can fetch it directly
+                // instead of doing a generic poll (fixes sound/UI desync)
                 window.dispatchEvent(new CustomEvent("fcm-foreground-trip", {
-                  detail: { type: notifType, data: notification.data }
+                  detail: { type: notifType, trip_id: notification.data?.trip_id, data: notification.data }
                 }));
                 return;
               }
@@ -326,6 +327,14 @@ export const usePushNotifications = (
 
           PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
             console.log("Push action:", action);
+            const actionType = action.notification?.data?.type || "";
+            const actionTripId = action.notification?.data?.trip_id || "";
+            // Dispatch with trip_id so DriverApp can fetch directly
+            if (actionType === "trip_requested" && actionTripId) {
+              window.dispatchEvent(new CustomEvent("fcm-foreground-trip", {
+                detail: { type: actionType, trip_id: actionTripId, data: action.notification?.data }
+              }));
+            }
           });
         } catch (err) {
           console.error("Native push setup failed:", err);
