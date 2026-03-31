@@ -525,7 +525,13 @@ const DispatchTripForm = ({
     setResultHighlight(-1);
     const q = searchQuery.toLowerCase();
 
-    // 1. Instant local matches from DB + recent bookings
+    // Cancel previous external requests
+    if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
+    if (googleAbortRef.current) googleAbortRef.current.abort();
+    const googleAbort = new AbortController();
+    googleAbortRef.current = googleAbort;
+
+    // 1. Instant local matches from DB + recent bookings (zero latency)
     const localMatches: NominatimResult[] = [
       ...serviceLocations
         .filter((sl: any) => sl.name.toLowerCase().includes(q) || (sl.address || "").toLowerCase().includes(q))
@@ -538,9 +544,16 @@ const DispatchTripForm = ({
           tag: sl.name,
         })),
       ...namedLocations
-        .filter((nl: any) => nl.name.toLowerCase().includes(q) || (nl.address || "").toLowerCase().includes(q))
+        .filter((nl: any) => {
+          const nameMatch = nl.name.toLowerCase().includes(q);
+          const addrMatch = (nl.address || "").toLowerCase().includes(q);
+          const descMatch = (nl.description || "").toLowerCase().includes(q);
+          const groupMatch = (nl.group_name || "").toLowerCase().includes(q);
+          return nameMatch || addrMatch || descMatch || groupMatch;
+        })
         .map((nl: any, i: number) => {
           const areaName = findNearestServiceAreaName(Number(nl.lat), Number(nl.lng));
+          const roadInfo = nl.address || nl.description || "";
           return {
             place_id: 800000 + i,
             display_name: `${nl.name} — ${areaName}`,
@@ -548,6 +561,7 @@ const DispatchTripForm = ({
             lon: String(nl.lng),
             name: nl.name,
             tag: areaName,
+            road: roadInfo || undefined,
           };
         }),
       ...recentBookings
@@ -589,12 +603,6 @@ const DispatchTripForm = ({
     });
     setOsmResults(deduped);
 
-    // Cancel previous external requests
-    if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
-    if (googleAbortRef.current) googleAbortRef.current.abort();
-    const googleAbort = new AbortController();
-    googleAbortRef.current = googleAbort;
-
     if (searchQuery.length < 2) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -620,64 +628,75 @@ const DispatchTripForm = ({
         }
       };
 
-      // Google Places — use JS SDK directly (faster than edge function)
-      if (typeof google !== "undefined" && google.maps?.places) {
+      // Google Places — use AutocompleteService (much faster than textSearch)
+      const autocomplete = getAutocompleteService();
+      if (autocomplete) {
         const cacheKey = searchQuery.toLowerCase().trim();
         const cached = _placesCache.get(cacheKey);
-        const processGoogleResults = (results: any[]) => {
+
+        const processAutocompletePredictions = (predictions: any[]) => {
           if (googleAbort.signal.aborted) return;
-          if (!results?.length) return;
-          const googleResults: NominatimResult[] = results
-            .map((p: any, i: number) => {
-              const loc = p.geometry?.location;
-              if (!loc) return null;
-              const lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
-              const lng = typeof loc.lng === "function" ? loc.lng() : loc.lng;
-              if (!isWithinServiceArea(lat, lng)) return null;
-              const areaName = findNearestServiceAreaName(lat, lng);
-              const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
-              if (isDup) return null;
-              return {
-                place_id: 700000 + i,
-                display_name: `${p.name} — ${areaName}`,
-                lat: String(lat),
-                lon: String(lng),
-                name: p.name,
-                tag: areaName,
-                road: p.formatted_address?.split(",")[0] || null,
-              };
-            })
-            .filter(Boolean) as NominatimResult[];
-          mergeResults(googleResults);
+          if (!predictions?.length) return;
+          const service = getPlacesService();
+          if (!service) return;
+
+          let processed = 0;
+          const batchResults: NominatimResult[] = [];
+
+          predictions.forEach((prediction: any, i: number) => {
+            service.getDetails(
+              { placeId: prediction.place_id, fields: ["geometry", "name", "formatted_address"] },
+              (place: any, detailStatus: any) => {
+                processed++;
+                if (googleAbort.signal.aborted) return;
+                if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+                  const lat = place.geometry.location.lat();
+                  const lng = place.geometry.location.lng();
+                  if (!isWithinServiceArea(lat, lng)) { if (processed >= predictions.length) mergeResults(batchResults); return; }
+                  const areaName = findNearestServiceAreaName(lat, lng);
+                  const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
+                  if (!isDup) {
+                    const roadPart = place.formatted_address?.split(",")[0] || "";
+                    batchResults.push({
+                      place_id: 700000 + i,
+                      display_name: `${place.name || prediction.structured_formatting?.main_text} — ${areaName}`,
+                      lat: String(lat),
+                      lon: String(lng),
+                      name: place.name || prediction.structured_formatting?.main_text || "",
+                      tag: areaName,
+                      road: roadPart || undefined,
+                    });
+                  }
+                }
+                // Progressive merge — show results as they come in
+                if (batchResults.length > 0 && (processed >= predictions.length || processed % 2 === 0)) {
+                  mergeResults([...batchResults]);
+                }
+              }
+            );
+          });
         };
 
         if (cached && Date.now() - cached.ts < PLACES_CACHE_TTL) {
-          processGoogleResults(cached.results);
+          processAutocompletePredictions(cached.results);
         } else {
-          // Use PlacesService for text search (no CORS issues, direct SDK)
-          const div = document.createElement("div");
-          const service = new google.maps.places.PlacesService(div);
-          const request = {
-            query: searchQuery,
-            location: new google.maps.LatLng(4.1755, 73.5093),
-            radius: 50000,
-          };
-          service.textSearch(request, (results, status) => {
-            if (googleAbort.signal.aborted) return;
-            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-              // Cache raw results (serialize lat/lng)
-              const serialized = results.map(r => ({
-                name: r.name,
-                formatted_address: r.formatted_address,
-                geometry: { location: { lat: r.geometry?.location?.lat(), lng: r.geometry?.location?.lng() } },
-              }));
-              _placesCache.set(cacheKey, { results: serialized, ts: Date.now() });
-              processGoogleResults(serialized);
+          autocomplete.getPlacePredictions(
+            {
+              input: searchQuery,
+              locationBias: new google.maps.Circle({ center: { lat: 4.1755, lng: 73.5093 }, radius: 50000 }),
+              componentRestrictions: { country: "mv" },
+            },
+            (predictions: any, status: any) => {
+              if (googleAbort.signal.aborted) return;
+              if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                _placesCache.set(cacheKey, { results: predictions, ts: Date.now() });
+                processAutocompletePredictions(predictions);
+              }
             }
-          });
+          );
         }
       }
-    }, 150);
+    }, 80); // 80ms debounce — fast real-time feel
 
     return () => { googleAbort.abort(); };
   }, [searchQuery, serviceLocations, namedLocations, recentBookings, findNearestServiceAreaName, isWithinServiceArea]);
