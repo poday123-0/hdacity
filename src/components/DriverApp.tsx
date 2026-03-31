@@ -1123,7 +1123,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
 
     // === VALIDATE + FETCH EXTRA DATA IN PARALLEL (non-blocking for UI) ===
-    const [blockResult, freshTripResult, pProfileRes, stopsRes, timeoutRes] = await Promise.all([
+    const [blockResult, freshTripResult, pProfileRes, stopsRes, timeoutRes, roadRes] = await Promise.all([
       userProfile?.id
         ? supabase
             .from("vehicles")
@@ -1144,6 +1144,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         : Promise.resolve({ data: null }),
       supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
       supabase.from("system_settings").select("value").eq("key", "driver_accept_timeout_seconds").single(),
+      // Fetch road names from named_locations matching pickup/dropoff addresses
+      supabase.from("named_locations").select("name, road_name, lat, lng").eq("status", "approved").eq("is_active", true).limit(500),
     ]);
 
     // If trip is invalid, dismiss the UI
@@ -1165,6 +1167,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       tripSoundRef.current = null;
       handlingTripRef.current = null;
       return;
+    }
+
+    // Look up road names from nearby named_locations
+    const namedLocs = (roadRes.data as any[]) || [];
+    const findRoadName = (lat: number | null, lng: number | null, addr: string) => {
+      if (!lat || !lng) return "";
+      // First try exact name match from address
+      const nameMatch = namedLocs.find(nl => nl.road_name && addr.toLowerCase().includes(nl.name.toLowerCase()));
+      if (nameMatch?.road_name) return nameMatch.road_name;
+      // Then try closest location within 200m
+      let closest: any = null;
+      let closestDist = Infinity;
+      for (const nl of namedLocs) {
+        if (!nl.road_name || !nl.lat || !nl.lng) continue;
+        const d = Math.sqrt(Math.pow((nl.lat - lat) * 111320, 2) + Math.pow((nl.lng - lng) * 111320 * Math.cos(lat * Math.PI / 180), 2));
+        if (d < 200 && d < closestDist) { closestDist = d; closest = nl; }
+      }
+      return closest?.road_name || "";
+    };
+
+    const pickupRoad = findRoadName(trip.pickup_lat ? Number(trip.pickup_lat) : null, trip.pickup_lng ? Number(trip.pickup_lng) : null, trip.pickup_address || "");
+    const dropoffRoad = findRoadName(trip.dropoff_lat ? Number(trip.dropoff_lat) : null, trip.dropoff_lng ? Number(trip.dropoff_lng) : null, trip.dropoff_address || "");
+    if (pickupRoad || dropoffRoad) {
+      setCurrentTrip(prev => prev ? { ...prev, _pickupRoad: pickupRoad, _dropoffRoad: dropoffRoad } as any : prev);
     }
 
     // Update with fetched data
@@ -3661,7 +3687,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               <div className="bg-surface rounded-xl p-3 space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
-                  <p className="text-xs text-foreground truncate font-medium">{currentTrip.pickup_address}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-foreground truncate font-medium">{currentTrip.pickup_address}</p>
+                    {(currentTrip as any)._pickupRoad && <p className="text-[10px] text-muted-foreground truncate">🛣️ {(currentTrip as any)._pickupRoad}</p>}
+                  </div>
                 </div>
                 {tripStops.map((stop) =>
               <div key={stop.id}>
@@ -3675,7 +3704,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <div className="ml-1 w-0.5 h-2.5 bg-border" />
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
-                  <p className="text-xs text-foreground truncate font-medium">{currentTrip.dropoff_address}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-foreground truncate font-medium">{currentTrip.dropoff_address}</p>
+                    {(currentTrip as any)._dropoffRoad && <p className="text-[10px] text-muted-foreground truncate">🛣️ {(currentTrip as any)._dropoffRoad}</p>}
+                  </div>
                 </div>
               </div>
 

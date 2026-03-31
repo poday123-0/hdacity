@@ -27,7 +27,7 @@ const AdminNamedLocations = () => {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
-  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "", group_name: "" });
+  const [inlineEdit, setInlineEdit] = useState({ name: "", address: "", group_name: "", road_name: "" });
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
@@ -637,6 +637,7 @@ const AdminNamedLocations = () => {
                           <MapPin className="w-4 h-4 text-primary shrink-0" />
                           <div>
                             <p className="text-sm font-medium text-foreground">{loc.name}</p>
+                            {loc.road_name && <p className="text-[10px] text-primary/70 font-medium">{loc.road_name}</p>}
                             {loc.description && <p className="text-[10px] text-muted-foreground">{loc.description}</p>}
                           </div>
                         </div>
@@ -644,9 +645,15 @@ const AdminNamedLocations = () => {
                     </td>
                     <td className="px-4 py-3">
                       {isInlineEditing ? (
-                        <input value={inlineEdit.group_name} onChange={e => setInlineEdit(p => ({ ...p, group_name: e.target.value }))} list="group-suggestions" placeholder="Group..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <div className="space-y-1">
+                          <input value={inlineEdit.group_name} onChange={e => setInlineEdit(p => ({ ...p, group_name: e.target.value }))} list="group-suggestions" placeholder="Group..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                          <input value={inlineEdit.road_name} onChange={e => setInlineEdit(p => ({ ...p, road_name: e.target.value }))} placeholder="Road name..." className="w-full px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                        </div>
                       ) : (
-                        loc.group_name ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{loc.group_name}</span> : <span className="text-[10px] text-muted-foreground">—</span>
+                        <div>
+                          {loc.group_name ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{loc.group_name}</span> : <span className="text-[10px] text-muted-foreground">—</span>}
+                          {loc.road_name && <p className="text-[10px] text-muted-foreground mt-0.5">🛣️ {loc.road_name}</p>}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -678,7 +685,7 @@ const AdminNamedLocations = () => {
                         {isInlineEditing ? (
                           <>
                             <button onClick={async () => {
-                              const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address, group_name: inlineEdit.group_name || null } as any).eq("id", loc.id);
+                              const { error } = await supabase.from("named_locations").update({ name: inlineEdit.name, address: inlineEdit.address, group_name: inlineEdit.group_name || null, road_name: inlineEdit.road_name || "" } as any).eq("id", loc.id);
                               if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
                               else { toast({ title: "Updated" }); setInlineEditId(null); fetchLocations(); }
                             }} className="p-1.5 rounded-lg text-green-600 hover:bg-green-100 dark:hover:bg-green-500/20" title="Save"><Check className="w-3.5 h-3.5" /></button>
@@ -692,7 +699,7 @@ const AdminNamedLocations = () => {
                                 <button onClick={() => rejectLocation(loc.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10" title="Reject"><XCircle className="w-3.5 h-3.5" /></button>
                               </>
                             )}
-                            <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "", group_name: loc.group_name || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => { setInlineEditId(loc.id); setInlineEdit({ name: loc.name, address: loc.address || "", group_name: loc.group_name || "", road_name: loc.road_name || "" }); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Quick Edit"><Pencil className="w-3.5 h-3.5" /></button>
                             <button onClick={() => openEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface" title="Full Edit"><MapPin className="w-3.5 h-3.5" /></button>
                             <button onClick={() => toggleActive(loc.id, loc.is_active)} className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${loc.is_active ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                               {loc.is_active ? "Active" : "Inactive"}
