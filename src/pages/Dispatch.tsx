@@ -718,6 +718,31 @@ const Dispatch = () => {
             } catch (e) { /* audio not available */ }
           }
 
+          // Play alert tone when trip expires with no driver (cancelled without being accepted)
+          if (
+            updated.status === "cancelled" &&
+            old?.status === "requested" &&
+            !updated.accepted_at &&
+            updated.dispatch_type === "passenger"
+          ) {
+            try {
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.type = "square";
+              // Descending alert: E5 → C5
+              osc.frequency.setValueAtTime(659, ctx.currentTime);
+              osc.frequency.setValueAtTime(523, ctx.currentTime + 0.12);
+              osc.frequency.setValueAtTime(440, ctx.currentTime + 0.24);
+              gain.gain.setValueAtTime(0.2, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+              osc.start(ctx.currentTime);
+              osc.stop(ctx.currentTime + 0.4);
+            } catch (e) { /* audio not available */ }
+          }
+
           // Instantly patch trip scalar fields — preserve joined objects (driver, vehicle)
           const patchTrip = (trips: any[]) =>
             trips.map((t) =>
