@@ -226,15 +226,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 3);
 
-    if (nearby.length > 0) {
-      setNearbyPlaces(nearby);
-      return;
-    }
-
-    // Fallback: fetch nearby places from Google Places
+    // Always also fetch Google Places and merge
     const g = (window as any).google;
     if (!g?.maps?.places?.PlacesService || !mapInstance.current) {
-      setNearbyPlaces([]);
+      setNearbyPlaces(nearby);
       return;
     }
 
@@ -246,9 +241,11 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         type: "point_of_interest",
       },
       (results: any[] | null, status: string) => {
+        const existingNames = new Set(nearby.map(p => p.name.toLowerCase()));
+        let googlePlaces: NearbyPlace[] = [];
         if (status === "OK" && results) {
-          const places = results
-            .filter((p: any) => p.name && p.geometry?.location)
+          googlePlaces = results
+            .filter((p: any) => p.name && p.geometry?.location && !existingNames.has(p.name.toLowerCase()))
             .slice(0, 4)
             .map((p: any) => ({
               name: p.name,
@@ -256,10 +253,8 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
               lat: p.geometry.location.lat(),
               lng: p.geometry.location.lng(),
             }));
-          setNearbyPlaces(places);
-        } else {
-          setNearbyPlaces([]);
         }
+        setNearbyPlaces([...nearby, ...googlePlaces].slice(0, 6));
       }
     );
   }, [center.lat, center.lng, searchLocations, placeName]);
