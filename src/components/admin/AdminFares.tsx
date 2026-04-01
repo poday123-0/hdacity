@@ -128,6 +128,8 @@ const AdminFares = () => {
       start_time: s.start_time || "",
       end_time: s.end_time || "",
       luggage_threshold: s.luggage_threshold?.toString() || "3",
+      vehicle_type_id: s.vehicle_type_id || "",
+      destination_area_id: s.destination_area_id || "",
     });
     setEditingSurchargeId(s.id);
     setShowSurchargeForm(true);
