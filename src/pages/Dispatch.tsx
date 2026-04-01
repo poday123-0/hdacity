@@ -2670,7 +2670,7 @@ const Dispatch = () => {
                                       : "bg-surface text-muted-foreground"
                           }`}
                         >
-                          {t.is_loss ? "LOSS" : t.status}
+                          {t.is_loss ? "LOSS" : !t.vehicle && t.status === "completed" ? "NO VEHICLE" : t.status}
                         </span>
                         <span className="text-foreground truncate flex-1">
                           {(t.pickup_address || "").split(",")[0]} <span className="text-primary">→</span>{" "}
