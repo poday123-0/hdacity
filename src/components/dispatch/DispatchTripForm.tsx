@@ -160,6 +160,8 @@ const DispatchTripForm = ({
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
+  const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
+  const [availableDisposalTypes, setAvailableDisposalTypes] = useState<any[]>([]);
 
   // Realtime: update centerCodeResults when trip is_loss changes
   useEffect(() => {
