@@ -1415,20 +1415,45 @@ const Dispatch = () => {
               <div className="lg:w-[320px] lg:min-w-[280px] space-y-1.5 min-w-0 shrink-0 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto">
                 {/* IN LOSS */}
                 <div className="bg-card border border-destructive/30 rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border">
-                    <h3 className="text-xs font-bold text-destructive flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                      IN LOSS
-                      <span className="text-[10px] font-normal text-muted-foreground ml-1">
-                        {lostTrips.length} LOSS bookings • Auto-clears at 00:00hrs
+                  <div className="px-2.5 py-1.5 border-b border-border flex items-center gap-2">
+                    <h3 className="text-[10px] font-bold text-destructive flex items-center gap-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                      LOSS
+                      <span className="text-[9px] font-normal text-muted-foreground">
+                        {lostTrips.length}
                       </span>
                     </h3>
+                    <input
+                      type="text"
+                      placeholder="Search code, name, address..."
+                      value={lossSearch}
+                      onChange={(e) => setLossSearch(e.target.value)}
+                      className="flex-1 min-w-0 h-5 px-1.5 text-[9px] bg-muted/50 border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+                    />
                   </div>
                   <div className="max-h-[220px] overflow-y-auto p-1.5 space-y-1">
-                    {lostTrips.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">No lost rides</p>
-                    ) : (
-                      (showAllLoss ? lostTrips : lostTrips.slice(0, 2)).map((t: any) => (
+                    {(() => {
+                      const q = lossSearch.toLowerCase().trim();
+                      const filtered = q
+                        ? lostTrips.filter((t: any) => {
+                            const v = t.vehicle as any;
+                            const d = t.driver as any;
+                            return (
+                              (t.pickup_address || "").toLowerCase().includes(q) ||
+                              (t.dropoff_address || "").toLowerCase().includes(q) ||
+                              (t.customer_name || "").toLowerCase().includes(q) ||
+                              (t.customer_phone || "").toLowerCase().includes(q) ||
+                              (v?.center_code || "").toLowerCase().includes(q) ||
+                              (v?.plate_number || "").toLowerCase().includes(q) ||
+                              (d?.first_name || "").toLowerCase().includes(q) ||
+                              (d?.last_name || "").toLowerCase().includes(q)
+                            );
+                          })
+                        : lostTrips;
+                      if (filtered.length === 0) return (
+                        <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches" : "No lost rides"}</p>
+                      );
+                      return (showAllLoss ? filtered : filtered.slice(0, 2)).map((t: any) => (
                         <div
                           key={t.id}
                           className={`rounded-md overflow-hidden ${
