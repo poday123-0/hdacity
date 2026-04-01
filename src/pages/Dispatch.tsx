@@ -1585,8 +1585,8 @@ const Dispatch = () => {
                             </div>
                           )}
                         </div>
-                      ))
-                    )}
+                      ));
+                    })()}
                     {!showAllLoss && lostTrips.length > 2 && (
                       <button
                         onClick={() => setShowAllLoss(true)}
