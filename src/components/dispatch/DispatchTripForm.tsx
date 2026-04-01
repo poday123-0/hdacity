@@ -366,6 +366,34 @@ const DispatchTripForm = ({
     };
 
     const waypoints = [pickup, ...stops.filter(s => s.lat && s.address), dropoff];
+
+    // Check if dropoff is in a fixed surcharge destination area
+    const lastWp = waypoints[waypoints.length - 1];
+    let fixedSurchargeMatches: any[] = [];
+    if (lastWp) {
+      const dropArea = findServiceArea(lastWp.lat, lastWp.lng);
+      if (dropArea) {
+        fixedSurchargeMatches = surcharges.filter((sc: any) =>
+          sc.surcharge_type === "fixed" && sc.destination_area_id === dropArea.id &&
+          (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id)
+        );
+      }
+    }
+
+    // If fixed surcharges exist for this destination, use them as total fare
+    if (fixedSurchargeMatches.length > 0) {
+      // Use selected disposal type or first match
+      const selectedSc = selectedDisposalType
+        ? fixedSurchargeMatches.find((sc: any) => sc.id === selectedDisposalType) || fixedSurchargeMatches[0]
+        : fixedSurchargeMatches[0];
+      let totalFare = Number(selectedSc.amount);
+      totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
+      setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
+      setAvailableDisposalTypes(fixedSurchargeMatches);
+      return;
+    }
+
+    setAvailableDisposalTypes([]);
     let totalFare = 0;
 
     for (let i = 0; i < waypoints.length - 1; i++) {
@@ -411,23 +439,11 @@ const DispatchTripForm = ({
           totalFare += Number(sc.amount);
         }
       }
-      if (sc.surcharge_type === "fixed" && sc.destination_area_id) {
-        // Check if any waypoint's dropoff is in the destination area
-        const lastWp = waypoints[waypoints.length - 1];
-        if (lastWp) {
-          const dropArea = findServiceArea(lastWp.lat, lastWp.lng);
-          if (dropArea && dropArea.id === sc.destination_area_id) {
-            if (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id) {
-              totalFare += Number(sc.amount);
-            }
-          }
-        }
-      }
     }
 
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
     setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
-  }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount]);
+  }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount, selectedDisposalType]);
 
   // Realtime subscription for created trip
   useEffect(() => {
