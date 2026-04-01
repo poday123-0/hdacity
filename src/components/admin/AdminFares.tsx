@@ -144,6 +144,8 @@ const AdminFares = () => {
       start_time: surchargeForm.surcharge_type === "time_based" ? surchargeForm.start_time || null : null,
       end_time: surchargeForm.surcharge_type === "time_based" ? surchargeForm.end_time || null : null,
       luggage_threshold: surchargeForm.surcharge_type === "luggage" ? parseInt(surchargeForm.luggage_threshold) || 3 : null,
+      vehicle_type_id: surchargeForm.surcharge_type === "fixed" ? surchargeForm.vehicle_type_id || null : null,
+      destination_area_id: surchargeForm.surcharge_type === "fixed" ? surchargeForm.destination_area_id || null : null,
     };
     const { error } = editingSurchargeId
       ? await supabase.from("fare_surcharges").update(payload).eq("id", editingSurchargeId)
