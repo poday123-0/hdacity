@@ -160,6 +160,8 @@ const DispatchTripForm = ({
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
+  const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
+  const [availableDisposalTypes, setAvailableDisposalTypes] = useState<any[]>([]);
 
   // Realtime: update centerCodeResults when trip is_loss changes
   useEffect(() => {
@@ -366,6 +368,34 @@ const DispatchTripForm = ({
     };
 
     const waypoints = [pickup, ...stops.filter(s => s.lat && s.address), dropoff];
+
+    // Check if dropoff is in a fixed surcharge destination area
+    const lastWp = waypoints[waypoints.length - 1];
+    let fixedSurchargeMatches: any[] = [];
+    if (lastWp) {
+      const dropArea = findServiceArea(lastWp.lat, lastWp.lng);
+      if (dropArea) {
+        fixedSurchargeMatches = surcharges.filter((sc: any) =>
+          sc.surcharge_type === "fixed" && sc.destination_area_id === dropArea.id &&
+          (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id)
+        );
+      }
+    }
+
+    // If fixed surcharges exist for this destination, use them as total fare
+    if (fixedSurchargeMatches.length > 0) {
+      // Use selected disposal type or first match
+      const selectedSc = selectedDisposalType
+        ? fixedSurchargeMatches.find((sc: any) => sc.id === selectedDisposalType) || fixedSurchargeMatches[0]
+        : fixedSurchargeMatches[0];
+      let totalFare = Number(selectedSc.amount);
+      totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
+      setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
+      setAvailableDisposalTypes(fixedSurchargeMatches);
+      return;
+    }
+
+    setAvailableDisposalTypes([]);
     let totalFare = 0;
 
     for (let i = 0; i < waypoints.length - 1; i++) {
@@ -411,23 +441,11 @@ const DispatchTripForm = ({
           totalFare += Number(sc.amount);
         }
       }
-      if (sc.surcharge_type === "fixed" && sc.destination_area_id) {
-        // Check if any waypoint's dropoff is in the destination area
-        const lastWp = waypoints[waypoints.length - 1];
-        if (lastWp) {
-          const dropArea = findServiceArea(lastWp.lat, lastWp.lng);
-          if (dropArea && dropArea.id === sc.destination_area_id) {
-            if (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id) {
-              totalFare += Number(sc.amount);
-            }
-          }
-        }
-      }
     }
 
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
     setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
-  }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount]);
+  }, [pickup, dropoff, stops, selectedVehicleType, vehicleTypes, fareZones, surcharges, serviceLocations, distanceKm, segmentDistances, luggageCount, selectedDisposalType]);
 
   // Realtime subscription for created trip
   useEffect(() => {
@@ -1007,7 +1025,21 @@ const DispatchTripForm = ({
             <span className="flex items-center gap-1 text-sm font-bold text-primary">
               <DollarSign className="w-3.5 h-3.5" />
               {estimatedFare} MVR
+              {availableDisposalTypes.length > 0 && (
+                <span className="text-[9px] font-medium text-muted-foreground ml-0.5">(fixed)</span>
+              )}
             </span>
+          )}
+          {availableDisposalTypes.length > 1 && (
+            <select
+              value={selectedDisposalType || ""}
+              onChange={e => setSelectedDisposalType(e.target.value || null)}
+              className="text-[10px] bg-surface border border-border rounded px-1.5 py-0.5 text-foreground max-w-[8rem]"
+            >
+              {availableDisposalTypes.map((dt: any) => (
+                <option key={dt.id} value={dt.id}>{dt.name} — {dt.amount} MVR</option>
+              ))}
+            </select>
           )}
           <button onClick={clearForm} className="text-[10px] text-muted-foreground hover:text-foreground font-medium">Clear</button>
         </div>
