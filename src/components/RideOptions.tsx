@@ -218,21 +218,22 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     const waypoints: (LocationData | null | undefined)[] = [pickup, ...stops, dropoff];
 
     // Check if dropoff is in a fixed surcharge destination area
+    // But only use fixed pricing if user explicitly selected a disposal type
+    let availableFixedSurcharges: any[] = [];
     const lastWp = waypoints[waypoints.length - 1];
     if (lastWp) {
       const dropArea = findServiceArea(lastWp);
       if (dropArea) {
-        const fixedMatches = surcharges.filter((sc: any) =>
+        availableFixedSurcharges = surcharges.filter((sc: any) =>
           sc.surcharge_type === "fixed" && sc.destination_area_id === dropArea.id &&
           (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id)
         );
-        if (fixedMatches.length > 0) {
-          const selectedSc = selectedDisposalType
-            ? fixedMatches.find((sc: any) => sc.id === selectedDisposalType) || fixedMatches[0]
-            : fixedMatches[0];
+        // Only use fixed fare if user has explicitly selected a disposal type
+        if (availableFixedSurcharges.length > 0 && selectedDisposalType) {
+          const selectedSc = availableFixedSurcharges.find((sc: any) => sc.id === selectedDisposalType) || availableFixedSurcharges[0];
           let totalFare = Number(selectedSc.amount);
           totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
-          return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: null, fixedSurcharges: fixedMatches };
+          return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: null, fixedSurcharges: availableFixedSurcharges };
         }
       }
     }
