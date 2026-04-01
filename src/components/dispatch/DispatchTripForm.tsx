@@ -1028,12 +1028,13 @@ const DispatchTripForm = ({
               )}
             </span>
           )}
-          {availableDisposalTypes.length > 1 && (
+          {availableDisposalTypes.length > 0 && (
             <select
               value={selectedDisposalType || ""}
               onChange={e => setSelectedDisposalType(e.target.value || null)}
               className="text-[10px] bg-surface border border-border rounded px-1.5 py-0.5 text-foreground max-w-[8rem]"
             >
+              <option value="">Normal Trip</option>
               {availableDisposalTypes.map((dt: any) => (
                 <option key={dt.id} value={dt.id}>{dt.name} — {dt.amount} MVR</option>
               ))}
