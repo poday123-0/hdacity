@@ -342,7 +342,14 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                       onClick={() => {
                         setSearchQuery("");
                         setSearchResults([]);
-                        onConfirm(r.lat, r.lng, r.name, r.name);
+                        const newCenter = { lat: r.lat, lng: r.lng };
+                        setCenter(newCenter);
+                        setPlaceName(r.name);
+                        setAddress(r.name);
+                        if (mapInstance.current) {
+                          mapInstance.current.panTo(newCenter);
+                          mapInstance.current.setZoom(18);
+                        }
                       }}
                       className="flex items-center gap-2.5 w-full px-3.5 py-2.5 hover:bg-primary/5 text-left transition-colors border-b border-border/50 last:border-0"
                     >
