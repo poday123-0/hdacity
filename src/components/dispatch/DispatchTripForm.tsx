@@ -226,7 +226,7 @@ const DispatchTripForm = ({
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true).order("name"),
-        supabase.from("named_locations").select("id, name, address, description, group_name, lat, lng, suggested_by_type").eq("is_active", true).eq("status", "approved"),
+        supabase.from("named_locations").select("id, name, address, description, group_name, lat, lng, road_name, suggested_by_type").eq("is_active", true).eq("status", "approved"),
         supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
       ]);
       // Deduplicate recent booking addresses
@@ -553,7 +553,7 @@ const DispatchTripForm = ({
         })
         .map((nl: any, i: number) => {
           const areaName = findNearestServiceAreaName(Number(nl.lat), Number(nl.lng));
-          const roadInfo = nl.address || nl.description || "";
+          const roadInfo = nl.road_name || "";
           return {
             place_id: 800000 + i,
             display_name: `${nl.name} — ${areaName}`,
