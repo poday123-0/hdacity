@@ -45,6 +45,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   const nearbyRef = useRef<ReturnType<typeof setTimeout>>(); // kept for potential future use
   const { isLoaded } = useGoogleMaps();
   const [isPanning, setIsPanning] = useState(false);
+  const skipReverseGeocodeRef = useRef(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
