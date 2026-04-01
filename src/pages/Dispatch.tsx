@@ -2200,8 +2200,8 @@ const Dispatch = () => {
                             )}
                           </div>
                         );
-                      })
-                    )}
+                      });
+                    })()}
                   </div>
                   {appRequestTrips.length > 5 && (
                     <div className="px-3 py-1.5 border-t border-border flex items-center justify-between">
