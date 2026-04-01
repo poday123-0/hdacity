@@ -460,7 +460,33 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
               </div>
             </div>
 
-            {/* Fare Boost / Tip adjuster */}
+            {/* Fixed surcharge / disposal type selector */}
+            {selectedFixedSurcharges && selectedFixedSurcharges.length > 0 && (
+              <div className="bg-accent/30 rounded-xl px-3 py-2.5 border border-accent/50">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Service Type</p>
+                {selectedFixedSurcharges.length === 1 ? (
+                  <p className="text-xs font-medium text-foreground">{selectedFixedSurcharges[0].name} — <span className="text-primary font-bold">{selectedFixedSurcharges[0].amount} MVR</span></p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {selectedFixedSurcharges.map((sc: any) => (
+                      <button
+                        key={sc.id}
+                        onClick={() => setSelectedDisposalType(sc.id)}
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                          (selectedDisposalType === sc.id || (!selectedDisposalType && sc === selectedFixedSurcharges[0]))
+                            ? "bg-primary/10 border-primary text-foreground font-semibold"
+                            : "bg-surface border-border text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        <span>{sc.name}</span>
+                        <span className="font-bold text-primary">{sc.amount} MVR</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className={`rounded-xl px-3 py-3 border transition-all ${passengerBonus > 0 ? "bg-primary/5 border-primary/30 shadow-sm shadow-primary/10" : "bg-accent/40 border-accent/50"}`}>
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
