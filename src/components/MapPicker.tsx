@@ -343,6 +343,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                       onClick={() => {
                         setSearchQuery("");
                         setSearchResults([]);
+                        skipReverseGeocodeRef.current = true;
                         const newCenter = { lat: r.lat, lng: r.lng };
                         setCenter(newCenter);
                         setPlaceName(r.name);
