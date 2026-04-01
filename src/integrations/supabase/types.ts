@@ -670,6 +670,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          destination_area_id: string | null
           end_time: string | null
           id: string
           is_active: boolean
@@ -677,10 +678,12 @@ export type Database = {
           name: string
           start_time: string | null
           surcharge_type: string
+          vehicle_type_id: string | null
         }
         Insert: {
           amount?: number
           created_at?: string
+          destination_area_id?: string | null
           end_time?: string | null
           id?: string
           is_active?: boolean
@@ -688,10 +691,12 @@ export type Database = {
           name: string
           start_time?: string | null
           surcharge_type?: string
+          vehicle_type_id?: string | null
         }
         Update: {
           amount?: number
           created_at?: string
+          destination_area_id?: string | null
           end_time?: string | null
           id?: string
           is_active?: boolean
@@ -699,8 +704,24 @@ export type Database = {
           name?: string
           start_time?: string | null
           surcharge_type?: string
+          vehicle_type_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fare_surcharges_destination_area_id_fkey"
+            columns: ["destination_area_id"]
+            isOneToOne: false
+            referencedRelation: "service_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fare_surcharges_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fare_zones: {
         Row: {
