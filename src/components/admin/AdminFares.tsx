@@ -463,6 +463,7 @@ const AdminFares = () => {
                     <select value={surchargeForm.surcharge_type} onChange={(e) => setSurchargeForm({ ...surchargeForm, surcharge_type: e.target.value })} className={inputCls}>
                       <option value="time_based">Time-Based</option>
                       <option value="luggage">Luggage</option>
+                      <option value="fixed">Fixed (Destination)</option>
                     </select>
                   </div>
                   <div>
@@ -486,6 +487,28 @@ const AdminFares = () => {
                       <label className="text-xs font-medium text-muted-foreground">Free Luggage Limit (pcs)</label>
                       <input type="number" value={surchargeForm.luggage_threshold} onChange={(e) => setSurchargeForm({ ...surchargeForm, luggage_threshold: e.target.value })} placeholder="3" className={inputCls} />
                     </div>
+                  )}
+                  {surchargeForm.surcharge_type === "fixed" && (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Vehicle Type (optional)</label>
+                        <select value={surchargeForm.vehicle_type_id} onChange={(e) => setSurchargeForm({ ...surchargeForm, vehicle_type_id: e.target.value })} className={inputCls}>
+                          <option value="">All Vehicle Types</option>
+                          {vehicleTypes.filter((v: any) => v.is_active).map((v: any) => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Destination Area*</label>
+                        <select value={surchargeForm.destination_area_id} onChange={(e) => setSurchargeForm({ ...surchargeForm, destination_area_id: e.target.value })} className={inputCls}>
+                          <option value="">Select area...</option>
+                          {serviceLocations.filter((sl: any) => sl.is_active).map((sl: any) => (
+                            <option key={sl.id} value={sl.id}>{sl.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
                   )}
                 </div>
                 <button onClick={saveSurcharge} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
