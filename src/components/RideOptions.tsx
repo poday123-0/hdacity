@@ -306,7 +306,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
 
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
 
-    return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: matchedZoneId };
+    return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: matchedZoneId, fixedSurcharges: availableFixedSurcharges.length > 0 ? availableFixedSurcharges : undefined };
   };
 
   // Sort: "Car" always first, then online first, then by capacity fit
