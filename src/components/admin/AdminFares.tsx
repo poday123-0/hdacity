@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, Upload, Download, Loader2, Search, ChevronDown, ChevronRight, Filter } from "lucide-react";
 
 const emptyZoneForm = { from_area: "", to_area: "", vehicle_type_id: "", fixed_fare: "" };
-const emptySurchargeForm = { name: "", surcharge_type: "time_based", amount: "", start_time: "", end_time: "", luggage_threshold: "3" };
+const emptySurchargeForm = { name: "", surcharge_type: "time_based", amount: "", start_time: "", end_time: "", luggage_threshold: "3", vehicle_type_id: "", destination_area_id: "" };
 
 /** Parse a CSV line handling quoted fields */
 const parseCSVLine = (line: string, delimiter = ","): string[] => {
