@@ -382,12 +382,9 @@ const DispatchTripForm = ({
       }
     }
 
-    // If fixed surcharges exist for this destination, use them as total fare
-    if (fixedSurchargeMatches.length > 0) {
-      // Use selected disposal type or first match
-      const selectedSc = selectedDisposalType
-        ? fixedSurchargeMatches.find((sc: any) => sc.id === selectedDisposalType) || fixedSurchargeMatches[0]
-        : fixedSurchargeMatches[0];
+    // Only use fixed fare if dispatcher explicitly selected a disposal type
+    if (fixedSurchargeMatches.length > 0 && selectedDisposalType) {
+      const selectedSc = fixedSurchargeMatches.find((sc: any) => sc.id === selectedDisposalType) || fixedSurchargeMatches[0];
       let totalFare = Number(selectedSc.amount);
       totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
       setEstimatedFare(Math.max(Math.round(totalFare), Number(vt.minimum_fare)));
@@ -395,7 +392,8 @@ const DispatchTripForm = ({
       return;
     }
 
-    setAvailableDisposalTypes([]);
+    // Always expose available disposal types so the selector is shown
+    setAvailableDisposalTypes(fixedSurchargeMatches);
     let totalFare = 0;
 
     for (let i = 0; i < waypoints.length - 1; i++) {
@@ -1030,12 +1028,13 @@ const DispatchTripForm = ({
               )}
             </span>
           )}
-          {availableDisposalTypes.length > 1 && (
+          {availableDisposalTypes.length > 0 && (
             <select
               value={selectedDisposalType || ""}
               onChange={e => setSelectedDisposalType(e.target.value || null)}
               className="text-[10px] bg-surface border border-border rounded px-1.5 py-0.5 text-foreground max-w-[8rem]"
             >
+              <option value="">Normal Trip</option>
               {availableDisposalTypes.map((dt: any) => (
                 <option key={dt.id} value={dt.id}>{dt.name} — {dt.amount} MVR</option>
               ))}
