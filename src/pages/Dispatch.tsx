@@ -1974,20 +1974,45 @@ const Dispatch = () => {
 
                 {/* App Requests Table */}
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border bg-orange-500/5">
-                    <h3 className="text-xs font-bold text-orange-500 flex items-center gap-1.5">
-                      <Send className="w-3.5 h-3.5 text-orange-500" />
-                      App Requests ({(() => {
+                  <div className="px-2.5 py-1.5 border-b border-border bg-orange-500/5 flex items-center gap-2">
+                    <h3 className="text-[10px] font-bold text-orange-500 flex items-center gap-1 shrink-0">
+                      <Send className="w-3 h-3 text-orange-500" />
+                      App ({(() => {
                         const todayStart = startOfDay(new Date()).getTime();
                         return appRequestTrips.filter((t: any) => new Date(t.created_at).getTime() >= todayStart).length;
                       })()})
                     </h3>
+                    <input
+                      type="text"
+                      placeholder="Search code, name, address..."
+                      value={appInlineSearch}
+                      onChange={(e) => setAppInlineSearch(e.target.value)}
+                      className="flex-1 min-w-0 h-5 px-1.5 text-[9px] bg-muted/50 border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/60"
+                    />
                   </div>
                   <div className="max-h-[280px] overflow-y-auto p-1.5 space-y-1.5">
-                    {appRequestTrips.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">No app requests</p>
-                    ) : (
-                      appRequestTrips.slice(0, 3).map((t: any) => {
+                    {(() => {
+                      const q = appInlineSearch.toLowerCase().trim();
+                      const filtered = q
+                        ? appRequestTrips.filter((t: any) => {
+                            const v = t.vehicle as any;
+                            const d = t.driver as any;
+                            return (
+                              (t.pickup_address || "").toLowerCase().includes(q) ||
+                              (t.dropoff_address || "").toLowerCase().includes(q) ||
+                              (t.customer_name || "").toLowerCase().includes(q) ||
+                              (t.customer_phone || "").toLowerCase().includes(q) ||
+                              (v?.center_code || "").toLowerCase().includes(q) ||
+                              (v?.plate_number || "").toLowerCase().includes(q) ||
+                              (d?.first_name || "").toLowerCase().includes(q) ||
+                              (d?.last_name || "").toLowerCase().includes(q)
+                            );
+                          })
+                        : appRequestTrips;
+                      if (filtered.length === 0) return (
+                        <p className="text-xs text-muted-foreground text-center py-4">{q ? "No matches" : "No app requests"}</p>
+                      );
+                      return filtered.slice(0, 3).map((t: any) => {
                         const wasAccepted = !!t.accepted_at;
                         const isOngoing =
                           t.status === "accepted" || t.status === "arrived" || t.status === "started" || t.status === "in_progress";
