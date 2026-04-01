@@ -2830,7 +2830,7 @@ const Dispatch = () => {
                   </p>
                   {filtered.map((t: any) => {
                     const wasAccepted = !!t.accepted_at;
-                    const isOngoing = t.status === "accepted" || t.status === "started" || t.status === "in_progress";
+                    const isOngoing = t.status === "accepted" || t.status === "arrived" || t.status === "started" || t.status === "in_progress";
                     const statusLabel =
                       t.status === "cancelled"
                         ? wasAccepted
@@ -2840,9 +2840,11 @@ const Dispatch = () => {
                           ? "Completed"
                           : t.status === "accepted"
                             ? "Accepted"
-                            : t.status === "started" || t.status === "in_progress"
-                              ? "On Trip"
-                              : "Searching";
+                            : t.status === "arrived"
+                              ? "Arrived"
+                              : t.status === "started" || t.status === "in_progress"
+                                ? "On Trip"
+                                : "Searching";
                     const driver = t.driver as any;
                     const vehicle = t.vehicle as any;
 
