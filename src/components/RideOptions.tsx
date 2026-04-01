@@ -207,19 +207,36 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
     return null;
   };
 
-  const calcFare = (vt: any): { fare: number; zoneId: string | null } => {
+  const calcFare = (vt: any): { fare: number; zoneId: string | null; fixedSurcharges?: any[] } => {
     // Hourly booking: show per_hour_rate as estimate (1 hour minimum)
     if (bookingType === "hourly") {
       let fare = Number(vt.per_hour_rate) || Number(vt.base_fare);
-      // Apply passenger tax
       fare += fare * (Number(vt.passenger_tax_pct) / 100);
       return { fare: Math.max(Math.round(fare), Number(vt.minimum_fare)), zoneId: null };
     }
 
-    // Build the ordered list of waypoints: [pickup, ...stops, dropoff]
     const waypoints: (LocationData | null | undefined)[] = [pickup, ...stops, dropoff];
 
-    // For multi-stop trips, calculate fare per segment and sum
+    // Check if dropoff is in a fixed surcharge destination area
+    const lastWp = waypoints[waypoints.length - 1];
+    if (lastWp) {
+      const dropArea = findServiceArea(lastWp);
+      if (dropArea) {
+        const fixedMatches = surcharges.filter((sc: any) =>
+          sc.surcharge_type === "fixed" && sc.destination_area_id === dropArea.id &&
+          (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id)
+        );
+        if (fixedMatches.length > 0) {
+          const selectedSc = selectedDisposalType
+            ? fixedMatches.find((sc: any) => sc.id === selectedDisposalType) || fixedMatches[0]
+            : fixedMatches[0];
+          let totalFare = Number(selectedSc.amount);
+          totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
+          return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: null, fixedSurcharges: fixedMatches };
+        }
+      }
+    }
+
     let totalFare = 0;
     let matchedZoneId: string | null = null;
 
@@ -231,8 +248,6 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       const fromArea = findServiceArea(from);
       const toArea = findServiceArea(to);
 
-      // Check for fixed fare zone match for this segment
-      // Allow zones with null vehicle_type_id to match any vehicle type
       const matchesZone = (fz: any) => {
         if (fz.vehicle_type_id && fz.vehicle_type_id !== vt.id) return false;
         const normalize = (s: string) => s.trim().toLowerCase();
@@ -246,7 +261,6 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         );
       };
 
-      // Prefer zone with matching vehicle_type_id, fallback to zones with null vehicle_type_id
       const exactZone = fareZones.find((fz: any) => fz.vehicle_type_id === vt.id && matchesZone(fz));
       const genericZone = fareZones.find((fz: any) => !fz.vehicle_type_id && matchesZone(fz));
       const zone = exactZone || genericZone;
@@ -255,7 +269,6 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         totalFare += Number(zone.fixed_fare);
         if (!matchedZoneId) matchedZoneId = zone.id;
       } else {
-        // Distance-based for this segment
         const segDist = segmentDistances[i] ?? (distanceKm != null ? distanceKm / Math.max(waypoints.length - 1, 1) : 0);
         if (segDist > 0) {
           totalFare += Number(vt.base_fare) + Number(vt.per_km_rate) * segDist;
@@ -265,7 +278,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
       }
     }
 
-    // Apply surcharges to total
+    // Apply surcharges (luggage + time only, fixed already handled above)
     for (const sc of surcharges) {
       if (sc.surcharge_type === "luggage" && sc.luggage_threshold != null) {
         const extraBags = Math.max(0, luggageCount - sc.luggage_threshold);
@@ -274,7 +287,6 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
         }
       }
       if (sc.surcharge_type === "time_based" && sc.start_time && sc.end_time) {
-        // For scheduled rides, check the scheduled time instead of current time
         const checkTime = (bookingType === "scheduled" && scheduledAt) ? new Date(scheduledAt) : new Date();
         const nowMin = checkTime.getHours() * 60 + checkTime.getMinutes();
         const [sh, sm] = sc.start_time.split(":").map(Number);
@@ -285,28 +297,14 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           totalFare += Number(sc.amount);
         }
       }
-      if (sc.surcharge_type === "fixed" && sc.destination_area_id) {
-        const lastWp = waypoints[waypoints.length - 1];
-        if (lastWp) {
-          const dropArea = findServiceArea(lastWp);
-          if (dropArea && dropArea.id === sc.destination_area_id) {
-            if (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id) {
-              totalFare += Number(sc.amount);
-            }
-          }
-        }
-      }
     }
 
-    // Pre-booking fee for scheduled rides
     if (bookingType === "scheduled") {
       totalFare += Number(vt.pre_booking_fee) || 0;
     }
 
-    // Passenger tax
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);
 
-    // Enforce minimum fare
     return { fare: Math.max(Math.round(totalFare), Number(vt.minimum_fare)), zoneId: matchedZoneId };
   };
 
