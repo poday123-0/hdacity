@@ -45,6 +45,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   const nearbyRef = useRef<ReturnType<typeof setTimeout>>(); // kept for potential future use
   const { isLoaded } = useGoogleMaps();
   const [isPanning, setIsPanning] = useState(false);
+  const skipReverseGeocodeRef = useRef(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -194,10 +195,15 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   // Reverse geocode on center change
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (skipReverseGeocodeRef.current) {
+      skipReverseGeocodeRef.current = false;
+      return;
+    }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const result = await reverseGeocodeLocation(center.lat, center.lng, { skipAdminLocations: true, skipNearbyPlace: true });
+        // Check local named/service locations first for accurate place names
+        const result = await reverseGeocodeLocation(center.lat, center.lng, { skipNearbyPlace: true });
         setPlaceName(result.name);
         setAddress(result.address);
       } catch {
@@ -342,6 +348,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                       onClick={() => {
                         setSearchQuery("");
                         setSearchResults([]);
+                        skipReverseGeocodeRef.current = true;
                         const newCenter = { lat: r.lat, lng: r.lng };
                         setCenter(newCenter);
                         setPlaceName(r.name);
