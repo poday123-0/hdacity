@@ -54,6 +54,7 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   const [passengerBonus, setPassengerBonus] = useState(0);
   const [maxBoost, setMaxBoost] = useState(0); // 0 = unlimited
   const [boostStep, setBoostStep] = useState(5);
+  const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
