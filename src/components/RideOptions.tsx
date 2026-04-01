@@ -331,9 +331,10 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
   }, [sortedTypes.length, selected, onlineVehicleTypeIds.size]);
 
   const selectedType = vehicleTypes.find((v) => v.id === selected);
-  const selectedResult = selectedType ? calcFare(selectedType) : { fare: 0, zoneId: null };
+  const selectedResult = selectedType ? calcFare(selectedType) : { fare: 0, zoneId: null, fixedSurcharges: undefined };
   const selectedFare = typeof selectedResult === 'number' ? selectedResult : selectedResult.fare;
   const selectedZoneId = typeof selectedResult === 'number' ? null : selectedResult.zoneId;
+  const selectedFixedSurcharges = typeof selectedResult === 'object' ? selectedResult.fixedSurcharges : undefined;
   const selectedIsOnline = selectedType ? onlineVehicleTypeIds.has(selectedType.id) : false;
 
   return (
