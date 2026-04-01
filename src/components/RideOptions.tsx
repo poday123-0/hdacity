@@ -284,6 +284,17 @@ const RideOptions = ({ onBack, onConfirm, pickup, dropoff, passengerCount, lugga
           totalFare += Number(sc.amount);
         }
       }
+      if (sc.surcharge_type === "fixed" && sc.destination_area_id) {
+        const lastWp = waypoints[waypoints.length - 1];
+        if (lastWp) {
+          const dropArea = findServiceArea(lastWp);
+          if (dropArea && dropArea.id === sc.destination_area_id) {
+            if (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id) {
+              totalFare += Number(sc.amount);
+            }
+          }
+        }
+      }
     }
 
     // Pre-booking fee for scheduled rides

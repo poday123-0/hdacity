@@ -411,6 +411,18 @@ const DispatchTripForm = ({
           totalFare += Number(sc.amount);
         }
       }
+      if (sc.surcharge_type === "fixed" && sc.destination_area_id) {
+        // Check if any waypoint's dropoff is in the destination area
+        const lastWp = waypoints[waypoints.length - 1];
+        if (lastWp) {
+          const dropArea = findServiceArea(lastWp.lat, lastWp.lng);
+          if (dropArea && dropArea.id === sc.destination_area_id) {
+            if (!sc.vehicle_type_id || sc.vehicle_type_id === vt.id) {
+              totalFare += Number(sc.amount);
+            }
+          }
+        }
+      }
     }
 
     totalFare += totalFare * (Number(vt.passenger_tax_pct) / 100);

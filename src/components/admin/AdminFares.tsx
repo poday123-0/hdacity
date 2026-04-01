@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, Upload, Download, Loader2, Search, ChevronDown, ChevronRight, Filter } from "lucide-react";
 
 const emptyZoneForm = { from_area: "", to_area: "", vehicle_type_id: "", fixed_fare: "" };
-const emptySurchargeForm = { name: "", surcharge_type: "time_based", amount: "", start_time: "", end_time: "", luggage_threshold: "3" };
+const emptySurchargeForm = { name: "", surcharge_type: "time_based", amount: "", start_time: "", end_time: "", luggage_threshold: "3", vehicle_type_id: "", destination_area_id: "" };
 
 /** Parse a CSV line handling quoted fields */
 const parseCSVLine = (line: string, delimiter = ","): string[] => {
@@ -128,6 +128,8 @@ const AdminFares = () => {
       start_time: s.start_time || "",
       end_time: s.end_time || "",
       luggage_threshold: s.luggage_threshold?.toString() || "3",
+      vehicle_type_id: s.vehicle_type_id || "",
+      destination_area_id: s.destination_area_id || "",
     });
     setEditingSurchargeId(s.id);
     setShowSurchargeForm(true);
@@ -142,6 +144,8 @@ const AdminFares = () => {
       start_time: surchargeForm.surcharge_type === "time_based" ? surchargeForm.start_time || null : null,
       end_time: surchargeForm.surcharge_type === "time_based" ? surchargeForm.end_time || null : null,
       luggage_threshold: surchargeForm.surcharge_type === "luggage" ? parseInt(surchargeForm.luggage_threshold) || 3 : null,
+      vehicle_type_id: surchargeForm.surcharge_type === "fixed" ? surchargeForm.vehicle_type_id || null : null,
+      destination_area_id: surchargeForm.surcharge_type === "fixed" ? surchargeForm.destination_area_id || null : null,
     };
     const { error } = editingSurchargeId
       ? await supabase.from("fare_surcharges").update(payload).eq("id", editingSurchargeId)
@@ -459,6 +463,7 @@ const AdminFares = () => {
                     <select value={surchargeForm.surcharge_type} onChange={(e) => setSurchargeForm({ ...surchargeForm, surcharge_type: e.target.value })} className={inputCls}>
                       <option value="time_based">Time-Based</option>
                       <option value="luggage">Luggage</option>
+                      <option value="fixed">Fixed (Destination)</option>
                     </select>
                   </div>
                   <div>
@@ -483,6 +488,28 @@ const AdminFares = () => {
                       <input type="number" value={surchargeForm.luggage_threshold} onChange={(e) => setSurchargeForm({ ...surchargeForm, luggage_threshold: e.target.value })} placeholder="3" className={inputCls} />
                     </div>
                   )}
+                  {surchargeForm.surcharge_type === "fixed" && (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Vehicle Type (optional)</label>
+                        <select value={surchargeForm.vehicle_type_id} onChange={(e) => setSurchargeForm({ ...surchargeForm, vehicle_type_id: e.target.value })} className={inputCls}>
+                          <option value="">All Vehicle Types</option>
+                          {vehicleTypes.filter((v: any) => v.is_active).map((v: any) => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Destination Area*</label>
+                        <select value={surchargeForm.destination_area_id} onChange={(e) => setSurchargeForm({ ...surchargeForm, destination_area_id: e.target.value })} className={inputCls}>
+                          <option value="">Select area...</option>
+                          {serviceLocations.filter((sl: any) => sl.is_active).map((sl: any) => (
+                            <option key={sl.id} value={sl.id}>{sl.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <button onClick={saveSurcharge} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
                   {editingSurchargeId ? "Update Surcharge" : "Save Surcharge"}
@@ -505,14 +532,18 @@ const AdminFares = () => {
                 ) : surcharges.map((s) => (
                   <tr key={s.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{s.name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{s.surcharge_type === "time_based" ? "Time-Based" : "Luggage"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">
+                      {s.surcharge_type === "time_based" ? "Time-Based" : s.surcharge_type === "luggage" ? "Luggage" : "Fixed"}
+                    </td>
                     <td className="px-4 py-3 text-sm font-semibold text-foreground">{s.amount} MVR</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {s.surcharge_type === "time_based" && s.start_time && s.end_time
                         ? `${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`
                         : s.surcharge_type === "luggage"
                           ? `Above ${s.luggage_threshold} pcs`
-                          : "—"}
+                          : s.surcharge_type === "fixed"
+                            ? `${s.vehicle_type_id ? vehicleTypes.find((v: any) => v.id === s.vehicle_type_id)?.name || "Vehicle" : "All vehicles"} → ${s.destination_area_id ? serviceLocations.find((sl: any) => sl.id === s.destination_area_id)?.name || "Area" : "Any area"}`
+                            : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
