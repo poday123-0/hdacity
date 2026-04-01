@@ -1023,26 +1023,32 @@ const DispatchTripForm = ({
             <span className="flex items-center gap-1 text-sm font-bold text-primary">
               <DollarSign className="w-3.5 h-3.5" />
               {estimatedFare} MVR
-              {availableDisposalTypes.length > 0 && (
-                <span className="text-[9px] font-medium text-muted-foreground ml-0.5">(fixed)</span>
-              )}
             </span>
-          )}
-          {availableDisposalTypes.length > 0 && (
-            <select
-              value={selectedDisposalType || ""}
-              onChange={e => setSelectedDisposalType(e.target.value || null)}
-              className="text-[10px] bg-surface border border-border rounded px-1.5 py-0.5 text-foreground max-w-[8rem]"
-            >
-              <option value="">Normal Trip</option>
-              {availableDisposalTypes.map((dt: any) => (
-                <option key={dt.id} value={dt.id}>{dt.name} — {dt.amount} MVR</option>
-              ))}
-            </select>
           )}
           <button onClick={clearForm} className="text-[10px] text-muted-foreground hover:text-foreground font-medium">Clear</button>
         </div>
       </div>
+
+      {!collapsed && availableDisposalTypes.length > 0 && (
+        <div className="px-2.5 py-1.5 bg-accent/30 border-b border-border flex items-center gap-1.5 flex-wrap">
+          <Trash2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <button
+            onClick={() => setSelectedDisposalType(null)}
+            className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-colors ${!selectedDisposalType ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
+          >
+            Normal Trip
+          </button>
+          {availableDisposalTypes.map((dt: any) => (
+            <button
+              key={dt.id}
+              onClick={() => setSelectedDisposalType(dt.id)}
+              className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-colors ${selectedDisposalType === dt.id ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}
+            >
+              {dt.name} — {dt.amount} MVR
+            </button>
+          ))}
+        </div>
+      )}
 
       {!collapsed && (
         <div className="p-1.5 space-y-1 overflow-y-auto flex-1 min-h-0">
