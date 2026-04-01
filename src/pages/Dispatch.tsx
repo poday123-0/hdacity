@@ -697,6 +697,27 @@ const Dispatch = () => {
         },
         (payload) => {
           const updated = payload.new as any;
+          const old = payload.old as any;
+
+          // Play accept chime when trip transitions to accepted
+          if (updated.status === "accepted" && old?.status !== "accepted") {
+            try {
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.type = "sine";
+              // Two-tone chime: C5 → E5
+              osc.frequency.setValueAtTime(523, ctx.currentTime);
+              osc.frequency.setValueAtTime(659, ctx.currentTime + 0.15);
+              gain.gain.setValueAtTime(0.3, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+              osc.start(ctx.currentTime);
+              osc.stop(ctx.currentTime + 0.35);
+            } catch (e) { /* audio not available */ }
+          }
+
           // Instantly patch trip scalar fields — preserve joined objects (driver, vehicle)
           const patchTrip = (trips: any[]) =>
             trips.map((t) =>
