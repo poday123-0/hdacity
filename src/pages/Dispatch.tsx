@@ -241,6 +241,7 @@ const Dispatch = () => {
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const [showAllBookings, setShowAllBookings] = useState(false);
   const [showAllLoss, setShowAllLoss] = useState(false);
+  const [lossSearch, setLossSearch] = useState("");
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
