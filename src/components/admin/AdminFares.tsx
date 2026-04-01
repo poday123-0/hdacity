@@ -532,14 +532,18 @@ const AdminFares = () => {
                 ) : surcharges.map((s) => (
                   <tr key={s.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{s.name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{s.surcharge_type === "time_based" ? "Time-Based" : "Luggage"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">
+                      {s.surcharge_type === "time_based" ? "Time-Based" : s.surcharge_type === "luggage" ? "Luggage" : "Fixed"}
+                    </td>
                     <td className="px-4 py-3 text-sm font-semibold text-foreground">{s.amount} MVR</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {s.surcharge_type === "time_based" && s.start_time && s.end_time
                         ? `${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`
                         : s.surcharge_type === "luggage"
                           ? `Above ${s.luggage_threshold} pcs`
-                          : "—"}
+                          : s.surcharge_type === "fixed"
+                            ? `${s.vehicle_type_id ? vehicleTypes.find((v: any) => v.id === s.vehicle_type_id)?.name || "Vehicle" : "All vehicles"} → ${s.destination_area_id ? serviceLocations.find((sl: any) => sl.id === s.destination_area_id)?.name || "Area" : "Any area"}`
+                            : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
