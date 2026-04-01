@@ -553,7 +553,7 @@ const DispatchTripForm = ({
         })
         .map((nl: any, i: number) => {
           const areaName = findNearestServiceAreaName(Number(nl.lat), Number(nl.lng));
-          const roadInfo = nl.address || nl.description || "";
+          const roadInfo = nl.road_name || "";
           return {
             place_id: 800000 + i,
             display_name: `${nl.name} — ${areaName}`,
