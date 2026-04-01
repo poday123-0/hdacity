@@ -72,25 +72,42 @@ const AuthScreen = ({ onLogin, mode = "passenger" }: AuthScreenProps) => {
     if (step !== "otp") return;
     let active = true;
     let lastClip = "";
-    const poll = async () => {
-      if (!active) return;
+    
+    const readClipboard = async (): Promise<string | null> => {
+      // Use Capacitor Clipboard plugin for native apps
+      if ((window as any).Capacitor?.isNativePlatform?.()) {
+        try {
+          const { Clipboard } = await import("@capacitor/clipboard");
+          const result = await Clipboard.read();
+          return result.value || null;
+        } catch {
+          return null;
+        }
+      }
+      // Fallback to web Clipboard API
       try {
         if (navigator.clipboard?.readText) {
-          const text = await navigator.clipboard.readText();
-          if (text !== lastClip) {
-            lastClip = text;
-            const match = text.match(/\b(\d{6})\b/);
-            if (match) {
-              const digits = match[1].split("");
-              setOtp(digits);
-              digits.forEach((d, i) => { if (otpRefs.current[i]) otpRefs.current[i]!.value = d; });
-              setTimeout(() => handleVerify(match[1]), 300);
-              active = false;
-              return;
-            }
-          }
+          return await navigator.clipboard.readText();
         }
       } catch {}
+      return null;
+    };
+
+    const poll = async () => {
+      if (!active) return;
+      const text = await readClipboard();
+      if (text && text !== lastClip) {
+        lastClip = text;
+        const match = text.match(/\b(\d{6})\b/);
+        if (match) {
+          const digits = match[1].split("");
+          setOtp(digits);
+          digits.forEach((d, i) => { if (otpRefs.current[i]) otpRefs.current[i]!.value = d; });
+          setTimeout(() => handleVerify(match[1]), 300);
+          active = false;
+          return;
+        }
+      }
       if (active) setTimeout(poll, 2000);
     };
     // Start polling after a short delay
