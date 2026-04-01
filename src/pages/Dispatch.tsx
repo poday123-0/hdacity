@@ -2612,7 +2612,9 @@ const Dispatch = () => {
                   <p className="text-[10px] text-muted-foreground px-1">
                     {filtered.length} booking{filtered.length !== 1 ? "s" : ""}
                     {" · "}
-                    <span className="text-green-500">{filtered.filter((t: any) => t.status === "completed").length} completed</span>
+                    <span className="text-green-500">{filtered.filter((t: any) => t.status === "completed" && t.vehicle).length} completed</span>
+                    {" · "}
+                    <span className="text-orange-400">{filtered.filter((t: any) => t.status === "completed" && !t.vehicle).length} no vehicle</span>
                     {" · "}
                     <span className="text-warning">{filtered.filter((t: any) => t.status === "cancelled").length} cancelled</span>
                     {" · "}
