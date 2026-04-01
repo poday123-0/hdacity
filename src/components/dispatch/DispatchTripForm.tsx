@@ -1641,22 +1641,6 @@ const DispatchTripForm = ({
             )}
           </div>
 
-          {dispatchMethod === "specific" && selectedDriverId && selectedCenterCode && (() => {
-            const entry = centerCodeResults.find(r => r.code === selectedCenterCode);
-            const isOnline = onlineDrivers.some(d => d.driver_id === selectedDriverId);
-            if (entry && !isOnline) {
-              return (
-                <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs bg-primary/10 ring-1 ring-primary">
-                  <div>
-                    <p className="font-medium text-foreground">{entry.driver_name || "Driver"} <span className="text-muted-foreground">(from {entry.code})</span></p>
-                    <p className="text-[10px] text-muted-foreground">{entry.vehicle_type} • {entry.plate_number}</p>
-                  </div>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                </div>
-              );
-            }
-            return null;
-          })()}
 
 
         </div>
