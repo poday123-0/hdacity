@@ -1,23 +1,21 @@
 /**
- * Native background geolocation using @capgo/background-geolocation.
- * Falls back gracefully on web (no-op).
+ * Background geolocation for native apps.
+ * - Android: uses @capgo/background-geolocation (full background support)
+ * - iOS: uses @capacitor/geolocation watchPosition (works with Background Modes > Location updates)
+ * - Web: no-op
  */
 import { Capacitor } from "@capacitor/core";
-import { BackgroundGeolocation } from "@capgo/background-geolocation";
 
 interface BgGeoLocation {
   latitude: number;
   longitude: number;
 }
 
-interface BgGeoError {
-  code: string;
-  message?: string;
-}
-
 const isNative = Capacitor.isNativePlatform();
+const isIOS = Capacitor.getPlatform() === "ios";
 
 let isTracking = false;
+let iosWatchId: string | null = null;
 
 export type BgLocationCallback = (lat: number, lng: number) => void;
 
@@ -30,36 +28,71 @@ export async function startBackgroundLocation(
   options?: { distanceFilter?: number }
 ): Promise<boolean> {
   if (!isNative) return false;
-  if (isTracking) return true; // already running
+  if (isTracking) return true;
 
-  try {
-    await BackgroundGeolocation.start(
-      {
-        backgroundMessage: "Delivering every journey on time, every time.",
-        backgroundTitle: "HDA Driver Active",
-        requestPermissions: true,
-        stale: false,
-        distanceFilter: options?.distanceFilter ?? 10,
-      },
-      (location, error) => {
-        if (error) {
-          if (error.code === "NOT_AUTHORIZED") {
-            console.warn("Background location not authorized");
-          } else {
-            console.warn("Background location error:", error);
+  if (isIOS) {
+    // iOS: use @capacitor/geolocation watchPosition
+    // With Background Modes > Location updates enabled in Xcode,
+    // iOS keeps the app alive and continues delivering locations.
+    try {
+      const { Geolocation } = await import("@capacitor/geolocation");
+
+      // Request always-on permission first
+      const perm = await Geolocation.requestPermissions({ permissions: ["location"] });
+      console.log("iOS geolocation permission:", perm.location);
+
+      iosWatchId = await Geolocation.watchPosition(
+        { enableHighAccuracy: true },
+        (position, err) => {
+          if (err) {
+            console.warn("iOS watchPosition error:", err);
+            return;
           }
-          return;
+          if (position) {
+            callback(position.coords.latitude, position.coords.longitude);
+          }
         }
-        if (location) {
-          callback(location.latitude, location.longitude);
+      );
+      isTracking = true;
+      console.log("iOS background location started via watchPosition");
+      return true;
+    } catch (e) {
+      console.warn("Failed to start iOS background location:", e);
+      return false;
+    }
+  } else {
+    // Android: use @capgo/background-geolocation
+    try {
+      const { BackgroundGeolocation } = await import("@capgo/background-geolocation");
+
+      await BackgroundGeolocation.start(
+        {
+          backgroundMessage: "Delivering every journey on time, every time.",
+          backgroundTitle: "HDA Driver Active",
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: options?.distanceFilter ?? 10,
+        },
+        (location, error) => {
+          if (error) {
+            if (error.code === "NOT_AUTHORIZED") {
+              console.warn("Background location not authorized");
+            } else {
+              console.warn("Background location error:", error);
+            }
+            return;
+          }
+          if (location) {
+            callback(location.latitude, location.longitude);
+          }
         }
-      }
-    );
-    isTracking = true;
-    return true;
-  } catch (e) {
-    console.warn("Failed to start background geolocation:", e);
-    return false;
+      );
+      isTracking = true;
+      return true;
+    } catch (e) {
+      console.warn("Failed to start Android background geolocation:", e);
+      return false;
+    }
   }
 }
 
@@ -68,8 +101,16 @@ export async function startBackgroundLocation(
  */
 export async function stopBackgroundLocation(): Promise<void> {
   if (!isNative || !isTracking) return;
+
   try {
-    await BackgroundGeolocation.stop();
+    if (isIOS && iosWatchId !== null) {
+      const { Geolocation } = await import("@capacitor/geolocation");
+      await Geolocation.clearWatch({ id: iosWatchId });
+      iosWatchId = null;
+    } else if (!isIOS) {
+      const { BackgroundGeolocation } = await import("@capgo/background-geolocation");
+      await BackgroundGeolocation.stop();
+    }
   } catch (e) {
     console.warn("Failed to stop background geolocation:", e);
   }
