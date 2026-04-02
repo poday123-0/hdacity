@@ -318,10 +318,14 @@ Deno.serve(async (req) => {
         // For native devices, include the notification payload for OS-level display.
         const isWebDevice = t.device_type === "web";
 
-        // For trip requests on native: play the custom bundled sound from res/raw/
-        // (no double-play risk — web audio heartbeat is skipped on native platforms).
-        // For other notifications, use default OS sound.
+        // For trip requests on native: play the custom bundled sound.
+        // Android expects the raw resource name, while iOS expects the bundled file name.
+        // For other notifications, keep the default OS sound.
         const nativeBackgroundSound = isTripRequest && isNative ? nativeSoundName : "default";
+        const iosBackgroundSound =
+          isTripRequest && isNative && nativeBackgroundSound !== "default"
+            ? `${nativeBackgroundSound}.caf`
+            : "default";
 
         const fcmMessage: any = {
           token: t.token,
@@ -346,7 +350,6 @@ Deno.serve(async (req) => {
               default_sound: !isTripRequest,
               channel_id: isTripRequest ? "trip_requests_v2" : isSOS ? "sos_alerts_v2" : "general_v2",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
-              notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               vibrate_timings: isTripRequest
                 ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
                 : ["0.2s", "0.1s", "0.2s"],
@@ -360,7 +363,7 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
-                sound: isTripRequest ? "" : (isNative ? nativeBackgroundSound : "default"),
+                sound: iosBackgroundSound,
                 badge: 1,
                 "content-available": 1,
                 "interruption-level": isUrgent ? "time-sensitive" : "active",
