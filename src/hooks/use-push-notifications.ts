@@ -237,37 +237,39 @@ export const usePushNotifications = (
             return;
           }
 
-          // Ensure Android channels exist for reliable background sound/alerts
-          try {
-            await PushNotifications.createChannel({
-              id: "trip_requests_v2",
-              name: "Trip Requests",
-              description: "Incoming trip requests",
-              importance: 5,
-              visibility: 1,
-              sound: "default",
-              vibration: true,
-            });
-            await PushNotifications.createChannel({
-              id: "sos_alerts_v2",
-              name: "SOS Alerts",
-              description: "Emergency alerts",
-              importance: 5,
-              visibility: 1,
-              sound: "default",
-              vibration: true,
-            });
-            await PushNotifications.createChannel({
-              id: "general_v2",
-              name: "General Notifications",
-              description: "General app notifications",
-              importance: 4,
-              visibility: 1,
-              sound: "default",
-              vibration: true,
-            });
-          } catch {
-            // iOS or unsupported platform
+          // Ensure Android channels exist (not available on iOS)
+          if (Capacitor.getPlatform() === "android") {
+            try {
+              await PushNotifications.createChannel({
+                id: "trip_requests_v2",
+                name: "Trip Requests",
+                description: "Incoming trip requests",
+                importance: 5,
+                visibility: 1,
+                sound: "default",
+                vibration: true,
+              });
+              await PushNotifications.createChannel({
+                id: "sos_alerts_v2",
+                name: "SOS Alerts",
+                description: "Emergency alerts",
+                importance: 5,
+                visibility: 1,
+                sound: "default",
+                vibration: true,
+              });
+              await PushNotifications.createChannel({
+                id: "general_v2",
+                name: "General Notifications",
+                description: "General app notifications",
+                importance: 4,
+                visibility: 1,
+                sound: "default",
+                vibration: true,
+              });
+            } catch {
+              // Channel creation failed
+            }
           }
 
           await PushNotifications.register();
