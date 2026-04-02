@@ -3,7 +3,7 @@
  * Falls back gracefully on web (no-op).
  */
 import { Capacitor } from "@capacitor/core";
-import { registerPlugin } from "@capacitor/core";
+import { BackgroundGeolocation } from "@capgo/background-geolocation";
 
 interface BgGeoLocation {
   latitude: number;
@@ -12,27 +12,12 @@ interface BgGeoLocation {
 
 interface BgGeoError {
   code: string;
+  message?: string;
 }
-
-interface BgGeoPlugin {
-  addWatcher(
-    options: {
-      backgroundMessage: string;
-      backgroundTitle: string;
-      requestPermissions: boolean;
-      stale: boolean;
-      distanceFilter: number;
-    },
-    callback: (location: BgGeoLocation | undefined, error: BgGeoError | undefined) => void
-  ): Promise<string>;
-  removeWatcher(options: { id: string }): Promise<void>;
-}
-
-const BackgroundGeolocation = registerPlugin<BgGeoPlugin>("BackgroundGeolocation");
 
 const isNative = Capacitor.isNativePlatform();
 
-let activeWatcherId: string | null = null;
+let isTracking = false;
 
 export type BgLocationCallback = (lat: number, lng: number) => void;
 
@@ -45,10 +30,10 @@ export async function startBackgroundLocation(
   options?: { distanceFilter?: number }
 ): Promise<boolean> {
   if (!isNative) return false;
-  if (activeWatcherId) return true; // already running
+  if (isTracking) return true; // already running
 
   try {
-    const watcherId = await BackgroundGeolocation.addWatcher(
+    await BackgroundGeolocation.start(
       {
         backgroundMessage: "Delivering every journey on time, every time.",
         backgroundTitle: "HDA Driver Active",
@@ -60,6 +45,8 @@ export async function startBackgroundLocation(
         if (error) {
           if (error.code === "NOT_AUTHORIZED") {
             console.warn("Background location not authorized");
+          } else {
+            console.warn("Background location error:", error);
           }
           return;
         }
@@ -68,7 +55,7 @@ export async function startBackgroundLocation(
         }
       }
     );
-    activeWatcherId = watcherId;
+    isTracking = true;
     return true;
   } catch (e) {
     console.warn("Failed to start background geolocation:", e);
@@ -80,18 +67,18 @@ export async function startBackgroundLocation(
  * Stop background location tracking.
  */
 export async function stopBackgroundLocation(): Promise<void> {
-  if (!isNative || !activeWatcherId) return;
+  if (!isNative || !isTracking) return;
   try {
-    await BackgroundGeolocation.removeWatcher({ id: activeWatcherId });
+    await BackgroundGeolocation.stop();
   } catch (e) {
     console.warn("Failed to stop background geolocation:", e);
   }
-  activeWatcherId = null;
+  isTracking = false;
 }
 
 /**
  * Check if background location is currently active.
  */
 export function isBackgroundLocationActive(): boolean {
-  return activeWatcherId !== null;
+  return isTracking;
 }
