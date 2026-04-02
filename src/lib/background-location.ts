@@ -1,75 +1,52 @@
 /**
- * Native background geolocation using @capacitor-community/background-geolocation.
- * Falls back gracefully on web (no-op).
+ * Background geolocation using the standard Web Geolocation API.
+ * Works in Capacitor WebView on iOS/Android with proper Info.plist keys.
  */
-import { Capacitor } from "@capacitor/core";
-import { registerPlugin } from "@capacitor/core";
-import type { BackgroundGeolocationPlugin } from "@capacitor-community/background-geolocation";
 
-const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>("BackgroundGeolocation");
-
-const isNative = Capacitor.isNativePlatform();
-
-let activeWatcherId: string | null = null;
+let activeWatcherId: number | null = null;
 
 export type BgLocationCallback = (lat: number, lng: number) => void;
 
 /**
- * Start background location tracking (native only).
- * Returns true if started, false if not native or already running.
+ * Start location tracking using the browser Geolocation API.
+ * Returns true if started, false if already running or unavailable.
  */
 export async function startBackgroundLocation(
   callback: BgLocationCallback,
   options?: { distanceFilter?: number }
 ): Promise<boolean> {
-  if (!isNative) return false;
-  if (activeWatcherId) return true; // already running
+  if (activeWatcherId !== null) return true; // already running
+  if (!navigator.geolocation) return false;
 
-  try {
-    const watcherId = await BackgroundGeolocation.addWatcher(
-      {
-        backgroundMessage: "Delivering every journey on time, every time.",
-        backgroundTitle: "HDA Driver Active",
-        requestPermissions: true,
-        stale: false,
-        distanceFilter: options?.distanceFilter ?? 10,
-      },
-      (location, error) => {
-        if (error) {
-          if (error.code === "NOT_AUTHORIZED") {
-            // User denied background location — can prompt later
-            console.warn("Background location not authorized");
-          }
-          return;
-        }
-        if (location) {
-          callback(location.latitude, location.longitude);
-        }
-      }
-    );
-    activeWatcherId = watcherId;
-    return true;
-  } catch (e) {
-    console.warn("Failed to start background geolocation:", e);
-    return false;
-  }
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      callback(position.coords.latitude, position.coords.longitude);
+    },
+    (error) => {
+      console.warn("Geolocation error:", error.message);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 15000,
+    }
+  );
+
+  activeWatcherId = watchId;
+  return true;
 }
 
 /**
- * Stop background location tracking.
+ * Stop location tracking.
  */
 export async function stopBackgroundLocation(): Promise<void> {
-  if (!isNative || !activeWatcherId) return;
-  try {
-    await BackgroundGeolocation.removeWatcher({ id: activeWatcherId });
-  } catch (e) {
-    console.warn("Failed to stop background geolocation:", e);
-  }
+  if (activeWatcherId === null) return;
+  navigator.geolocation.clearWatch(activeWatcherId);
   activeWatcherId = null;
 }
 
 /**
- * Check if background location is currently active.
+ * Check if location tracking is currently active.
  */
 export function isBackgroundLocationActive(): boolean {
   return activeWatcherId !== null;
