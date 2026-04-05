@@ -650,7 +650,7 @@ const DispatchTripForm = ({
         .catch(() => {});
 
       // Photon (free OSM geocoder) — fallback for better coverage
-      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
+      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lat=4.1755&lon=73.5093&limit=5&lang=en&bbox=72.5,-1,74,8`, { signal: abortCtrl.signal })
         .then(res => res.json())
         .then(data => {
           if (abortCtrl.signal.aborted || !data.features?.length) return;

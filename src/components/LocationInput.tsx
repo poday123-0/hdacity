@@ -276,7 +276,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
       ).catch(() => [] as PlaceResult[]);
 
       const photonP = fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(activeQuery)}&limit=8&lat=4.175&lon=73.509&lang=en`,
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(activeQuery)}&limit=8&lat=4.175&lon=73.509&lang=en&bbox=72.5,-1,74,8`,
         { signal: abort.signal }
       ).then(r => r.json()).then((data: any) =>
         (data.features || []).map((f: any) => ({

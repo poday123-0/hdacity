@@ -3088,8 +3088,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                             setLocationSearchResults(sortResults([...merged]));
                           }).catch(() => {});
 
-                        // 4. Photon (free OSM) — merge when ready, filtered by service areas
-                        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
+                        // 4. Photon (free OSM) — merge when ready, filtered by bbox + service areas
+                        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=4.1755&lon=73.5093&limit=5&lang=en&bbox=72.5,-1,74,8`, { signal: abortCtrl.signal })
                           .then(r => r.json())
                           .then(data => {
                             if (abortCtrl.signal.aborted) return;
