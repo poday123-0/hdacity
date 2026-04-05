@@ -128,7 +128,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
       if (data) {
         // Combine service locations + named locations for search
         const serviceLocs = data.map((d: any) => ({ id: d.id, name: d.name, address: d.address, lat: d.lat, lng: d.lng }));
-        const namedLocs = namedData.map((d: any) => ({ id: `named-${d.id}`, name: d.name, address: d.address, lat: d.lat, lng: d.lng }));
+        const namedLocs = namedData.map((d: any) => ({ id: `named-${d.id}`, name: d.name, address: d.address, lat: d.lat, lng: d.lng, description: d.description || "", group_name: d.group_name || "" }));
         setLocations([...serviceLocs, ...namedLocs]);
         setServiceAreas(data.map((d: any) => ({ id: d.id, name: d.name, lat: d.lat, lng: d.lng, polygon: d.polygon })));
       }
