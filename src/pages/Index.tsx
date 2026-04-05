@@ -94,7 +94,7 @@ const Index = () => {
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [pendingDriverData, setPendingDriverData] = useState<{ profile: any; vehicles: any[]; vehicleTypes: any[] } | null>(null);
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
-  const [passengerMapInstance, setPassengerMapInstance] = useState<google.maps.Map | null>(null);
+  const [passengerMapInstance, setPassengerMapInstance] = useState<any>(null);
   const [pickup, setPickup] = useState<SelectedLocation | null>(null);
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null);
   const [passengerCount, setPassengerCount] = useState(1);
