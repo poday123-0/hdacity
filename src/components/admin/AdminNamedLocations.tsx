@@ -353,11 +353,7 @@ const AdminNamedLocations = () => {
             <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">{batchPins.length} pin{batchPins.length !== 1 ? "s" : ""}</span>
           </div>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
-            {isLoaded ? <div ref={batchMapRef} style={{ width: "100%", height: "100%" }} /> : (
-              <div className="w-full h-full bg-surface flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+            <div ref={batchMapRef} style={{ width: "100%", height: "100%" }} />
           </div>
 
           {batchPins.length > 0 && (
@@ -406,11 +402,7 @@ const AdminNamedLocations = () => {
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Location" : "New Named Location"}</h3>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
-            {isLoaded ? <div ref={mapRef} style={{ width: "100%", height: "100%" }} /> : (
-              <div className="w-full h-full bg-surface flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
           </div>
           <p className="text-xs text-muted-foreground">Click the map to set the location pin</p>
           <div className="grid grid-cols-2 gap-4">
