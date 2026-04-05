@@ -128,23 +128,88 @@ const DispatchGoogleMap = () => {
       });
   }, []);
 
-  // Filter on search
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Filter on search — local + Nominatim + Photon parallel
   useEffect(() => {
     if (!searchQuery || searchQuery.length < 1) {
       setFilteredResults([]);
       setShowSuggestions(false);
       return;
     }
-    const q = searchQuery.toLowerCase();
-    const namedMatches = namedLocations.filter(
-      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
-    ).slice(0, 5);
-    const serviceMatches = serviceAreas.filter(
-      (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
-    ).slice(0, 3);
-    const combined = [...serviceMatches, ...namedMatches];
-    setFilteredResults(combined);
-    setShowSuggestions(combined.length > 0);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    searchDebounceRef.current = setTimeout(async () => {
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      const ctrl = new AbortController();
+      searchAbortRef.current = ctrl;
+
+      const q = searchQuery.toLowerCase();
+      const namedMatches = namedLocations.filter(
+        (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
+      ).slice(0, 5);
+      const serviceMatches = serviceAreas.filter(
+        (l) => l.name.toLowerCase().includes(q) || l.address.toLowerCase().includes(q)
+      ).slice(0, 3);
+      const combined: typeof filteredResults = [...serviceMatches, ...namedMatches];
+
+      // Show local results immediately
+      if (!ctrl.signal.aborted) {
+        setFilteredResults(combined);
+        setShowSuggestions(combined.length > 0);
+      }
+
+      // If fewer than 5 local results, fetch external
+      if (combined.length < 5) {
+        try {
+          const existingNames = new Set(combined.map(r => r.name.toLowerCase()));
+
+          const [nomRes, photonRes] = await Promise.allSettled([
+            fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
+              { headers: { "Accept-Language": "en" }, signal: ctrl.signal }
+            ).then(r => r.json()),
+            fetch(
+              `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5&lat=4.1755&lon=73.5093&lang=en`,
+              { signal: ctrl.signal }
+            ).then(r => r.json()),
+          ]);
+
+          const externalResults: typeof filteredResults = [];
+
+          if (nomRes.status === "fulfilled" && Array.isArray(nomRes.value)) {
+            for (const r of nomRes.value) {
+              const name = r.name || r.display_name?.split(",")[0] || "";
+              if (name && !existingNames.has(name.toLowerCase())) {
+                externalResults.push({ id: `nom-${r.place_id}`, name, address: r.display_name?.split(",").slice(1, 3).join(",").trim() || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon), type: "named" });
+                existingNames.add(name.toLowerCase());
+              }
+            }
+          }
+
+          if (photonRes.status === "fulfilled" && photonRes.value?.features) {
+            for (const f of photonRes.value.features) {
+              const name = f.properties?.name || "";
+              if (name && !existingNames.has(name.toLowerCase())) {
+                externalResults.push({ id: `ph-${f.properties?.osm_id}`, name, address: [f.properties?.street, f.properties?.city].filter(Boolean).join(", "), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], type: "named" });
+                existingNames.add(name.toLowerCase());
+              }
+            }
+          }
+
+          if (!ctrl.signal.aborted) {
+            const merged = [...combined, ...externalResults].slice(0, 12);
+            setFilteredResults(merged);
+            setShowSuggestions(merged.length > 0);
+          }
+        } catch (e: any) {
+          if (e?.name !== "AbortError") { /* keep local results */ }
+        }
+      }
+    }, 80);
+
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchQuery, namedLocations, serviceAreas]);
 
   const selectNamedLocation = useCallback((loc: { id: string; name: string; address: string; lat: number; lng: number; type: string }) => {
