@@ -3024,68 +3024,78 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     placeholder="Search service areas, named locations..."
                     className="w-full h-11 pl-10 pr-4 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     value={locationSearchQuery}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const q = e.target.value;
                       setLocationSearchQuery(q);
+                      if (locSearchDebounceRef.current) clearTimeout(locSearchDebounceRef.current);
+                      if (locSearchAbortRef.current) locSearchAbortRef.current.abort();
                       if (q.trim().length < 1) { setLocationSearchResults([]); return; }
-                      const [{ data: svcData }, { data: namedData }] = await Promise.all([
-                        supabase
-                          .from("service_locations")
-                          .select("name, address, lat, lng")
-                          .eq("is_active", true)
-                          .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
-                          .limit(10),
-                        supabase
-                          .from("named_locations")
-                          .select("name, address, lat, lng")
-                          .eq("is_active", true)
-                          .eq("status", "approved")
-                          .or(`name.ilike.%${q}%,address.ilike.%${q}%`)
-                          .limit(20),
-                      ]);
-                      const results: { name: string; address: string; lat: number; lng: number; type: string }[] = [];
-                      // Show service areas first, then named locations
-                      (svcData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "service" }));
-                      (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
 
-                      // If few DB results, also search Nominatim as fallback (free)
-                      if (results.length < 5) {
-                        try {
-                          const nomRes = await fetch(
-                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=mv&limit=8&addressdetails=1`,
-                            { headers: { "Accept-Language": "en" } }
-                          );
-                          const nomData = await nomRes.json();
-                          const existingNames = new Set(results.map(r => r.name.toLowerCase()));
-                          for (const r of nomData) {
-                            const name = r.name || r.display_name.split(",")[0];
-                            if (!existingNames.has(name.toLowerCase())) {
-                              results.push({
-                                name,
-                                address: r.display_name.split(",").slice(0, 3).join(", "),
-                                lat: parseFloat(r.lat),
-                                lng: parseFloat(r.lon),
-                                type: "nominatim",
-                              });
-                              existingNames.add(name.toLowerCase());
+                      locSearchDebounceRef.current = setTimeout(() => {
+                        const abortCtrl = new AbortController();
+                        locSearchAbortRef.current = abortCtrl;
+                        const ql = q.trim().toLowerCase();
+
+                        const sortResults = (arr: { name: string; address: string; lat: number; lng: number; type: string }[]) => {
+                          const seen = new Set<string>();
+                          const deduped = arr.filter(r => {
+                            const key = `${r.name.toLowerCase()}-${r.lat.toFixed(4)}-${r.lng.toFixed(4)}`;
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                          });
+                          deduped.sort((a, b) => {
+                            const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+                            const aS = an === ql ? 0 : an.startsWith(ql) ? 1 : 2;
+                            const bS = bn === ql ? 0 : bn.startsWith(ql) ? 1 : 2;
+                            if (aS !== bS) return aS - bS;
+                            const aT = a.type === "service" ? 0 : a.type === "named" ? 1 : 2;
+                            const bT = b.type === "service" ? 0 : b.type === "named" ? 1 : 2;
+                            return aT - bT;
+                          });
+                          return deduped;
+                        };
+
+                        let merged: { name: string; address: string; lat: number; lng: number; type: string }[] = [];
+
+                        // 1. Local DB (fast) — show immediately
+                        Promise.all([
+                          supabase.from("service_locations").select("name, address, lat, lng").eq("is_active", true).or(`name.ilike.%${q}%,address.ilike.%${q}%`).limit(10),
+                          supabase.from("named_locations").select("name, address, lat, lng, description, group_name").eq("is_active", true).eq("status", "approved").or(`name.ilike.%${q}%,address.ilike.%${q}%,description.ilike.%${q}%,group_name.ilike.%${q}%`).limit(20),
+                        ]).then(([{ data: svcData }, { data: namedData }]) => {
+                          if (abortCtrl.signal.aborted) return;
+                          (svcData || []).forEach((d: any) => merged.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "service" }));
+                          (namedData || []).forEach((d: any) => merged.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
+                          setLocationSearchResults(sortResults([...merged]));
+                        });
+
+                        // 2. Nominatim (free) — merge when ready
+                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=mv&limit=8&addressdetails=1`, { headers: { "Accept-Language": "en" }, signal: abortCtrl.signal })
+                          .then(r => r.json())
+                          .then(data => {
+                            if (abortCtrl.signal.aborted) return;
+                            for (const r of data) {
+                              const name = r.name || r.display_name?.split(",")[0] || "";
+                              merged.push({ name, address: r.display_name?.split(",").slice(0, 3).join(", ") || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon), type: "nominatim" });
                             }
-                          }
-                        } catch {}
-                      }
-                      // Sort by relevance: exact match first, starts-with next, then contains
-                      const ql = q.toLowerCase();
-                      results.sort((a, b) => {
-                        const an = a.name.toLowerCase();
-                        const bn = b.name.toLowerCase();
-                        const aExact = an === ql ? 0 : an.startsWith(ql) ? 1 : 2;
-                        const bExact = bn === ql ? 0 : bn.startsWith(ql) ? 1 : 2;
-                        if (aExact !== bExact) return aExact - bExact;
-                        // Within same tier, prioritize service areas
-                        const aType = a.type === "service" ? 0 : a.type === "named" ? 1 : 2;
-                        const bType = b.type === "service" ? 0 : b.type === "named" ? 1 : 2;
-                        return aType - bType;
-                      });
-                      setLocationSearchResults(results);
+                            setLocationSearchResults(sortResults([...merged]));
+                          }).catch(() => {});
+
+                        // 3. Photon (free OSM) — merge when ready
+                        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
+                          .then(r => r.json())
+                          .then(data => {
+                            if (abortCtrl.signal.aborted) return;
+                            for (const f of (data.features || [])) {
+                              const p = f.properties || {};
+                              const name = p.name || p.street || "";
+                              if (!name) continue;
+                              const [pLng, pLat] = f.geometry?.coordinates || [0, 0];
+                              merged.push({ name, address: [p.street, p.city, p.country].filter(Boolean).join(", "), lat: pLat, lng: pLng, type: "photon" });
+                            }
+                            setLocationSearchResults(sortResults([...merged]));
+                          }).catch(() => {});
+                      }, 80);
                     }}
                   />
                 </div>
