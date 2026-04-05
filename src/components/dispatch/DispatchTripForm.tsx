@@ -1259,7 +1259,7 @@ const DispatchTripForm = ({
                 <Crosshair className="w-4 h-4 text-primary" />
               </button>
             </div>
-            {selecting === "pickup" && osmResults.length > 0 && (
+            {selecting === "pickup" && (osmResults.length > 0 || searchQuery.trim().length >= 2) && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {osmResults.map((r, idx) => (
                   <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
@@ -1273,6 +1273,12 @@ const DispatchTripForm = ({
                     )}
                   </button>
                 ))}
+                {searchQuery.trim().length >= 2 && (
+                  <button onClick={() => { useCustomLocation(searchQuery); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 text-left transition-colors hover:bg-surface border-t border-border bg-muted/30">
+                    <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <p className="text-xs font-medium text-primary truncate">Use "{searchQuery.trim()}" as custom location</p>
+                  </button>
+                )}
               </div>
             )}
           </div>
