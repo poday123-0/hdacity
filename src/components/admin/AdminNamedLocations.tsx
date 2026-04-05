@@ -34,7 +34,8 @@ const AdminNamedLocations = () => {
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [bulkGroupName, setBulkGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const { isLoaded } = useGoogleMaps();
+  const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markerRef = useRef<any>(null);
