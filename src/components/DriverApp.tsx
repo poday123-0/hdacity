@@ -5507,34 +5507,27 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <NotificationPermissionPrompt />
       <SuggestPlace userId={userProfile?.id} userType="driver" visible={showSuggestPlace} onClose={() => setShowSuggestPlace(false)} />
 
-      {/* Persistent banner when driver is online but notifications not granted */}
+      {/* Compact notification off indicator near top */}
       {screen === "online" && notifPermissionDenied && (
-        <div className="fixed top-14 left-2 right-2 z-[9990] mx-auto max-w-md">
-          <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 flex items-center gap-3 shadow-lg">
-            <BellIcon className="w-5 h-5 text-destructive shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-destructive">Notifications are OFF</p>
-              <p className="text-[10px] text-destructive/80">You won't hear trip requests when the app is minimized</p>
-            </div>
-            <button
-              onClick={async () => {
-                if ("Notification" in window && Notification.permission === "default") {
-                  const result = await Notification.requestPermission();
-                  if (result === "granted") setNotifPermissionDenied(false);
-                } else {
-                  // Permission was denied — user must enable in browser settings
-                  toast({
-                    title: "Enable in Browser Settings",
-                    description: "Go to your browser settings → Site Settings → Notifications → Allow for this site",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="text-[10px] font-bold text-primary-foreground bg-destructive px-3 py-1.5 rounded-lg shrink-0"
-            >
-              Enable
-            </button>
-          </div>
+        <div className="fixed top-[3.2rem] right-2 z-[9990]">
+          <button
+            onClick={async () => {
+              if ("Notification" in window && Notification.permission === "default") {
+                const result = await Notification.requestPermission();
+                if (result === "granted") setNotifPermissionDenied(false);
+              } else {
+                toast({
+                  title: "Notifications are OFF",
+                  description: "You won't hear trip requests when minimized. Go to browser settings → Site Settings → Notifications → Allow for this site.",
+                  variant: "destructive",
+                });
+              }
+            }}
+            className="flex items-center gap-1.5 bg-destructive/15 border border-destructive/30 rounded-full px-2.5 py-1 shadow-sm active:scale-95 transition-transform"
+          >
+            <BellIcon className="w-3.5 h-3.5 text-destructive animate-pulse" />
+            <span className="text-[10px] font-semibold text-destructive">OFF</span>
+          </button>
         </div>
       )}
 
