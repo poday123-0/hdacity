@@ -3,7 +3,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag, ChevronRight, ChevronDown } from "lucide-react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
