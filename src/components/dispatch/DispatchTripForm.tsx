@@ -621,58 +621,7 @@ const DispatchTripForm = ({
         }
       };
 
-      // Nominatim free geocoding
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`, {
-        signal: abortCtrl.signal,
-        headers: { "Accept-Language": "en" },
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (abortCtrl.signal.aborted || !Array.isArray(data)) return;
-          const nominatimResults: NominatimResult[] = data
-            .filter((r: any) => isWithinServiceArea(parseFloat(r.lat), parseFloat(r.lon)))
-            .map((r: any, i: number) => {
-              const lat = parseFloat(r.lat);
-              const lng = parseFloat(r.lon);
-              const areaName = findNearestServiceAreaName(lat, lng);
-              return {
-                place_id: 700000 + i,
-                display_name: `${r.display_name?.split(",")[0] || searchQuery} — ${areaName}`,
-                lat: String(lat),
-                lon: String(lng),
-                name: r.display_name?.split(",")[0] || "",
-                tag: areaName,
-                road: r.address?.road || undefined,
-              };
-            });
-          if (nominatimResults.length > 0) mergeResults(nominatimResults);
-        })
-        .catch(() => {});
-
-      // Photon (free OSM geocoder) — fallback for better coverage
-      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
-        .then(res => res.json())
-        .then(data => {
-          if (abortCtrl.signal.aborted || !data.features?.length) return;
-          const photonResults: NominatimResult[] = data.features
-            .filter((f: any) => f.geometry?.coordinates && isWithinServiceArea(f.geometry.coordinates[1], f.geometry.coordinates[0]))
-            .map((f: any, i: number) => {
-              const lat = f.geometry.coordinates[1];
-              const lng = f.geometry.coordinates[0];
-              const areaName = findNearestServiceAreaName(lat, lng);
-              return {
-                place_id: 500000 + i,
-                display_name: `${f.properties.name || f.properties.street || searchQuery} — ${areaName}`,
-                lat: String(lat),
-                lon: String(lng),
-                name: f.properties.name || f.properties.street || "",
-                tag: areaName,
-                road: f.properties.street || undefined,
-              };
-            });
-          if (photonResults.length > 0) mergeResults(photonResults);
-        })
-        .catch(() => {});
+      // Only local DB results — no external fetching
     }, 80);
 
     return () => { abortCtrl.abort(); };
