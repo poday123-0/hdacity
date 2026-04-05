@@ -3046,41 +3046,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       (svcData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "service" }));
                       (namedData || []).forEach((d: any) => results.push({ name: d.name, address: d.address || "", lat: Number(d.lat), lng: Number(d.lng), type: "named" }));
 
-                      // If few DB results, also search Google Places as fallback
+                      // If few DB results, also search Nominatim as fallback (free)
                       if (results.length < 5) {
-                        const g = (window as any).google;
-                        if (g?.maps?.places?.AutocompleteService) {
-                          try {
-                            const autoSvc = new g.maps.places.AutocompleteService();
-                            const predictions = await new Promise<any[]>((resolve) => {
-                              autoSvc.getPlacePredictions(
-                                { input: q, componentRestrictions: { country: "mv" } },
-                                (res: any[] | null, status: string) => resolve(status === "OK" && res ? res : [])
-                              );
-                            });
-                            const mapDiv = document.createElement("div");
-                            const placesSvc = new g.maps.places.PlacesService(mapDiv);
-                            const existingNames = new Set(results.map(r => r.name.toLowerCase()));
-                            for (const pred of predictions.slice(0, 5)) {
-                              const detail = await new Promise<any>((resolve) => {
-                                placesSvc.getDetails(
-                                  { placeId: pred.place_id, fields: ["geometry", "name", "formatted_address"] },
-                                  (place: any, st: string) => resolve(st === "OK" ? place : null)
-                                );
+                        try {
+                          const nomRes = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=mv&limit=8&addressdetails=1`,
+                            { headers: { "Accept-Language": "en" } }
+                          );
+                          const nomData = await nomRes.json();
+                          const existingNames = new Set(results.map(r => r.name.toLowerCase()));
+                          for (const r of nomData) {
+                            const name = r.name || r.display_name.split(",")[0];
+                            if (!existingNames.has(name.toLowerCase())) {
+                              results.push({
+                                name,
+                                address: r.display_name.split(",").slice(0, 3).join(", "),
+                                lat: parseFloat(r.lat),
+                                lng: parseFloat(r.lon),
+                                type: "nominatim",
                               });
-                              if (detail?.geometry?.location && !existingNames.has((detail.name || "").toLowerCase())) {
-                                results.push({
-                                  name: detail.name || pred.structured_formatting?.main_text || "",
-                                  address: detail.formatted_address || pred.description || "",
-                                  lat: detail.geometry.location.lat(),
-                                  lng: detail.geometry.location.lng(),
-                                  type: "google",
-                                });
-                                existingNames.add((detail.name || "").toLowerCase());
-                              }
+                              existingNames.add(name.toLowerCase());
                             }
-                          } catch {}
-                        }
+                          }
+                        } catch {}
                       }
                       // Sort by relevance: exact match first, starts-with next, then contains
                       const ql = q.toLowerCase();
