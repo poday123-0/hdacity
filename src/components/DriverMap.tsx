@@ -640,8 +640,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           const lookAheadMeters = currentSpeed > 40 ? lookAheadBase.fast : currentSpeed > 20 ? lookAheadBase.mid : lookAheadBase.slow;
           const cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
           map.panTo([cameraTarget.lat, cameraTarget.lng], { animate: true, duration: 0.3 });
-          const currentZoom = map.getZoom();
-          if (currentZoom < 17 || currentZoom > 19) map.setZoom(18);
+          // Don't force zoom — respect driver's manual zoom level
         } else {
           map.panTo([displayPos.lat, displayPos.lng], { animate: true, duration: 0.3 });
         }
