@@ -724,6 +724,31 @@ const DispatchTripForm = ({
           );
         }
       }
+
+      // Photon (free OSM geocoder) — fallback for better Maldives coverage
+      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: googleAbort.signal })
+        .then(res => res.json())
+        .then(data => {
+          if (googleAbort.signal.aborted || !data.features?.length) return;
+          const photonResults: NominatimResult[] = data.features
+            .filter((f: any) => f.geometry?.coordinates && isWithinServiceArea(f.geometry.coordinates[1], f.geometry.coordinates[0]))
+            .map((f: any, i: number) => {
+              const lat = f.geometry.coordinates[1];
+              const lng = f.geometry.coordinates[0];
+              const areaName = findNearestServiceAreaName(lat, lng);
+              return {
+                place_id: 500000 + i,
+                display_name: `${f.properties.name || f.properties.street || searchQuery} — ${areaName}`,
+                lat: String(lat),
+                lon: String(lng),
+                name: f.properties.name || f.properties.street || "",
+                tag: areaName,
+                road: f.properties.street || undefined,
+              };
+            });
+          if (photonResults.length > 0) mergeResults(photonResults);
+        })
+        .catch(() => {});
     }, 80); // 80ms debounce — fast real-time feel
 
     return () => { googleAbort.abort(); };
