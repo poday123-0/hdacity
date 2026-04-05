@@ -173,7 +173,7 @@ const DispatchGoogleMap = () => {
               { headers: { "Accept-Language": "en" }, signal: ctrl.signal }
             ).then(r => r.json()),
             fetch(
-              `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5&lat=4.1755&lon=73.5093&lang=en`,
+              `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5&lat=4.1755&lon=73.5093&lang=en&bbox=72.5,-1,74,8`,
               { signal: ctrl.signal }
             ).then(r => r.json()),
           ]);
