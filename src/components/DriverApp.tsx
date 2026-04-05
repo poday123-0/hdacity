@@ -282,6 +282,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const locSearchAbortRef = useRef<AbortController | null>(null);
   const [isFreeNavigating, setIsFreeNavigating] = useState(false);
+  const [showExternalNavPopup, setShowExternalNavPopup] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
   // --- Online time tracking ---
@@ -2956,7 +2957,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           <Search className="w-[18px] h-[18px]" />
         </button>
         <div className="w-5 h-px bg-border mx-auto" />
-        <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
+        {screen === "navigating" && currentTrip ? (
+          <button
+            onClick={() => setShowExternalNavPopup(true)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
+            title="Open in external map"
+          >
+            <Navigation className="w-[18px] h-[18px]" />
+          </button>
+        ) : (
+          <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
+        )}
         <div className="w-5 h-px bg-border mx-auto" />
         {/* Compass */}
         <button
@@ -2991,7 +3002,83 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </div>
       }
 
-      {/* Location Search Modal */}
+      {/* External Navigation Popup */}
+      <AnimatePresence>
+        {showExternalNavPopup && currentTrip && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9990] bg-black/30"
+              onClick={() => setShowExternalNavPopup(false)}
+            />
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              transition={{ type: "spring", damping: 28, stiffness: 350 }}
+              className="fixed bottom-0 left-0 right-0 z-[9991] px-3 pb-4"
+            >
+              <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+                <div className="flex justify-center pt-2.5 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+                </div>
+                <div className="px-4 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground">Open route in</p>
+                </div>
+                <div className="px-3 pb-3 space-y-1.5">
+                  <button
+                    onClick={() => {
+                      const pickup = currentTrip.pickup_lat && currentTrip.pickup_lng ? `${currentTrip.pickup_lat},${currentTrip.pickup_lng}` : "";
+                      const dropoff = currentTrip.dropoff_lat && currentTrip.dropoff_lng ? `${currentTrip.dropoff_lat},${currentTrip.dropoff_lng}` : "";
+                      const url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                      window.open(url, "_blank");
+                      setShowExternalNavPopup(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-accent transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <div className="text-sm font-semibold text-foreground">Google Maps</div>
+                      <div className="text-[11px] text-muted-foreground">Navigate with Google Maps</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const pickup = currentTrip.pickup_lat && currentTrip.pickup_lng ? `${currentTrip.pickup_lat},${currentTrip.pickup_lng}` : "";
+                      const dropoff = currentTrip.dropoff_lat && currentTrip.dropoff_lng ? `${currentTrip.dropoff_lat},${currentTrip.dropoff_lng}` : "";
+                      const url = `https://waze.com/ul?ll=${dropoff}&from=${pickup}&navigate=yes`;
+                      window.open(url, "_blank");
+                      setShowExternalNavPopup(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-accent transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center shrink-0">
+                      <Navigation className="w-5 h-5 text-foreground" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <div className="text-sm font-semibold text-foreground">Waze</div>
+                      <div className="text-[11px] text-muted-foreground">Navigate with Waze</div>
+                    </div>
+                  </button>
+                </div>
+                <div className="px-3 pb-3">
+                  <button
+                    onClick={() => setShowExternalNavPopup(false)}
+                    className="w-full py-2.5 text-xs font-medium text-muted-foreground rounded-xl hover:bg-accent transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showLocationSearch && (
           <motion.div

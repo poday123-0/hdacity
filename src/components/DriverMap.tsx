@@ -505,7 +505,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => observer.disconnect();
   }, [mapReady]);
 
-  // Navigation mode zoom
+  // Navigation mode zoom — fit bounds to show full route when trip starts
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
@@ -513,7 +513,16 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       setFollowDriver(true);
       userInteractingRef.current = false;
       setUserPannedAway(false);
-      map.setZoom(18);
+      // Fit bounds to show driver + pickup + dropoff
+      const bounds = L.latLngBounds([]);
+      if (currentPos) bounds.extend([currentPos.lat, currentPos.lng]);
+      if (pickupCoords) bounds.extend([pickupCoords[0], pickupCoords[1]]);
+      if (dropoffCoords) bounds.extend([dropoffCoords[0], dropoffCoords[1]]);
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+      } else {
+        map.setZoom(16);
+      }
     } else {
       map.setZoom(16);
     }
