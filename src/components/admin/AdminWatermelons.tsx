@@ -7,7 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Sparkles, Upload, Shuffle, Image, MapPin, Check, X, Gift, Car, Users, CheckCircle2, Search, Calendar, Wallet, Tag, Navigation } from "lucide-react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 interface ServiceLocation {
   id: string;
