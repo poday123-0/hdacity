@@ -434,8 +434,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
               </div>
             ) : (
               <>
-                <p className="text-sm font-bold text-foreground truncate">{placeName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{address}</p>
+                {placeName ? (
+                  <p className="text-sm font-bold text-foreground truncate">{placeName}</p>
+                ) : null}
+                <p className={`text-muted-foreground truncate ${placeName ? 'text-[11px]' : 'text-sm font-medium text-foreground'}`}>{address || "Move map to select location"}</p>
               </>
             )}
           </div>
