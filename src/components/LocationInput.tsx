@@ -114,7 +114,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           .order("name"),
         supabase
           .from("named_locations")
-          .select("id, name, address, lat, lng")
+          .select("id, name, address, lat, lng, description, group_name")
           .eq("is_active", true)
           .eq("status", "approved")
           .order("name"),
