@@ -1421,6 +1421,7 @@ const DispatchTripForm = ({
                             e.preventDefault();
                             const selIdx = resultHighlight >= 0 ? resultHighlight : 0;
                             if (osmResults.length > 0 && !stop.address) selectLocation(osmResults[selIdx]);
+                            else if (osmResults.length === 0 && searchQuery.trim().length >= 2 && !stop.address) useCustomLocation(searchQuery);
                             setResultHighlight(-1);
                             setTimeout(() => phoneInputRef.current?.focus(), 50);
                           }
