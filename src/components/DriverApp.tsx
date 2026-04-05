@@ -3025,14 +3025,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
                 </div>
                 <div className="px-4 pb-1">
-                  <p className="text-xs font-semibold text-muted-foreground">Open route in</p>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {driverTripPhase === "in_progress" ? "Navigate to drop-off" : "Navigate to pickup"}
+                  </p>
                 </div>
                 <div className="px-3 pb-3 space-y-1.5">
                   <button
                     onClick={() => {
-                      const pickup = currentTrip.pickup_lat && currentTrip.pickup_lng ? `${currentTrip.pickup_lat},${currentTrip.pickup_lng}` : "";
-                      const dropoff = currentTrip.dropoff_lat && currentTrip.dropoff_lng ? `${currentTrip.dropoff_lat},${currentTrip.dropoff_lng}` : "";
-                      const url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                      const dest = driverTripPhase === "in_progress"
+                        ? (currentTrip.dropoff_lat && currentTrip.dropoff_lng ? `${currentTrip.dropoff_lat},${currentTrip.dropoff_lng}` : "")
+                        : (currentTrip.pickup_lat && currentTrip.pickup_lng ? `${currentTrip.pickup_lat},${currentTrip.pickup_lng}` : "");
+                      const url = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
                       window.open(url, "_blank");
                       setShowExternalNavPopup(false);
                     }}
@@ -3048,9 +3051,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   </button>
                   <button
                     onClick={() => {
-                      const pickup = currentTrip.pickup_lat && currentTrip.pickup_lng ? `${currentTrip.pickup_lat},${currentTrip.pickup_lng}` : "";
-                      const dropoff = currentTrip.dropoff_lat && currentTrip.dropoff_lng ? `${currentTrip.dropoff_lat},${currentTrip.dropoff_lng}` : "";
-                      const url = `https://waze.com/ul?ll=${dropoff}&from=${pickup}&navigate=yes`;
+                      const dest = driverTripPhase === "in_progress"
+                        ? (currentTrip.dropoff_lat && currentTrip.dropoff_lng ? `${currentTrip.dropoff_lat},${currentTrip.dropoff_lng}` : "")
+                        : (currentTrip.pickup_lat && currentTrip.pickup_lng ? `${currentTrip.pickup_lat},${currentTrip.pickup_lng}` : "");
+                      const url = `https://waze.com/ul?ll=${dest}&navigate=yes`;
                       window.open(url, "_blank");
                       setShowExternalNavPopup(false);
                     }}
