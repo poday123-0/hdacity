@@ -259,7 +259,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         <div ref={mapRef} className="absolute inset-0" />
 
         {/* Center pin with floating label */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1000]">
           <div className="flex flex-col items-center">
             {/* Floating location name label */}
             <AnimatePresence>
@@ -296,7 +296,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         </div>
 
         {/* Top bar — close + search */}
-        <div className="absolute top-0 left-0 right-0 z-20 p-3 pt-safe">
+        <div className="absolute top-0 left-0 right-0 z-[1001] p-3 pt-safe">
           <div className="flex items-center gap-2">
             <button
               onClick={onCancel}
@@ -351,7 +351,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         </div>
 
         {/* Right side controls */}
-        <div className="absolute right-3 bottom-3 z-20 flex flex-col gap-2">
+        <div className="absolute right-3 bottom-3 z-[1001] flex flex-col gap-2">
           <button
             onClick={() => handleZoom("in")}
             className="w-10 h-10 rounded-full bg-card/95 backdrop-blur-lg border border-border shadow-lg flex items-center justify-center text-foreground text-lg font-bold active:scale-90 transition-transform"
