@@ -94,8 +94,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
   const stopRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const autocompleteServiceRef = useRef<any>(null);
-  const placesServiceRef = useRef<any>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const activeQuery = activeField === "pickup" ? pickupQuery
     : activeField === "dropoff" ? dropoffQuery
@@ -202,7 +201,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
     return bestMatch;
   }, [serviceAreas, isPointInPolygon, calcPolygonArea]);
 
-  // Google Places search with debounce — admin locations shown first, then Google/Nominatim
+  // Location search with debounce — admin locations shown first, then Nominatim fallback
   useEffect(() => {
     if (!activeQuery.trim() || activeQuery.length < 2) {
       setPlaceResults([]);
@@ -224,120 +223,36 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           lng: loc.lng,
         }));
 
-      const g = (window as any).google;
-
-      // 2. Try Google Places Autocomplete
-      if (g?.maps?.places?.AutocompleteService) {
-        if (!autocompleteServiceRef.current) {
-          autocompleteServiceRef.current = new g.maps.places.AutocompleteService();
+      // 2. Nominatim fallback (free)
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=8&addressdetails=1`,
+          { headers: { "Accept-Language": "en" } }
+        );
+        const data = await res.json();
+        const filtered: PlaceResult[] = [];
+        for (const r of data) {
+          filtered.push({
+            place_id: String(r.place_id),
+            name: r.name || r.display_name.split(",")[0],
+            address: r.display_name.split(",").slice(0, 3).join(", "),
+            lat: parseFloat(r.lat),
+            lng: parseFloat(r.lon),
+          });
         }
-        if (!placesServiceRef.current) {
-          const mapDiv = document.createElement("div");
-          placesServiceRef.current = new g.maps.places.PlacesService(mapDiv);
-        }
-
-        const bounds = new g.maps.LatLngBounds();
-        serviceAreas.forEach(area => {
-          if (area.polygon) {
-            area.polygon.forEach(p => bounds.extend(new g.maps.LatLng(p.lat, p.lng)));
-          } else {
-            bounds.extend(new g.maps.LatLng(area.lat, area.lng));
-          }
+        const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
+        const uniqueNom = filtered.filter(r => !adminNames.has(r.name.toLowerCase()));
+        const combined = [...adminMatches, ...uniqueNom];
+        combined.sort((a, b) => {
+          const an = a.name.toLowerCase();
+          const bn = b.name.toLowerCase();
+          const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
+          const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
+          return aScore - bScore;
         });
-
-        try {
-          const predictions = await new Promise<any[]>((resolve) => {
-            autocompleteServiceRef.current.getPlacePredictions(
-              {
-                input: activeQuery,
-                locationBias: bounds,
-                componentRestrictions: { country: "mv" },
-              },
-              (results: any[] | null, status: string) => {
-                resolve(status === "OK" && results ? results : []);
-              }
-            );
-          });
-
-          const detailedResults: PlaceResult[] = [];
-          const detailPromises = predictions.slice(0, 8).map(
-            (pred) =>
-              new Promise<PlaceResult | null>((resolve) => {
-                placesServiceRef.current.getDetails(
-                  { placeId: pred.place_id, fields: ["geometry", "name", "formatted_address"] },
-                  (place: any, status: string) => {
-                    if (status === "OK" && place?.geometry?.location) {
-                      const lat = place.geometry.location.lat();
-                      const lng = place.geometry.location.lng();
-                      resolve({
-                        place_id: pred.place_id,
-                        name: place.name || pred.structured_formatting?.main_text || pred.description.split(",")[0],
-                        address: place.formatted_address || pred.description,
-                        lat,
-                        lng,
-                      });
-                    } else {
-                      resolve(null);
-                    }
-                  }
-                );
-              })
-          );
-
-          const results = await Promise.all(detailPromises);
-          results.forEach((r) => { if (r) detailedResults.push(r); });
-          
-          // Deduplicate: remove Google results that match admin location names
-          const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
-          const uniqueGoogle = detailedResults.filter(r => !adminNames.has(r.name.toLowerCase()));
-          const combined = [...adminMatches, ...uniqueGoogle];
-          // Sort by relevance: exact match > starts-with > contains
-          const ql = q;
-          combined.sort((a, b) => {
-            const an = a.name.toLowerCase();
-            const bn = b.name.toLowerCase();
-            const aScore = an === ql ? 0 : an.startsWith(ql) ? 1 : 2;
-            const bScore = bn === ql ? 0 : bn.startsWith(ql) ? 1 : 2;
-            return aScore - bScore;
-          });
-          setPlaceResults(combined);
-        } catch {
-          setPlaceResults(adminMatches);
-        }
-      } else {
-        // Fallback to Nominatim if Google not loaded
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=8&addressdetails=1`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await res.json();
-          const filtered: PlaceResult[] = [];
-          for (const r of data) {
-            const lat = parseFloat(r.lat);
-            const lng = parseFloat(r.lon);
-            filtered.push({
-              place_id: String(r.place_id),
-              name: r.name || r.display_name.split(",")[0],
-              address: r.display_name.split(",").slice(0, 3).join(", "),
-              lat,
-              lng,
-            });
-          }
-          const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
-          const uniqueNom = filtered.filter(r => !adminNames.has(r.name.toLowerCase()));
-          const combined = [...adminMatches, ...uniqueNom];
-          combined.sort((a, b) => {
-            const an = a.name.toLowerCase();
-            const bn = b.name.toLowerCase();
-            const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
-            const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
-            return aScore - bScore;
-          });
-          setPlaceResults(combined);
-        } catch {
-          setPlaceResults(adminMatches);
-        }
+        setPlaceResults(combined);
+      } catch {
+        setPlaceResults(adminMatches);
       }
       setSearching(false);
     }, 350);

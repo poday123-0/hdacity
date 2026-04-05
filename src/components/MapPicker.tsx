@@ -61,7 +61,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     load();
   }, []);
 
-  // Filter search results — local first, then Google Places fallback
+  // Filter search results — local first, then Nominatim fallback
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -80,42 +80,28 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         .slice(0, 8)
         .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
 
-      // If fewer than 3 local results, fetch from Google Places
+      // If fewer than 3 local results, fetch from Nominatim (free)
       if (localMatches.length < 3) {
-        const g = (window as any).google;
-        if (g?.maps?.places?.AutocompleteService) {
-          try {
-            const autoSvc = new g.maps.places.AutocompleteService();
-            const predictions = await new Promise<any[]>((resolve) => {
-              autoSvc.getPlacePredictions(
-                { input: searchQuery, componentRestrictions: { country: "mv" } },
-                (res: any[] | null, status: string) => resolve(status === "OK" && res ? res : [])
-              );
-            });
-
-            const mapDiv = document.createElement("div");
-            const placesSvc = new g.maps.places.PlacesService(mapDiv);
-            const existingNames = new Set(localMatches.map(r => r.name.toLowerCase()));
-
-            for (const pred of predictions.slice(0, 5)) {
-              const detail = await new Promise<any>((resolve) => {
-                placesSvc.getDetails(
-                  { placeId: pred.place_id, fields: ["geometry", "name", "formatted_address"] },
-                  (place: any, st: string) => resolve(st === "OK" ? place : null)
-                );
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=8&addressdetails=1`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await res.json();
+          const existingNames = new Set(localMatches.map(r => r.name.toLowerCase()));
+          for (const r of data) {
+            const name = r.name || r.display_name.split(",")[0];
+            if (!existingNames.has(name.toLowerCase())) {
+              localMatches.push({
+                name,
+                lat: parseFloat(r.lat),
+                lng: parseFloat(r.lon),
+                tag: "Map",
               });
-              if (detail?.geometry?.location && !existingNames.has((detail.name || "").toLowerCase())) {
-                localMatches.push({
-                  name: detail.name || pred.structured_formatting?.main_text || "",
-                  lat: detail.geometry.location.lat(),
-                  lng: detail.geometry.location.lng(),
-                  tag: "Google",
-                });
-                existingNames.add((detail.name || "").toLowerCase());
-              }
+              existingNames.add(name.toLowerCase());
             }
-          } catch {}
-        }
+          }
+        } catch {}
       }
 
       setSearchResults(localMatches.slice(0, 10));
