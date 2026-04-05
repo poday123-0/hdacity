@@ -1234,6 +1234,8 @@ const DispatchTripForm = ({
                       const idx = resultHighlight >= 0 ? resultHighlight : 0;
                       if (osmResults.length > 0 && !pickup) {
                         selectLocation(osmResults[idx]);
+                      } else if (osmResults.length === 0 && searchQuery.trim().length >= 2 && !pickup) {
+                        useCustomLocation(searchQuery);
                       }
                       setResultHighlight(-1);
                       setTimeout(() => toButtonsRef.current?.focus(), 50);
