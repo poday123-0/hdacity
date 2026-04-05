@@ -80,26 +80,9 @@ let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones
 let _locationsCacheTs = 0;
 const LOC_CACHE_TTL = 30_000; // 30 sec
 
-// Google Places result cache to avoid redundant API calls
+// Nominatim result cache
 const _placesCache = new Map<string, { results: any[]; ts: number }>();
-const PLACES_CACHE_TTL = 60_000; // 1 min
-// Reusable AutocompleteService instance (much faster than textSearch)
-let _autocompleteService: google.maps.places.AutocompleteService | null = null;
-let _placesServiceDiv: HTMLDivElement | null = null;
-let _placesService: google.maps.places.PlacesService | null = null;
-const getAutocompleteService = () => {
-  if (!_autocompleteService && typeof google !== "undefined" && google.maps?.places) {
-    _autocompleteService = new google.maps.places.AutocompleteService();
-  }
-  return _autocompleteService;
-};
-const getPlacesService = () => {
-  if (!_placesService && typeof google !== "undefined" && google.maps?.places) {
-    if (!_placesServiceDiv) _placesServiceDiv = document.createElement("div");
-    _placesService = new google.maps.places.PlacesService(_placesServiceDiv);
-  }
-  return _placesService;
-};
+const PLACES_CACHE_TTL = 60_000;
 
 const DispatchTripForm = ({
   formIndex,
@@ -522,20 +505,6 @@ const DispatchTripForm = ({
     return best;
   }, [serviceLocations]);
 
-  // Google Maps API key fetch (shared)
-  const mapsKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const cached = localStorage.getItem("hda_maps_key_cache");
-    if (cached) {
-      try { mapsKeyRef.current = JSON.parse(cached).key; } catch {}
-    }
-    if (!mapsKeyRef.current) {
-      supabase.functions.invoke("get-maps-key").then(({ data }) => {
-        if (data?.key) mapsKeyRef.current = data.key;
-      });
-    }
-  }, []);
-
   // Check if a coordinate falls within any admin service area (10km radius)
   const isWithinServiceArea = useCallback((lat: number, lng: number): boolean => {
     for (const sl of serviceLocations) {
@@ -544,20 +513,17 @@ const DispatchTripForm = ({
     return false;
   }, [serviceLocations]);
 
-  const nominatimAbortRef = useRef<AbortController | null>(null);
-  const googleAbortRef = useRef<AbortController | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
-  // Search: local DB + Google Places (filtered to service areas only)
+  // Search: local DB + Nominatim (no Google Places)
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 1) { setOsmResults([]); setResultHighlight(-1); return; }
     setResultHighlight(-1);
     const q = searchQuery.toLowerCase();
 
-    // Cancel previous external requests
-    if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
-    if (googleAbortRef.current) googleAbortRef.current.abort();
-    const googleAbort = new AbortController();
-    googleAbortRef.current = googleAbort;
+    if (searchAbortRef.current) searchAbortRef.current.abort();
+    const abortCtrl = new AbortController();
+    searchAbortRef.current = abortCtrl;
 
     // 1. Instant local matches from DB + recent bookings (zero latency)
     const localMatches: NominatimResult[] = [
@@ -617,14 +583,13 @@ const DispatchTripForm = ({
       }
       return true;
     });
-    // Sort by relevance: exact match > starts with > contains
+    // Sort by relevance
     deduped.sort((a, b) => {
       const aName = (a.name || "").toLowerCase();
       const bName = (b.name || "").toLowerCase();
       const aExact = aName === q ? 0 : aName.startsWith(q) ? 1 : 2;
       const bExact = bName === q ? 0 : bName.startsWith(q) ? 1 : 2;
       if (aExact !== bExact) return aExact - bExact;
-      // Secondary: service locations first, then named, then recent
       const aPrio = a.place_id >= 900000 ? 0 : a.place_id >= 800000 ? 1 : 2;
       const bPrio = b.place_id >= 900000 ? 0 : b.place_id >= 800000 ? 1 : 2;
       return aPrio - bPrio;
@@ -656,80 +621,39 @@ const DispatchTripForm = ({
         }
       };
 
-      // Google Places — use AutocompleteService (much faster than textSearch)
-      const autocomplete = getAutocompleteService();
-      if (autocomplete) {
-        const cacheKey = searchQuery.toLowerCase().trim();
-        const cached = _placesCache.get(cacheKey);
-
-        const processAutocompletePredictions = (predictions: any[]) => {
-          if (googleAbort.signal.aborted) return;
-          if (!predictions?.length) return;
-          const service = getPlacesService();
-          if (!service) return;
-
-          let processed = 0;
-          const batchResults: NominatimResult[] = [];
-
-          predictions.forEach((prediction: any, i: number) => {
-            service.getDetails(
-              { placeId: prediction.place_id, fields: ["geometry", "name", "formatted_address"] },
-              (place: any, detailStatus: any) => {
-                processed++;
-                if (googleAbort.signal.aborted) return;
-                if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
-                  const lat = place.geometry.location.lat();
-                  const lng = place.geometry.location.lng();
-                  if (!isWithinServiceArea(lat, lng)) { if (processed >= predictions.length) mergeResults(batchResults); return; }
-                  const areaName = findNearestServiceAreaName(lat, lng);
-                  const isDup = localMatches.some(lm => haversineKm(parseFloat(lm.lat), parseFloat(lm.lon), lat, lng) < 0.05);
-                  if (!isDup) {
-                    const roadPart = place.formatted_address?.split(",")[0] || "";
-                    batchResults.push({
-                      place_id: 700000 + i,
-                      display_name: `${place.name || prediction.structured_formatting?.main_text} — ${areaName}`,
-                      lat: String(lat),
-                      lon: String(lng),
-                      name: place.name || prediction.structured_formatting?.main_text || "",
-                      tag: areaName,
-                      road: roadPart || undefined,
-                    });
-                  }
-                }
-                // Progressive merge — show results as they come in
-                if (batchResults.length > 0 && (processed >= predictions.length || processed % 2 === 0)) {
-                  mergeResults([...batchResults]);
-                }
-              }
-            );
-          });
-        };
-
-        if (cached && Date.now() - cached.ts < PLACES_CACHE_TTL) {
-          processAutocompletePredictions(cached.results);
-        } else {
-          autocomplete.getPlacePredictions(
-            {
-              input: searchQuery,
-              locationBias: new google.maps.Circle({ center: { lat: 4.1755, lng: 73.5093 }, radius: 50000 }),
-              componentRestrictions: { country: "mv" },
-            },
-            (predictions: any, status: any) => {
-              if (googleAbort.signal.aborted) return;
-              if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                _placesCache.set(cacheKey, { results: predictions, ts: Date.now() });
-                processAutocompletePredictions(predictions);
-              }
-            }
-          );
-        }
-      }
-
-      // Photon (free OSM geocoder) — fallback for better Maldives coverage
-      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: googleAbort.signal })
+      // Nominatim free geocoding
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`, {
+        signal: abortCtrl.signal,
+        headers: { "Accept-Language": "en" },
+      })
         .then(res => res.json())
         .then(data => {
-          if (googleAbort.signal.aborted || !data.features?.length) return;
+          if (abortCtrl.signal.aborted || !Array.isArray(data)) return;
+          const nominatimResults: NominatimResult[] = data
+            .filter((r: any) => isWithinServiceArea(parseFloat(r.lat), parseFloat(r.lon)))
+            .map((r: any, i: number) => {
+              const lat = parseFloat(r.lat);
+              const lng = parseFloat(r.lon);
+              const areaName = findNearestServiceAreaName(lat, lng);
+              return {
+                place_id: 700000 + i,
+                display_name: `${r.display_name?.split(",")[0] || searchQuery} — ${areaName}`,
+                lat: String(lat),
+                lon: String(lng),
+                name: r.display_name?.split(",")[0] || "",
+                tag: areaName,
+                road: r.address?.road || undefined,
+              };
+            });
+          if (nominatimResults.length > 0) mergeResults(nominatimResults);
+        })
+        .catch(() => {});
+
+      // Photon (free OSM geocoder) — fallback for better coverage
+      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
+        .then(res => res.json())
+        .then(data => {
+          if (abortCtrl.signal.aborted || !data.features?.length) return;
           const photonResults: NominatimResult[] = data.features
             .filter((f: any) => f.geometry?.coordinates && isWithinServiceArea(f.geometry.coordinates[1], f.geometry.coordinates[0]))
             .map((f: any, i: number) => {
@@ -749,9 +673,9 @@ const DispatchTripForm = ({
           if (photonResults.length > 0) mergeResults(photonResults);
         })
         .catch(() => {});
-    }, 80); // 80ms debounce — fast real-time feel
+    }, 80);
 
-    return () => { googleAbort.abort(); };
+    return () => { abortCtrl.abort(); };
   }, [searchQuery, serviceLocations, namedLocations, recentBookings, findNearestServiceAreaName, isWithinServiceArea]);
 
   const selectLocation = (result: NominatimResult) => {

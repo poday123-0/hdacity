@@ -2,9 +2,12 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, MapPin, Undo2, Trash, Download, Loader2 } from "lucide-react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 interface PolygonPoint {
   lat: number;
@@ -12,6 +15,16 @@ interface PolygonPoint {
 }
 
 const emptyForm = { name: "", address: "", description: "", lat: "", lng: "" };
+
+const pinIcon = (color: string, size = 24) =>
+  L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+      <svg width="${size * 0.5}" height="${size * 0.5}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    </div>`,
+  });
 
 const AdminLocations = () => {
   const [locations, setLocations] = useState<any[]>([]);
@@ -22,16 +35,13 @@ const AdminLocations = () => {
   const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([]);
   const [drawingMode, setDrawingMode] = useState(false);
   const [fetchingPlaces, setFetchingPlaces] = useState<string | null>(null);
-  const { isLoaded } = useGoogleMaps();
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const polygonRef = useRef<any>(null);
-  const pointMarkersRef = useRef<any[]>([]);
-  const areaPolygonsRef = useRef<any[]>([]);
-  const areaMarkersRef = useRef<any[]>([]);
-  const clickListenerRef = useRef<any>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const polygonLayerRef = useRef<L.Polygon | L.Polyline | null>(null);
+  const pointMarkersRef = useRef<L.Marker[]>([]);
+  const areaLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -45,119 +55,89 @@ const AdminLocations = () => {
 
   useEffect(() => { fetchLocations(); }, []);
 
-  const clearAreaLayers = () => {
-    areaPolygonsRef.current.forEach(p => p.setMap(null));
-    areaPolygonsRef.current = [];
-    areaMarkersRef.current.forEach(m => m.setMap(null));
-    areaMarkersRef.current = [];
-  };
-
   const renderAreas = useCallback(() => {
-    const g = (window as any).google;
-    if (!mapInstance.current || !g?.maps) return;
-    clearAreaLayers();
+    if (!mapInstance.current) return;
+    if (areaLayerGroupRef.current) areaLayerGroupRef.current.clearLayers();
+    else areaLayerGroupRef.current = L.layerGroup().addTo(mapInstance.current);
 
     locations.forEach((loc) => {
       if (loc.polygon && Array.isArray(loc.polygon) && loc.polygon.length >= 3) {
-        const poly = new g.maps.Polygon({
-          paths: loc.polygon.map((p: PolygonPoint) => ({ lat: p.lat, lng: p.lng })),
-          strokeColor: "#4285F4",
-          fillColor: "#4285F4",
-          fillOpacity: 0.15,
-          strokeWeight: 2,
-          map: mapInstance.current,
-        });
-        areaPolygonsRef.current.push(poly);
+        const latlngs = loc.polygon.map((p: PolygonPoint) => [p.lat, p.lng] as [number, number]);
+        L.polygon(latlngs, { color: "#4285F4", fillColor: "#4285F4", fillOpacity: 0.15, weight: 2 })
+          .addTo(areaLayerGroupRef.current!);
       }
-
-      const el = document.createElement("div");
-      el.innerHTML = `<div style="background:#4285F4;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-      </div>`;
-      const m = new g.maps.marker.AdvancedMarkerElement({
-        map: mapInstance.current,
-        position: { lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) },
-        content: el,
-        title: loc.name,
-      });
-      areaMarkersRef.current.push(m);
+      L.marker([parseFloat(loc.lat), parseFloat(loc.lng)], { icon: pinIcon("#4285F4") })
+        .bindTooltip(loc.name, { permanent: false })
+        .addTo(areaLayerGroupRef.current!);
     });
   }, [locations]);
 
   // Initialize map
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!mapRef.current || mapInstance.current) return;
+    if (!showForm) return;
 
     const isDark = document.documentElement.classList.contains("dark");
-    const map = new g.maps.Map(mapRef.current, {
-      center: MALE_CENTER,
+    const map = L.map(mapRef.current, {
+      center: [MALE_CENTER.lat, MALE_CENTER.lng],
       zoom: 14,
-      mapId: "hda_admin_map",
-      styles: isDark ? darkMapStyle : [],
+      zoomControl: true,
+      attributionControl: false,
     });
+    L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
     mapInstance.current = map;
 
-    return () => { mapInstance.current = null; };
-  }, [isLoaded, showForm]);
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+      areaLayerGroupRef.current = null;
+    };
+  }, [showForm]);
 
-  useEffect(() => { renderAreas(); }, [locations, renderAreas, isLoaded]);
+  useEffect(() => { renderAreas(); }, [locations, renderAreas]);
 
   const clearPolygonPreview = () => {
-    if (polygonRef.current) { polygonRef.current.setMap(null); polygonRef.current = null; }
-    pointMarkersRef.current.forEach(m => m.setMap(null));
+    if (polygonLayerRef.current) { polygonLayerRef.current.remove(); polygonLayerRef.current = null; }
+    pointMarkersRef.current.forEach(m => m.remove());
     pointMarkersRef.current = [];
   };
 
   const updatePolygonPreview = useCallback((pts: PolygonPoint[]) => {
-    const g = (window as any).google;
-    if (!mapInstance.current || !g?.maps) return;
+    if (!mapInstance.current) return;
     clearPolygonPreview();
 
     pts.forEach((p, i) => {
-      const el = document.createElement("div");
-      el.innerHTML = `<div style="width:14px;height:14px;border-radius:50%;background:${i === 0 ? '#22c55e' : '#4285F4'};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`;
-      const m = new g.maps.marker.AdvancedMarkerElement({
-        map: mapInstance.current,
-        position: { lat: p.lat, lng: p.lng },
-        content: el,
-      });
+      const m = L.marker([p.lat, p.lng], {
+        icon: L.divIcon({
+          className: "",
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${i === 0 ? '#22c55e' : '#4285F4'};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+        }),
+      }).addTo(mapInstance.current!);
       pointMarkersRef.current.push(m);
     });
 
     if (pts.length >= 3) {
-      polygonRef.current = new g.maps.Polygon({
-        paths: pts.map(p => ({ lat: p.lat, lng: p.lng })),
-        strokeColor: "#ef4444",
-        fillColor: "#ef4444",
-        fillOpacity: 0.2,
-        strokeWeight: 2,
-        map: mapInstance.current,
-      });
+      polygonLayerRef.current = L.polygon(
+        pts.map(p => [p.lat, p.lng] as [number, number]),
+        { color: "#ef4444", fillColor: "#ef4444", fillOpacity: 0.2, weight: 2 }
+      ).addTo(mapInstance.current);
     } else if (pts.length === 2) {
-      polygonRef.current = new g.maps.Polyline({
-        path: pts.map(p => ({ lat: p.lat, lng: p.lng })),
-        strokeColor: "#ef4444",
-        strokeWeight: 2,
-        map: mapInstance.current,
-      });
+      polygonLayerRef.current = L.polyline(
+        pts.map(p => [p.lat, p.lng] as [number, number]),
+        { color: "#ef4444", weight: 2 }
+      ).addTo(mapInstance.current);
     }
   }, []);
 
   // Handle map clicks
   useEffect(() => {
-    const g = (window as any).google;
-    if (!mapInstance.current || !showForm || !g?.maps) return;
+    if (!mapInstance.current || !showForm) return;
     const map = mapInstance.current;
 
-    if (clickListenerRef.current) {
-      g.maps.event.removeListener(clickListenerRef.current);
-    }
-
-    clickListenerRef.current = map.addListener("click", (e: any) => {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
+    const onClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
 
       if (drawingMode) {
         setPolygonPoints((prev) => {
@@ -171,32 +151,22 @@ const AdminLocations = () => {
       } else {
         setForm((prev) => ({ ...prev, lat: lat.toFixed(6), lng: lng.toFixed(6) }));
         if (markerRef.current) {
-          markerRef.current.position = { lat, lng };
+          markerRef.current.setLatLng([lat, lng]);
         } else {
-          const el = document.createElement("div");
-          el.innerHTML = `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-          </div>`;
-          markerRef.current = new g.maps.marker.AdvancedMarkerElement({
-            map,
-            position: { lat, lng },
-            content: el,
-            gmpDraggable: true,
-          });
-          markerRef.current.addListener("dragend", () => {
-            const pos = markerRef.current.position;
-            setForm((prev) => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6) }));
+          markerRef.current = L.marker([lat, lng], {
+            icon: pinIcon("#ef4444", 28),
+            draggable: true,
+          }).addTo(map);
+          markerRef.current.on("dragend", () => {
+            const pos = markerRef.current?.getLatLng();
+            if (pos) setForm((prev) => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6) }));
           });
         }
       }
-    });
-
-    return () => {
-      if (clickListenerRef.current) {
-        g.maps.event.removeListener(clickListenerRef.current);
-        clickListenerRef.current = null;
-      }
     };
+
+    map.on("click", onClick);
+    return () => { map.off("click", onClick); };
   }, [showForm, drawingMode, updatePolygonPreview]);
 
   useEffect(() => {
@@ -204,8 +174,7 @@ const AdminLocations = () => {
       const lat = parseFloat(form.lat);
       const lng = parseFloat(form.lng);
       if (!isNaN(lat) && !isNaN(lng)) {
-        mapInstance.current.setCenter({ lat, lng });
-        mapInstance.current.setZoom(16);
+        mapInstance.current.setView([lat, lng], 16);
       }
     }
   }, [editingId]);
@@ -231,7 +200,7 @@ const AdminLocations = () => {
     setShowForm(false);
     setPolygonPoints([]);
     setDrawingMode(false);
-    if (markerRef.current) { markerRef.current.map = null; markerRef.current = null; }
+    if (markerRef.current) { markerRef.current.remove(); markerRef.current = null; }
     clearPolygonPreview();
   };
 
@@ -301,7 +270,6 @@ const AdminLocations = () => {
     resetForm();
     fetchLocations();
 
-    // Auto-fetch Google Places for this area
     if (savedId && polygonPoints.length >= 3) {
       fetchPlacesForArea(savedId);
     }
@@ -342,13 +310,7 @@ const AdminLocations = () => {
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Service Area" : "New Service Area"}</h3>
 
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 400 }}>
-            {isLoaded ? (
-              <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
-            ) : (
-              <div className="w-full h-full bg-surface flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
@@ -460,7 +422,7 @@ const AdminLocations = () => {
                           onClick={() => fetchPlacesForArea(loc.id)}
                           disabled={fetchingPlaces === loc.id}
                           className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1"
-                          title="Fetch all Google Places within this area"
+                          title="Fetch places within this area"
                         >
                           {fetchingPlaces === loc.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -490,20 +452,5 @@ const AdminLocations = () => {
     </div>
   );
 };
-
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#212121" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#292929" }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#383838" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#484848" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f2f" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1626" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] },
-];
 
 export default AdminLocations;

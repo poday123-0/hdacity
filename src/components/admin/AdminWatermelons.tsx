@@ -7,7 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Sparkles, Upload, Shuffle, Image, MapPin, Check, X, Gift, Car, Users, CheckCircle2, Search, Calendar, Wallet, Tag, Navigation } from "lucide-react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 interface ServiceLocation {
   id: string;
@@ -51,37 +55,21 @@ function isTooClose(lat: number, lng: number, existingItems: { lat: number; lng:
 }
 /** Visual map component for dragging a single marker to a new position */
 const MoveOnMap = ({ lat, lng, onConfirm, onCancel }: { lat: number; lng: number; onConfirm: (lat: number, lng: number) => void; onCancel: () => void }) => {
-  const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInst = useRef<any>(null);
-  const markerRef = useRef<any>(null);
   const posRef = useRef({ lat, lng });
 
   useEffect(() => {
-    if (!isLoaded || !mapRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
-
-    const map = new g.maps.Map(mapRef.current, {
-      center: { lat, lng }, zoom: 17, mapId: "hda_move_map",
-      disableDefaultUI: true, zoomControl: true,
-    });
-    mapInst.current = map;
-
-    const el = document.createElement("div");
-    el.innerHTML = `<div style="font-size:28px;cursor:grab;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🍉</div>`;
-    const marker = new g.maps.marker.AdvancedMarkerElement({
-      map, position: { lat, lng }, content: el, gmpDraggable: true,
-    });
-    markerRef.current = marker;
-
-    marker.addListener("dragend", () => {
-      const p = marker.position;
-      posRef.current = { lat: p.lat, lng: p.lng };
-    });
-
-    return () => { marker.map = null; };
-  }, [isLoaded, lat, lng]);
+    if (!mapRef.current) return;
+    const isDark = document.documentElement.classList.contains("dark");
+    const map = L.map(mapRef.current, { center: [lat, lng], zoom: 17, zoomControl: true, attributionControl: false });
+    L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
+    const marker = L.marker([lat, lng], {
+      draggable: true,
+      icon: L.divIcon({ className: "", iconSize: [28, 28], iconAnchor: [14, 14], html: `<div style="font-size:28px;cursor:grab;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🍉</div>` }),
+    }).addTo(map);
+    marker.on("dragend", () => { const p = marker.getLatLng(); posRef.current = { lat: p.lat, lng: p.lng }; });
+    return () => { map.remove(); };
+  }, [lat, lng]);
 
   return (
     <div className="border border-primary/30 rounded-xl overflow-hidden bg-primary/5">
@@ -101,56 +89,34 @@ const MoveOnMap = ({ lat, lng, onConfirm, onCancel }: { lat: number; lng: number
 
 /** Bulk map view to drag multiple items at once */
 const BulkMoveMap = ({ items, onConfirm, onCancel }: { items: PromoItem[]; onConfirm: (updates: { id: string; lat: number; lng: number }[]) => void; onCancel: () => void }) => {
-  const { isLoaded } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<Map<string, any>>(new Map());
   const positionsRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
   const [movedCount, setMovedCount] = useState(0);
 
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || items.length === 0) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!mapRef.current || items.length === 0) return;
+    const isDark = document.documentElement.classList.contains("dark");
+    const bounds = L.latLngBounds(items.map(item => [item.lat, item.lng] as [number, number]));
+    const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false });
+    L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
+    map.fitBounds(bounds, { padding: [40, 40] });
 
-    const bounds = new g.maps.LatLngBounds();
-    items.forEach(item => bounds.extend({ lat: item.lat, lng: item.lng }));
-
-    const map = new g.maps.Map(mapRef.current, {
-      center: bounds.getCenter(), zoom: 15, mapId: "hda_bulk_move",
-      disableDefaultUI: true, zoomControl: true,
-    });
-    map.fitBounds(bounds, 40);
-
-    // Init positions
-    items.forEach(item => {
-      positionsRef.current.set(item.id, { lat: item.lat, lng: item.lng });
-    });
-
-    // Create draggable markers
+    items.forEach(item => positionsRef.current.set(item.id, { lat: item.lat, lng: item.lng }));
     const movedIds = new Set<string>();
     items.forEach(item => {
-      const el = document.createElement("div");
-      el.innerHTML = `<div style="font-size:24px;cursor:grab;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));transition:transform 0.1s;" title="${item.amount} MVR - ${item.target_user_type}">🍉</div>`;
-      const marker = new g.maps.marker.AdvancedMarkerElement({
-        map, position: { lat: item.lat, lng: item.lng }, content: el, gmpDraggable: true,
-      });
-      markersRef.current.set(item.id, marker);
-
-      marker.addListener("dragend", () => {
-        const p = marker.position;
+      const marker = L.marker([item.lat, item.lng], {
+        draggable: true,
+        icon: L.divIcon({ className: "", iconSize: [24, 24], iconAnchor: [12, 12], html: `<div style="font-size:24px;cursor:grab;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));" title="${item.amount} MVR - ${item.target_user_type}">🍉</div>` }),
+      }).addTo(map);
+      marker.on("dragend", () => {
+        const p = marker.getLatLng();
         positionsRef.current.set(item.id, { lat: p.lat, lng: p.lng });
         movedIds.add(item.id);
         setMovedCount(movedIds.size);
-        // Highlight moved marker
-        el.innerHTML = `<div style="font-size:24px;cursor:grab;filter:drop-shadow(0 2px 6px rgba(34,197,94,0.6));transform:scale(1.2);" title="${item.amount} MVR - ${item.target_user_type}">🍉</div>`;
       });
     });
-
-    return () => {
-      markersRef.current.forEach(m => { m.map = null; });
-      markersRef.current.clear();
-    };
-  }, [isLoaded, items]);
+    return () => { map.remove(); };
+  }, [items]);
 
   const handleConfirm = () => {
     const updates: { id: string; lat: number; lng: number }[] = [];
@@ -185,57 +151,27 @@ const BulkMoveMap = ({ items, onConfirm, onCancel }: { items: PromoItem[]; onCon
 };
 
 /**
- * Snap a lat/lng to the nearest road using Google Maps Geocoder.
- * Returns snapped coords or null if no road found nearby.
+ * Snap a lat/lng to the nearest road using Nominatim reverse geocoding.
  */
 async function snapToRoad(lat: number, lng: number): Promise<{ lat: number; lng: number } | null> {
-  const g = (window as any).google;
-  if (!g?.maps?.Geocoder) return { lat, lng }; // fallback if no Google Maps
-
-  const geocoder = new g.maps.Geocoder();
-  return new Promise((resolve) => {
-    geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
-      if (status !== "OK" || !results?.length) {
-        resolve(null);
-        return;
-      }
-      // Look for a result that includes a road/street — means it's on land near a road
-      for (const r of results) {
-        const types: string[] = r.types || [];
-        if (
-          types.some((t: string) =>
-            ["street_address", "route", "intersection", "premise", "subpremise",
-             "point_of_interest", "establishment", "neighborhood", "sublocality"].includes(t)
-          )
-        ) {
-          const loc = r.geometry?.location;
-          if (loc) {
-            return resolve({ lat: loc.lat(), lng: loc.lng() });
-          }
-        }
-      }
-      // If first result is at least not "natural_feature" or "water" type, accept it
-      const first = results[0];
-      const firstTypes: string[] = first.types || [];
-      if (firstTypes.some((t: string) => ["natural_feature", "water", "ocean"].includes(t))) {
-        resolve(null); // In water
-      } else if (first.geometry?.location) {
-        resolve({ lat: first.geometry.location.lat(), lng: first.geometry.location.lng() });
-      } else {
-        resolve(null);
-      }
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`, {
+      headers: { "Accept-Language": "en" },
     });
-  });
+    const data = await res.json();
+    if (data?.lat && data?.lon) return { lat: parseFloat(data.lat), lng: parseFloat(data.lon) };
+    return null;
+  } catch {
+    return { lat, lng };
+  }
 }
 
 /**
  * Generate a random point near a service location and snap it to a road.
- * Retries up to maxRetries times with smaller offsets.
  */
 async function generateRoadPoint(baseLat: number, baseLng: number, maxRetries = 5): Promise<{ lat: number; lng: number } | null> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    // Use smaller range for Maldives islands (0.003 ≈ 300m)
-    const range = 0.003 - attempt * 0.0004; // shrink range on retries
+    const range = 0.003 - attempt * 0.0004;
     const lat = randomOffset(baseLat, Math.max(range, 0.001));
     const lng = randomOffset(baseLng, Math.max(range, 0.001));
     const snapped = await snapToRoad(lat, lng);
