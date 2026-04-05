@@ -94,8 +94,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
   const pickupRef = useRef<HTMLInputElement>(null);
   const dropoffRef = useRef<HTMLInputElement>(null);
   const stopRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const autocompleteServiceRef = useRef<any>(null);
-  const placesServiceRef = useRef<any>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const activeQuery = activeField === "pickup" ? pickupQuery
     : activeField === "dropoff" ? dropoffQuery
