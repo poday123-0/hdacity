@@ -1,49 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers, Calendar, Repeat, Construction, Car, TriangleAlert, Cone, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// Waze-inspired map style
-const wazeMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#f0efe9" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#52524e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }, { weight: 3 }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "on" }] },
-  { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#c9c9c1" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#e8e7df" }] },
-  { featureType: "landscape.man_made", elementType: "geometry.fill", stylers: [{ color: "#eceae2" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#dfddd5" }] },
-  { featureType: "poi.park", elementType: "geometry.fill", stylers: [{ color: "#b6e59e" }] },
-  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#4a8c3f" }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#d6d5cd" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#5ac8fa" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#38a3d0" }] },
-  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road.highway", elementType: "labels.text.stroke", stylers: [{ color: "#38a3d0" }, { weight: 3 }] },
-  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: "#ffd866" }] },
-  { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: "#d4b04a" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#aadaff" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#5b98c0" }] },
-];
-
-const wazeDarkStyle = [
-  { elementType: "geometry", stylers: [{ color: "#1c1c28" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#a0a0a8" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1c1c28" }, { weight: 3 }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "on" }, { lightness: -30 }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#22222e" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#282838" }] },
-  { featureType: "poi.park", elementType: "geometry.fill", stylers: [{ color: "#1a3a20" }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2e2e3e" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1c1c28" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#2a7ab5" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1a5a8a" }] },
-  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: "#8a7a30" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2e" }] },
-];
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 type DrawMode = null | "point" | "line";
 
@@ -77,15 +41,15 @@ const DAY_OPTIONS = [
 
 const DispatchGoogleMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<google.maps.Map | null>(null);
-  const searchMarkerRef = useRef<google.maps.Marker | null>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const searchMarkerRef = useRef<L.Marker | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [namedLocations, setNamedLocations] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" }>>([]);
   const [serviceAreas, setServiceAreas] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "service" }>>([]);
   const [filteredResults, setFilteredResults] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" | "service" }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { isLoaded, error } = useGoogleMaps();
 
   // Road closure state
   const { closures, pendingClosures, addClosure, removeClosure, updateClosure, approveClosure, rejectClosure } = useRoadClosures();
@@ -110,43 +74,40 @@ const DispatchGoogleMap = () => {
   const [editClosureExpiry, setEditClosureExpiry] = useState("");
 
   // Refs for map objects
-  const closureMarkersRef = useRef<any[]>([]);
-  const closureLinesRef = useRef<any[]>([]);
-  const drawTempMarkersRef = useRef<any[]>([]);
-  const drawTempLineRef = useRef<any>(null);
-  const clickListenerRef = useRef<any>(null);
+  const closureLayersRef = useRef<L.Layer[]>([]);
+  const drawTempMarkersRef = useRef<L.Marker[]>([]);
+  const drawTempLineRef = useRef<L.Polyline | null>(null);
 
-  // Init map
+  // Init Leaflet map
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!mapRef.current || mapInstance.current) return;
 
     const isDark = document.documentElement.classList.contains("dark");
 
-    const map = new g.maps.Map(mapRef.current, {
-      center: { lat: 4.2105, lng: 73.5400 },
+    const map = L.map(mapRef.current, {
+      center: [4.2105, 73.5400],
       zoom: 16,
-      disableDefaultUI: true,
       zoomControl: true,
-      fullscreenControl: true,
-      gestureHandling: "greedy",
-      styles: isDark ? wazeDarkStyle : wazeMapStyle,
+      attributionControl: false,
     });
 
+    const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
+    const tileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+    tileLayerRef.current = tileLayer;
     mapInstance.current = map;
 
     const observer = new MutationObserver(() => {
       const dark = document.documentElement.classList.contains("dark");
-      map.setOptions({ styles: dark ? wazeDarkStyle : wazeMapStyle });
+      if (tileLayerRef.current) tileLayerRef.current.setUrl(dark ? DARK_TILES : LIGHT_TILES);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     return () => {
       observer.disconnect();
+      map.remove();
       mapInstance.current = null;
     };
-  }, [isLoaded]);
+  }, []);
 
   // Load named locations & service areas
   useEffect(() => {
@@ -187,262 +148,155 @@ const DispatchGoogleMap = () => {
   }, [searchQuery, namedLocations, serviceAreas]);
 
   const selectNamedLocation = useCallback((loc: { id: string; name: string; address: string; lat: number; lng: number; type: string }) => {
-    const g = (window as any).google;
-    if (!g?.maps || !mapInstance.current) return;
+    if (!mapInstance.current) return;
 
-    if (searchMarkerRef.current) searchMarkerRef.current.setMap(null);
-    const pos = { lat: loc.lat, lng: loc.lng };
-    mapInstance.current.panTo(pos);
-    mapInstance.current.setZoom(18);
+    if (searchMarkerRef.current) {
+      mapInstance.current.removeLayer(searchMarkerRef.current);
+      searchMarkerRef.current = null;
+    }
 
-    searchMarkerRef.current = new g.maps.Marker({
-      map: mapInstance.current,
-      position: pos,
-      title: loc.name,
-      animation: g.maps.Animation.DROP,
-      icon: {
-        path: g.maps.SymbolPath.CIRCLE,
-        scale: 12, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3,
-      },
+    const pos: [number, number] = [loc.lat, loc.lng];
+    mapInstance.current.setView(pos, 18);
+
+    const icon = L.divIcon({
+      className: "",
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      html: `<div style="width:24px;height:24px;border-radius:50%;background:#22c55e;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
     });
 
-    const iw = new g.maps.InfoWindow({
-      content: `<div style="font-size:12px;font-weight:600;padding:4px">${loc.name}<br/><span style="font-weight:400;color:#666">${loc.address}</span></div>`,
-    });
-    iw.open(mapInstance.current, searchMarkerRef.current);
+    searchMarkerRef.current = L.marker(pos, { icon, zIndexOffset: 1000 }).addTo(mapInstance.current);
+    searchMarkerRef.current.bindPopup(`<div style="font-size:12px;font-weight:600;padding:4px">${loc.name}<br/><span style="font-weight:400;color:#666">${loc.address}</span></div>`).openPopup();
 
     setSearchQuery(loc.name);
     if (inputRef.current) inputRef.current.value = loc.name;
     setShowSuggestions(false);
   }, []);
 
-  // Suppress Google Places pac-container dropdown on our search input
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      document.querySelectorAll(".pac-container").forEach((el) => {
-        (el as HTMLElement).style.display = "none";
-      });
-    });
-    observer.observe(document.body, { childList: true });
-    return () => observer.disconnect();
-  }, []);
-
-
   // Draw mode click listener
   useEffect(() => {
-    if (!mapInstance.current || !isLoaded) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
-
-    // Remove old listener
-    if (clickListenerRef.current) {
-      g.maps.event.removeListener(clickListenerRef.current);
-      clickListenerRef.current = null;
-    }
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
 
     if (!drawMode) {
-      // Clear temp markers
-      drawTempMarkersRef.current.forEach((m) => m.setMap(null));
+      drawTempMarkersRef.current.forEach(m => map.removeLayer(m));
       drawTempMarkersRef.current = [];
-      if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+      if (drawTempLineRef.current) { map.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
       return;
     }
 
-    clickListenerRef.current = mapInstance.current.addListener("click", (e: any) => {
-      const pos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      const pos = { lat: e.latlng.lat, lng: e.latlng.lng };
 
       if (drawMode === "point") {
-        // Immediately open form
         setPendingCoords([pos]);
         setPendingType("point");
         setShowClosureForm(true);
         setDrawMode(null);
-        // Temp marker
-        const m = new g.maps.Marker({
-          map: mapInstance.current,
-          position: pos,
-          icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 0.8, strokeColor: "#fff", strokeWeight: 2 },
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+          html: `<div style="width:20px;height:20px;border-radius:50%;background:#ef4444;opacity:0.8;border:2px solid white"></div>`,
         });
+        const m = L.marker([pos.lat, pos.lng], { icon }).addTo(map);
         drawTempMarkersRef.current.push(m);
       } else if (drawMode === "line") {
         setLinePoints((prev) => {
           const updated = [...prev, pos];
-          // Add temp marker — click to remove this point
-          const markerIndex = updated.length - 1;
-          const m = new g.maps.Marker({
-            map: mapInstance.current,
-            position: pos,
-            icon: { path: g.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#ef4444", fillOpacity: 0.9, strokeColor: "#fff", strokeWeight: 2 },
-            title: "Click to remove this point",
+          const icon = L.divIcon({
+            className: "",
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            html: `<div style="width:12px;height:12px;border-radius:50%;background:#ef4444;opacity:0.9;border:2px solid white"></div>`,
           });
-          m.addListener("click", (evt: any) => {
-            if (evt?.domEvent) evt.domEvent.stopPropagation();
-            // Remove this marker
-            m.setMap(null);
-            drawTempMarkersRef.current = drawTempMarkersRef.current.filter((mk) => mk !== m);
-            // Remove this point from linePoints
-            setLinePoints((pts) => {
-              const newPts = pts.filter((_, i) => i !== markerIndex);
-              // Rebuild temp line
-              const gg = (window as any).google;
-              if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
-              if (newPts.length > 1 && gg?.maps) {
-                drawTempLineRef.current = new gg.maps.Polyline({
-                  map: mapInstance.current,
-                  path: newPts,
-                  strokeColor: "#ef4444",
-                  strokeWeight: 5,
-                  strokeOpacity: 0.7,
-                  icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
-                });
-              }
-              return newPts;
-            });
-          });
+          const m = L.marker([pos.lat, pos.lng], { icon }).addTo(map);
           drawTempMarkersRef.current.push(m);
 
-          // Update temp line
-          if (drawTempLineRef.current) drawTempLineRef.current.setMap(null);
+          if (drawTempLineRef.current) map.removeLayer(drawTempLineRef.current);
           if (updated.length > 1) {
-            drawTempLineRef.current = new g.maps.Polyline({
-              map: mapInstance.current,
-              path: updated,
-              strokeColor: "#ef4444",
-              strokeWeight: 5,
-              strokeOpacity: 0.7,
-              icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
-            });
+            drawTempLineRef.current = L.polyline(
+              updated.map(p => [p.lat, p.lng] as [number, number]),
+              { color: "#ef4444", weight: 5, opacity: 0.7, dashArray: "10 6" }
+            ).addTo(map);
           }
           return updated;
         });
       }
-    });
-
-    return () => {
-      if (clickListenerRef.current) {
-        g.maps.event.removeListener(clickListenerRef.current);
-        clickListenerRef.current = null;
-      }
     };
-  }, [drawMode, isLoaded]);
+
+    map.on("click", handleClick);
+    return () => { map.off("click", handleClick); };
+  }, [drawMode]);
 
   // Render closures on map
   useEffect(() => {
-    if (!mapInstance.current || !isLoaded) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
 
-    // Clear old
-    closureMarkersRef.current.forEach((m) => m.setMap(null));
-    closureLinesRef.current.forEach((l) => l.setMap(null));
-    closureMarkersRef.current = [];
-    closureLinesRef.current = [];
+    closureLayersRef.current.forEach(l => map.removeLayer(l));
+    closureLayersRef.current = [];
 
     closures.forEach((c) => {
       const coords = c.coordinates;
       const sev = SEVERITY_OPTIONS.find((s) => s.value === c.severity) || SEVERITY_OPTIONS[0];
 
       if (c.closure_type === "point" && coords.length > 0) {
-        const marker = new g.maps.Marker({
-          map: mapInstance.current,
-          position: coords[0],
-          icon: {
-            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
-            fillColor: sev.color,
-            fillOpacity: 1,
-            strokeColor: "#fff",
-            strokeWeight: 1.5,
-            scale: 1.3,
-            anchor: new g.maps.Point(12, 12),
-          },
-          zIndex: 2000,
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          html: `<div style="width:26px;height:26px;border-radius:50%;background:${sev.color};border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">⚠</div>`,
         });
+        const marker = L.marker([coords[0].lat, coords[0].lng], { icon, zIndexOffset: 2000 }).addTo(map);
 
         const driverInfo = c.reported_by_type === "driver" && c.reporter_name
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
-        const ptContainer = document.createElement("div");
-        ptContainer.style.cssText = "font-size:12px;padding:4px;max-width:220px";
-        ptContainer.innerHTML = `
-          ${driverInfo}
-          <strong style="color:${sev.color}">${sev.label}</strong>
-          ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
-          ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
-          <div style="display:flex;gap:6px;margin-top:6px">
-            <button style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600" data-action="edit">✎ Edit</button>
-            <button style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600" data-action="remove">✕ Remove</button>
+        const popupHtml = `
+          <div style="font-size:12px;padding:4px;max-width:220px">
+            ${driverInfo}
+            <strong style="color:${sev.color}">${sev.label}</strong>
+            ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+            ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
           </div>`;
-        ptContainer.querySelector('[data-action="edit"]')?.addEventListener("click", () => {
-          (window as any).__editClosure__?.(c.id, c.severity, c.notes || '', c.expires_at || '');
-        });
-        ptContainer.querySelector('[data-action="remove"]')?.addEventListener("click", () => {
-          (window as any).__removeClosure__?.(c.id);
-        });
-        const iw = new g.maps.InfoWindow({ content: ptContainer });
-        marker.addListener("click", () => iw.open(mapInstance.current, marker));
-        closureMarkersRef.current.push(marker);
+        marker.bindPopup(popupHtml);
+        closureLayersRef.current.push(marker);
       } else if (c.closure_type === "line" && coords.length > 1) {
-        const line = new g.maps.Polyline({
-          map: mapInstance.current,
-          path: coords,
-          strokeColor: sev.color,
-          strokeWeight: 6,
-          strokeOpacity: 0.8,
-          icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
-          zIndex: 1999,
-        });
+        const line = L.polyline(
+          coords.map(p => [p.lat, p.lng] as [number, number]),
+          { color: sev.color, weight: 6, opacity: 0.8, dashArray: "10 6" }
+        ).addTo(map);
 
-        // Click on line to show info
         const midIdx = Math.floor(coords.length / 2);
         const midPoint = coords[midIdx];
-        const infoMarker = new g.maps.Marker({
-          map: mapInstance.current,
-          position: midPoint,
-          icon: {
-            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
-            fillColor: sev.color,
-            fillOpacity: 1,
-            strokeColor: "#fff",
-            strokeWeight: 1.5,
-            scale: 1.3,
-            anchor: new g.maps.Point(12, 12),
-          },
-          zIndex: 2001,
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          html: `<div style="width:26px;height:26px;border-radius:50%;background:${sev.color};border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">⚠</div>`,
         });
+        const infoMarker = L.marker([midPoint.lat, midPoint.lng], { icon, zIndexOffset: 2001 }).addTo(map);
 
         const lineDriverInfo = c.reported_by_type === "driver" && c.reporter_name
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
-        const lineContainer = document.createElement("div");
-        lineContainer.style.cssText = "font-size:12px;padding:4px;max-width:220px";
-        lineContainer.innerHTML = `
-          ${lineDriverInfo}
-          <strong style="color:${sev.color}">${sev.label}</strong>
-          ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
-          ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
-          <div style="display:flex;gap:6px;margin-top:6px">
-            <button style="font-size:11px;color:#3b82f6;cursor:pointer;background:none;border:1px solid #3b82f6;border-radius:4px;padding:2px 8px;font-weight:600" data-action="edit">✎ Edit</button>
-            <button style="font-size:11px;color:#ef4444;cursor:pointer;background:none;border:1px solid #ef4444;border-radius:4px;padding:2px 8px;font-weight:600" data-action="remove">✕ Remove</button>
+        const popupHtml = `
+          <div style="font-size:12px;padding:4px;max-width:220px">
+            ${lineDriverInfo}
+            <strong style="color:${sev.color}">${sev.label}</strong>
+            ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+            ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
           </div>`;
-        lineContainer.querySelector('[data-action="edit"]')?.addEventListener("click", () => {
-          (window as any).__editClosure__?.(c.id, c.severity, c.notes || '', c.expires_at || '');
-        });
-        lineContainer.querySelector('[data-action="remove"]')?.addEventListener("click", () => {
-          (window as any).__removeClosure__?.(c.id);
-        });
-        const iw = new g.maps.InfoWindow({ content: lineContainer });
-        infoMarker.addListener("click", () => iw.open(mapInstance.current, infoMarker));
-        line.addListener("click", () => iw.open(mapInstance.current, infoMarker));
+        infoMarker.bindPopup(popupHtml);
 
-        closureLinesRef.current.push(line);
-        closureMarkersRef.current.push(infoMarker);
+        closureLayersRef.current.push(line);
+        closureLayersRef.current.push(infoMarker);
       }
     });
-  }, [closures, isLoaded]);
+  }, [closures]);
 
-  // Pending driver closures no longer needed — driver reports are auto-approved
-
-  // Global remove/approve/reject handlers
+  // Global remove/edit handlers
   useEffect(() => {
     (window as any).__removeClosure__ = async (id: string) => {
       await removeClosure(id);
@@ -473,8 +327,8 @@ const DispatchGoogleMap = () => {
   const clearSearch = useCallback(() => {
     setSearchQuery("");
     if (inputRef.current) inputRef.current.value = "";
-    if (searchMarkerRef.current) {
-      searchMarkerRef.current.setMap(null);
+    if (searchMarkerRef.current && mapInstance.current) {
+      mapInstance.current.removeLayer(searchMarkerRef.current);
       searchMarkerRef.current = null;
     }
   }, []);
@@ -494,9 +348,11 @@ const DispatchGoogleMap = () => {
   const cancelDraw = () => {
     setDrawMode(null);
     setLinePoints([]);
-    drawTempMarkersRef.current.forEach((m) => m.setMap(null));
-    drawTempMarkersRef.current = [];
-    if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+    if (mapInstance.current) {
+      drawTempMarkersRef.current.forEach(m => mapInstance.current!.removeLayer(m));
+      drawTempMarkersRef.current = [];
+      if (drawTempLineRef.current) { mapInstance.current.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+    }
   };
 
   const submitClosure = async () => {
@@ -520,9 +376,11 @@ const DispatchGoogleMap = () => {
         scheduled_date: scheduleType === "scheduled" ? scheduledDate || null : null,
       });
       toast({ title: "Road closure added" });
-      drawTempMarkersRef.current.forEach((m) => m.setMap(null));
-      drawTempMarkersRef.current = [];
-      if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+      if (mapInstance.current) {
+        drawTempMarkersRef.current.forEach(m => mapInstance.current!.removeLayer(m));
+        drawTempMarkersRef.current = [];
+        if (drawTempLineRef.current) { mapInstance.current.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+      }
     } catch {
       toast({ title: "Failed to add closure", variant: "destructive" });
     }
@@ -536,22 +394,6 @@ const DispatchGoogleMap = () => {
     setScheduleEndTime("17:00");
     setScheduledDate("");
   };
-
-  if (error) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-background text-muted-foreground text-sm">
-        Map unavailable
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full h-full">
@@ -577,7 +419,6 @@ const DispatchGoogleMap = () => {
             </button>
           )}
         </div>
-        {/* Suggestions dropdown */}
         {showSuggestions && filteredResults.length > 0 && (
           <div className="mt-1 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
             {filteredResults.some((r) => r.type === "service") && (
@@ -681,7 +522,6 @@ const DispatchGoogleMap = () => {
       {showClosureForm && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-background border border-border rounded-2xl shadow-2xl w-96 max-w-[92vw] max-h-[85vh] overflow-y-auto">
-            {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-border">
               <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -695,7 +535,6 @@ const DispatchGoogleMap = () => {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Severity - grid of cards */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Type</label>
                 <div className="grid grid-cols-5 gap-1.5">
@@ -716,7 +555,6 @@ const DispatchGoogleMap = () => {
                 </div>
               </div>
 
-              {/* Notes */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Notes</label>
                 <input
@@ -728,7 +566,6 @@ const DispatchGoogleMap = () => {
                 />
               </div>
 
-              {/* Schedule Type Tabs */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Schedule</label>
                 <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
@@ -753,7 +590,6 @@ const DispatchGoogleMap = () => {
                 </div>
               </div>
 
-              {/* Immediate: expiry */}
               {scheduleType === "immediate" && (
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -769,7 +605,6 @@ const DispatchGoogleMap = () => {
                 </div>
               )}
 
-              {/* Scheduled: date + time range */}
               {scheduleType === "scheduled" && (
                 <div className="space-y-3 p-3 bg-muted/30 rounded-xl border border-border">
                   <div>
@@ -804,7 +639,6 @@ const DispatchGoogleMap = () => {
                 </div>
               )}
 
-              {/* Recurring: day picker + time range */}
               {scheduleType === "recurring" && (
                 <div className="space-y-3 p-3 bg-muted/30 rounded-xl border border-border">
                   <div>
@@ -853,14 +687,15 @@ const DispatchGoogleMap = () => {
               )}
             </div>
 
-            {/* Footer actions */}
             <div className="flex gap-2 px-5 pb-5 pt-2 border-t border-border">
               <button
                 onClick={() => {
                   setShowClosureForm(false);
-                  drawTempMarkersRef.current.forEach((m) => m.setMap(null));
-                  drawTempMarkersRef.current = [];
-                  if (drawTempLineRef.current) { drawTempLineRef.current.setMap(null); drawTempLineRef.current = null; }
+                  if (mapInstance.current) {
+                    drawTempMarkersRef.current.forEach(m => mapInstance.current!.removeLayer(m));
+                    drawTempMarkersRef.current = [];
+                    if (drawTempLineRef.current) { mapInstance.current.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+                  }
                 }}
                 className="flex-1 py-2.5 text-xs rounded-xl border border-border text-muted-foreground hover:bg-accent font-medium transition-all"
               >
@@ -892,7 +727,6 @@ const DispatchGoogleMap = () => {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Severity */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Type</label>
                 <div className="grid grid-cols-5 gap-1.5">
@@ -913,7 +747,6 @@ const DispatchGoogleMap = () => {
                 </div>
               </div>
 
-              {/* Notes */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Notes</label>
                 <input
@@ -925,7 +758,6 @@ const DispatchGoogleMap = () => {
                 />
               </div>
 
-              {/* Expiry */}
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <select

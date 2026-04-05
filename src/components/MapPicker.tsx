@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Loader2, X, Check, Crosshair, Navigation, Search } from "lucide-react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,20 +22,13 @@ interface MapPickerProps {
 }
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
-
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8a8a9a" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a2a3e" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2b" }] },
-  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#9a9aaa" }] },
-  { featureType: "poi", elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
-];
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNearbySelect = true }: MapPickerProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [center, setCenter] = useState({ lat: initialLat || MALE_CENTER.lat, lng: initialLng || MALE_CENTER.lng });
   const [address, setAddress] = useState("");
   const [placeName, setPlaceName] = useState("");
@@ -42,8 +36,6 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   const [mapReady, setMapReady] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const nearbyRef = useRef<ReturnType<typeof setTimeout>>(); // kept for potential future use
-  const { isLoaded } = useGoogleMaps();
   const [isPanning, setIsPanning] = useState(false);
   const skipReverseGeocodeRef = useRef(false);
 
@@ -143,52 +135,55 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     );
   }, []);
 
-  // Init map
+  // Init Leaflet map
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!mapRef.current || mapInstance.current) return;
 
     const isDark = document.documentElement.classList.contains("dark");
 
-    const map = new g.maps.Map(mapRef.current, {
-      center,
+    const map = L.map(mapRef.current, {
+      center: [center.lat, center.lng],
       zoom: 17,
-      disableDefaultUI: true,
       zoomControl: false,
-      styles: isDark ? darkMapStyle : [],
-      gestureHandling: "greedy",
+      attributionControl: false,
     });
+
+    const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
+    const tileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+    tileLayerRef.current = tileLayer;
 
     mapInstance.current = map;
     setMapReady(true);
 
-    map.addListener("dragstart", () => setIsPanning(true));
+    map.on("movestart", () => setIsPanning(true));
 
-    map.addListener("idle", () => {
+    map.on("moveend", () => {
       const c = map.getCenter();
-      if (c) {
-        setCenter({ lat: c.lat(), lng: c.lng() });
-      }
+      setCenter({ lat: c.lat, lng: c.lng });
       setIsPanning(false);
     });
 
+    // Theme observer
     const themeObserver = new MutationObserver(() => {
       const isDark = document.documentElement.classList.contains("dark");
-      const colorScheme = g?.maps?.ColorScheme;
-      if (colorScheme) {
-        mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
+      const newUrl = isDark ? DARK_TILES : LIGHT_TILES;
+      if (tileLayerRef.current) {
+        tileLayerRef.current.setUrl(newUrl);
       }
-      mapInstance.current?.setOptions({ styles: isDark ? darkMapStyle : [] });
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
-    return () => { mapInstance.current = null; themeObserver.disconnect(); };
-  }, [isLoaded]);
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+      themeObserver.disconnect();
+    };
+  }, []);
 
+  // Pan to initial center if map already created but center changed before map init
   useEffect(() => {
     if (mapInstance.current && !mapReady) {
-      mapInstance.current.setCenter(center);
+      mapInstance.current.setView([center.lat, center.lng]);
     }
   }, [center, mapReady]);
 
@@ -202,7 +197,6 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        // Check local named/service locations first for accurate place names
         const result = await reverseGeocodeLocation(center.lat, center.lng, { skipNearbyPlace: true });
         setPlaceName(result.name);
         setAddress(result.address);
@@ -215,7 +209,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [center.lat, center.lng]);
 
-  // Use pre-loaded named/service locations for nearby chips, fallback to Google Places
+  // Nearby places from local data
   useEffect(() => {
     const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       const R = 6371000;
@@ -225,44 +219,13 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
-    // First try local named/service locations
     const nearby = searchLocations
       .map(l => ({ name: l.name, vicinity: l.address || "", lat: Number(l.lat), lng: Number(l.lng), dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
       .filter(l => l.dist <= 300 && l.name !== placeName)
       .sort((a, b) => a.dist - b.dist)
-      .slice(0, 3);
+      .slice(0, 6);
 
-    // Always also fetch Google Places and merge
-    const g = (window as any).google;
-    if (!g?.maps?.places?.PlacesService || !mapInstance.current) {
-      setNearbyPlaces(nearby);
-      return;
-    }
-
-    const svc = new g.maps.places.PlacesService(mapInstance.current);
-    svc.nearbySearch(
-      {
-        location: new g.maps.LatLng(center.lat, center.lng),
-        rankBy: g.maps.places.RankBy.DISTANCE,
-        type: "point_of_interest",
-      },
-      (results: any[] | null, status: string) => {
-        const existingNames = new Set(nearby.map(p => p.name.toLowerCase()));
-        let googlePlaces: NearbyPlace[] = [];
-        if (status === "OK" && results) {
-          googlePlaces = results
-            .filter((p: any) => p.name && p.geometry?.location && !existingNames.has(p.name.toLowerCase()))
-            .slice(0, 4)
-            .map((p: any) => ({
-              name: p.name,
-              vicinity: p.vicinity || "",
-              lat: p.geometry.location.lat(),
-              lng: p.geometry.location.lng(),
-            }));
-        }
-        setNearbyPlaces([...nearby, ...googlePlaces].slice(0, 6));
-      }
-    );
+    setNearbyPlaces(nearby);
   }, [center.lat, center.lng, searchLocations, placeName]);
 
   const handleRecenter = () => {
@@ -270,7 +233,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        mapInstance.current.panTo(p);
+        mapInstance.current?.panTo([p.lat, p.lng]);
         setCenter(p);
       },
       () => {},
@@ -280,7 +243,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
 
   const handleZoom = (dir: "in" | "out") => {
     if (!mapInstance.current) return;
-    const z = mapInstance.current.getZoom() || 16;
+    const z = mapInstance.current.getZoom();
     mapInstance.current.setZoom(dir === "in" ? z + 1 : z - 1);
   };
 
@@ -354,8 +317,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                         setPlaceName(r.name);
                         setAddress(r.name);
                         if (mapInstance.current) {
-                          mapInstance.current.panTo(newCenter);
-                          mapInstance.current.setZoom(18);
+                          mapInstance.current.setView([newCenter.lat, newCenter.lng], 18);
                         }
                       }}
                       className="flex items-center gap-2.5 w-full px-3.5 py-2.5 hover:bg-primary/5 text-left transition-colors border-b border-border/50 last:border-0"

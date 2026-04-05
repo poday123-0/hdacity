@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, X, MapPin, Gift, Sparkles } from "lucide-react";
+import L from "leaflet";
 
 interface PromoItem {
   id: string;
@@ -22,7 +23,7 @@ interface WatermelonMapOverlayProps {
   userId: string;
   userLat: number | null;
   userLng: number | null;
-  mapInstance: any;
+  mapInstance: L.Map | null;
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -34,90 +35,14 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/**
- * Road-type identifiers from Google Geocoding results.
- */
-const ROAD_TYPES = new Set(["street_address", "route", "intersection", "premise", "subpremise"]);
-const WATER_TYPES = new Set(["natural_feature", "water", "ocean", "lake", "pond"]);
-
-/**
- * Try to reverse-geocode a single point and return a road-snapped position.
- * Returns null if the location is water, undefined if no road found.
- */
-function geocodeForRoad(
-  geocoder: google.maps.Geocoder,
-  lat: number,
-  lng: number
-): Promise<{ lat: number; lng: number } | null | undefined> {
-  return new Promise((resolve) => {
-    geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
-      if (status !== "OK" || !results?.length) {
-        resolve(undefined);
-        return;
-      }
-      // Check if this is water first
-      const firstTypes: string[] = results[0].types || [];
-      if (firstTypes.some((t: string) => WATER_TYPES.has(t))) {
-        resolve(null); // Water — hide marker
-        return;
-      }
-      // Look for a road-type result
-      for (const r of results) {
-        const types: string[] = r.types || [];
-        if (types.some((t: string) => ROAD_TYPES.has(t))) {
-          const loc = r.geometry?.location;
-          if (loc) {
-            resolve({ lat: loc.lat(), lng: loc.lng() });
-            return;
-          }
-        }
-      }
-      resolve(undefined); // No road found at this offset
-    });
-  });
-}
-
-/**
- * Snap a lat/lng to the nearest road by trying the original point
- * and several nearby offsets (~50m apart). Returns null to hide the marker.
- */
-async function snapToNearestRoad(lat: number, lng: number): Promise<{ lat: number; lng: number } | null> {
-  const g = (window as any).google;
-  if (!g?.maps?.Geocoder) return { lat, lng };
-
-  const geocoder = new g.maps.Geocoder();
-
-  // Try original point first
-  const direct = await geocodeForRoad(geocoder, lat, lng);
-  if (direct === null) return null; // Water
-  if (direct) return direct; // Found a road
-
-  // Try offsets in 8 directions (~60m each) to find the nearest road
-  const OFFSET = 0.0006; // ~60m in degrees
-  const offsets = [
-    [OFFSET, 0], [-OFFSET, 0], [0, OFFSET], [0, -OFFSET],
-    [OFFSET, OFFSET], [-OFFSET, -OFFSET], [OFFSET, -OFFSET], [-OFFSET, OFFSET],
-  ];
-
-  for (const [dLat, dLng] of offsets) {
-    const result = await geocodeForRoad(geocoder, lat + dLat, lng + dLng);
-    if (result === null) return null; // Nearby is water
-    if (result) return result; // Found a road nearby
-  }
-
-  // No road found anywhere nearby — hide the marker
-  return null;
-}
-
 const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance }: WatermelonMapOverlayProps) => {
   const [items, setItems] = useState<PromoItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<PromoItem | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimedReward, setClaimedReward] = useState<{ type: string; description: string } | null>(null);
-  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const snappedCacheRef = useRef<Map<string, { lat: number; lng: number } | null>>(new Map());
+  const markersRef = useRef<L.Marker[]>([]);
+
   const fetchItems = useCallback(async () => {
-    // Fetch rewards targeted at this user type OR "both"
     const { data } = await supabase
       .from("promo_watermelons")
       .select("id, lat, lng, promo_type, amount, fee_free_months, free_trips, target_user_type, claim_radius_m, icon_url")
@@ -136,46 +61,15 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
     return () => { supabase.removeChannel(channel); };
   }, [fetchItems, userType]);
 
-  // Place markers on map — snap to roads, hide water markers
-  // Clear cache when items change so new data gets fresh snapping
-  useEffect(() => { snappedCacheRef.current.clear(); }, [items]);
+  // Place Leaflet markers on map
   useEffect(() => {
-    if (!mapInstance || !window.google?.maps?.marker?.AdvancedMarkerElement) return;
+    if (!mapInstance) return;
 
-    let cancelled = false;
+    // Clear old markers
+    markersRef.current.forEach(m => mapInstance.removeLayer(m));
+    markersRef.current = [];
 
-    const placeMarkers = async () => {
-      // Clear old markers
-      markersRef.current.forEach(m => m.map = null);
-      markersRef.current = [];
-
-      for (const item of items) {
-        if (cancelled) return;
-
-        // Use the exact coordinates from the database — admin already positioned them
-        const snapped = { lat: item.lat, lng: item.lng };
-
-        const el = document.createElement("div");
-        el.className = "promo-item-marker";
-
-        if (item.icon_url) {
-          el.innerHTML = `<img src="${item.icon_url}" style="width:36px;height:36px;cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));animation:promo-bob 2s ease-in-out infinite;object-fit:contain;border-radius:6px;" />`;
-        } else {
-          el.innerHTML = `<div style="font-size:30px;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));animation:promo-bob 2s ease-in-out infinite;transform-origin:center bottom;">🍉</div>`;
-        }
-        el.onclick = () => setSelectedItem(item);
-
-        const marker = new google.maps.marker.AdvancedMarkerElement({
-          position: snapped,
-          map: mapInstance,
-          content: el,
-        });
-        markersRef.current.push(marker);
-      }
-    };
-
-    placeMarkers();
-
+    // Add promo bob animation style
     if (!document.getElementById("promo-item-styles")) {
       const style = document.createElement("style");
       style.id = "promo-item-styles";
@@ -188,9 +82,25 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
       document.head.appendChild(style);
     }
 
+    for (const item of items) {
+      const html = item.icon_url
+        ? `<img src="${item.icon_url}" style="width:36px;height:36px;cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));animation:promo-bob 2s ease-in-out infinite;object-fit:contain;border-radius:6px;" />`
+        : `<div style="font-size:30px;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));animation:promo-bob 2s ease-in-out infinite;transform-origin:center bottom;">🍉</div>`;
+
+      const icon = L.divIcon({
+        className: "promo-item-marker",
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        html,
+      });
+
+      const marker = L.marker([item.lat, item.lng], { icon, zIndexOffset: 2000 }).addTo(mapInstance);
+      marker.on("click", () => setSelectedItem(item));
+      markersRef.current.push(marker);
+    }
+
     return () => {
-      cancelled = true;
-      markersRef.current.forEach(m => m.map = null);
+      markersRef.current.forEach(m => mapInstance.removeLayer(m));
       markersRef.current = [];
     };
   }, [items, mapInstance]);
@@ -277,7 +187,6 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
               className="bg-card rounded-t-2xl shadow-2xl w-full max-w-md overflow-hidden border-t border-border/50"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header strip */}
               <div className="relative bg-gradient-to-br from-primary/90 to-primary px-4 pt-5 pb-4">
                 <button
                   onClick={() => setSelectedItem(null)}
@@ -310,7 +219,6 @@ const WatermelonMapOverlay = ({ userType, userId, userLat, userLng, mapInstance 
                 </div>
               </div>
 
-              {/* Body */}
               <div className="px-4 py-4 space-y-3">
                 <div className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

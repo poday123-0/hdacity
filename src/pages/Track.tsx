@@ -1,14 +1,26 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { fetchOsrmRoute, pickShortestOsrmRoute } from "@/lib/osrm-routing";
 import { motion } from "framer-motion";
 import { Car, MapPin, Clock, CheckCircle, Download, ExternalLink } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
 
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
+const circleIcon = (color: string, size = 20) =>
+  L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
+  });
+
 const Track = () => {
   const { tripId } = useParams<{ tripId: string }>();
-  const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMaps();
   const [trip, setTrip] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [vehicle, setVehicle] = useState<any>(null);
@@ -16,16 +28,15 @@ const Track = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const driverMarkerRef = useRef<any>(null);
-  const pickupMarkerRef = useRef<any>(null);
-  const routeRendererRef = useRef<any>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const driverMarkerRef = useRef<L.Marker | null>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
 
   const isCompleted = trip?.status === "completed";
   const isCancelled = trip?.status === "cancelled";
   const isEnded = isCompleted || isCancelled;
 
-  // Detect if app is installed (PWA)
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone;
 
   useEffect(() => {
@@ -87,96 +98,86 @@ const Track = () => {
     };
   }, [tripId, trip?.driver_id]);
 
-  // Initialize map using shared hook
+  // Initialize Leaflet map
   useEffect(() => {
-    if (!mapRef.current || !mapsLoaded || isEnded || !trip?.pickup_lat) {
-      console.log("[Track Map] Skipping init:", { hasRef: !!mapRef.current, mapsLoaded, isEnded, hasPickup: !!trip?.pickup_lat, mapsError });
-      return;
-    }
+    if (!mapRef.current || isEnded || !trip?.pickup_lat) return;
     if (mapInstanceRef.current) return;
 
-    const g = (window as any).google;
-    if (!g?.maps) { console.error("[Track Map] google.maps not available despite mapsLoaded=true"); return; }
-
+    const isDark = document.documentElement.classList.contains("dark");
     const center = driverLocation || { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) };
-    const map = new g.maps.Map(mapRef.current, {
-      center,
+
+    const map = L.map(mapRef.current, {
+      center: [center.lat, center.lng],
       zoom: 15,
-      disableDefaultUI: true,
       zoomControl: true,
-      gestureHandling: "greedy",
+      attributionControl: false,
     });
+
+    const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
+    const tileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+    tileLayerRef.current = tileLayer;
     mapInstanceRef.current = map;
 
-    // Pickup marker
-    pickupMarkerRef.current = new g.maps.Marker({
-      map,
-      position: { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) },
-      icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
-      zIndex: 1000,
+    // Theme observer
+    const observer = new MutationObserver(() => {
+      const dark = document.documentElement.classList.contains("dark");
+      if (tileLayerRef.current) tileLayerRef.current.setUrl(dark ? DARK_TILES : LIGHT_TILES);
     });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
-    // Dropoff marker
+    // Pickup marker
+    L.marker([Number(trip.pickup_lat), Number(trip.pickup_lng)], { icon: circleIcon("#22c55e"), zIndexOffset: 1000 }).addTo(map);
+
+    // Dropoff marker + route
     if (trip.dropoff_lat && trip.dropoff_lng) {
-      new g.maps.Marker({
-        map,
-        position: { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
-        zIndex: 999,
-      });
+      L.marker([Number(trip.dropoff_lat), Number(trip.dropoff_lng)], { icon: circleIcon("#ef4444"), zIndexOffset: 999 }).addTo(map);
 
-      // Draw route
-      const ds = new g.maps.DirectionsService();
-      ds.route({
-        origin: { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) },
-        destination: { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) },
-        travelMode: g.maps.TravelMode.DRIVING,
-      }).then((result: any) => {
-        if (mapInstanceRef.current) {
-          routeRendererRef.current = new g.maps.DirectionsRenderer({
-            map: mapInstanceRef.current,
-            directions: result,
-            suppressMarkers: true,
-            preserveViewport: false,
-            polylineOptions: { strokeColor: "#4285F4", strokeWeight: 4, strokeOpacity: 0.8 },
-          });
-        }
+      // Draw route via OSRM
+      fetchOsrmRoute(
+        { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) },
+        { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) }
+      ).then(routes => {
+        if (!mapInstanceRef.current) return;
+        const best = pickShortestOsrmRoute(routes);
+        const latlngs = best.coordinates.map(c => [c[0], c[1]] as [number, number]);
+        routePolylineRef.current = L.polyline(latlngs, { color: "#4285F4", weight: 4, opacity: 0.8 }).addTo(mapInstanceRef.current);
       }).catch(() => {});
 
       // Fit bounds
-      const bounds = new g.maps.LatLngBounds();
-      bounds.extend({ lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) });
-      bounds.extend({ lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) });
-      if (driverLocation) bounds.extend(driverLocation);
-      map.fitBounds(bounds, 40);
+      const bounds = L.latLngBounds([
+        [Number(trip.pickup_lat), Number(trip.pickup_lng)],
+        [Number(trip.dropoff_lat), Number(trip.dropoff_lng)],
+      ]);
+      if (driverLocation) bounds.extend([driverLocation.lat, driverLocation.lng]);
+      map.fitBounds(bounds, { padding: [40, 40] });
     }
 
     // Driver marker
     if (driverLocation) {
-      driverMarkerRef.current = new g.maps.Marker({
-        map,
-        position: driverLocation,
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#3b82f6", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
-        zIndex: 1001,
-      });
+      driverMarkerRef.current = L.marker([driverLocation.lat, driverLocation.lng], {
+        icon: circleIcon("#3b82f6", 24),
+        zIndexOffset: 1001,
+      }).addTo(map);
     }
-  }, [trip?.pickup_lat, mapsLoaded, mapsError, isEnded]);
+
+    return () => {
+      observer.disconnect();
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [trip?.pickup_lat, isEnded]);
 
   // Update driver marker position
   useEffect(() => {
     if (!driverLocation || !mapInstanceRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
 
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(driverLocation);
+      driverMarkerRef.current.setLatLng([driverLocation.lat, driverLocation.lng]);
     } else {
-      driverMarkerRef.current = new g.maps.Marker({
-        map: mapInstanceRef.current,
-        position: driverLocation,
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#3b82f6", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
-        zIndex: 1001,
-      });
+      driverMarkerRef.current = L.marker([driverLocation.lat, driverLocation.lng], {
+        icon: circleIcon("#3b82f6", 24),
+        zIndexOffset: 1001,
+      }).addTo(mapInstanceRef.current);
     }
   }, [driverLocation]);
 
@@ -210,7 +211,6 @@ const Track = () => {
     );
   }
 
-  // App install section
   const appInstallSection = (
     <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
       <div className="flex items-center gap-3">
@@ -232,7 +232,6 @@ const Track = () => {
     </div>
   );
 
-  // If trip ended, show completion + app install
   if (isEnded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -266,29 +265,13 @@ const Track = () => {
     );
   }
 
-  // Active trip tracking
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Map */}
       <div className="flex-1 min-h-[50vh] relative">
         <div ref={mapRef} className="absolute inset-0" />
-        {!mapsLoaded && !mapsError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-              <Car className="w-6 h-6 text-primary" />
-            </motion.div>
-          </div>
-        )}
-        {mapsError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-            <p className="text-xs text-muted-foreground">Map unavailable</p>
-          </div>
-        )}
       </div>
 
-      {/* Info panel */}
       <div className="bg-card border-t border-border p-4 space-y-4">
-        {/* Trip status steps */}
         {(() => {
           const steps = ["accepted", "arrived", "started", "completed"] as const;
           const normalizedStatus = trip?.status === "in_progress" ? "started" : trip?.status;

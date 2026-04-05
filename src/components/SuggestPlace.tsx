@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPinned, X, Search, Loader2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 interface SuggestPlaceProps {
   userId?: string;
@@ -12,11 +13,14 @@ interface SuggestPlaceProps {
   onClose: () => void;
 }
 
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
 const SuggestPlace = ({ userId, userType, visible, onClose }: SuggestPlaceProps) => {
-  const { isLoaded, mapId } = useGoogleMaps();
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -29,7 +33,7 @@ const SuggestPlace = ({ userId, userType, visible, onClose }: SuggestPlaceProps)
   const [searching, setSearching] = useState(false);
   const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
 
-  // Search for places
+  // Search for places via Nominatim
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 3) { setSearchResults([]); return; }
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
@@ -48,72 +52,74 @@ const SuggestPlace = ({ userId, userType, visible, onClose }: SuggestPlaceProps)
   }, [searchQuery]);
 
   const placeMarker = useCallback((latVal: number, lngVal: number) => {
-    const g = (window as any).google;
-    if (!g || !mapInstanceRef.current) return;
+    if (!mapInstanceRef.current) return;
 
     if (markerRef.current) {
-      markerRef.current.position = { lat: latVal, lng: lngVal };
+      markerRef.current.setLatLng([latVal, lngVal]);
     } else {
-      markerRef.current = new g.maps.marker.AdvancedMarkerElement({
-        map: mapInstanceRef.current,
-        position: { lat: latVal, lng: lngVal },
-        gmpDraggable: true,
-      });
-      markerRef.current.addListener("dragend", () => {
-        const pos = markerRef.current.position;
-        setLat(pos.lat.toFixed(6));
-        setLng(pos.lng.toFixed(6));
-        fetchRoadName(pos.lat, pos.lng);
+      markerRef.current = L.marker([latVal, lngVal], {
+        draggable: true,
+        zIndexOffset: 1000,
+      }).addTo(mapInstanceRef.current);
+      markerRef.current.on("dragend", () => {
+        const pos = markerRef.current?.getLatLng();
+        if (pos) {
+          setLat(pos.lat.toFixed(6));
+          setLng(pos.lng.toFixed(6));
+          fetchRoadName(pos.lat, pos.lng);
+        }
       });
     }
-    mapInstanceRef.current.panTo({ lat: latVal, lng: lngVal });
-    mapInstanceRef.current.setZoom(17);
+    mapInstanceRef.current.setView([latVal, lngVal], 17);
   }, []);
 
   const fetchRoadName = async (latVal: number, lngVal: number) => {
-    const g = (window as any).google;
-    if (!g?.maps?.Geocoder) return;
-    const geocoder = new g.maps.Geocoder();
-    geocoder.geocode({ location: { lat: latVal, lng: lngVal } }, (results: any[], status: string) => {
-      if (status !== "OK" || !results?.length) return;
-      for (const r of results) {
-        const route = (r.address_components || []).find((c: any) => c.types?.includes("route"));
-        if (route) {
-          setAddress(route.long_name);
-          return;
-        }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latVal}&lon=${lngVal}&zoom=18`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const data = await res.json();
+      if (data?.address?.road) {
+        setAddress(data.address.road);
       }
-    });
+    } catch {}
   };
 
-  // Initialize map
+  // Initialize Leaflet map
   useEffect(() => {
-    if (!visible || !isLoaded || !mapRef.current || mapInstanceRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!visible || !mapRef.current || mapInstanceRef.current) return;
 
-    mapInstanceRef.current = new g.maps.Map(mapRef.current, {
-      center: { lat: 4.1755, lng: 73.5093 },
+    const isDark = document.documentElement.classList.contains("dark");
+
+    const map = L.map(mapRef.current, {
+      center: [4.1755, 73.5093],
       zoom: 15,
-      mapId: mapId || undefined,
-      disableDefaultUI: true,
       zoomControl: true,
-      gestureHandling: "greedy",
+      attributionControl: false,
     });
 
-    mapInstanceRef.current.addListener("click", (e: any) => {
-      const clickLat = e.latLng.lat();
-      const clickLng = e.latLng.lng();
+    const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
+    const tileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+    tileLayerRef.current = tileLayer;
+    mapInstanceRef.current = map;
+
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      const clickLat = e.latlng.lat;
+      const clickLng = e.latlng.lng;
       setLat(clickLat.toFixed(6));
       setLng(clickLng.toFixed(6));
       placeMarker(clickLat, clickLng);
       fetchRoadName(clickLat, clickLng);
     });
-  }, [visible, isLoaded, mapId, placeMarker]);
+  }, [visible, placeMarker]);
 
   // Cleanup on close
   useEffect(() => {
     if (!visible) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+      }
       markerRef.current = null;
       mapInstanceRef.current = null;
     }
@@ -227,13 +233,7 @@ const SuggestPlace = ({ userId, userType, visible, onClose }: SuggestPlaceProps)
 
             {/* Map */}
             <div className="rounded-xl overflow-hidden border border-border" style={{ height: 250 }}>
-              {isLoaded ? (
-                <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
-              ) : (
-                <div className="w-full h-full bg-surface flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
-                </div>
-              )}
+              <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
             </div>
             <p className="text-[10px] text-muted-foreground">Tap the map to pin the exact location. Drag to adjust.</p>
 
