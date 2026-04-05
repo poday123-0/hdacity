@@ -279,6 +279,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
   const [locationSearchResults, setLocationSearchResults] = useState<{ name: string; address: string; lat: number; lng: number; type: string }[]>([]);
+  const locSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const locSearchAbortRef = useRef<AbortController | null>(null);
   const [isFreeNavigating, setIsFreeNavigating] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
