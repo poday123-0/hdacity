@@ -61,7 +61,7 @@ export function isInsideAnyServiceArea(lat: number, lng: number, areas: ServiceA
     if (area.polygon && Array.isArray(area.polygon) && area.polygon.length >= 3) {
       if (pointInPolygon(lat, lng, area.polygon)) return true;
     } else {
-      // Fallback: simple distance check (50km)
+      // Fallback: simple distance check (15km)
       const R = 6371;
       const dLat = ((lat - area.lat) * Math.PI) / 180;
       const dLng = ((lng - area.lng) * Math.PI) / 180;
@@ -69,7 +69,7 @@ export function isInsideAnyServiceArea(lat: number, lng: number, areas: ServiceA
         Math.cos((area.lat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) *
         Math.sin(dLng / 2) ** 2;
       const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (d <= 50) return true;
+      if (d <= 15) return true;
     }
   }
   return false;
