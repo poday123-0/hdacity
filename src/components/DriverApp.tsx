@@ -4166,6 +4166,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <div>
                           <p className="text-[10px] text-muted-foreground font-medium">Pickup</p>
                           <p className="text-xs font-semibold text-foreground truncate">{currentTrip.pickup_address}</p>
+                          {(currentTrip as any)._pickupRoad && <p className="text-[10px] text-muted-foreground truncate">{(currentTrip as any)._pickupRoad}</p>}
                         </div>
                         {tripStops.map((stop) =>
                     <div key={stop.id}>
@@ -4176,6 +4177,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <div>
                           <p className="text-[10px] text-muted-foreground font-medium">Drop-off</p>
                           <p className="text-xs font-semibold text-foreground truncate">{currentTrip.dropoff_address}</p>
+                          {(currentTrip as any)._dropoffRoad && <p className="text-[10px] text-muted-foreground truncate">{(currentTrip as any)._dropoffRoad}</p>}
                         </div>
                       </div>
                     </div>
