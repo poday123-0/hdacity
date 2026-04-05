@@ -165,6 +165,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       attributionControl: false,
     });
 
+    L.control.zoom({ position: "bottomleft" }).addTo(map);
+
     const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
     const tileLayer = L.tileLayer(tileUrl, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(map);
     tileLayerRef.current = tileLayer;
