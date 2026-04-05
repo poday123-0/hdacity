@@ -897,34 +897,30 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
               <div className="flex-1 min-w-0 overflow-hidden space-y-2.5">
                 {/* Pickup input */}
                 <div className="relative">
-                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
-                    activeField === "pickup" ? "bg-primary/10 ring-2 ring-primary shadow-md" : "bg-surface border border-border/50"
+                  <div className={`flex items-center rounded-xl px-3 py-2 transition-all overflow-hidden ${
+                    activeField === "pickup" ? "bg-primary/10 ring-1.5 ring-primary shadow-sm" : "bg-surface border border-border/50"
                   }`}>
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Pickup</p>
                       <input
                         ref={pickupRef}
                         type="text"
                         inputMode="search"
                         autoComplete="off"
-                        placeholder="Search pickup location..."
+                        placeholder="Pickup location"
                         value={pickupQuery}
                         onChange={(e) => { setPickupQuery(e.target.value); if (activeField !== "pickup") setActiveField("pickup"); }}
                         onFocus={() => { setActiveField("pickup"); setTimeout(() => pickupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full min-w-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
+                        className="w-full min-w-0 bg-transparent text-[13px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none overflow-hidden text-ellipsis whitespace-nowrap"
                       />
-                      {pickup && pickup.address !== pickup.name && activeField !== "pickup" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 w-full">{pickup.address}</p>
-                      )}
                     </div>
-                    <div className="flex items-center justify-end gap-1.5 shrink-0 ml-2 w-[92px]">
+                    <div className="flex items-center justify-end gap-1 shrink-0 ml-1.5">
                       {pickup && activeField !== "pickup" && (
-                        <button onClick={() => clearField("pickup")} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center active:scale-90">
-                          <X className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => clearField("pickup")} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
+                          <X className="w-3 h-3 text-muted-foreground" />
                         </button>
                       )}
-                      <button onClick={() => handleSetOnMap("pickup")} className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-primary/10 text-primary text-[11px] font-bold active:scale-95 transition-all whitespace-nowrap">
-                        <MapPinned className="w-3.5 h-3.5" />
+                      <button onClick={() => handleSetOnMap("pickup")} className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold active:scale-95 transition-all whitespace-nowrap">
+                        <MapPinned className="w-3 h-3" />
                         Map
                       </button>
                     </div>
@@ -935,15 +931,14 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
                 {/* Intermediate stops */}
                 {stops.map((stop, idx) => (
                   <div key={idx} className="relative">
-                    <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
-                      activeField === `stop-${idx}` ? "bg-accent/20 ring-2 ring-accent shadow-md" : "bg-surface border border-border/50"
+                    <div className={`flex items-center rounded-xl px-3 py-2 transition-all overflow-hidden ${
+                      activeField === `stop-${idx}` ? "bg-accent/20 ring-1.5 ring-accent shadow-sm" : "bg-surface border border-border/50"
                     }`}>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Stop {idx + 1}</p>
                         <input
                           ref={(el) => { stopRefs.current[idx] = el; }}
                           type="text"
-                          placeholder="Search stop location..."
+                          placeholder={`Stop ${idx + 1}`}
                           value={stopQueries[idx] || ""}
                           onChange={(e) => {
                             const newQ = [...stopQueries];
@@ -952,15 +947,15 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
                             if (activeField !== `stop-${idx}`) setActiveField(`stop-${idx}`);
                           }}
                           onFocus={() => setActiveField(`stop-${idx}`)}
-                          className="w-full bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
+                          className="w-full bg-transparent text-[13px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none overflow-hidden text-ellipsis whitespace-nowrap"
                         />
                       </div>
-                      <div className="flex items-center justify-end gap-1.5 shrink-0 ml-2 w-[92px]">
-                        <button onClick={() => removeStop(idx)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center active:scale-90">
-                          <X className="w-3.5 h-3.5 text-muted-foreground" />
+                      <div className="flex items-center justify-end gap-1 shrink-0 ml-1.5">
+                        <button onClick={() => removeStop(idx)} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center active:scale-90">
+                          <X className="w-3 h-3 text-muted-foreground" />
                         </button>
-                        <button onClick={() => handleSetOnMap(`stop-${idx}`)} className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-accent/10 text-accent-foreground text-[11px] font-bold active:scale-95 transition-all whitespace-nowrap">
-                          <MapPinned className="w-3.5 h-3.5" />
+                        <button onClick={() => handleSetOnMap(`stop-${idx}`)} className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-accent/10 text-accent-foreground text-[10px] font-bold active:scale-95 transition-all whitespace-nowrap">
+                          <MapPinned className="w-3 h-3" />
                           Map
                         </button>
                       </div>
@@ -1032,27 +1027,23 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
                     </div>
                   )}
                   {bookingType !== "hourly" && (
-                  <div className={`flex items-center rounded-2xl px-3.5 py-3 transition-all overflow-hidden ${
-                    activeField === "dropoff" ? "bg-primary/10 ring-2 ring-primary shadow-md" : "bg-surface border border-border/50"
+                  <div className={`flex items-center rounded-xl px-3 py-2 transition-all overflow-hidden ${
+                    activeField === "dropoff" ? "bg-primary/10 ring-1.5 ring-primary shadow-sm" : "bg-surface border border-border/50"
                   }`}>
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Destination</p>
                        <input
                         ref={dropoffRef}
                         type="text"
                         inputMode="search"
                         autoComplete="off"
-                        placeholder="Search destination..."
+                        placeholder="Destination"
                         value={dropoffQuery}
                         onChange={(e) => { setDropoffQuery(e.target.value); if (activeField !== "dropoff") setActiveField("dropoff"); }}
                         onFocus={() => { setActiveField("dropoff"); setTimeout(() => dropoffRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200); }}
-                        className="w-full min-w-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap"
+                        className="w-full min-w-0 bg-transparent text-[13px] font-medium text-foreground placeholder:text-muted-foreground focus:outline-none overflow-hidden text-ellipsis whitespace-nowrap"
                       />
-                      {dropoff && dropoff.address !== dropoff.name && activeField !== "dropoff" && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 w-full">{dropoff.address}</p>
-                      )}
                     </div>
-                    <div className="flex items-center justify-end gap-1.5 shrink-0 ml-2 w-[92px]">
+                    <div className="flex items-center justify-end gap-1 shrink-0 ml-1.5">
                       {dropoff && activeField !== "dropoff" && (
                         <button onClick={() => clearField("dropoff")} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center active:scale-90">
                           <X className="w-3.5 h-3.5 text-muted-foreground" />
