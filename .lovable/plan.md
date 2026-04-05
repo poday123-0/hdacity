@@ -1,56 +1,28 @@
 
 
-## Fix: Filter Trip Requests by Driver's Radius Setting
+## Plan: Upgrade Passenger Location Search to Match Driver/Dispatch Speed
 
 ### Problem
-Currently, when a new trip request comes in, **all online drivers** receive the alert regardless of how far they are from the pickup location. The driver's `trip_radius_km` setting (adjustable in the driver profile) is only used for the visual radius circle on the map -- it does not actually filter incoming trip requests.
-
-### Solution
-Add a distance check in the `handleNewTrip` function inside `DriverApp.tsx` so that trips outside the driver's configured radius are silently ignored.
-
-The driver's last known GPS position is already tracked in `lastPosRef` (line 206), and the driver's radius is stored in `tripRadius` state (line 152). We just need to compare the distance between the driver's position and the trip's pickup coordinates against the radius before showing the trip alert.
+The passenger search in `LocationInput.tsx` uses a slow 350ms debounce with sequential fetching (local DB then Nominatim only). The driver and dispatch searches are much faster with 80ms debounce, parallel fetching, AbortController for cancellation, and progressive result merging.
 
 ### Changes
 
-**File: `src/components/DriverApp.tsx`**
+**File: `src/components/LocationInput.tsx`**
 
-1. **Create a `tripRadiusRef`** to make the current radius accessible inside the `handleNewTrip` callback without stale closures (similar to how `lastPosRef` works for position).
+Replace the search logic (lines 204-260) with the optimized pattern already used in DriverApp/Dispatch:
 
-2. **Add distance filtering to `handleNewTrip`** (around line 461):
-   - After verifying the trip is still valid (fresh, status = requested, not taken)
-   - Calculate the straight-line distance (Haversine) between `lastPosRef.current` and the trip's `pickup_lat`/`pickup_lng`
-   - If the distance exceeds `tripRadiusRef.current`, silently skip the trip (return without showing it)
-   - If the driver's position is unknown (`lastPosRef.current` is null), allow the trip through (fail-open to avoid blocking rides)
-
-3. **Add the same radius check to the polling fallback** (around line 596-617):
-   - After fetching the latest requested trip, check distance before calling `handleNewTrip`
+1. **Reduce debounce from 350ms to 80ms** for instant-feel results
+2. **Add AbortController** to cancel stale requests as user types — prevents flickering and wasted network calls
+3. **Parallel fetch from 3 sources simultaneously:**
+   - Local DB (service_locations + named_locations) — instant, already loaded
+   - Nominatim (free OSM) — restricted to Maldives
+   - Photon (Komoot, free OSM) — biased to Maldives coordinates for additional coverage
+4. **Progressive merge** — show local results immediately, then merge Nominatim/Photon results as they arrive with deduplication
+5. **Relevance scoring** — exact match > starts with > contains, local DB results ranked higher
+6. **Search named_locations more broadly** — match against name, address, description, and group_name fields (currently only matching name and address)
 
 ### Technical Details
-
-Distance calculation (Haversine, inline helper):
-```typescript
-const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-};
-```
-
-The check inside `handleNewTrip`:
-```typescript
-// Skip trips outside driver's radius (fail-open if no GPS)
-if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
-  const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, 
-    Number(trip.pickup_lat), Number(trip.pickup_lng));
-  if (dist > tripRadiusRef.current) return;
-}
-```
-
-### What This Means for You
-- Drivers will **only receive trip alerts** for rides within their chosen radius
-- If a driver sets their radius to 5km, they won't be bothered by trips 10km away
-- The radius control (the +/- buttons you selected) will now actively control which trips appear
-- If GPS is temporarily unavailable, trips will still come through to avoid missed rides
+- Port the same `AbortController` + parallel fetch + progressive merge pattern from `DriverApp.tsx` (lines ~3050-3120) into `LocationInput.tsx`
+- Keep existing saved locations, map picker, and service area polygon logic untouched
+- The `locations` state already contains both service and named locations — just expand the filter to also check description fields by fetching named_locations with description/group_name included
 
