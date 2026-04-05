@@ -22,7 +22,7 @@ interface WatermelonMapOverlayProps {
   userId: string;
   userLat: number | null;
   userLng: number | null;
-  mapInstance: google.maps.Map | null;
+  mapInstance: any;
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
