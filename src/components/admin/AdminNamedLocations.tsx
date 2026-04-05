@@ -3,7 +3,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag, ChevronRight, ChevronDown } from "lucide-react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 
 const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
@@ -33,7 +34,8 @@ const AdminNamedLocations = () => {
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [bulkGroupName, setBulkGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const { isLoaded } = useGoogleMaps();
+  const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -62,119 +64,97 @@ const AdminNamedLocations = () => {
 
   useEffect(() => { fetchLocations(); }, []);
 
+  const getTileUrl = () => document.documentElement.classList.contains("dark") ? DARK_TILES : LIGHT_TILES;
+
+  const greenIcon = L.divIcon({
+    className: "",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    html: `<div style="background:#22c55e;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    </div>`,
+  });
+
   const renderMarkers = useCallback(() => {
-    const g = (window as any).google;
-    if (!mapInstance.current || !g?.maps) return;
-    locationMarkersRef.current.forEach(m => m.setMap(null));
+    if (!mapInstance.current) return;
+    locationMarkersRef.current.forEach(m => m.remove());
     locationMarkersRef.current = [];
 
     locations.filter(l => l.status === "approved" && l.is_active).forEach(loc => {
-      const el = document.createElement("div");
-      el.innerHTML = `<div style="background:#22c55e;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-      </div>`;
-      const m = new g.maps.marker.AdvancedMarkerElement({
-        map: mapInstance.current,
-        position: { lat: loc.lat, lng: loc.lng },
-        content: el,
-        title: loc.name,
-      });
+      const m = L.marker([loc.lat, loc.lng], { icon: greenIcon, title: loc.name }).addTo(mapInstance.current!);
       locationMarkersRef.current.push(m);
     });
   }, [locations]);
 
+  // Init main map
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
-    mapInstance.current = new g.maps.Map(mapRef.current, {
-      center: MALE_CENTER, zoom: 14, mapId: "hda_named_loc_map",
+    if (!mapRef.current || mapInstance.current) return;
+    const map = L.map(mapRef.current, {
+      center: [MALE_CENTER.lat, MALE_CENTER.lng],
+      zoom: 14,
+      zoomControl: false,
+      attributionControl: false,
     });
-  }, [isLoaded, showForm]);
+    L.tileLayer(getTileUrl(), { maxZoom: 19 }).addTo(map);
+    mapInstance.current = map;
+  }, [showForm]);
 
-  useEffect(() => { renderMarkers(); }, [locations, renderMarkers, isLoaded]);
+  useEffect(() => { renderMarkers(); }, [locations, renderMarkers]);
 
-  // -- Batch map init --
+  // Init batch map
   useEffect(() => {
-    if (!isLoaded || !batchMode || !batchMapRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!batchMode || !batchMapRef.current) return;
     if (batchMapInstance.current) return;
-    batchMapInstance.current = new g.maps.Map(batchMapRef.current, {
-      center: MALE_CENTER, zoom: 14, mapId: "hda_batch_loc_map",
+    const map = L.map(batchMapRef.current, {
+      center: [MALE_CENTER.lat, MALE_CENTER.lng],
+      zoom: 14,
+      zoomControl: false,
+      attributionControl: false,
     });
+    L.tileLayer(getTileUrl(), { maxZoom: 19 }).addTo(map);
+    batchMapInstance.current = map;
 
     // Show existing approved locations as green pins
     locations.filter(l => l.status === "approved" && l.is_active).forEach(loc => {
-      const el = document.createElement("div");
-      el.innerHTML = `<div style="background:#22c55e;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-      </div>`;
-      new g.maps.marker.AdvancedMarkerElement({
-        map: batchMapInstance.current,
-        position: { lat: loc.lat, lng: loc.lng },
-        content: el,
-        title: loc.name,
-      });
+      L.marker([loc.lat, loc.lng], { icon: greenIcon, title: loc.name }).addTo(map);
     });
-  }, [isLoaded, batchMode, locations]);
+  }, [batchMode, locations]);
 
-  // -- Batch map click listener --
+  // Batch map click listener
   useEffect(() => {
-    const g = (window as any).google;
-    if (!batchMapInstance.current || !batchMode || !g?.maps) return;
+    if (!batchMapInstance.current || !batchMode) return;
 
-    const listener = batchMapInstance.current.addListener("click", async (e: any) => {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
+    const onClick = async (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
       const pinId = crypto.randomUUID();
 
-      // Create marker
-      const el = document.createElement("div");
-      el.innerHTML = `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);color:white;font-size:11px;font-weight:bold;">${batchPinsRef.current.length + 1}</div>`;
-      const marker = new g.maps.marker.AdvancedMarkerElement({
-        map: batchMapInstance.current, position: { lat, lng }, content: el,
+      const icon = L.divIcon({
+        className: "",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        html: `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);color:white;font-size:11px;font-weight:bold;">${batchPinsRef.current.length + 1}</div>`,
       });
+      const marker = L.marker([lat, lng], { icon }).addTo(batchMapInstance.current!);
 
-      // Auto-fetch address
+      // Auto-fetch address via Nominatim
       let roadName = "";
       try {
-        if (g?.maps?.Geocoder) {
-          const geocoder = new g.maps.Geocoder();
-          const res = await new Promise<any[]>((resolve) => {
-            geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
-              resolve(status === "OK" ? results || [] : []);
-            });
-          });
-          for (const r of res) {
-            const types: string[] = r.types || [];
-            if (types.includes("route") || types.includes("street_address")) {
-              const route = (r.address_components || []).find((c: any) => c.types?.includes("route"));
-              if (route) { roadName = route.long_name; break; }
-            }
-          }
-          if (!roadName && res.length > 0) {
-            const route = (res[0].address_components || []).find((c: any) => c.types?.includes("route"));
-            if (route) roadName = route.long_name;
-          }
-        }
-        if (!roadName) {
-          const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
-          roadName = result?.address?.split(",")[0] || result?.name || "";
-        }
+        const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
+        roadName = result?.address?.split(",")[0] || result?.name || "";
       } catch {}
 
       const newPin: BatchPin = { id: pinId, lat, lng, name: "", address: roadName, description: "", marker };
       setBatchPins(prev => [...prev, newPin]);
-    });
+    };
 
-    return () => { if (listener) (window as any).google?.maps?.event?.removeListener(listener); };
+    batchMapInstance.current.on("click", onClick);
+    return () => { batchMapInstance.current?.off("click", onClick); };
   }, [batchMode]);
 
   const removeBatchPin = (id: string) => {
     setBatchPins(prev => {
       const pin = prev.find(p => p.id === id);
-      if (pin?.marker) pin.marker.map = null;
+      if (pin?.marker) pin.marker.remove();
       return prev.filter(p => p.id !== id);
     });
   };
@@ -206,74 +186,58 @@ const AdminNamedLocations = () => {
   };
 
   const closeBatchMode = () => {
-    batchPins.forEach(p => { if (p.marker) p.marker.map = null; });
+    batchPins.forEach(p => { if (p.marker) p.marker.remove(); });
     setBatchPins([]);
     setBatchMode(false);
-    batchMapInstance.current = null;
+    if (batchMapInstance.current) {
+      batchMapInstance.current.remove();
+      batchMapInstance.current = null;
+    }
   };
 
   const autoFetchAddress = useCallback(async (lat: number, lng: number) => {
     try {
-      const g = (window as any).google;
-      let roadName = "";
-      if (g?.maps?.Geocoder) {
-        const geocoder = new g.maps.Geocoder();
-        const res = await new Promise<any[]>((resolve) => {
-          geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
-            resolve(status === "OK" ? results || [] : []);
-          });
-        });
-        for (const r of res) {
-          const types: string[] = r.types || [];
-          if (types.includes("route") || types.includes("street_address")) {
-            const route = (r.address_components || []).find((c: any) => c.types?.includes("route"));
-            if (route) { roadName = route.long_name; break; }
-          }
-        }
-        if (!roadName && res.length > 0) {
-          const route = (res[0].address_components || []).find((c: any) => c.types?.includes("route"));
-          if (route) roadName = route.long_name;
-        }
-      }
-      if (!roadName) {
-        const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
-        roadName = result?.address?.split(",")[0] || result?.name || "";
-      }
+      const result = await reverseGeocodeLocation(lat, lng, { skipAdminLocations: true });
+      const roadName = result?.address?.split(",")[0] || result?.name || "";
       setForm(prev => ({ ...prev, address: roadName }));
     } catch {}
   }, []);
 
+  // Single add form map click listener
   useEffect(() => {
-    const g = (window as any).google;
-    if (!mapInstance.current || !showForm || !g?.maps) return;
-    const listener = mapInstance.current.addListener("click", (e: any) => {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
+    if (!mapInstance.current || !showForm) return;
+
+    const onClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
       setForm(prev => ({ ...prev, lat: lat.toFixed(6), lng: lng.toFixed(6), address: "" }));
       autoFetchAddress(lat, lng);
       if (markerRef.current) {
-        markerRef.current.position = { lat, lng };
+        markerRef.current.setLatLng([lat, lng]);
       } else {
-        const el = document.createElement("div");
-        el.innerHTML = `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-        </div>`;
-        markerRef.current = new g.maps.marker.AdvancedMarkerElement({
-          map: mapInstance.current, position: { lat, lng }, content: el, gmpDraggable: true,
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+          html: `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>`,
         });
-        markerRef.current.addListener("dragend", () => {
-          const pos = markerRef.current.position;
+        markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(mapInstance.current!);
+        markerRef.current.on("dragend", () => {
+          const pos = markerRef.current!.getLatLng();
           setForm(prev => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), address: "" }));
           autoFetchAddress(pos.lat, pos.lng);
         });
       }
-    });
-    return () => { if (listener) (window as any).google?.maps?.event?.removeListener(listener); };
+    };
+
+    mapInstance.current.on("click", onClick);
+    return () => { mapInstance.current?.off("click", onClick); };
   }, [showForm, autoFetchAddress]);
 
   const resetForm = () => {
     setForm(emptyForm); setEditingId(null); setShowForm(false);
-    if (markerRef.current) { markerRef.current.map = null; markerRef.current = null; }
+    if (markerRef.current) { markerRef.current.remove(); markerRef.current = null; }
   };
 
   const openEdit = (loc: any) => {
@@ -389,11 +353,7 @@ const AdminNamedLocations = () => {
             <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">{batchPins.length} pin{batchPins.length !== 1 ? "s" : ""}</span>
           </div>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
-            {isLoaded ? <div ref={batchMapRef} style={{ width: "100%", height: "100%" }} /> : (
-              <div className="w-full h-full bg-surface flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+            <div ref={batchMapRef} style={{ width: "100%", height: "100%" }} />
           </div>
 
           {batchPins.length > 0 && (
@@ -442,11 +402,7 @@ const AdminNamedLocations = () => {
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Location" : "New Named Location"}</h3>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
-            {isLoaded ? <div ref={mapRef} style={{ width: "100%", height: "100%" }} /> : (
-              <div className="w-full h-full bg-surface flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
           </div>
           <p className="text-xs text-muted-foreground">Click the map to set the location pin</p>
           <div className="grid grid-cols-2 gap-4">
