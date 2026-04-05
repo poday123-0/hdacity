@@ -274,8 +274,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
   const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
-  const [driverLat, setDriverLat] = useState<number | null>(null);
-  const [driverLng, setDriverLng] = useState<number | null>(null);
+  // Load last known position from localStorage for instant display
+  const [driverLat, setDriverLat] = useState<number | null>(() => {
+    try { const v = localStorage.getItem("hda_driver_last_lat"); return v ? parseFloat(v) : null; } catch { return null; }
+  });
+  const [driverLng, setDriverLng] = useState<number | null>(() => {
+    try { const v = localStorage.getItem("hda_driver_last_lng"); return v ? parseFloat(v) : null; } catch { return null; }
+  });
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
   const [locationSearchResults, setLocationSearchResults] = useState<{ name: string; address: string; lat: number; lng: number; type: string }[]>([]);
