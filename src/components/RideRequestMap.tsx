@@ -1,6 +1,7 @@
-import { useEffect, useRef, memo, useCallback } from "react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { selectShortestRoute } from "@/lib/shortest-route";
+import { useEffect, useRef, memo } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { fetchOsrmRoute, pickShortestOsrmRoute } from "@/lib/osrm-routing";
 
 interface RideRequestMapProps {
   pickupLat?: number | null;
@@ -11,152 +12,116 @@ interface RideRequestMapProps {
   passengerMapIconUrl?: string | null;
 }
 
+const circleIcon = (color: string, label: string, size = 28) =>
+  L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(0,0,0,0.3)">${label}</div>`,
+  });
+
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
 const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [], passengerMapIconUrl }: RideRequestMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
+  const mapInstance = useRef<L.Map | null>(null);
   const initialized = useRef(false);
-  const { isLoaded } = useGoogleMaps();
 
-  const initMap = useCallback(() => {
-    if (!isLoaded || !mapRef.current || initialized.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+  useEffect(() => {
+    if (!mapRef.current || initialized.current) return;
+
+    const hasPickup = pickupLat != null && pickupLng != null;
+    const hasDropoff = dropoffLat != null && dropoffLng != null;
+    if (!hasPickup && !hasDropoff) return;
 
     initialized.current = true;
     const isDark = document.documentElement.classList.contains("dark");
 
-    const bounds = new g.maps.LatLngBounds();
-    const hasPickup = pickupLat != null && pickupLng != null;
-    const hasDropoff = dropoffLat != null && dropoffLng != null;
-
-    if (!hasPickup && !hasDropoff) return;
-
-    if (hasPickup) bounds.extend({ lat: pickupLat, lng: pickupLng });
-    if (hasDropoff) bounds.extend({ lat: dropoffLat, lng: dropoffLng });
+    const bounds = L.latLngBounds([]);
+    if (hasPickup) bounds.extend([pickupLat!, pickupLng!]);
+    if (hasDropoff) bounds.extend([dropoffLat!, dropoffLng!]);
     stops.forEach(s => {
-      if (s.lat != null && s.lng != null) bounds.extend({ lat: Number(s.lat), lng: Number(s.lng) });
+      if (s.lat != null && s.lng != null) bounds.extend([Number(s.lat), Number(s.lng)]);
     });
 
-    const map = new g.maps.Map(mapRef.current, {
-      center: bounds.getCenter(),
-      zoom: 14,
-      disableDefaultUI: true,
+    const map = L.map(mapRef.current, {
       zoomControl: true,
-      gestureHandling: "greedy",
-      styles: isDark ? darkStyle : [],
+      attributionControl: false,
     });
 
-    map.fitBounds(bounds, 40);
+    L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
+    map.fitBounds(bounds, { padding: [40, 40] });
     mapInstance.current = map;
 
     // Pickup marker
     if (hasPickup) {
-      const markerOpts: any = {
-        map,
-        position: { lat: pickupLat, lng: pickupLng },
-        zIndex: 1000,
-      };
-      if (passengerMapIconUrl) {
-        markerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(24, 24) };
-      } else {
-        markerOpts.label = { text: "P", color: "white", fontWeight: "700", fontSize: "11px" };
-        markerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 };
-      }
-      new g.maps.Marker(markerOpts);
+      const icon = passengerMapIconUrl
+        ? L.divIcon({
+            className: "",
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            html: `<img src="${passengerMapIconUrl}" style="width:24px;height:24px;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3)" />`,
+          })
+        : circleIcon("#22c55e", "P");
+      L.marker([pickupLat!, pickupLng!], { icon, zIndexOffset: 1000 }).addTo(map);
     }
 
     // Drop-off marker
     if (hasDropoff) {
-      new g.maps.Marker({
-        map,
-        position: { lat: dropoffLat, lng: dropoffLng },
-        zIndex: 999,
-        label: { text: "D", color: "white", fontWeight: "700", fontSize: "11px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
-      });
+      L.marker([dropoffLat!, dropoffLng!], { icon: circleIcon("#ef4444", "D"), zIndexOffset: 999 }).addTo(map);
     }
 
     // Stop markers
     stops.forEach(s => {
       if (s.lat != null && s.lng != null) {
-        new g.maps.Marker({
-          map,
-          position: { lat: Number(s.lat), lng: Number(s.lng) },
-          zIndex: 998,
-          label: { text: `${s.stop_order}`, color: "white", fontWeight: "700", fontSize: "10px" },
-          icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#f59e0b", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
-        });
+        L.marker([Number(s.lat), Number(s.lng)], {
+          icon: circleIcon("#f59e0b", `${s.stop_order}`, 20),
+          zIndexOffset: 998,
+        }).addTo(map);
       }
     });
 
-    // Draw route line
+    // Draw route
     if (hasPickup && hasDropoff) {
-      const ds = new g.maps.DirectionsService();
       const waypoints = stops
         .filter(s => s.lat != null && s.lng != null)
-        .map(s => ({ location: { lat: Number(s.lat), lng: Number(s.lng) }, stopover: true }));
+        .map(s => ({ lat: Number(s.lat), lng: Number(s.lng) }));
 
-      ds.route({
-        origin: { lat: pickupLat, lng: pickupLng },
-        destination: { lat: dropoffLat, lng: dropoffLng },
+      fetchOsrmRoute(
+        { lat: pickupLat!, lng: pickupLng! },
+        { lat: dropoffLat!, lng: dropoffLng! },
         waypoints,
-        travelMode: g.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: true,
-      }).then((raw: any) => {
-        const result = selectShortestRoute(raw);
-        if (mapInstance.current) {
-          new g.maps.DirectionsRenderer({
-            map: mapInstance.current,
-            directions: result,
-            suppressMarkers: true,
-            suppressInfoWindows: true,
-            preserveViewport: true,
-            polylineOptions: { strokeColor: "#4285F4", strokeWeight: 4, strokeOpacity: 0.8 },
-          });
-        }
+        true
+      ).then(routes => {
+        if (!mapInstance.current) return;
+        const best = pickShortestOsrmRoute(routes);
+        const latlngs = best.coordinates.map(c => [c[0], c[1]] as [number, number]);
+        L.polyline(latlngs, { color: "#4285F4", weight: 4, opacity: 0.8 }).addTo(mapInstance.current);
       }).catch(() => {});
     }
-  }, [isLoaded, pickupLat, pickupLng, dropoffLat, dropoffLng, passengerMapIconUrl]);
 
-  useEffect(() => {
-    initMap();
+    // Theme observer
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains("dark");
+      // Swap tile layer
+      map.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) map.removeLayer(layer);
+      });
+      L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
     return () => {
+      observer.disconnect();
+      map.remove();
       mapInstance.current = null;
       initialized.current = false;
     };
-  }, [initMap]);
-
-  // Theme change observer
-  useEffect(() => {
-    if (!mapInstance.current) return;
-    const observer = new MutationObserver(() => {
-      const isDark = document.documentElement.classList.contains("dark");
-      const g = (window as any).google;
-      const colorScheme = g?.maps?.ColorScheme;
-      if (colorScheme) {
-        mapInstance.current?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-      }
-      mapInstance.current?.setOptions({ styles: isDark ? darkStyle : [] });
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, [isLoaded]);
-
-  if (!isLoaded) {
-    return <div className="w-full h-full bg-surface animate-pulse rounded-xl" />;
-  }
+  }, [pickupLat, pickupLng, dropoffLat, dropoffLng, passengerMapIconUrl]);
 
   return <div ref={mapRef} className="w-full h-full rounded-xl" />;
 });
 
 RideRequestMap.displayName = "RideRequestMap";
-
-const darkStyle = [
-  { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#b0b0c0" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2a2a3e" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2b" }] },
-];
-
 export default RideRequestMap;
