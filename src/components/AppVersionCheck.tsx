@@ -71,7 +71,7 @@ const AppVersionCheck = () => {
       const platform = getPlatform();
       if (platform === "web") return; // Only check for native apps
 
-      const appVersion = getAppVersion();
+      const appVersion = await getAppVersion();
       if (!appVersion) return;
 
       const { data } = await supabase
