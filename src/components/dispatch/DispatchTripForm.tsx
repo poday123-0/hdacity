@@ -80,26 +80,9 @@ let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones
 let _locationsCacheTs = 0;
 const LOC_CACHE_TTL = 30_000; // 30 sec
 
-// Google Places result cache to avoid redundant API calls
+// Nominatim result cache
 const _placesCache = new Map<string, { results: any[]; ts: number }>();
-const PLACES_CACHE_TTL = 60_000; // 1 min
-// Reusable AutocompleteService instance (much faster than textSearch)
-let _autocompleteService: google.maps.places.AutocompleteService | null = null;
-let _placesServiceDiv: HTMLDivElement | null = null;
-let _placesService: google.maps.places.PlacesService | null = null;
-const getAutocompleteService = () => {
-  if (!_autocompleteService && typeof google !== "undefined" && google.maps?.places) {
-    _autocompleteService = new google.maps.places.AutocompleteService();
-  }
-  return _autocompleteService;
-};
-const getPlacesService = () => {
-  if (!_placesService && typeof google !== "undefined" && google.maps?.places) {
-    if (!_placesServiceDiv) _placesServiceDiv = document.createElement("div");
-    _placesService = new google.maps.places.PlacesService(_placesServiceDiv);
-  }
-  return _placesService;
-};
+const PLACES_CACHE_TTL = 60_000;
 
 const DispatchTripForm = ({
   formIndex,
