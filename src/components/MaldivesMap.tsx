@@ -161,9 +161,11 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     const map = L.map(mapRef.current, {
       center: [center.lat, center.lng],
       zoom: 15,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false,
     });
+
+    L.control.zoom({ position: "bottomleft" }).addTo(map);
 
     const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
     const tileLayer = L.tileLayer(tileUrl, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(map);
