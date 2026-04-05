@@ -274,8 +274,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
   const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
-  const [driverLat, setDriverLat] = useState<number | null>(null);
-  const [driverLng, setDriverLng] = useState<number | null>(null);
+  // Load last known position from localStorage for instant display
+  const [driverLat, setDriverLat] = useState<number | null>(() => {
+    try { const v = localStorage.getItem("hda_driver_last_lat"); return v ? parseFloat(v) : null; } catch { return null; }
+  });
+  const [driverLng, setDriverLng] = useState<number | null>(() => {
+    try { const v = localStorage.getItem("hda_driver_last_lng"); return v ? parseFloat(v) : null; } catch { return null; }
+  });
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
   const [locationSearchResults, setLocationSearchResults] = useState<{ name: string; address: string; lat: number; lng: number; type: string }[]>([]);
@@ -624,7 +629,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     restoreTrip();
   }, [userProfile?.id]);
 
-  // No fallback location — only use actual GPS
+  // Load last known position from DB if localStorage was empty
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    if (driverLat != null && driverLng != null) return; // Already have a cached position
+    (async () => {
+      try {
+        const { data } = await supabase.from("driver_locations").select("lat, lng").eq("driver_id", userProfile.id).single();
+        if (data?.lat && data?.lng) {
+          setDriverLat(data.lat);
+          setDriverLng(data.lng);
+          lastPosRef.current = { lat: data.lat, lng: data.lng };
+          try { localStorage.setItem("hda_driver_last_lat", String(data.lat)); localStorage.setItem("hda_driver_last_lng", String(data.lng)); } catch {}
+        }
+      } catch {}
+    })();
+  }, [userProfile?.id]);
 
   // Immediately stop all driver location tracking & mark offline
   const goOfflineNow = useCallback(async () => {
@@ -703,6 +723,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       const upsertLocation = async (lat: number, lng: number, force = false) => {
         lastPosRef.current = { lat, lng };
+        // Persist to localStorage for instant restore on reopen
+        try { localStorage.setItem("hda_driver_last_lat", String(lat)); localStorage.setItem("hda_driver_last_lng", String(lng)); } catch {}
 
         // Skip DB write if driver hasn't moved enough (saves battery & network)
         // Always write on first fix, force flag, or if >60s since last write
