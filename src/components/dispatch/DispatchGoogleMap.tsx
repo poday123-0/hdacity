@@ -5,6 +5,7 @@ import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers, Calendar, Repeat, Construction, Car, TriangleAlert, Cone, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { getServiceAreasWithPolygons, isInsideAnyServiceArea } from "@/lib/service-area-filter";
 
 const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
@@ -160,9 +161,10 @@ const DispatchGoogleMap = () => {
         setShowSuggestions(combined.length > 0);
       }
 
-      // If fewer than 5 local results, fetch external
+      // If fewer than 5 local results, fetch external — filtered by service area polygons
       if (combined.length < 5) {
         try {
+          const areas = await getServiceAreasWithPolygons();
           const existingNames = new Set(combined.map(r => r.name.toLowerCase()));
 
           const [nomRes, photonRes] = await Promise.allSettled([
@@ -181,8 +183,10 @@ const DispatchGoogleMap = () => {
           if (nomRes.status === "fulfilled" && Array.isArray(nomRes.value)) {
             for (const r of nomRes.value) {
               const name = r.name || r.display_name?.split(",")[0] || "";
-              if (name && !existingNames.has(name.toLowerCase())) {
-                externalResults.push({ id: `nom-${r.place_id}`, name, address: r.display_name?.split(",").slice(1, 3).join(",").trim() || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon), type: "named" });
+              const lat = parseFloat(r.lat);
+              const lng = parseFloat(r.lon);
+              if (name && !existingNames.has(name.toLowerCase()) && isInsideAnyServiceArea(lat, lng, areas)) {
+                externalResults.push({ id: `nom-${r.place_id}`, name, address: r.display_name?.split(",").slice(1, 3).join(",").trim() || "", lat, lng, type: "named" });
                 existingNames.add(name.toLowerCase());
               }
             }
@@ -191,8 +195,10 @@ const DispatchGoogleMap = () => {
           if (photonRes.status === "fulfilled" && photonRes.value?.features) {
             for (const f of photonRes.value.features) {
               const name = f.properties?.name || "";
-              if (name && !existingNames.has(name.toLowerCase())) {
-                externalResults.push({ id: `ph-${f.properties?.osm_id}`, name, address: [f.properties?.street, f.properties?.city].filter(Boolean).join(", "), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], type: "named" });
+              const lat = f.geometry.coordinates[1];
+              const lng = f.geometry.coordinates[0];
+              if (name && !existingNames.has(name.toLowerCase()) && isInsideAnyServiceArea(lat, lng, areas)) {
+                externalResults.push({ id: `ph-${f.properties?.osm_id}`, name, address: [f.properties?.street, f.properties?.city].filter(Boolean).join(", "), lat, lng, type: "named" });
                 existingNames.add(name.toLowerCase());
               }
             }

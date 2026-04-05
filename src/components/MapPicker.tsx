@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 import { supabase } from "@/integrations/supabase/client";
+import { getServiceAreasWithPolygons, isInsideAnyServiceArea } from "@/lib/service-area-filter";
 
 interface NearbyPlace {
   name: string;
@@ -94,9 +95,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       // Show local results immediately
       if (!ctrl.signal.aborted) setSearchResults(localMatches);
 
-      // Fetch Nominatim + Photon in parallel
+      // Fetch Nominatim + Photon in parallel, filtered by service area polygons
       if (localMatches.length < 5) {
         try {
+          const areas = await getServiceAreasWithPolygons();
           const existingNames = new Set(localMatches.map(r => r.name.toLowerCase()));
           const externalResults: { name: string; lat: number; lng: number; tag: string }[] = [];
 
@@ -114,8 +116,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
           if (nomRes.status === "fulfilled" && Array.isArray(nomRes.value)) {
             for (const r of nomRes.value) {
               const name = r.name || r.display_name?.split(",")[0] || "";
-              if (name && !existingNames.has(name.toLowerCase())) {
-                externalResults.push({ name, lat: parseFloat(r.lat), lng: parseFloat(r.lon), tag: "Map" });
+              const lat = parseFloat(r.lat);
+              const lng = parseFloat(r.lon);
+              if (name && !existingNames.has(name.toLowerCase()) && isInsideAnyServiceArea(lat, lng, areas)) {
+                externalResults.push({ name, lat, lng, tag: "Map" });
                 existingNames.add(name.toLowerCase());
               }
             }
@@ -124,8 +128,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
           if (photonRes.status === "fulfilled" && photonRes.value?.features) {
             for (const f of photonRes.value.features) {
               const name = f.properties?.name || "";
-              if (name && !existingNames.has(name.toLowerCase())) {
-                externalResults.push({ name, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], tag: "Map" });
+              const lat = f.geometry.coordinates[1];
+              const lng = f.geometry.coordinates[0];
+              if (name && !existingNames.has(name.toLowerCase()) && isInsideAnyServiceArea(lat, lng, areas)) {
+                externalResults.push({ name, lat, lng, tag: "Map" });
                 existingNames.add(name.toLowerCase());
               }
             }
