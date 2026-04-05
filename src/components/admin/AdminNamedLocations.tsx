@@ -237,7 +237,7 @@ const AdminNamedLocations = () => {
 
   const resetForm = () => {
     setForm(emptyForm); setEditingId(null); setShowForm(false);
-    if (markerRef.current) { markerRef.current.map = null; markerRef.current = null; }
+    if (markerRef.current) { markerRef.current.remove(); markerRef.current = null; }
   };
 
   const openEdit = (loc: any) => {
