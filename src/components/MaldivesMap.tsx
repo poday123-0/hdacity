@@ -168,11 +168,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     L.control.zoom({ position: "bottomleft" }).addTo(map);
 
     const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
-    const tileLayer = L.tileLayer(tileUrl, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(map);
+    const tileLayer = L.tileLayer(tileUrl, { attribution: "", maxZoom: 19 }).addTo(map);
     tileLayerRef.current = tileLayer;
-
-    // Add attribution in corner
-    L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
 
     // User marker
     const userMarker = L.marker([center.lat, center.lng], { icon: userDotIcon, zIndexOffset: 900 }).addTo(map);
