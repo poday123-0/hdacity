@@ -259,7 +259,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         <div ref={mapRef} className="absolute inset-0" />
 
         {/* Center pin with floating label */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1000]">
           <div className="flex flex-col items-center">
             {/* Floating location name label */}
             <AnimatePresence>
