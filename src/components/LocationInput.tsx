@@ -12,6 +12,8 @@ interface ServiceLocation {
   address: string;
   lat: number;
   lng: number;
+  description?: string;
+  group_name?: string;
 }
 
 interface ServiceAreaPolygon {
