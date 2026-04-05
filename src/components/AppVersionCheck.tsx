@@ -24,13 +24,32 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-function getAppVersion(): string | null {
-  // Capacitor injects version info — check meta tag or fallback
+// Build-time version fallback — set VITE_APP_VERSION in .env or build command
+const BUILD_VERSION = import.meta.env.VITE_APP_VERSION || "";
+
+async function getAppVersion(): Promise<string | null> {
+  // 1. Check localStorage (set by native bridge or previous detection)
+  const cached = localStorage.getItem("native_app_version");
+  if (cached) return cached;
+
+  // 2. Check meta tag
   const meta = document.querySelector('meta[name="app-version"]');
-  if (meta) return meta.getAttribute("content");
-  // For native apps, the version can be passed via Capacitor App plugin
-  // For now, check localStorage where native bridge stores it
-  return localStorage.getItem("native_app_version");
+  if (meta?.getAttribute("content")) return meta.getAttribute("content");
+
+  // 3. Try Capacitor App plugin (dynamically imported)
+  try {
+    const { App } = await import("@capacitor/app");
+    const info = await App.getInfo();
+    if (info?.version) {
+      localStorage.setItem("native_app_version", info.version);
+      return info.version;
+    }
+  } catch {}
+
+  // 4. Build-time fallback
+  if (BUILD_VERSION) return BUILD_VERSION;
+
+  return null;
 }
 
 function getPlatform(): "android" | "ios" | "web" {
@@ -52,7 +71,7 @@ const AppVersionCheck = () => {
       const platform = getPlatform();
       if (platform === "web") return; // Only check for native apps
 
-      const appVersion = getAppVersion();
+      const appVersion = await getAppVersion();
       if (!appVersion) return;
 
       const { data } = await supabase
