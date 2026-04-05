@@ -1353,6 +1353,8 @@ const DispatchTripForm = ({
                       const idx = resultHighlight >= 0 ? resultHighlight : 0;
                       if (osmResults.length > 0 && !dropoff) {
                         selectLocation(osmResults[idx]);
+                      } else if (osmResults.length === 0 && searchQuery.trim().length >= 2 && !dropoff) {
+                        useCustomLocation(searchQuery);
                       }
                       setResultHighlight(-1);
                       setTimeout(() => phoneInputRef.current?.focus(), 50);
