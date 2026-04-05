@@ -1265,7 +1265,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     });
   }, [userProfile?.id]);
 
-  // Handle direct-assigned dispatch trips (already accepted)
+  // Handle direct-assigned dispatch trips (already accepted) — skip accept/decline, go straight to navigation
   const handleDirectAssignedTrip = async (trip: TripRequest) => {
     if (currentTrip) return;
     // Scheduled rides must only be started manually from the scheduled banner
@@ -1281,13 +1281,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Vibrate to alert driver
     try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
 
-    // Play sound to alert driver
-    if (tripRequestSoundUrl) {
-      try {
-        stopAllSounds();
-        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
-      } catch {}
-    }
+    // Play accepted sound (not looping request sound)
+    fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
 
     // Fetch passenger profile and trip stops
     const [pProfileRes, stopsRes] = await Promise.all([
@@ -1298,20 +1293,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     ]);
 
     toast({
-      title: "🚗 New Dispatch Assignment!",
+      title: "🚗 Dispatch Trip Assigned!",
       description: `${trip.pickup_address} → ${trip.dropoff_address}`,
     });
+
+    // Mark driver as on trip
+    if (userProfile?.id) {
+      await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
+    }
+
+    // Notify passenger
+    if (trip.passenger_id && userProfile) {
+      notifyTripAccepted(trip.passenger_id, `${userProfile.first_name} ${userProfile.last_name}`, trip.id);
+    }
 
     setCurrentTrip(trip);
     setPassengerProfile(pProfileRes.data);
     setTripStops(stopsRes.data as any[] || []);
-    setScreen("ride-request");
-
-    // Auto-stop sound after 5 seconds for assigned trips
-    setTimeout(() => {
-      stopAllSounds();
-      tripSoundRef.current = null;
-    }, 5000);
+    // Go directly to navigation — no accept/decline screen for dispatch-assigned trips
+    setScreen("navigating");
   };
 
   useEffect(() => {
