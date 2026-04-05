@@ -263,7 +263,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           address: r.display_name?.split(",").slice(0, 3).join(", ") || "",
           lat: parseFloat(r.lat),
           lng: parseFloat(r.lon),
-        }))
+        })).filter(r => isInAnyServiceArea(r.lat, r.lng))
       ).catch(() => [] as PlaceResult[]);
 
       const photonP = fetch(
@@ -276,7 +276,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           address: [f.properties?.street, f.properties?.city, f.properties?.country].filter(Boolean).join(", "),
           lat: f.geometry?.coordinates?.[1] || 0,
           lng: f.geometry?.coordinates?.[0] || 0,
-        })).filter((r: PlaceResult) => r.name && r.lat)
+        })).filter((r: PlaceResult) => r.name && r.lat && isInAnyServiceArea(r.lat, r.lng))
       ).catch(() => [] as PlaceResult[]);
 
       const [nomResults, phResults] = await Promise.all([nominatimP, photonP]);
