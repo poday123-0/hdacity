@@ -102,21 +102,29 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
     fetchSaved();
   }, [userProfile?.id]);
 
-  // Place search debounce
+  // Place search debounce — local DB only
   useEffect(() => {
-    if (!placeSearchQuery.trim() || placeSearchQuery.length < 3) { setPlaceSearchResults([]); return; }
+    if (!placeSearchQuery.trim() || placeSearchQuery.length < 2) { setPlaceSearchResults([]); return; }
     if (placeSearchDebounce.current) clearTimeout(placeSearchDebounce.current);
     placeSearchDebounce.current = setTimeout(async () => {
       setPlaceSearching(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeSearchQuery)}&countrycodes=mv&limit=4&addressdetails=1`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        setPlaceSearchResults(await res.json());
+        const q = placeSearchQuery.toLowerCase();
+        const [{ data: svcData }, { data: namedData }] = await Promise.all([
+          supabase.from("service_locations").select("id, name, address, lat, lng").eq("is_active", true).or(`name.ilike.%${q}%,address.ilike.%${q}%`).limit(5),
+          supabase.from("named_locations").select("id, name, address, lat, lng").eq("is_active", true).eq("status", "approved").or(`name.ilike.%${q}%,address.ilike.%${q}%,description.ilike.%${q}%,group_name.ilike.%${q}%`).limit(10),
+        ]);
+        const results = [...(svcData || []), ...(namedData || [])].map((r: any, i: number) => ({
+          place_id: i,
+          display_name: `${r.name}${r.address ? `, ${r.address}` : ""}`,
+          lat: String(r.lat),
+          lon: String(r.lng),
+          name: r.name,
+        }));
+        setPlaceSearchResults(results);
       } catch { setPlaceSearchResults([]); }
       setPlaceSearching(false);
-    }, 400);
+    }, 80);
     return () => { if (placeSearchDebounce.current) clearTimeout(placeSearchDebounce.current); };
   }, [placeSearchQuery]);
 
