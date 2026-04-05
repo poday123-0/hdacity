@@ -203,6 +203,15 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
     return bestMatch;
   }, [serviceAreas, isPointInPolygon, calcPolygonArea]);
 
+  // Check if a point is inside ANY service area (boolean)
+  const isInAnyServiceArea = useCallback((lat: number, lng: number): boolean => {
+    if (!serviceAreas.length) return true;
+    for (const area of serviceAreas) {
+      if (area.polygon && area.polygon.length >= 3 && isPointInPolygon(lat, lng, area.polygon)) return true;
+    }
+    return false;
+  }, [serviceAreas, isPointInPolygon]);
+
   // Fast location search — 80ms debounce, parallel fetch from Local DB + Nominatim + Photon
   useEffect(() => {
     if (!activeQuery.trim() || activeQuery.length < 2) {
