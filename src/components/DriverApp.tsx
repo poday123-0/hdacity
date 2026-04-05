@@ -3069,32 +3069,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           setLocationSearchResults(sortResults([...merged]));
                         });
 
-                        // 2. Nominatim (free) — merge when ready
-                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=mv&limit=8&addressdetails=1`, { headers: { "Accept-Language": "en" }, signal: abortCtrl.signal })
-                          .then(r => r.json())
-                          .then(data => {
-                            if (abortCtrl.signal.aborted) return;
-                            for (const r of data) {
-                              const name = r.name || r.display_name?.split(",")[0] || "";
-                              merged.push({ name, address: r.display_name?.split(",").slice(0, 3).join(", ") || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon), type: "nominatim" });
-                            }
-                            setLocationSearchResults(sortResults([...merged]));
-                          }).catch(() => {});
-
-                        // 3. Photon (free OSM) — merge when ready
-                        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
-                          .then(r => r.json())
-                          .then(data => {
-                            if (abortCtrl.signal.aborted) return;
-                            for (const f of (data.features || [])) {
-                              const p = f.properties || {};
-                              const name = p.name || p.street || "";
-                              if (!name) continue;
-                              const [pLng, pLat] = f.geometry?.coordinates || [0, 0];
-                              merged.push({ name, address: [p.street, p.city, p.country].filter(Boolean).join(", "), lat: pLat, lng: pLng, type: "photon" });
-                            }
-                            setLocationSearchResults(sortResults([...merged]));
-                          }).catch(() => {});
+                        // Only local DB results — no external fetching
                       }, 80);
                     }}
                   />
