@@ -629,7 +629,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     restoreTrip();
   }, [userProfile?.id]);
 
-  // No fallback location — only use actual GPS
+  // Load last known position from DB if localStorage was empty
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    if (driverLat != null && driverLng != null) return; // Already have a cached position
+    (async () => {
+      try {
+        const { data } = await supabase.from("driver_locations").select("lat, lng").eq("driver_id", userProfile.id).single();
+        if (data?.lat && data?.lng) {
+          setDriverLat(data.lat);
+          setDriverLng(data.lng);
+          lastPosRef.current = { lat: data.lat, lng: data.lng };
+          try { localStorage.setItem("hda_driver_last_lat", String(data.lat)); localStorage.setItem("hda_driver_last_lng", String(data.lng)); } catch {}
+        }
+      } catch {}
+    })();
+  }, [userProfile?.id]);
 
   // Immediately stop all driver location tracking & mark offline
   const goOfflineNow = useCallback(async () => {
