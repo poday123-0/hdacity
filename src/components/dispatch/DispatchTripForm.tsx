@@ -747,6 +747,47 @@ const DispatchTripForm = ({
     setOsmResults([]);
   };
 
+  // Allow dispatchers to use a custom typed location name (no coordinates yet)
+  // Saves it as a pending named_location so admin can add lat/lng later
+  const useCustomLocation = async (customName: string) => {
+    const trimmed = customName.trim();
+    if (!trimmed) return;
+
+    // Use center of first service area as placeholder coordinates
+    const defaultLat = serviceLocations.length > 0 ? Number(serviceLocations[0].lat) : 4.1755;
+    const defaultLng = serviceLocations.length > 0 ? Number(serviceLocations[0].lng) : 73.5093;
+
+    const loc: StopLocation = { address: trimmed, lat: defaultLat, lng: defaultLng };
+    if (selecting === "pickup") setPickup(loc);
+    else if (selecting === "dropoff") setDropoff(loc);
+    else if (typeof selecting === "number") {
+      const newStops = [...stops];
+      newStops[selecting] = loc;
+      setStops(newStops);
+    }
+    setSelecting(null);
+    setSearchQuery("");
+    setOsmResults([]);
+
+    // Save as pending named_location for future use (fire and forget)
+    try {
+      const { error } = await supabase.from("named_locations").insert({
+        name: trimmed,
+        lat: 0,
+        lng: 0,
+        address: "",
+        status: "pending",
+        suggested_by_type: "dispatch",
+        is_active: false,
+      });
+      if (!error) {
+        toast({ title: "Location saved", description: `"${trimmed}" saved for admin to set coordinates later.` });
+        // Invalidate location cache
+        _locationsCache = null;
+      }
+    } catch {}
+  };
+
   const selectServiceAreaAsDropoff = (sl: any) => {
     setDropoff({ address: sl.name, lat: sl.lat, lng: sl.lng });
   };
