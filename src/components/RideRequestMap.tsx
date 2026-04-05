@@ -21,7 +21,7 @@ const circleIcon = (color: string, label: string, size = 28) =>
   });
 
 const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const DARK_TILES = "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [], passengerMapIconUrl }: RideRequestMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
