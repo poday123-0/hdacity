@@ -1,50 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { selectShortestRoute } from "@/lib/shortest-route";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { fetchOsrmRoute, pickShortestOsrmRoute, type OsrmRoute, type OsrmStep } from "@/lib/osrm-routing";
 import { useRoadClosures } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle, MapPin, Construction, Car, TriangleAlert } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-// Utility: create a rotated version of an image URL via canvas (no circle, just the icon rotated)
-const createRotatedIcon = (
-  imageUrl: string,
-  heading: number,
-  size: number,
-  callback: (dataUrl: string) => void
-) => {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const cx = size / 2;
-    const cy = size / 2;
-
-    // Rotate the entire image by heading
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((heading * Math.PI) / 180);
-    // Add subtle drop shadow for visibility on map
-    ctx.shadowColor = "rgba(0,0,0,0.35)";
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetY = 2;
-    ctx.drawImage(img, -cx, -cy, size, size);
-    ctx.restore();
-
-    callback(canvas.toDataURL("image/png"));
-  };
-  img.onerror = () => callback(imageUrl);
-  img.src = imageUrl;
-};
+import { motion, AnimatePresence } from "framer-motion";
 
 // Utility: smoothly animate a marker between two positions
 const animateMarker = (
-  marker: any,
+  marker: L.Marker,
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
   duration: number,
@@ -54,11 +20,10 @@ const animateMarker = (
   const animate = (currentTime: number) => {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    // Ease-out cubic for smooth deceleration
     const eased = 1 - Math.pow(1 - progress, 3);
     const lat = from.lat + (to.lat - from.lat) * eased;
     const lng = from.lng + (to.lng - from.lng) * eased;
-    marker.setPosition({ lat, lng });
+    marker.setLatLng([lat, lng]);
     if (progress < 1) {
       requestAnimationFrame(animate);
     } else {
@@ -67,7 +32,6 @@ const animateMarker = (
   };
   requestAnimationFrame(animate);
 };
-import { motion, AnimatePresence } from "framer-motion";
 
 const getDistanceMeters = (
   a: { lat: number; lng: number },
@@ -94,7 +58,6 @@ const getPointAhead = (
   const lat1 = (origin.lat * Math.PI) / 180;
   const lng1 = (origin.lng * Math.PI) / 180;
   const angularDistance = meters / R;
-
   const lat2 = Math.asin(
     Math.sin(lat1) * Math.cos(angularDistance) +
       Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing)
@@ -105,20 +68,52 @@ const getPointAhead = (
       Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
       Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
     );
-
   return { lat: (lat2 * 180) / Math.PI, lng: (lng2 * 180) / Math.PI };
 };
 
+// Leaflet icon helpers
+const circleIcon = (color: string, label: string, size = 32) =>
+  L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(0,0,0,0.3)">${label}</div>`,
+  });
 
+const driverDotIcon = (color = "#4285F4") =>
+  L.divIcon({
+    className: "",
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
+  });
 
+const driverArrowIcon = (heading: number, color = "#4285F4") =>
+  L.divIcon({
+    className: "",
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;transform:rotate(${heading}deg)"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L4 20h16L12 2z" fill="${color}" stroke="white" stroke-width="2"/></svg></div>`,
+  });
+
+const customImgIcon = (url: string, size = 36) =>
+  L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<img src="${url}" style="width:${size}px;height:${size}px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3)" />`,
+  });
+
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 
 export interface NavSettings {
-  followSensitivity: "low" | "medium" | "high"; // camera update throttle
-  lookAheadDistance: "short" | "medium" | "far"; // how far ahead the camera looks
-  rerouteAggressiveness: "relaxed" | "normal" | "aggressive"; // how often to reroute
-  autoRefocusOnTurn: boolean; // snap back to follow on turn changes
+  followSensitivity: "low" | "medium" | "high";
+  lookAheadDistance: "short" | "medium" | "far";
+  rerouteAggressiveness: "relaxed" | "normal" | "aggressive";
+  autoRefocusOnTurn: boolean;
 }
 
 export const DEFAULT_NAV_SETTINGS: NavSettings = {
@@ -174,27 +169,23 @@ interface DriverMapProps {
   onMapHeadingChange?: (heading: number) => void;
   resetNorthRef?: React.MutableRefObject<(() => void) | null>;
   onMapReady?: (map: any) => void;
-  /** Pass GPS position from parent to avoid duplicate GPS watchers (battery optimization) */
   externalPosition?: { lat: number; lng: number } | null;
-  /** Ref to trigger free navigation from parent */
   startFreeNavRef?: React.MutableRefObject<((target: { lat: number; lng: number }) => void) | null>;
-  /** Notify parent when free nav starts/stops */
   onFreeNavChange?: (active: boolean) => void;
 }
 
 const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, startFreeNavRef, onFreeNavChange }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
-  const driverMarkerRef = useRef<any>(null);
-  const rideMarkersRef = useRef<any[]>([]);
-  const passengerLiveMarkerRef = useRef<any>(null);
-  const passengerPulseRef = useRef<any>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const driverMarkerRef = useRef<L.Marker | null>(null);
+  const rideMarkersRef = useRef<(L.Marker | L.Circle | L.Polyline)[]>([]);
+  const passengerLiveMarkerRef = useRef<L.Marker | null>(null);
+  const passengerPulseRef = useRef<L.Circle | null>(null);
   const passengerPulseIntervalRef = useRef<any>(null);
-  const directionsRendererRef = useRef<any>(null);
-  const routePolylineRef = useRef<any>(null);
-  const routePathRef = useRef<{ lat: number; lng: number }[]>([]);
-  const radiusCircleRef = useRef<any>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const routePathRef = useRef<[number, number][]>([]);
+  const radiusCircleRef = useRef<L.Circle | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -202,14 +193,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [userPannedAway, setUserPannedAway] = useState(false);
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isLoaded, error, mapId } = useGoogleMaps();
   const { closures: roadClosures, addClosure } = useRoadClosures();
-  const roadClosureMarkersRef = useRef<any[]>([]);
-  const roadClosureLinesRef = useRef<any[]>([]);
+  const roadClosureLayersRef = useRef<L.Layer[]>([]);
   const [closureWarning, setClosureWarning] = useState<string | null>(null);
   const closureWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHeadingRef = useRef<number>(0);
   const prevMarkerPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Driver closure reporting state
   const [reportMenuPos, setReportMenuPos] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null);
@@ -219,20 +209,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [reportLaneSide, setReportLaneSide] = useState<"right" | "left" | null>(null);
   const [reportNotes, setReportNotes] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Free navigation state (driver picks a destination on map)
+
+  // Free navigation state
   const [freeNavTarget, setFreeNavTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [freeNavEta, setFreeNavEta] = useState("");
   const [freeNavDist, setFreeNavDist] = useState("");
   const [freeNavSteps, setFreeNavSteps] = useState<NavStep[]>([]);
   const [freeNavStepIndex, setFreeNavStepIndex] = useState(0);
-  const freeNavPolylineRef = useRef<any>(null);
-  const freeNavMarkerRef = useRef<any>(null);
+  const freeNavPolylineRef = useRef<L.Polyline | null>(null);
+  const freeNavMarkerRef = useRef<L.Marker | null>(null);
   const freeNavIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const freeNavPathRef = useRef<{ lat: number; lng: number }[]>([]);
+  const freeNavPathRef = useRef<[number, number][]>([]);
   const filteredPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const animatingRef = useRef(false);
-  const rotatedIconCacheRef = useRef<{ url: string; heading: number; dataUrl: string } | null>(null);
   const routeFetchInFlightRef = useRef(false);
   const routeRequestSeqRef = useRef(0);
   const lastRouteFetchAtRef = useRef(0);
@@ -278,47 +267,30 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
   // Free navigation: start navigating to a tapped location
   const startFreeNav = useCallback((target: { lat: number; lng: number }) => {
-    const g = (window as any).google;
     const map = mapInstance.current;
-    if (!g?.maps || !map || !currentPos) return;
+    if (!map || !currentPos) return;
 
-    // Clear previous free nav
     stopFreeNav();
     setFreeNavTarget(target);
     setFreeNavSteps([]);
     setFreeNavStepIndex(0);
     freeNavPathRef.current = [];
 
-    // Place destination marker with pulse
-    const marker = new g.maps.Marker({
-      map,
-      position: target,
-      icon: {
-        path: g.maps.SymbolPath.CIRCLE,
-        scale: 16,
-        fillColor: "#6366f1",
-        fillOpacity: 1,
-        strokeColor: "#fff",
-        strokeWeight: 3,
-      },
-      label: { text: "📍", fontSize: "14px" },
-      zIndex: 3000,
-    });
+    // Place destination marker
+    const marker = L.marker([target.lat, target.lng], {
+      icon: circleIcon("#6366f1", "📍", 32),
+      zIndexOffset: 3000,
+    }).addTo(map);
     freeNavMarkerRef.current = marker;
 
-    // Create polyline matching in-trip style
-    const polyline = new g.maps.Polyline({
-      map,
-      strokeColor: "#6366f1",
-      strokeWeight: 7,
-      strokeOpacity: 0.85,
-      zIndex: 100,
-    });
+    // Create polyline
+    const polyline = L.polyline([], {
+      color: "#6366f1",
+      weight: 7,
+      opacity: 0.85,
+    }).addTo(map);
     freeNavPolylineRef.current = polyline;
 
-    // Switch to nav camera mode
-    map.setTilt(0);
-    if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
     map.setZoom(18);
     setFollowDriver(true);
     userInteractingRef.current = false;
@@ -328,53 +300,35 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       const driverPos = currentPosRef.current;
       if (!driverPos) return;
 
-      const ds = new g.maps.DirectionsService();
-      ds.route({
-        origin: driverPos,
-        destination: target,
-        travelMode: g.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: true,
-      }).then((raw: any) => {
-        const result = selectShortestRoute(raw, roadClosures);
-        const leg = result.routes?.[0]?.legs?.[0];
-        if (!leg) return;
+      fetchOsrmRoute(driverPos, target, [], true)
+        .then(routes => {
+          const best = pickShortestOsrmRoute(routes, roadClosures);
+          freeNavPathRef.current = best.coordinates;
+          if (freeNavPolylineRef.current) freeNavPolylineRef.current.setLatLngs(best.coordinates);
+          setFreeNavEta(best.durationText);
+          setFreeNavDist(best.distanceText);
 
-        // Extract road-snapped path from individual steps
-        const pathCoords: { lat: number; lng: number }[] = [];
-        for (const step of leg.steps) {
-          for (const p of (step.path || [])) {
-            pathCoords.push({ lat: p.lat(), lng: p.lng() });
+          const steps: NavStep[] = best.steps.map(s => ({
+            instruction: s.instruction,
+            distance: s.distance,
+            maneuver: s.maneuver,
+            endLat: s.endLat,
+            endLng: s.endLng,
+          }));
+          setFreeNavSteps(steps);
+
+          if (driverPos && steps.length > 0) {
+            let closestIdx = 0;
+            let closestDist = Infinity;
+            for (let idx = 0; idx < steps.length; idx++) {
+              if (steps[idx].endLat == null || steps[idx].endLng == null) continue;
+              const dist = getDistanceMeters(driverPos, { lat: steps[idx].endLat!, lng: steps[idx].endLng! });
+              if (dist < closestDist) { closestDist = dist; closestIdx = idx; }
+            }
+            setFreeNavStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
           }
-        }
-        freeNavPathRef.current = pathCoords;
-        if (freeNavPolylineRef.current) freeNavPolylineRef.current.setPath(pathCoords);
-        setFreeNavEta(leg.duration?.text || "");
-        setFreeNavDist(leg.distance?.text || "");
-
-        // Extract turn-by-turn steps
-        const steps: NavStep[] = leg.steps.map((step: any) => ({
-          instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
-          distance: step.distance?.text || '',
-          maneuver: step.maneuver || undefined,
-          endLat: step.end_location?.lat?.() ?? undefined,
-          endLng: step.end_location?.lng?.() ?? undefined,
-        }));
-        setFreeNavSteps(steps);
-
-        // Auto-advance step based on proximity
-        if (driverPos && steps.length > 0) {
-          let closestIdx = 0;
-          let closestDist = Infinity;
-          for (let idx = 0; idx < leg.steps.length; idx++) {
-            const step = leg.steps[idx];
-            const endLat = step.end_location.lat();
-            const endLng = step.end_location.lng();
-            const dist = getDistanceMeters(driverPos, { lat: endLat, lng: endLng });
-            if (dist < closestDist) { closestDist = dist; closestIdx = idx; }
-          }
-          setFreeNavStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
-        }
-      }).catch(() => {});
+        })
+        .catch(() => {});
     };
 
     fetchFreeRoute();
@@ -388,33 +342,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     setFreeNavSteps([]);
     setFreeNavStepIndex(0);
     freeNavPathRef.current = [];
-    if (freeNavPolylineRef.current) { freeNavPolylineRef.current.setMap(null); freeNavPolylineRef.current = null; }
-    if (freeNavMarkerRef.current) { freeNavMarkerRef.current.setMap(null); freeNavMarkerRef.current = null; }
+    if (freeNavPolylineRef.current) { freeNavPolylineRef.current.remove(); freeNavPolylineRef.current = null; }
+    if (freeNavMarkerRef.current) { freeNavMarkerRef.current.remove(); freeNavMarkerRef.current = null; }
     if (freeNavIntervalRef.current) { clearInterval(freeNavIntervalRef.current); freeNavIntervalRef.current = null; }
-    // Reset camera to non-nav mode
     const map = mapInstance.current;
-    if (map) {
-      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
-      map.setZoom(16);
-      if (typeof map.setHeading === "function") {
-        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-        map.setHeading(0);
-      }
-    }
+    if (map) map.setZoom(16);
   }, []);
 
-  // Cleanup free nav on unmount
   useEffect(() => () => { stopFreeNav(); }, [stopFreeNav]);
 
-
-
-  // Use external position from parent when not navigating (saves battery — no duplicate GPS watcher)
-  // Only start own GPS watcher during navigation (needs high-frequency heading/speed data)
+  // GPS watcher — own high-accuracy GPS during navigation
   useEffect(() => {
-    // If navigating or free-nav, we need our own high-accuracy GPS for heading/speed
     const needsOwnGps = isNavigating || !!freeNavTarget;
     if (!needsOwnGps) {
-      // Clean up any existing watcher when not navigating
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -436,7 +376,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCurrentPos(prev => {
           if (!prev && mapInstance.current) {
-            mapInstance.current.panTo(newPos);
+            mapInstance.current.panTo([newPos.lat, newPos.lng]);
             mapInstance.current.setZoom(17);
           }
           return newPos;
@@ -454,96 +394,61 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => { if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; } };
   }, [isNavigating, freeNavTarget]);
 
-  // When not navigating/free-nav, use external position from parent
+  // External position from parent when not navigating
   useEffect(() => {
     if (isNavigating || freeNavTarget || !externalPosition) return;
     setCurrentPos(prev => {
       if (!prev && mapInstance.current) {
-        mapInstance.current.panTo(externalPosition);
+        mapInstance.current.panTo([externalPosition.lat, externalPosition.lng]);
         mapInstance.current.setZoom(16);
       }
       return externalPosition;
     });
   }, [isNavigating, externalPosition?.lat, externalPosition?.lng]);
 
-  // Use a ref for initial center so GPS updates don't re-trigger map init
-  // IMPORTANT: never block map init on GPS — use fallback center immediately
-  const DEFAULT_MAP_CENTER = { lat: 4.1755, lng: 73.5093 }; // Malé
-  const initialCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+  const DEFAULT_MAP_CENTER: [number, number] = [4.1755, 73.5093];
+  const initialCenterRef = useRef<[number, number] | null>(null);
   if (!initialCenterRef.current) {
     initialCenterRef.current =
-      currentPos ||
-      (pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null) ||
+      currentPos ? [currentPos.lat, currentPos.lng] :
+      pickupCoords ? [pickupCoords[0], pickupCoords[1]] :
       DEFAULT_MAP_CENTER;
   }
 
   // Init map — only once
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
-    const center = initialCenterRef.current;
-    if (!center) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
+    if (!mapRef.current || mapInstance.current) return;
+    const center = initialCenterRef.current || DEFAULT_MAP_CENTER;
 
     const isDark = document.documentElement.classList.contains("dark");
 
-    const mapOptions: any = {
+    const map = L.map(mapRef.current, {
       center,
       zoom: 16,
-      disableDefaultUI: true,
       zoomControl: false,
-      rotateControl: true,
-      gestureHandling: "greedy",
-    };
-    // Vector map (enables two-finger rotation, tilt, heading)
-    // IMPORTANT: Do NOT apply raster `styles` when using a vector mapId —
-    // they conflict with vector rendering and can hide roads/features.
-    if (mapId) {
-      mapOptions.mapId = mapId;
-      const colorScheme = g.maps?.ColorScheme;
-      if (colorScheme) {
-        mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
-      }
-      // No raster styles for vector maps — they cause missing roads
-    } else {
-      mapOptions.styles = isDark ? darkMapStyle : lightNavStyle;
-    }
+      attributionControl: false,
+    });
 
-    const map = new g.maps.Map(mapRef.current, mapOptions);
+    const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
+    tileLayerRef.current = tileLayer;
 
-    const markerOpts: any = {
-      map, position: center, zIndex: 1000,
-    };
-    if (mapIconUrl) {
-      markerOpts.icon = { url: mapIconUrl, scaledSize: new g.maps.Size(44, 44), anchor: new g.maps.Point(22, 22) };
-      markerOpts.optimized = false;
-    } else {
-      markerOpts.icon = {
-        path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 6, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2.5,
-        rotation: 0, anchor: new g.maps.Point(0, 2.5),
-      };
-    }
-    driverMarkerRef.current = new g.maps.Marker(markerOpts);
+    // Driver marker
+    const icon = mapIconUrl
+      ? customImgIcon(mapIconUrl, 44)
+      : driverDotIcon();
+    const driverMarker = L.marker(center, { icon, zIndexOffset: 1000 }).addTo(map);
+    driverMarkerRef.current = driverMarker;
     mapInstance.current = map;
     onMapReady?.(map);
 
-    // Detect user interaction — only block auto-follow on drag, NOT on programmatic zoom
-    let programmaticZoom = false;
-    let programmaticHeading = false;
-    const setProgrammaticZoom = () => { programmaticZoom = true; setTimeout(() => { programmaticZoom = false; }, 300); };
-    const setProgrammaticHeading = () => { programmaticHeading = true; setTimeout(() => { programmaticHeading = false; }, 300); };
-    (map as any)._setProgrammaticZoom = setProgrammaticZoom;
-    (map as any)._setProgrammaticHeading = setProgrammaticHeading;
-
-    map.addListener("dragstart", () => {
+    // Detect user interaction
+    let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
+    map.on("dragstart", () => {
       userInteractingRef.current = true;
       setUserPannedAway(true);
       setFollowDriver(false);
     });
-    // Auto-resume follow after 8s of no interaction
-    let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
-    map.addListener("idle", () => {
+    map.on("moveend", () => {
       if (userInteractingRef.current) {
         if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
         autoResumeTimeout = setTimeout(() => {
@@ -553,193 +458,86 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         }, 8000);
       }
     });
-    map.addListener("heading_changed", () => {
-      const h = typeof map.getHeading === "function" ? (map.getHeading() || 0) : 0;
-      setMapHeading(h);
-      onMapHeadingChange?.(h);
-      if (programmaticHeading) return;
-      // Manual rotation detected — break follow so auto-heading stops
-      userInteractingRef.current = true;
-      setFollowDriver(false);
-    });
-    map.addListener("zoom_changed", () => {
-      if (programmaticZoom) return;
-    });
 
-    // Long-press / right-click to report closure
-    const mapDiv = map.getDiv();
-
-    let menuJustOpened = false;
-    const showMenuAtLatLng = (latLng: any) => {
-      const coords = { lat: latLng.lat(), lng: latLng.lng() };
-      const bounds = map.getBounds();
-      const proj = map.getProjection();
-      if (bounds && proj) {
-        const ne = bounds.getNorthEast();
-        const sw = bounds.getSouthWest();
-        const topRight = proj.fromLatLngToPoint(ne);
-        const bottomLeft = proj.fromLatLngToPoint(sw);
-        const point = proj.fromLatLngToPoint(latLng);
-        if (topRight && bottomLeft && point) {
-          const scale = Math.pow(2, map.getZoom() || 16);
-          const px = (point.x - bottomLeft.x) * scale;
-          const py = (point.y - topRight.y) * scale;
-          const rect = mapDiv.getBoundingClientRect();
-          menuJustOpened = true;
-          setTimeout(() => { menuJustOpened = false; }, 400);
-          setReportMenuPos({
-            lat: coords.lat,
-            lng: coords.lng,
-            x: Math.min(px, rect.width - 200),
-            y: Math.min(py, rect.height - 280),
-          });
-        }
-      }
-    };
-
-    // Right-click (desktop)
-    map.addListener("rightclick", (e: any) => {
-      if (!e.latLng) return;
-      showMenuAtLatLng(e.latLng);
-    });
-
-    // Touch long-press (mobile)
+    // Long-press context menu for road closure reporting
     let lpTimer: ReturnType<typeof setTimeout> | null = null;
-    let lpLatLng: any = null;
     let touchMoved = false;
 
-    const onTouchStart = (e: TouchEvent) => {
-      touchMoved = false;
-      lpTimer = setTimeout(() => {
-        if (!touchMoved && lpLatLng) {
-          showMenuAtLatLng(lpLatLng);
-        }
-      }, 600);
-    };
-    const onTouchMove = () => {
-      touchMoved = true;
-      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
-    };
-    const onTouchEnd = () => {
-      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
-    };
-
-    // Capture the latLng from mousedown/touchstart via Google Maps
-    map.addListener("mousedown", (e: any) => {
-      if (e.latLng) lpLatLng = e.latLng;
+    map.on("contextmenu", (e: L.LeafletMouseEvent) => {
+      const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
+      const point = map.latLngToContainerPoint(e.latlng);
+      setReportMenuPos({ lat: coords.lat, lng: coords.lng, x: point.x, y: point.y });
     });
 
+    const mapDiv = map.getContainer();
+    const onTouchStart = () => { touchMoved = false; lpTimer = setTimeout(() => { if (!touchMoved) { /* handled by contextmenu */ } }, 600); };
+    const onTouchMove = () => { touchMoved = true; if (lpTimer) clearTimeout(lpTimer); };
+    const onTouchEnd = () => { if (lpTimer) clearTimeout(lpTimer); };
     mapDiv.addEventListener("touchstart", onTouchStart, { passive: true });
     mapDiv.addEventListener("touchmove", onTouchMove, { passive: true });
     mapDiv.addEventListener("touchend", onTouchEnd, { passive: true });
 
-    // Dismiss on normal tap
-    map.addListener("click", (e: any) => {
-      if (menuJustOpened) return;
-      setReportMenuPos(null);
-    });
+    map.on("click", () => { setReportMenuPos(null); });
 
-    return () => { mapInstance.current = null; };
-  }, [isLoaded, !!initialCenterRef.current, mapId]);
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
+  }, []);
 
-  // Track map readiness for dependent effects
+  // Track map readiness
   const [mapReady, setMapReady] = useState(false);
   useEffect(() => {
     if (mapInstance.current && !mapReady) setMapReady(true);
   });
 
-  // Theme observer — smooth crossfade overlay
-  const [themeTransition, setThemeTransition] = useState(false);
+  // Theme observer
   useEffect(() => {
     if (!mapReady || !mapInstance.current) return;
     const map = mapInstance.current;
-    let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
     const observer = new MutationObserver(() => {
-      setThemeTransition(true);
-      t1 = setTimeout(() => {
-        const isDark = document.documentElement.classList.contains("dark");
-        const g = (window as any).google;
-        if (mapId) {
-          const colorScheme = g?.maps?.ColorScheme;
-          if (colorScheme) {
-            map?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-          }
-          // No raster styles for vector maps
-        } else {
-          map?.setOptions({ styles: isDark ? darkMapStyle : (isNavigating ? lightNavStyle : []) });
-        }
-        t2 = setTimeout(() => setThemeTransition(false), 500);
-      }, 50);
+      const isDark = document.documentElement.classList.contains("dark");
+      if (tileLayerRef.current) {
+        tileLayerRef.current.setUrl(isDark ? DARK_TILES : LIGHT_TILES);
+      }
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
-  }, [mapReady, isNavigating, mapId]);
+    return () => observer.disconnect();
+  }, [mapReady]);
 
-  // Navigation mode: tilt map + higher zoom + heading rotation
+  // Navigation mode zoom
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
-
     if (isNavigating) {
-      map.setTilt(0);
       setFollowDriver(true);
       userInteractingRef.current = false;
       setUserPannedAway(false);
-      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(18);
-      if (typeof map.setHeading === "function") {
-        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-        map.setHeading(prevHeadingRef.current || 0);
-      }
-      const isDark = document.documentElement.classList.contains("dark");
-      if (mapId) {
-        const colorScheme = (window as any).google?.maps?.ColorScheme;
-        if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-        // No raster styles for vector maps
-      } else {
-        map.setOptions({ styles: isDark ? darkMapStyle : lightNavStyle });
-      }
     } else {
-      map.setTilt(0);
-      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
       map.setZoom(16);
-      if (typeof map.setHeading === "function") {
-        if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-        map.setHeading(0);
-      }
-      const isDark = document.documentElement.classList.contains("dark");
-      if (mapId) {
-        const colorScheme = (window as any).google?.maps?.ColorScheme;
-        if (colorScheme) map.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-        // No raster styles for vector maps
-      } else {
-        map.setOptions({ styles: isDark ? darkMapStyle : [] });
-      }
     }
-  }, [isNavigating, mapId]);
+  }, [isNavigating]);
 
-  // Update driver marker position, rotation & auto-follow
+  // Update driver marker position & auto-follow
   useEffect(() => {
     if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
-    const g = (window as any).google;
     const map = mapInstance.current;
 
-    // On first real GPS fix, snap map center to driver's actual location
     if (!hasReceivedFirstGpsRef.current) {
       hasReceivedFirstGpsRef.current = true;
-      map.setCenter(currentPos);
-      driverMarkerRef.current.setPosition(currentPos);
+      map.setView([currentPos.lat, currentPos.lng], map.getZoom());
+      driverMarkerRef.current.setLatLng([currentPos.lat, currentPos.lng]);
       filteredPosRef.current = currentPos;
       prevMarkerPosRef.current = currentPos;
     }
 
-    // Position filtering (Uber-like stability)
+    // Position filtering
     const prevFiltered = filteredPosRef.current;
     let displayPos = currentPos;
     if (prevFiltered) {
       const jumpMeters = getDistanceMeters(prevFiltered, currentPos);
       if (jumpMeters > 150 && currentSpeed < 20) {
-        // Ignore probable GPS spike when moving slowly
         displayPos = prevFiltered;
       } else {
         const alpha = isNavigating ? (currentSpeed > 25 ? 0.45 : 0.3) : 0.35;
@@ -751,20 +549,16 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     filteredPosRef.current = displayPos;
 
-    // Calculate heading: GPS heading → bearing from previous position → bearing to next step → last known
+    // Calculate heading
     let heading = prevHeadingRef.current;
-
-    // 1) Try GPS heading (most accurate when moving)
     if (currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
       heading = currentHeading;
-    }
-    // 2) Calculate bearing from previous rendered marker position
-    else if (prevMarkerPosRef.current) {
+    } else if (prevMarkerPosRef.current) {
       const prev = prevMarkerPosRef.current;
       const dLat = displayPos.lat - prev.lat;
       const dLng = displayPos.lng - prev.lng;
       const dist = Math.sqrt(dLat * dLat + dLng * dLng);
-      if (dist > 0.000008) { // ~1m movement threshold
+      if (dist > 0.000008) {
         const dLngRad = (displayPos.lng - prev.lng) * Math.PI / 180;
         const lat1 = prev.lat * Math.PI / 180;
         const lat2 = displayPos.lat * Math.PI / 180;
@@ -773,7 +567,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
       }
     }
-    // 3) Bearing to next navigation step (when stationary)
     if (isNavigating && currentSpeed <= 2 && navSteps[currentStepIndex]?.endLat != null) {
       const nextStep = navSteps[currentStepIndex];
       if (nextStep.endLat && nextStep.endLng) {
@@ -786,12 +579,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       }
     }
 
-    // Smooth heading transition (avoid jumpy rotations)
+    // Smooth heading
     const prevH = prevHeadingRef.current;
     let diff = heading - prevH;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
-    // Only update heading if change is significant (> 3°)
     if (Math.abs(diff) > 3) {
       heading = prevH + diff * 0.4;
       if (heading < 0) heading += 360;
@@ -801,132 +593,92 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevHeadingRef.current = heading;
 
-    // Smooth animation: interpolate from previous position to new position
+    // Animate marker
     const prevPos = prevMarkerPosRef.current;
     if (prevPos && !animatingRef.current && isNavigating) {
       const dist = Math.sqrt(Math.pow(displayPos.lat - prevPos.lat, 2) + Math.pow(displayPos.lng - prevPos.lng, 2));
-      // Only animate if distance is small enough (not a GPS jump)
       if (dist < 0.003 && dist > 0.000005) {
         animatingRef.current = true;
         animateMarker(driverMarkerRef.current, prevPos, displayPos, 1000, () => {
           animatingRef.current = false;
         });
       } else {
-        driverMarkerRef.current.setPosition(displayPos);
+        driverMarkerRef.current.setLatLng([displayPos.lat, displayPos.lng]);
       }
     } else if (!animatingRef.current) {
-      driverMarkerRef.current.setPosition(displayPos);
+      driverMarkerRef.current.setLatLng([displayPos.lat, displayPos.lng]);
     }
     prevMarkerPosRef.current = displayPos;
 
-    // When NOT on a trip (not navigating), show a simple dot instead of directional arrow
-    // because GPS heading is unreliable when stationary and the arrow points wrong
+    // Update marker icon based on state
     if (!isNavigating) {
-      driverMarkerRef.current.setIcon({
-        path: g.maps.SymbolPath.CIRCLE,
-        scale: 10, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 3,
-        anchor: new g.maps.Point(0, 0),
-      });
+      driverMarkerRef.current.setIcon(driverDotIcon());
     } else if (mapIconUrl) {
-      // Use exact admin map icon during navigation (no canvas transformation)
-      driverMarkerRef.current.setIcon({
-        url: mapIconUrl,
-        scaledSize: new g.maps.Size(36, 36),
-        anchor: new g.maps.Point(18, 18),
-      });
-      driverMarkerRef.current.setOptions({ optimized: false });
+      driverMarkerRef.current.setIcon(customImgIcon(mapIconUrl, 36));
     } else {
-      // Directional arrow during navigation
-      driverMarkerRef.current.setIcon({
-        path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2.5,
-        rotation: heading, anchor: new g.maps.Point(0, 2.5),
-      });
+      driverMarkerRef.current.setIcon(driverArrowIcon(heading));
     }
 
-    // Auto-follow with forward-looking camera + heading lock
+    // Auto-follow
     const cameraThrottleMs = navSettings.followSensitivity === "high" ? 200 : navSettings.followSensitivity === "low" ? 600 : 350;
     if (followDriver) {
       userInteractingRef.current = false;
-      if ((map as any)._setProgrammaticZoom) (map as any)._setProgrammaticZoom();
-      if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-
       const now = Date.now();
       if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
         lastCameraUpdateAtRef.current = now;
-
         if (isNavigating || freeNavTarget) {
-          if (typeof map.setHeading === "function") {
-            if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-            map.setHeading(heading);
-          }
           const lookAheadBase = navSettings.lookAheadDistance === "far" ? { slow: 80, mid: 110, fast: 140 } : navSettings.lookAheadDistance === "short" ? { slow: 25, mid: 40, fast: 60 } : { slow: 50, mid: 70, fast: 95 };
           const lookAheadMeters = currentSpeed > 40 ? lookAheadBase.fast : currentSpeed > 20 ? lookAheadBase.mid : lookAheadBase.slow;
           const cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
-          map.panTo(cameraTarget);
-
+          map.panTo([cameraTarget.lat, cameraTarget.lng], { animate: true, duration: 0.3 });
           const currentZoom = map.getZoom();
-          if (currentZoom < 17 || currentZoom > 19) {
-            map.setZoom(18);
-          }
+          if (currentZoom < 17 || currentZoom > 19) map.setZoom(18);
         } else {
-          // Non-navigating (online idle): follow driver position, north-up
-          if (typeof map.setHeading === "function") {
-            if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-            map.setHeading(0);
-          }
-          map.panTo(displayPos);
+          map.panTo([displayPos.lat, displayPos.lng], { animate: true, duration: 0.3 });
         }
       }
     }
   }, [currentPos, isNavigating, freeNavTarget, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
 
-  // Trim route polyline behind driver — remove passed segments
+  // Trim route polyline behind driver
   useEffect(() => {
     if (!isNavigating || !currentPos || !routePolylineRef.current || routePathRef.current.length < 2) return;
     const fullPath = routePathRef.current;
     let closestIdx = 0;
     let closestDist = Infinity;
     for (let i = 0; i < fullPath.length; i++) {
-      const d = getDistanceMeters(currentPos, fullPath[i]);
+      const d = getDistanceMeters(currentPos, { lat: fullPath[i][0], lng: fullPath[i][1] });
       if (d < closestDist) { closestDist = d; closestIdx = i; }
     }
     if (closestIdx > 0) {
-      const trimmedPath = [{ lat: currentPos.lat, lng: currentPos.lng }, ...fullPath.slice(closestIdx)];
-      routePolylineRef.current.setPath(trimmedPath);
+      const trimmedPath: [number, number][] = [[currentPos.lat, currentPos.lng], ...fullPath.slice(closestIdx)];
+      routePolylineRef.current.setLatLngs(trimmedPath);
     }
   }, [currentPos, isNavigating]);
 
-  // Trim free nav polyline behind driver
+  // Trim free nav polyline
   useEffect(() => {
     if (!freeNavTarget || !currentPos || !freeNavPolylineRef.current || freeNavPathRef.current.length < 2) return;
     const fullPath = freeNavPathRef.current;
     let closestIdx = 0;
     let closestDist = Infinity;
     for (let i = 0; i < fullPath.length; i++) {
-      const d = getDistanceMeters(currentPos, fullPath[i]);
+      const d = getDistanceMeters(currentPos, { lat: fullPath[i][0], lng: fullPath[i][1] });
       if (d < closestDist) { closestDist = d; closestIdx = i; }
     }
     if (closestIdx > 0) {
-      const trimmedPath = [{ lat: currentPos.lat, lng: currentPos.lng }, ...fullPath.slice(closestIdx)];
-      freeNavPolylineRef.current.setPath(trimmedPath);
+      const trimmedPath: [number, number][] = [[currentPos.lat, currentPos.lng], ...fullPath.slice(closestIdx)];
+      freeNavPolylineRef.current.setLatLngs(trimmedPath);
     }
   }, [currentPos, freeNavTarget]);
 
-  // Apply exact admin map icon when it becomes available
+  // Apply map icon when available
   useEffect(() => {
     if (!mapIconUrl || !driverMarkerRef.current) return;
-    const g = (window as any).google;
-    if (!g?.maps) return;
-
-    driverMarkerRef.current.setIcon({
-      url: mapIconUrl,
-      scaledSize: new g.maps.Size(36, 36),
-      anchor: new g.maps.Point(18, 18),
-    });
-    driverMarkerRef.current.setOptions({ optimized: false });
+    driverMarkerRef.current.setIcon(customImgIcon(mapIconUrl, 36));
   }, [mapIconUrl]);
 
+  // Auto-refocus on turn change
   const prevStepIndexRef = useRef(0);
   useEffect(() => {
     if (!isNavigating || !navSettings.autoRefocusOnTurn) return;
@@ -941,69 +693,46 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     prevStepIndexRef.current = currentStepIndex;
   }, [currentStepIndex, isNavigating, followDriver, navSettings.autoRefocusOnTurn]);
 
-  const parseNavStepsRef = useRef<(result: any) => void>(() => {});
+  // Parse OSRM nav steps
+  const parseOsrmRoute = useCallback((route: OsrmRoute, driverPos: { lat: number; lng: number } | null) => {
+    setNavEta(route.durationText);
+    setNavDistance(route.distanceText);
 
-  // Parse navigation steps from directions result
-  useEffect(() => {
-    parseNavStepsRef.current = (result: any) => {
-      try {
-        const route = result.routes[0];
-        const leg = route.legs[0];
-        
-        setNavEta(leg.duration?.text || "");
-        setNavDistance(leg.distance?.text || "");
-        
-        const etaMins = Math.round((leg.duration?.value || 0) / 60);
-        const distKm = Math.round((leg.distance?.value || 0) / 100) / 10;
-        onNavUpdate?.(leg.duration?.text || "", leg.distance?.text || "", etaMins, distKm);
-        
-        const steps: NavStep[] = leg.steps.map((step: any) => ({
-          instruction: step.instructions?.replace(/<[^>]*>/g, '') || '',
-          distance: step.distance?.text || '',
-          maneuver: step.maneuver || undefined,
-          endLat: step.end_location?.lat?.() ?? undefined,
-          endLng: step.end_location?.lng?.() ?? undefined,
-        }));
-        setNavSteps(steps);
-        
-        // Auto-advance step based on driver proximity (never jump backwards)
-        const pos = currentPos;
-        if (pos && steps.length > 0) {
-          const startIdx = Math.max(0, Math.min(currentStepIndex, steps.length - 1));
-          let closestIdx = startIdx;
-          let closestDist = Infinity;
+    const etaMins = Math.round(route.durationSeconds / 60);
+    const distKm = Math.round(route.distanceMeters / 100) / 10;
+    onNavUpdate?.(route.durationText, route.distanceText, etaMins, distKm);
 
-          for (let idx = startIdx; idx < leg.steps.length; idx++) {
-            const step = leg.steps[idx];
-            const endLat = step.end_location.lat();
-            const endLng = step.end_location.lng();
-            const dist = getDistanceMeters(pos, { lat: endLat, lng: endLng });
-            if (dist < closestDist) {
-              closestDist = dist;
-              closestIdx = idx;
-            }
-          }
+    const steps: NavStep[] = route.steps.map(s => ({
+      instruction: s.instruction,
+      distance: s.distance,
+      maneuver: s.maneuver,
+      endLat: s.endLat,
+      endLng: s.endLng,
+    }));
+    setNavSteps(steps);
 
-          setCurrentStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
-        }
-      } catch (e) {
-        console.warn("Failed to parse nav steps:", e);
+    if (driverPos && steps.length > 0) {
+      const startIdx = Math.max(0, Math.min(currentStepIndex, steps.length - 1));
+      let closestIdx = startIdx;
+      let closestDist = Infinity;
+      for (let idx = startIdx; idx < steps.length; idx++) {
+        if (steps[idx].endLat == null || steps[idx].endLng == null) continue;
+        const dist = getDistanceMeters(driverPos, { lat: steps[idx].endLat!, lng: steps[idx].endLng! });
+        if (dist < closestDist) { closestDist = dist; closestIdx = idx; }
       }
-    };
-  });
+      setCurrentStepIndex((prev) => Math.max(prev, Math.min(closestIdx, steps.length - 1)));
+    }
+  }, [onNavUpdate, currentStepIndex]);
 
-  // Route when navigating — use refs for volatile values to avoid re-triggering
-  // (currentPosRef is defined earlier, near free navigation)
-
+  // Route when navigating
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
 
-    rideMarkersRef.current.forEach((m: any) => m.setMap(null));
+    // Clear old markers/polylines
+    rideMarkersRef.current.forEach((m) => m.remove());
     rideMarkersRef.current = [];
-    if (directionsRendererRef.current) { directionsRendererRef.current.setMap(null); directionsRendererRef.current = null; }
-    if (routePolylineRef.current) { routePolylineRef.current.setMap(null); routePolylineRef.current = null; }
+    if (routePolylineRef.current) { routePolylineRef.current.remove(); routePolylineRef.current = null; }
     routePathRef.current = [];
     if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
 
@@ -1015,18 +744,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     const pickup = pickupCoords ? { lat: pickupCoords[0], lng: pickupCoords[1] } : null;
     const dropoff = dropoffCoords ? { lat: dropoffCoords[0], lng: dropoffCoords[1] } : null;
-
     if (!pickup || !dropoff) return;
 
     let destination: { lat: number; lng: number };
     let destLabel: string;
     let destColor: string;
 
-    if (tripPhase === "in_progress") {
-      destination = dropoff;
-      destLabel = "D";
-      destColor = "#ef4444";
-    } else if (tripPhase === "arrived") {
+    if (tripPhase === "in_progress" || tripPhase === "arrived") {
       destination = dropoff;
       destLabel = "D";
       destColor = "#ef4444";
@@ -1036,72 +760,45 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       destColor = "#22c55e";
     }
 
-    // Destination marker with pulse effect
-    const destMarkerOpts: any = {
-      map, position: destination, zIndex: 1000,
-    };
-    // Use ref to avoid re-triggering effect when passengerLiveLocation changes
-    if (tripPhase === "heading_to_pickup" && passengerMapIconUrl && !passengerLiveLocationRef.current) {
-      destMarkerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
-    } else {
-      destMarkerOpts.label = { text: destLabel, color: "white", fontWeight: "700", fontSize: "13px" };
-      destMarkerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 16, fillColor: destColor, fillOpacity: 1, strokeColor: "white", strokeWeight: 3 };
-    }
-    const destMarker = new g.maps.Marker(destMarkerOpts);
-    rideMarkersRef.current = [destMarker];
+    // Destination marker
+    const destIcon = (tripPhase === "heading_to_pickup" && passengerMapIconUrl && !passengerLiveLocationRef.current)
+      ? customImgIcon(passengerMapIconUrl, 28)
+      : circleIcon(destColor, destLabel);
+    const destMarker = L.marker([destination.lat, destination.lng], { icon: destIcon, zIndexOffset: 1000 }).addTo(map);
+    rideMarkersRef.current.push(destMarker);
 
     // Pulse circle around destination
-    const pulseCircle = new g.maps.Circle({
-      map, center: destination, radius: 30,
-      strokeColor: destColor, strokeWeight: 2, strokeOpacity: 0.4,
-      fillColor: destColor, fillOpacity: 0.1,
-    });
+    const pulseCircle = L.circle([destination.lat, destination.lng], {
+      radius: 30, color: destColor, weight: 2, opacity: 0.4, fillColor: destColor, fillOpacity: 0.1,
+    }).addTo(map);
     rideMarkersRef.current.push(pulseCircle);
 
     if (tripPhase === "in_progress") {
-      const pickupMarker = new g.maps.Marker({
-        map, position: pickup, zIndex: 999,
-        label: { text: "P", color: "white", fontWeight: "700", fontSize: "11px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#22c55e", fillOpacity: 0.5, strokeColor: "white", strokeWeight: 2 },
-      });
+      const pickupMarker = L.marker([pickup.lat, pickup.lng], {
+        icon: circleIcon("#22c55e", "P", 20), zIndexOffset: 999,
+      }).addTo(map);
       rideMarkersRef.current.push(pickupMarker);
     }
 
     if (tripPhase === "heading_to_pickup") {
-      const dropMarker = new g.maps.Marker({
-        map, position: dropoff, zIndex: 999,
-        label: { text: "D", color: "white", fontWeight: "700", fontSize: "11px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 0.4, strokeColor: "white", strokeWeight: 2 },
-      });
+      const dropMarker = L.marker([dropoff.lat, dropoff.lng], {
+        icon: circleIcon("#ef4444", "D", 20), zIndexOffset: 999,
+      }).addTo(map);
       rideMarkersRef.current.push(dropMarker);
     }
 
-    // Use hidden DirectionsRenderer (suppressPolylines) + custom polyline for trimming
+    // Route polyline
     const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
-    const dr = new g.maps.DirectionsRenderer({
-      map,
-      suppressMarkers: true,
-      suppressInfoWindows: true,
-      suppressPolylines: true,
-      preserveViewport: true,
-    });
-    directionsRendererRef.current = dr;
-
-    // Create custom route polyline (will be updated with trimmed path)
-    const polyline = new g.maps.Polyline({
-      map,
-      strokeColor: routeColor,
-      strokeWeight: 7,
-      strokeOpacity: 0.85,
-      zIndex: 100,
-    });
+    const polyline = L.polyline([], {
+      color: routeColor, weight: 7, opacity: 0.85,
+    }).addTo(map);
     routePolylineRef.current = polyline;
 
     const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
-      ? { interval: 8000, movement: 15 }   // was 3s/10m — too aggressive, drains battery
+      ? { interval: 8000, movement: 15 }
       : navSettings.rerouteAggressiveness === "relaxed"
-      ? { interval: 20000, movement: 50 }  // was 10s/40m
-      : { interval: 12000, movement: 25 };  // was 5s/20m — balanced default
+      ? { interval: 20000, movement: 50 }
+      : { interval: 12000, movement: 25 };
     const MIN_REROUTE_INTERVAL_MS = rerouteConfig.interval;
     const MIN_REROUTE_MOVEMENT_M = rerouteConfig.movement;
 
@@ -1127,68 +824,45 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       routeFetchInFlightRef.current = true;
       const requestSeq = ++routeRequestSeqRef.current;
 
-      const ds = new g.maps.DirectionsService();
-      ds.route({
-        origin,
-        destination,
-        travelMode: g.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: true,
-        drivingOptions: {
-          departureTime: new Date(),
-          trafficModel: g.maps.TrafficModel?.BEST_GUESS || "bestguess",
-        },
-      }).then((raw: any) => {
-        const result = selectShortestRoute(raw, roadClosures);
-        if (directionsRendererRef.current === dr && routeRequestSeqRef.current === requestSeq) {
-          dr.setDirections(result);
-          parseNavStepsRef.current(result);
+      fetchOsrmRoute(origin, destination, [], true)
+        .then(routes => {
+          const best = pickShortestOsrmRoute(routes, roadClosures);
+          if (routeRequestSeqRef.current !== requestSeq) return;
+
           lastRouteFetchAtRef.current = Date.now();
           lastRerouteOriginRef.current = origin;
 
-          // Extract detailed path from each step (road-snapped, not overview)
-          try {
-            const legs = result.routes[0].legs;
-            const pathCoords: { lat: number; lng: number }[] = [];
-            for (const leg of legs) {
-              for (const step of leg.steps) {
-                const stepPath = step.path || [];
-                for (const p of stepPath) {
-                  pathCoords.push({ lat: p.lat(), lng: p.lng() });
-                }
-              }
-            }
-            routePathRef.current = pathCoords;
-            if (routePolylineRef.current) {
-              routePolylineRef.current.setPath(pathCoords);
-            }
-
-            // Check if route passes near any road closure
-            const PROXIMITY_M = 100; // warn if route is within 100m of a closure
-            const nearbyClosures = roadClosures.filter((c) => {
-              return c.coordinates.some((cp) =>
-                pathCoords.some((rp) => getDistanceMeters(rp, cp) < PROXIMITY_M)
-              );
-            });
-
-            if (nearbyClosures.length > 0) {
-              const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard" };
-              const labels = nearbyClosures.map((c) => {
-                const label = sevLabels[c.severity] || "Closure";
-                return c.notes ? `${label}: ${c.notes}` : label;
-              });
-              setClosureWarning(labels.join(" • "));
-              if (closureWarningTimeoutRef.current) clearTimeout(closureWarningTimeoutRef.current);
-              closureWarningTimeoutRef.current = setTimeout(() => setClosureWarning(null), 15000);
-            } else {
-              setClosureWarning(null);
-            }
-          } catch {}
-        }
-      }).catch((err: any) => console.error("Directions error:", err))
-        .finally(() => {
-          if (routeRequestSeqRef.current === requestSeq) {
-            routeFetchInFlightRef.current = false;
+          routePathRef.current = best.coordinates;
+          if (routePolylineRef.current) {
+            routePolylineRef.current.setLatLngs(best.coordinates);
           }
+
+          parseOsrmRoute(best, driverPos);
+
+          // Check route proximity to road closures
+          const PROXIMITY_M = 100;
+          const nearbyClosures = roadClosures.filter((c) =>
+            c.coordinates.some((cp) =>
+              best.coordinates.some((rp) => getDistanceMeters({ lat: rp[0], lng: rp[1] }, cp) < PROXIMITY_M)
+            )
+          );
+
+          if (nearbyClosures.length > 0) {
+            const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard" };
+            const labels = nearbyClosures.map((c) => {
+              const label = sevLabels[c.severity] || "Closure";
+              return c.notes ? `${label}: ${c.notes}` : label;
+            });
+            setClosureWarning(labels.join(" • "));
+            if (closureWarningTimeoutRef.current) clearTimeout(closureWarningTimeoutRef.current);
+            closureWarningTimeoutRef.current = setTimeout(() => setClosureWarning(null), 15000);
+          } else {
+            setClosureWarning(null);
+          }
+        })
+        .catch((err) => console.error("OSRM route error:", err))
+        .finally(() => {
+          if (routeRequestSeqRef.current === requestSeq) routeFetchInFlightRef.current = false;
         });
     };
 
@@ -1214,33 +888,26 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
 
-    if (radiusCircleRef.current) { radiusCircleRef.current.setMap(null); radiusCircleRef.current = null; }
+    if (radiusCircleRef.current) { radiusCircleRef.current.remove(); radiusCircleRef.current = null; }
 
-    if (radiusKm && radiusKm > 0 && !isNavigating && showRadius) {
-      if (!currentPos) return;
-      const center = currentPos;
-      radiusCircleRef.current = new g.maps.Circle({
-        map, center, radius: radiusKm * 1000,
-        strokeColor: "#4285F4", strokeWeight: 2, strokeOpacity: 0.6,
+    if (radiusKm && radiusKm > 0 && !isNavigating && showRadius && currentPos) {
+      radiusCircleRef.current = L.circle([currentPos.lat, currentPos.lng], {
+        radius: radiusKm * 1000,
+        color: "#4285F4", weight: 2, opacity: 0.6,
         fillColor: "#4285F4", fillOpacity: 0.08,
-      });
+      }).addTo(map);
     }
   }, [radiusKm, isNavigating, currentPos, showRadius]);
 
   // Road closures overlay
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
 
-    // Clear old
-    roadClosureMarkersRef.current.forEach((m) => m.setMap(null));
-    roadClosureLinesRef.current.forEach((l) => l.setMap(null));
-    roadClosureMarkersRef.current = [];
-    roadClosureLinesRef.current = [];
+    roadClosureLayersRef.current.forEach((l) => map.removeLayer(l));
+    roadClosureLayersRef.current = [];
 
     const sevColors: Record<string, string> = { closed: "#ef4444", lane_closed: "#f59e0b", hazard: "#f97316", cones: "#f59e0b", accident: "#dc2626" };
     const sevLabels: Record<string, string> = { closed: "Road Closed", lane_closed: "Lane Closed", hazard: "Hazard", cones: "Cones", accident: "Accident" };
@@ -1251,145 +918,87 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       const label = sevLabels[c.severity] || "Closure";
 
       if (c.closure_type === "point" && coords.length > 0) {
-        const marker = new g.maps.Marker({
-          map,
-          position: coords[0],
-          icon: {
-            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
-            fillColor: color,
-            fillOpacity: 1,
-            strokeColor: "#fff",
-            strokeWeight: 1.5,
-            scale: 1.2,
-            anchor: new g.maps.Point(12, 12),
-          },
-          zIndex: 2000,
-        });
-        const iw = new g.maps.InfoWindow({
-          content: `<div style="font-size:12px;padding:4px"><strong style="color:${color}">${label}</strong>${c.notes ? `<br/>${c.notes}` : ""}</div>`,
-        });
-        marker.addListener("click", () => iw.open(map, marker));
-        roadClosureMarkersRef.current.push(marker);
+        const marker = L.marker([coords[0].lat, coords[0].lng], {
+          icon: L.divIcon({
+            className: "",
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            html: `<div style="width:24px;height:24px;border-radius:50%;background:${color};border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">⚠️</div>`,
+          }),
+          zIndexOffset: 2000,
+        }).addTo(map);
+        marker.bindPopup(`<div style="font-size:12px;padding:4px"><strong style="color:${color}">${label}</strong>${c.notes ? `<br/>${c.notes}` : ""}</div>`);
+        roadClosureLayersRef.current.push(marker);
       } else if (c.closure_type === "line" && coords.length > 1) {
-        const line = new g.maps.Polyline({
-          map,
-          path: coords,
-          strokeColor: color,
-          strokeWeight: 6,
-          strokeOpacity: 0.8,
-          icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 }, offset: "0", repeat: "15px" }],
-          zIndex: 1999,
-        });
-        roadClosureLinesRef.current.push(line);
+        const line = L.polyline(coords.map(p => [p.lat, p.lng] as [number, number]), {
+          color, weight: 6, opacity: 0.8, dashArray: "10 5",
+        }).addTo(map);
+        roadClosureLayersRef.current.push(line);
 
         const midIdx = Math.floor(coords.length / 2);
-        const infoMarker = new g.maps.Marker({
-          map,
-          position: coords[midIdx],
-          icon: {
-            path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z",
-            fillColor: color,
-            fillOpacity: 1,
-            strokeColor: "#fff",
-            strokeWeight: 1.5,
-            scale: 1.2,
-            anchor: new g.maps.Point(12, 12),
-          },
-          zIndex: 2001,
-        });
-        const iw = new g.maps.InfoWindow({
-          content: `<div style="font-size:12px;padding:4px"><strong style="color:${color}">${label}</strong>${c.notes ? `<br/>${c.notes}` : ""}</div>`,
-        });
-        infoMarker.addListener("click", () => iw.open(map, infoMarker));
-        roadClosureMarkersRef.current.push(infoMarker);
+        const infoMarker = L.marker([coords[midIdx].lat, coords[midIdx].lng], {
+          icon: L.divIcon({
+            className: "",
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            html: `<div style="width:24px;height:24px;border-radius:50%;background:${color};border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">⚠️</div>`,
+          }),
+          zIndexOffset: 2001,
+        }).addTo(map);
+        infoMarker.bindPopup(`<div style="font-size:12px;padding:4px"><strong style="color:${color}">${label}</strong>${c.notes ? `<br/>${c.notes}` : ""}</div>`);
+        roadClosureLayersRef.current.push(infoMarker);
       }
     });
-  }, [roadClosures, isLoaded]);
+  }, [roadClosures, mapReady]);
 
-  // Passenger live location marker (shown before trip starts)
+  // Passenger live location marker
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
 
-    // Only show during heading_to_pickup or arrived phases
     if (!passengerLiveLocation || tripPhase === "in_progress" || !isNavigating) {
-      if (passengerLiveMarkerRef.current) {
-        passengerLiveMarkerRef.current.setMap(null);
-        passengerLiveMarkerRef.current = null;
-      }
-      if (passengerPulseRef.current) {
-        passengerPulseRef.current.setMap(null);
-        passengerPulseRef.current = null;
-      }
-      if (passengerPulseIntervalRef.current) {
-        clearInterval(passengerPulseIntervalRef.current);
-        passengerPulseIntervalRef.current = null;
-      }
+      if (passengerLiveMarkerRef.current) { passengerLiveMarkerRef.current.remove(); passengerLiveMarkerRef.current = null; }
+      if (passengerPulseRef.current) { passengerPulseRef.current.remove(); passengerPulseRef.current = null; }
+      if (passengerPulseIntervalRef.current) { clearInterval(passengerPulseIntervalRef.current); passengerPulseIntervalRef.current = null; }
       return;
     }
 
-    const pos = { lat: passengerLiveLocation.lat, lng: passengerLiveLocation.lng };
+    const pos: [number, number] = [passengerLiveLocation.lat, passengerLiveLocation.lng];
 
-    // Update or create the pulsing circle overlay
     if (passengerPulseRef.current) {
-      passengerPulseRef.current.setCenter(pos);
+      passengerPulseRef.current.setLatLng(pos);
     } else {
-      const pulseCircle = new g.maps.Circle({
-        map,
-        center: pos,
-        radius: 30,
-        fillColor: "#3b82f6",
-        fillOpacity: 0.25,
-        strokeColor: "#3b82f6",
-        strokeOpacity: 0.4,
-        strokeWeight: 2,
-        zIndex: 997,
-        clickable: false,
-      });
+      const pulseCircle = L.circle(pos, {
+        radius: 30, fillColor: "#3b82f6", fillOpacity: 0.25,
+        color: "#3b82f6", opacity: 0.4, weight: 2,
+      }).addTo(map);
       passengerPulseRef.current = pulseCircle;
 
-      // Animate the pulse
       let growing = true;
       let currentRadius = 30;
       passengerPulseIntervalRef.current = setInterval(() => {
         if (!passengerPulseRef.current) return;
-        if (growing) {
-          currentRadius += 4; // larger steps = fewer iterations needed
-          if (currentRadius >= 60) growing = false;
-        } else {
-          currentRadius -= 4;
-          if (currentRadius <= 30) growing = true;
-        }
+        if (growing) { currentRadius += 4; if (currentRadius >= 60) growing = false; }
+        else { currentRadius -= 4; if (currentRadius <= 30) growing = true; }
         passengerPulseRef.current.setRadius(currentRadius);
-        passengerPulseRef.current.setOptions({
+        passengerPulseRef.current.setStyle({
           fillOpacity: 0.25 - (currentRadius - 30) * 0.006,
-          strokeOpacity: 0.4 - (currentRadius - 30) * 0.01,
+          opacity: 0.4 - (currentRadius - 30) * 0.01,
         });
-      }, 150); // was 50ms (20fps) — 150ms (6.6fps) is plenty for a subtle pulse
+      }, 150);
     }
 
-    // Update or create the main marker
     if (passengerLiveMarkerRef.current) {
-      passengerLiveMarkerRef.current.setPosition(pos);
+      passengerLiveMarkerRef.current.setLatLng(pos);
     } else {
-      const markerOpts: any = {
-        map,
-        position: pos,
-        zIndex: 998,
-        title: "Passenger",
-      };
-      if (passengerMapIconUrl) {
-        markerOpts.icon = { url: passengerMapIconUrl, scaledSize: new g.maps.Size(32, 32), anchor: new g.maps.Point(16, 16) };
-      } else {
-        markerOpts.label = { text: "👤", fontSize: "18px" };
-        markerOpts.icon = { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#3b82f6", fillOpacity: 0.9, strokeColor: "white", strokeWeight: 3 };
-      }
-      passengerLiveMarkerRef.current = new g.maps.Marker(markerOpts);
+      const icon = passengerMapIconUrl
+        ? customImgIcon(passengerMapIconUrl, 32)
+        : circleIcon("#3b82f6", "👤", 28);
+      passengerLiveMarkerRef.current = L.marker(pos, { icon, zIndexOffset: 998 }).addTo(map);
     }
   }, [passengerLiveLocation, tripPhase, isNavigating, passengerMapIconUrl]);
 
-  // Maneuver icons - more visual
+  // Maneuver icons
   const getManeuverIcon = (maneuver?: string) => {
     if (!maneuver) return "↑";
     if (maneuver.includes("turn-left") || maneuver === "left") return "↰";
@@ -1417,7 +1026,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return "bg-primary";
   };
 
-  // Expose recenter function and availability to parent
+  // Expose recenter
   useEffect(() => {
     onRecenterAvailableChange?.(userPannedAway && !isNavigating);
   }, [userPannedAway, isNavigating, onRecenterAvailableChange]);
@@ -1428,7 +1037,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         userInteractingRef.current = false;
         setUserPannedAway(false);
         if (currentPos && mapInstance.current) {
-          mapInstance.current.panTo(currentPos);
+          mapInstance.current.panTo([currentPos.lat, currentPos.lng]);
           mapInstance.current.setZoom(16);
         }
       };
@@ -1437,9 +1046,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
   // Expose startFreeNav to parent
   useEffect(() => {
-    if (startFreeNavRef) {
-      startFreeNavRef.current = startFreeNav;
-    }
+    if (startFreeNavRef) startFreeNavRef.current = startFreeNav;
   }, [startFreeNav, startFreeNavRef]);
 
   // Notify parent of free nav state changes
@@ -1447,7 +1054,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     onFreeNavChange?.(!!freeNavTarget);
   }, [freeNavTarget, onFreeNavChange]);
 
-  // Expose follow toggle to parent
+  // Expose follow toggle
   useEffect(() => {
     onFollowDriverChange?.(followDriver);
   }, [followDriver, onFollowDriverChange]);
@@ -1459,64 +1066,43 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           setFollowDriver(false);
           userInteractingRef.current = true;
           setUserPannedAway(false);
-          const g = (window as any).google;
-          if (g?.maps && mapInstance.current) {
-            mapInstance.current.setTilt(0);
-            if (mapInstance.current.setHeading) mapInstance.current.setHeading(0);
-            const bounds = new g.maps.LatLngBounds();
-            if (currentPos) bounds.extend(currentPos);
-            if (pickupCoords) bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] });
-            if (dropoffCoords) bounds.extend({ lat: dropoffCoords[0], lng: dropoffCoords[1] });
-            mapInstance.current.fitBounds(bounds, 60);
+          if (mapInstance.current) {
+            const bounds = L.latLngBounds([]);
+            if (currentPos) bounds.extend([currentPos.lat, currentPos.lng]);
+            if (pickupCoords) bounds.extend([pickupCoords[0], pickupCoords[1]]);
+            if (dropoffCoords) bounds.extend([dropoffCoords[0], dropoffCoords[1]]);
+            if (bounds.isValid()) mapInstance.current.fitBounds(bounds, { padding: [60, 60] });
           }
         } else {
           setFollowDriver(true);
           userInteractingRef.current = false;
           setUserPannedAway(false);
           if (currentPos && mapInstance.current) {
-            mapInstance.current.panTo(currentPos);
+            mapInstance.current.panTo([currentPos.lat, currentPos.lng]);
             mapInstance.current.setZoom(18);
-            mapInstance.current.setTilt(0);
           }
         }
       };
     }
   }, [followDriver, followToggleRef, currentPos, pickupCoords, dropoffCoords]);
 
-  if (error) {
-    return <div className="absolute inset-0 bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
-  }
-  if (!isLoaded) {
-    return <div className="absolute inset-0 bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-  }
+  // Compass / heading — Leaflet doesn't support map rotation, so these are no-ops
+  useEffect(() => {
+    if (resetNorthRef) {
+      resetNorthRef.current = () => {
+        setMapHeading(0);
+        onMapHeadingChange?.(0);
+      };
+    }
+  }, [resetNorthRef, onMapHeadingChange]);
 
   const nextStep = navSteps[currentStepIndex + 1];
 
   return (
     <>
       <div ref={mapRef} className="absolute inset-0 z-0" />
-      {/* Theme transition overlay */}
-      <div
-        className={`absolute inset-0 z-[1] pointer-events-none bg-background/90 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${themeTransition ? 'opacity-100' : 'opacity-0'}`}
-      />
 
       {/* Compass reset exposed via ref to parent */}
-      {(() => {
-        if (resetNorthRef) {
-          resetNorthRef.current = () => {
-            const map = mapInstance.current;
-            if (!map) return;
-            if ((map as any)._setProgrammaticHeading) (map as any)._setProgrammaticHeading();
-            if (typeof map.setHeading === "function") map.setHeading(0);
-            map.setTilt(0);
-            setMapHeading(0);
-            onMapHeadingChange?.(0);
-          };
-        }
-        return null;
-      })()}
-
-      {/* Route/follow toggle removed — now in DriverApp sidebar */}
 
       {/* Speed indicator — only show on map when trip panel is NOT open */}
       {isNavigating && !tripPanelOpen && (
@@ -1544,15 +1130,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </div>
       )}
 
-      {/* Free navigation — turn-by-turn UI (same as in-trip) */}
+      {/* Free navigation — turn-by-turn UI */}
       {freeNavTarget && (
         <>
-          {/* Top: current maneuver step */}
           {freeNavSteps.length > 0 && (
             <div className="absolute top-3 left-3 right-3 z-[9980]">
               <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl overflow-hidden">
                 <div className="flex items-center gap-3 px-4 py-3">
-                  {/* Maneuver icon */}
                   <div className={`w-12 h-12 rounded-xl ${getManeuverColor(freeNavSteps[freeNavStepIndex]?.maneuver)} text-white flex items-center justify-center shrink-0 shadow-md`}>
                     <span className="text-2xl font-bold">{getManeuverIcon(freeNavSteps[freeNavStepIndex]?.maneuver)}</span>
                   </div>
@@ -1565,7 +1149,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                     </div>
                   </div>
                 </div>
-                {/* Next step preview */}
                 {freeNavStepIndex + 1 < freeNavSteps.length && (
                   <div className="border-t border-border px-4 py-2 flex items-center gap-2 bg-muted/30">
                     <span className="text-xs text-muted-foreground">Then</span>
@@ -1582,7 +1165,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
             </div>
           )}
 
-          {/* Bottom: ETA + distance + stop button */}
           <div className="absolute bottom-4 left-3 right-3 z-[9980]">
             <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -1594,7 +1176,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                   {freeNavDist && freeNavEta ? `${freeNavDist} • ${freeNavEta}` : "Calculating route…"}
                 </div>
               </div>
-              {/* Speed */}
               <div className="w-12 h-12 rounded-full bg-muted/60 border-2 border-border flex flex-col items-center justify-center shrink-0">
                 <span className="text-sm font-black text-foreground leading-none">{currentSpeed}</span>
                 <span className="text-[7px] text-muted-foreground font-medium">km/h</span>
@@ -1610,11 +1191,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         </>
       )}
 
-      {/* Context menu on map tap/long-press — bottom sheet style */}
+      {/* Context menu on map tap/long-press */}
       <AnimatePresence>
         {reportMenuPos && !showReportForm && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1623,7 +1203,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               className="fixed inset-0 z-[9990] bg-black/20"
               onClick={() => setReportMenuPos(null)}
             />
-            {/* Menu sheet */}
             <motion.div
               initial={{ y: 60, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -1632,11 +1211,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
               className="fixed bottom-0 left-0 right-0 z-[9991] px-3 pb-4"
             >
               <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
-                {/* Handle bar */}
                 <div className="flex justify-center pt-2.5 pb-1">
                   <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
                 </div>
-                {/* Navigate Here — hero action */}
                 <div className="px-3 pb-2">
                   <button
                     onClick={() => {
@@ -1654,7 +1231,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                     </div>
                   </button>
                 </div>
-                {/* Report actions */}
                 <div className="px-3 pb-1">
                   <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 pb-1.5">Report an issue</div>
                 </div>
@@ -1682,7 +1258,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                     </button>
                   ))}
                 </div>
-                {/* Cancel */}
                 <div className="px-3 pb-3">
                   <button
                     onClick={() => setReportMenuPos(null)}
@@ -1726,7 +1301,6 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
                 </button>
               ))}
             </div>
-            {/* Lane side picker for lane_closed, accident, cones */}
             {["lane_closed", "accident", "cones"].includes(reportSeverity) && (
               <div className="space-y-1.5">
                 <label className="text-[11px] font-medium text-muted-foreground">Which lane?</label>
@@ -1801,37 +1375,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           </div>
         </div>
       )}
-
     </>
   );
 };
-
-// Clean light style for navigation mode
-const lightNavStyle = [
-  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e0e0e0" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#ffd54f" }] },
-  { featureType: "landscape", elementType: "geometry.fill", stylers: [{ color: "#f5f5f5" }] },
-];
-
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "on" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#b0b0c0" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#505060" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#252538" }] },
-  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#9a9aaa" }] },
-  { featureType: "poi", elementType: "labels.icon", stylers: [{ lightness: -20 }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2a2a3e" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1a1a2e" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#a0a0b0" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#3a3a50" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f42" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2b" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4a6080" }] },
-];
 
 export default DriverMap;
