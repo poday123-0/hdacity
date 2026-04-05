@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useGoogleMaps } from "@/hooks/use-google-maps";
-import { selectShortestRoute } from "@/lib/shortest-route";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { fetchOsrmRoute, pickShortestOsrmRoute } from "@/lib/osrm-routing";
 
 interface RideMapData {
   pickup?: { lat: number; lng: number; name: string };
@@ -44,26 +45,81 @@ interface MaldivesMapProps {
   vehicleMarkers?: VehicleMarkerData[];
   tripRoutes?: TripRouteData[];
   onMapClick?: (lat: number, lng: number) => void;
-  onMapReady?: (map: google.maps.Map) => void;
+  onMapReady?: (map: L.Map) => void;
 }
+
+// Helper: create a circle-based divIcon
+const circleIcon = (color: string, label: string, size = 28) => {
+  return L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(0,0,0,0.3)">${label}</div>`,
+  });
+};
+
+const userDotIcon = L.divIcon({
+  className: "",
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+  html: `<div style="width:16px;height:16px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
+});
+
+const vehicleIcon = (imageUrl?: string) => {
+  if (imageUrl) {
+    return L.divIcon({
+      className: "",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      html: `<img src="${imageUrl}" style="width:28px;height:28px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3)" crossorigin="anonymous" />`,
+    });
+  }
+  return L.divIcon({
+    className: "",
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚗</div>`,
+  });
+};
+
+const driverIcon = (iconUrl?: string | null) => {
+  if (iconUrl) {
+    return L.divIcon({
+      className: "",
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      html: `<img src="${iconUrl}" style="width:36px;height:36px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3)" crossorigin="anonymous" />`,
+    });
+  }
+  return L.divIcon({
+    className: "",
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚕</div>`,
+  });
+};
+
+// Tile URLs
+const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DARK_TILES = "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapReady }: MaldivesMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
-  const userMarkerRef = useRef<any>(null);
-  const rideMarkersRef = useRef<any[]>([]);
-  const driverMarkerRef = useRef<any>(null);
-  const vehicleMarkersRef = useRef<any[]>([]);
-  const directionsRendererRef = useRef<any>(null);
-  const vehicleInfoWindowRef = useRef<any>(null);
-  const tripRenderersRef = useRef<any[]>([]);
-  const tripMarkersRef = useRef<any[]>([]);
+  const mapInstance = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const rideMarkersRef = useRef<L.Marker[]>([]);
+  const driverMarkerRef = useRef<L.Marker | null>(null);
+  const vehicleMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const tripPolylinesRef = useRef<L.Polyline[]>([]);
+  const tripMarkersRef = useRef<L.Marker[]>([]);
   const watchIdRef = useRef<number | null>(null);
   const didInitialFitRef = useRef(false);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
-  const { isLoaded, error, mapId } = useGoogleMaps();
+  const [themeTransition, setThemeTransition] = useState(false);
 
-  // Stable ref for latest rideData/tripRoutes to avoid re-creating markers
   const rideDataRef = useRef(rideData);
   rideDataRef.current = rideData;
   const tripRoutesRef = useRef(tripRoutes);
@@ -85,7 +141,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
 
-  // Initial center — computed once
+  // Compute initial center
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(null);
   if (!initialCenterRef.current) {
     initialCenterRef.current = userPos
@@ -98,363 +154,278 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
   // Init map — only once
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || mapInstance.current) return;
+    if (!mapRef.current || mapInstance.current) return;
     const center = initialCenterRef.current || { lat: 4.1755, lng: 73.5093 };
-    const g = (window as any).google;
-    if (!g?.maps) return;
-
     const isDark = document.documentElement.classList.contains("dark");
-    const mapOptions: any = {
-      center,
+
+    const map = L.map(mapRef.current, {
+      center: [center.lat, center.lng],
       zoom: 15,
-      disableDefaultUI: true,
       zoomControl: true,
-      gestureHandling: "greedy",
-    };
-
-    if (mapId) {
-      mapOptions.mapId = mapId;
-      const colorScheme = g.maps?.ColorScheme;
-      if (colorScheme) mapOptions.colorScheme = isDark ? colorScheme.DARK : colorScheme.LIGHT;
-    } else {
-      mapOptions.styles = isDark ? darkMapStyle : [];
-    }
-
-    const map = new g.maps.Map(mapRef.current, mapOptions);
-    const userMarker = new g.maps.Marker({
-      map, position: center, zIndex: 900,
-      icon: { path: g.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
+      attributionControl: false,
     });
+
+    const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
+    const tileLayer = L.tileLayer(tileUrl, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(map);
+    tileLayerRef.current = tileLayer;
+
+    // Add attribution in corner
+    L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+
+    // User marker
+    const userMarker = L.marker([center.lat, center.lng], { icon: userDotIcon, zIndexOffset: 900 }).addTo(map);
     userMarkerRef.current = userMarker;
+
     mapInstance.current = map;
     onMapReady?.(map);
 
-    map.addListener("click", (e: any) => {
-      const lat = e.latLng?.lat();
-      const lng = e.latLng?.lng();
-      if (lat != null && lng != null) window.dispatchEvent(new CustomEvent("map-tap", { detail: { lat, lng } }));
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      window.dispatchEvent(new CustomEvent("map-tap", { detail: { lat: e.latlng.lat, lng: e.latlng.lng } }));
     });
 
-    return () => { mapInstance.current = null; };
-  }, [isLoaded, !!initialCenterRef.current, mapId]);
-
-  // Track map readiness
-  const [mapReady, setMapReady] = useState(false);
-  useEffect(() => {
-    if (mapInstance.current && !mapReady) setMapReady(true);
-  });
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
+  }, [!!initialCenterRef.current]);
 
   // Theme observer
-  const [themeTransition, setThemeTransition] = useState(false);
   useEffect(() => {
-    if (!mapReady || !mapInstance.current) return;
-    const map = mapInstance.current;
+    if (!mapInstance.current) return;
     let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>;
-    const applyTheme = () => {
-      const isDark = document.documentElement.classList.contains("dark");
-      const g = (window as any).google;
-      if (mapId) {
-        const colorScheme = g?.maps?.ColorScheme;
-        if (colorScheme) map?.setOptions({ colorScheme: isDark ? colorScheme.DARK : colorScheme.LIGHT });
-        map?.setOptions({ styles: isDark ? darkMapStyle : [] });
-      } else {
-        map?.setOptions({ styles: isDark ? darkMapStyle : [] });
-      }
-    };
     const observer = new MutationObserver(() => {
       setThemeTransition(true);
-      t1 = setTimeout(() => { applyTheme(); t2 = setTimeout(() => setThemeTransition(false), 500); }, 50);
+      t1 = setTimeout(() => {
+        const isDark = document.documentElement.classList.contains("dark");
+        const newUrl = isDark ? DARK_TILES : LIGHT_TILES;
+        if (tileLayerRef.current && mapInstance.current) {
+          tileLayerRef.current.setUrl(newUrl);
+        }
+        t2 = setTimeout(() => setThemeTransition(false), 500);
+      }, 50);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2); };
-  }, [mapReady, mapId]);
+  }, [!!mapInstance.current]);
 
-  // Update user marker position only — NEVER move the viewport
+  // Update user marker position
   useEffect(() => {
     if (!userPos || !userMarkerRef.current || !mapInstance.current) return;
-    userMarkerRef.current.setPosition(userPos);
-    // Only auto-center on very first GPS fix before anything else loads
+    userMarkerRef.current.setLatLng([userPos.lat, userPos.lng]);
     if (!didInitialFitRef.current && !rideData?.pickup && !tripRoutes?.length && !vehicleMarkers?.length) {
       didInitialFitRef.current = true;
-      mapInstance.current.panTo(userPos);
+      mapInstance.current.panTo([userPos.lat, userPos.lng]);
     }
   }, [userPos]);
 
-  // Ride markers & route — only recreate when ride identity changes, not coordinates
+  // Ride markers & route
   const prevRideKeyRef = useRef("");
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
 
     const rd = rideData;
     const rideKey = rd ? `${rd.pickup?.lat},${rd.pickup?.lng}-${rd.dropoff?.lat},${rd.dropoff?.lng}-${rd.showRoute}` : "";
 
-    // Only fully recreate markers when ride identity changes
+    // Just update driver position smoothly if ride identity hasn't changed
     if (rideKey === prevRideKeyRef.current && driverMarkerRef.current) {
-      // Just update driver position smoothly
       if (rd?.driverLat != null && rd?.driverLng != null) {
-        driverMarkerRef.current.setPosition({ lat: rd.driverLat, lng: rd.driverLng });
+        driverMarkerRef.current.setLatLng([rd.driverLat, rd.driverLng]);
       }
       return;
     }
     prevRideKeyRef.current = rideKey;
 
     // Clean up old markers
-    rideMarkersRef.current.forEach((m: any) => m.setMap(null));
+    rideMarkersRef.current.forEach(m => map.removeLayer(m));
     rideMarkersRef.current = [];
-    if (driverMarkerRef.current) { driverMarkerRef.current.setMap(null); driverMarkerRef.current = null; }
-    if (directionsRendererRef.current) { directionsRendererRef.current.setMap(null); directionsRendererRef.current = null; }
+    if (driverMarkerRef.current) { map.removeLayer(driverMarkerRef.current); driverMarkerRef.current = null; }
+    if (routePolylineRef.current) { map.removeLayer(routePolylineRef.current); routePolylineRef.current = null; }
 
     if (!rd) return;
     const { pickup, dropoff, driverLat, driverLng, showRoute } = rd;
 
     if (pickup) {
-      const m = new g.maps.Marker({
-        map, position: { lat: pickup.lat, lng: pickup.lng }, zIndex: 1000,
-        label: { text: "P", color: "white", fontWeight: "700", fontSize: "12px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
-      });
+      const m = L.marker([pickup.lat, pickup.lng], { icon: circleIcon("#22c55e", "P"), zIndexOffset: 1000 }).addTo(map);
       rideMarkersRef.current.push(m);
     }
     if (dropoff) {
-      const m = new g.maps.Marker({
-        map, position: { lat: dropoff.lat, lng: dropoff.lng }, zIndex: 1000,
-        label: { text: "D", color: "white", fontWeight: "700", fontSize: "12px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
-      });
+      const m = L.marker([dropoff.lat, dropoff.lng], { icon: circleIcon("#ef4444", "D"), zIndexOffset: 1000 }).addTo(map);
       rideMarkersRef.current.push(m);
     }
     if (driverLat != null && driverLng != null) {
-      const markerOpts: any = { map, position: { lat: driverLat, lng: driverLng }, zIndex: 1100 };
-      if (rd.driverIconUrl) {
-        markerOpts.icon = { url: rd.driverIconUrl, scaledSize: new g.maps.Size(36, 36), anchor: new g.maps.Point(18, 18) };
-        markerOpts.optimized = false;
-      } else {
-        markerOpts.icon = { path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z",
-          scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12) };
-      }
-      driverMarkerRef.current = new g.maps.Marker(markerOpts);
+      driverMarkerRef.current = L.marker([driverLat, driverLng], {
+        icon: driverIcon(rd.driverIconUrl),
+        zIndexOffset: 1100,
+      }).addTo(map);
     }
 
     if (showRoute && pickup && dropoff) {
-      const ds = new g.maps.DirectionsService();
-      const dr = new g.maps.DirectionsRenderer({
-        map, suppressMarkers: true,
-        preserveViewport: true, // ← CRITICAL: prevents auto-zoom
-        polylineOptions: { strokeColor: "#4285F4", strokeWeight: 5, strokeOpacity: 0.85 },
-      });
-      directionsRendererRef.current = dr;
-      const waypoints = driverLat != null && driverLng != null
-        ? [{ location: { lat: pickup.lat, lng: pickup.lng }, stopover: true }] : [];
-      const origin = driverLat != null ? { lat: driverLat, lng: driverLng } : { lat: pickup.lat, lng: pickup.lng };
-      ds.route({
-        origin, destination: { lat: dropoff.lat, lng: dropoff.lng },
-        waypoints, travelMode: g.maps.TravelMode.DRIVING, provideRouteAlternatives: true,
-      }).then((raw: any) => {
-        dr.setDirections(selectShortestRoute(raw));
-        // Only fit bounds on the very first ride load
-        if (!didInitialFitRef.current) {
-          didInitialFitRef.current = true;
-          const bounds = new g.maps.LatLngBounds();
-          bounds.extend({ lat: pickup.lat, lng: pickup.lng });
-          bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
-          if (driverLat != null && driverLng != null) bounds.extend({ lat: driverLat, lng: driverLng });
-          map.fitBounds(bounds, 60);
-        }
-      }).catch((err: any) => console.error("Directions error:", err));
+      const origin = driverLat != null && driverLng != null ? { lat: driverLat, lng: driverLng } : { lat: pickup.lat, lng: pickup.lng };
+      const waypoints = driverLat != null && driverLng != null ? [{ lat: pickup.lat, lng: pickup.lng }] : [];
+
+      fetchOsrmRoute(origin, { lat: dropoff.lat, lng: dropoff.lng }, waypoints, true)
+        .then(routes => {
+          if (!mapInstance.current) return;
+          const best = pickShortestOsrmRoute(routes);
+          const latlngs = best.coordinates.map(c => [c[0], c[1]] as [number, number]);
+          routePolylineRef.current = L.polyline(latlngs, {
+            color: "#4285F4",
+            weight: 5,
+            opacity: 0.85,
+          }).addTo(mapInstance.current);
+
+          if (!didInitialFitRef.current) {
+            didInitialFitRef.current = true;
+            const bounds = L.latLngBounds([
+              [pickup.lat, pickup.lng],
+              [dropoff.lat, dropoff.lng],
+            ]);
+            if (driverLat != null && driverLng != null) bounds.extend([driverLat, driverLng]);
+            map.fitBounds(bounds, { padding: [60, 60] });
+          }
+        })
+        .catch(err => console.error("OSRM route error:", err));
     } else if (pickup && dropoff && !didInitialFitRef.current) {
       didInitialFitRef.current = true;
-      const bounds = new g.maps.LatLngBounds();
-      bounds.extend({ lat: pickup.lat, lng: pickup.lng });
-      bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
-      if (driverLat != null && driverLng != null) bounds.extend({ lat: driverLat, lng: driverLng });
-      map.fitBounds(bounds, 60);
+      const bounds = L.latLngBounds([
+        [pickup.lat, pickup.lng],
+        [dropoff.lat, dropoff.lng],
+      ]);
+      if (driverLat != null && driverLng != null) bounds.extend([driverLat, driverLng]);
+      map.fitBounds(bounds, { padding: [60, 60] });
     }
   }, [rideData?.pickup?.lat, rideData?.dropoff?.lat, rideData?.driverLat, rideData?.driverLng, rideData?.driverIconUrl, rideData?.showRoute]);
 
-  // Driver icon update only
+  // Driver icon update
   useEffect(() => {
-    const g = (window as any).google;
-    if (!driverMarkerRef.current || !g?.maps || !rideData?.driverIconUrl) return;
-    driverMarkerRef.current.setIcon({
-      url: rideData.driverIconUrl, scaledSize: new g.maps.Size(36, 36), anchor: new g.maps.Point(18, 18),
-    });
-    driverMarkerRef.current.setOptions({ optimized: false });
+    if (!driverMarkerRef.current || !rideData?.driverIconUrl) return;
+    driverMarkerRef.current.setIcon(driverIcon(rideData.driverIconUrl));
   }, [rideData?.driverIconUrl]);
 
-  // Vehicle markers — update via ref to avoid effect churn
-  const vehicleMarkersDataRef = useRef(vehicleMarkers);
-  vehicleMarkersDataRef.current = vehicleMarkers;
-
-  // Stable key: sorted IDs
+  // Vehicle markers
   const vehicleIdsKey = (vehicleMarkers || []).map(v => v.id).sort().join(",");
 
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
+
     if (rideDataRef.current?.showRoute) {
-      vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
-      vehicleMarkersRef.current = [];
+      vehicleMarkersRef.current.forEach(m => map.removeLayer(m));
+      vehicleMarkersRef.current.clear();
       return;
     }
 
-    const markers = vehicleMarkersDataRef.current;
+    const markers = vehicleMarkers;
     if (!markers || markers.length === 0) {
-      vehicleMarkersRef.current.forEach((m: any) => m.setMap(null));
-      vehicleMarkersRef.current = [];
+      vehicleMarkersRef.current.forEach(m => map.removeLayer(m));
+      vehicleMarkersRef.current.clear();
       return;
     }
 
-    const existingMap = new Map<string, any>();
-    vehicleMarkersRef.current.forEach((m: any) => { if (m._vid) existingMap.set(m._vid, m); });
+    const newIds = new Set(markers.map(v => v.id || `${v.lat},${v.lng}`));
 
-    const newMarkerRefs: any[] = [];
-
-    const buildInfoContent = (v: VehicleMarkerData) => {
-      const lines: string[] = [];
-      if (v.driverName) lines.push(`<div style="font-weight:700;font-size:12px">${v.driverName}</div>`);
-      if (v.driverPhone) lines.push(`<div style="font-size:11px;color:#666">📞 ${v.driverPhone}</div>`);
-      if (v.centerCode) lines.push(`<div style="font-size:11px;color:#666">🏷️ ${v.centerCode}</div>`);
-      if (v.plate) lines.push(`<div style="font-size:11px;color:#666">🚗 ${v.plate}</div>`);
-      if (v.vehicleInfo) lines.push(`<div style="font-size:10px;color:#999">${v.vehicleInfo}</div>`);
-      if (v.name) lines.push(`<div style="font-size:10px;color:#999">${v.name}</div>`);
-      lines.push(`<div style="font-size:10px;margin-top:2px;color:${v.isOnTrip ? '#f59e0b' : '#22c55e'};font-weight:600">${v.isOnTrip ? '● On Trip' : '● Available'}</div>`);
-      return `<div style="padding:4px;min-width:120px">${lines.join("")}</div>`;
-    };
-
-    markers.forEach(v => {
-      const vid = v.id || v.lat + "," + v.lng;
-      const existing = existingMap.get(vid);
-      if (existing) {
-        existing.setPosition({ lat: v.lat, lng: v.lng });
-        if (v.imageUrl) {
-          existing.setIcon({ url: v.imageUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) });
-          existing.setOptions({ optimized: false });
-        }
-        (existing as any)._vdata = v;
-        newMarkerRefs.push(existing);
-        existingMap.delete(vid);
-      } else {
-        const markerOpts: any = { map, position: { lat: v.lat, lng: v.lng } };
-        if (v.imageUrl) {
-          markerOpts.icon = { url: v.imageUrl, scaledSize: new g.maps.Size(28, 28), anchor: new g.maps.Point(14, 14) };
-          markerOpts.optimized = false;
-        } else {
-          markerOpts.icon = {
-            path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z",
-            scale: 0.9, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, anchor: new g.maps.Point(12, 12),
-          };
-        }
-        const m = new g.maps.Marker(markerOpts);
-        (m as any)._vid = vid;
-        (m as any)._vdata = v;
-        m.addListener("click", () => {
-          if (vehicleInfoWindowRef.current) vehicleInfoWindowRef.current.close();
-          const data = (m as any)._vdata as VehicleMarkerData;
-          const iw = new g.maps.InfoWindow({ content: buildInfoContent(data) });
-          iw.open(map, m);
-          vehicleInfoWindowRef.current = iw;
-        });
-        newMarkerRefs.push(m);
+    // Remove markers no longer present
+    vehicleMarkersRef.current.forEach((marker, id) => {
+      if (!newIds.has(id)) {
+        map.removeLayer(marker);
+        vehicleMarkersRef.current.delete(id);
       }
     });
 
-    existingMap.forEach((m: any) => m.setMap(null));
-    vehicleMarkersRef.current = newMarkerRefs;
+    // Add/update markers
+    markers.forEach(v => {
+      const vid = v.id || `${v.lat},${v.lng}`;
+      const existing = vehicleMarkersRef.current.get(vid);
+
+      if (existing) {
+        existing.setLatLng([v.lat, v.lng]);
+        if (v.imageUrl) existing.setIcon(vehicleIcon(v.imageUrl));
+      } else {
+        const marker = L.marker([v.lat, v.lng], {
+          icon: vehicleIcon(v.imageUrl),
+          zIndexOffset: 500,
+        }).addTo(map);
+
+        // Build info popup
+        const lines: string[] = [];
+        if (v.driverName) lines.push(`<strong>${v.driverName}</strong>`);
+        if (v.driverPhone) lines.push(`📞 ${v.driverPhone}`);
+        if (v.centerCode) lines.push(`🏷️ ${v.centerCode}`);
+        if (v.plate) lines.push(`🚗 ${v.plate}`);
+        if (v.vehicleInfo) lines.push(`<span style="color:#999">${v.vehicleInfo}</span>`);
+        if (v.name) lines.push(`<span style="color:#999">${v.name}</span>`);
+        lines.push(`<span style="color:${v.isOnTrip ? '#f59e0b' : '#22c55e'};font-weight:600">${v.isOnTrip ? '● On Trip' : '● Available'}</span>`);
+
+        marker.bindPopup(`<div style="font-size:12px;min-width:120px">${lines.join("<br/>")}</div>`);
+        vehicleMarkersRef.current.set(vid, marker);
+      }
+    });
   }, [vehicleIdsKey, rideData?.showRoute]);
 
-  // Smoothly update vehicle positions without triggering marker recreation
+  // Smoothly update vehicle positions
   useEffect(() => {
-    if (!vehicleMarkers || vehicleMarkersRef.current.length === 0) return;
-    const posMap = new Map(vehicleMarkers.map(v => [v.id || `${v.lat},${v.lng}`, v]));
-    vehicleMarkersRef.current.forEach((m: any) => {
-      const v = posMap.get(m._vid);
-      if (v) {
-        m.setPosition({ lat: v.lat, lng: v.lng });
-        (m as any)._vdata = v;
-      }
+    if (!vehicleMarkers) return;
+    vehicleMarkers.forEach(v => {
+      const vid = v.id || `${v.lat},${v.lng}`;
+      const marker = vehicleMarkersRef.current.get(vid);
+      if (marker) marker.setLatLng([v.lat, v.lng]);
     });
   }, [vehicleMarkers]);
 
-  // Trip routes — cache by trip IDs, only re-render when set of trips changes
+  // Trip routes
   const prevTripIdsRef = useRef("");
-  const tripRoutesStableRef = useRef(tripRoutes);
-  tripRoutesStableRef.current = tripRoutes;
-
   const tripIdsKey = (tripRoutes || []).map(t => t.id).sort().join(",");
 
   useEffect(() => {
     const map = mapInstance.current;
-    const g = (window as any).google;
-    if (!map || !g?.maps) return;
+    if (!map) return;
 
-    // Skip if same set of trips (the key is the dep, not the array ref)
-    if (tripIdsKey === prevTripIdsRef.current && tripRenderersRef.current.length > 0) return;
+    if (tripIdsKey === prevTripIdsRef.current && tripPolylinesRef.current.length > 0) return;
     prevTripIdsRef.current = tripIdsKey;
 
     // Clear previous
-    tripRenderersRef.current.forEach((r: any) => r.setMap(null));
-    tripRenderersRef.current = [];
-    tripMarkersRef.current.forEach((m: any) => m.setMap(null));
+    tripPolylinesRef.current.forEach(p => map.removeLayer(p));
+    tripPolylinesRef.current = [];
+    tripMarkersRef.current.forEach(m => map.removeLayer(m));
     tripMarkersRef.current = [];
 
-    const routes = tripRoutesStableRef.current;
+    const routes = tripRoutesRef.current;
     if (!routes || routes.length === 0) return;
 
-    const ds = new g.maps.DirectionsService();
-
-    routes.forEach((trip) => {
-      const pickupM = new g.maps.Marker({
-        map, position: { lat: trip.pickupLat, lng: trip.pickupLng }, zIndex: 800,
-        label: { text: "P", color: "white", fontWeight: "700", fontSize: "10px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
-      });
+    routes.forEach(trip => {
+      const pickupM = L.marker([trip.pickupLat, trip.pickupLng], {
+        icon: circleIcon("#22c55e", "P", 20),
+        zIndexOffset: 800,
+      }).addTo(map);
       tripMarkersRef.current.push(pickupM);
 
-      const dropoffM = new g.maps.Marker({
-        map, position: { lat: trip.dropoffLat, lng: trip.dropoffLng }, zIndex: 800,
-        label: { text: "D", color: "white", fontWeight: "700", fontSize: "10px" },
-        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#ef4444", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
-      });
+      const dropoffM = L.marker([trip.dropoffLat, trip.dropoffLng], {
+        icon: circleIcon("#ef4444", "D", 20),
+        zIndexOffset: 800,
+      }).addTo(map);
       tripMarkersRef.current.push(dropoffM);
 
-      const dr = new g.maps.DirectionsRenderer({
-        map, suppressMarkers: true,
-        preserveViewport: true,
-        polylineOptions: {
-          strokeColor: trip.status === "in_progress" ? "#4285F4" : "#f59e0b",
-          strokeWeight: 4, strokeOpacity: 0.7,
-          icons: [{
-            icon: { path: g.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3, fillColor: trip.status === "in_progress" ? "#4285F4" : "#f59e0b", fillOpacity: 1, strokeWeight: 0 },
-            offset: "50%", repeat: "100px",
-          }],
-        },
-      });
-      tripRenderersRef.current.push(dr);
-
-      ds.route({
-        origin: { lat: trip.pickupLat, lng: trip.pickupLng },
-        destination: { lat: trip.dropoffLat, lng: trip.dropoffLng },
-        travelMode: g.maps.TravelMode.DRIVING, provideRouteAlternatives: true,
-      }).then((raw: any) => dr.setDirections(selectShortestRoute(raw))).catch(() => {});
-
       if (trip.driverName) {
-        const infoWindow = new g.maps.InfoWindow({
-          content: `<div style="font-size:11px;font-weight:600;padding:2px">${trip.driverName}<br/><span style="font-size:10px;color:#666">${trip.status === "in_progress" ? "In Progress" : "Accepted"}</span></div>`,
-        });
-        pickupM.addListener("click", () => infoWindow.open(map, pickupM));
+        pickupM.bindPopup(`<div style="font-size:11px"><strong>${trip.driverName}</strong><br/><span style="color:#666">${trip.status === "in_progress" ? "In Progress" : "Accepted"}</span></div>`);
       }
-    });
-  }, [tripIdsKey]); // ← depend on stable string key, not array ref
 
-  if (error) {
-    return <div className="w-full h-full bg-surface flex items-center justify-center text-muted-foreground text-sm">Map unavailable</div>;
-  }
-  if (!isLoaded) {
-    return <div className="w-full h-full bg-surface flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-  }
+      // Fetch OSRM route
+      fetchOsrmRoute(
+        { lat: trip.pickupLat, lng: trip.pickupLng },
+        { lat: trip.dropoffLat, lng: trip.dropoffLng },
+        [],
+        true
+      ).then(routes => {
+        if (!mapInstance.current) return;
+        const best = pickShortestOsrmRoute(routes);
+        const latlngs = best.coordinates.map(c => [c[0], c[1]] as [number, number]);
+        const color = trip.status === "in_progress" ? "#4285F4" : "#f59e0b";
+        const polyline = L.polyline(latlngs, { color, weight: 4, opacity: 0.7 }).addTo(mapInstance.current);
+        tripPolylinesRef.current.push(polyline);
+      }).catch(() => {});
+    });
+  }, [tripIdsKey]);
 
   return (
     <div className="relative" style={{ width: "100%", height: "100%" }}>
@@ -463,23 +434,5 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     </div>
   );
 };
-
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "on" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#b0b0c0" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#505060" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#252538" }] },
-  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#9a9aaa" }] },
-  { featureType: "poi", elementType: "labels.icon", stylers: [{ lightness: -20 }] },
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2a2a3e" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1a1a2e" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#a0a0b0" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#3a3a50" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f2f42" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1a2b" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4a6080" }] },
-];
 
 export default MaldivesMap;
