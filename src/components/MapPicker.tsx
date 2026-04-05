@@ -208,7 +208,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     }
   }, [center, mapReady]);
 
-  // Reverse geocode on center change
+  // Reverse geocode on center change — only show named location label if within ~100m
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (skipReverseGeocodeRef.current) {
@@ -217,18 +217,38 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      try {
-        const result = await reverseGeocodeLocation(center.lat, center.lng, { skipNearbyPlace: true });
-        setPlaceName(result.name);
-        setAddress(result.address);
-      } catch {
-        setPlaceName("Selected Location");
-        setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+
+      // Check if any named/service location is within 100m
+      const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371000;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      };
+      const closestLocal = searchLocations
+        .map(l => ({ name: l.name, address: l.address || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
+        .filter(l => l.dist <= 100)
+        .sort((a, b) => a.dist - b.dist)[0];
+
+      if (closestLocal) {
+        setPlaceName(closestLocal.name);
+        setAddress(closestLocal.address || closestLocal.name);
+      } else {
+        // No nearby named location — just show address from reverse geocode, no prominent name
+        try {
+          const result = await reverseGeocodeLocation(center.lat, center.lng, { skipNearbyPlace: true });
+          setPlaceName(""); // Don't show floating label for far-away generic results
+          setAddress(result.address || result.name);
+        } catch {
+          setPlaceName("");
+          setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+        }
       }
       setLoading(false);
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [center.lat, center.lng]);
+  }, [center.lat, center.lng, searchLocations]);
 
   // Nearby places from local data
   useEffect(() => {
@@ -414,8 +434,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
               </div>
             ) : (
               <>
-                <p className="text-sm font-bold text-foreground truncate">{placeName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{address}</p>
+                {placeName ? (
+                  <p className="text-sm font-bold text-foreground truncate">{placeName}</p>
+                ) : null}
+                <p className={`text-muted-foreground truncate ${placeName ? 'text-[11px]' : 'text-sm font-medium text-foreground'}`}>{address || "Move map to select location"}</p>
               </>
             )}
           </div>
