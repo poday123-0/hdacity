@@ -3031,7 +3031,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       if (locSearchAbortRef.current) locSearchAbortRef.current.abort();
                       if (q.trim().length < 1) { setLocationSearchResults([]); return; }
 
-                      locSearchDebounceRef.current = setTimeout(() => {
+                      locSearchDebounceRef.current = setTimeout(async () => {
                         const abortCtrl = new AbortController();
                         locSearchAbortRef.current = abortCtrl;
                         const ql = q.trim().toLowerCase();
