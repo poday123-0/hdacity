@@ -101,7 +101,7 @@ const customImgIcon = (url: string, size = 36) =>
     className: "",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
-    html: `<img src="${url}" style="width:${size}px;height:${size}px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3)" />`,
+    html: `<img src="${url}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" />`,
   });
 
 const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";

@@ -1848,21 +1848,25 @@ const DispatchTripForm = ({
 
       {/* Map Picker Modal */}
       {showMapPicker && (
-        <MapPicker
-          initialLat={showMapPicker === "pickup" ? (pickup?.lat || undefined) : (dropoff?.lat || undefined)}
-          initialLng={showMapPicker === "pickup" ? (pickup?.lng || undefined) : (dropoff?.lng || undefined)}
-          onConfirm={(lat, lng, name, address) => {
-            const loc = { lat, lng, address: name || address };
-            if (showMapPicker === "pickup") {
-              setPickup(loc);
-              setPickupQuery(loc.address);
-            } else {
-              setDropoff(loc);
-            }
-            setShowMapPicker(null);
-          }}
-          onCancel={() => setShowMapPicker(null)}
-        />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setShowMapPicker(null)}>
+          <div className="w-full max-w-lg h-[80vh] max-h-[600px] rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <MapPicker
+              initialLat={showMapPicker === "pickup" ? (pickup?.lat || undefined) : (dropoff?.lat || undefined)}
+              initialLng={showMapPicker === "pickup" ? (pickup?.lng || undefined) : (dropoff?.lng || undefined)}
+              onConfirm={(lat, lng, name, address) => {
+                const loc = { lat, lng, address: name || address };
+                if (showMapPicker === "pickup") {
+                  setPickup(loc);
+                  setPickupQuery(loc.address);
+                } else {
+                  setDropoff(loc);
+                }
+                setShowMapPicker(null);
+              }}
+              onCancel={() => setShowMapPicker(null)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
