@@ -708,6 +708,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       const upsertLocation = async (lat: number, lng: number, force = false) => {
         lastPosRef.current = { lat, lng };
+        // Persist to localStorage for instant restore on reopen
+        try { localStorage.setItem("hda_driver_last_lat", String(lat)); localStorage.setItem("hda_driver_last_lng", String(lng)); } catch {}
 
         // Skip DB write if driver hasn't moved enough (saves battery & network)
         // Always write on first fix, force flag, or if >60s since last write
