@@ -203,6 +203,15 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
     return bestMatch;
   }, [serviceAreas, isPointInPolygon, calcPolygonArea]);
 
+  // Check if a point is inside ANY service area (boolean)
+  const isInAnyServiceArea = useCallback((lat: number, lng: number): boolean => {
+    if (!serviceAreas.length) return true;
+    for (const area of serviceAreas) {
+      if (area.polygon && area.polygon.length >= 3 && isPointInPolygon(lat, lng, area.polygon)) return true;
+    }
+    return false;
+  }, [serviceAreas, isPointInPolygon]);
+
   // Fast location search — 80ms debounce, parallel fetch from Local DB + Nominatim + Photon
   useEffect(() => {
     if (!activeQuery.trim() || activeQuery.length < 2) {
@@ -263,7 +272,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           address: r.display_name?.split(",").slice(0, 3).join(", ") || "",
           lat: parseFloat(r.lat),
           lng: parseFloat(r.lon),
-        }))
+        })).filter(r => isInAnyServiceArea(r.lat, r.lng))
       ).catch(() => [] as PlaceResult[]);
 
       const photonP = fetch(
@@ -276,7 +285,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           address: [f.properties?.street, f.properties?.city, f.properties?.country].filter(Boolean).join(", "),
           lat: f.geometry?.coordinates?.[1] || 0,
           lng: f.geometry?.coordinates?.[0] || 0,
-        })).filter((r: PlaceResult) => r.name && r.lat)
+        })).filter((r: PlaceResult) => r.name && r.lat && isInAnyServiceArea(r.lat, r.lng))
       ).catch(() => [] as PlaceResult[]);
 
       const [nomResults, phResults] = await Promise.all([nominatimP, photonP]);

@@ -102,7 +102,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
     fetchSaved();
   }, [userProfile?.id]);
 
-  // Place search debounce — local DB + Nominatim + Photon
+  // Place search debounce — local DB + Nominatim (filtered by service area)
   useEffect(() => {
     if (!placeSearchQuery.trim() || placeSearchQuery.length < 2) { setPlaceSearchResults([]); return; }
     if (placeSearchDebounce.current) clearTimeout(placeSearchDebounce.current);
@@ -110,10 +110,13 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
       setPlaceSearching(true);
       try {
         const q = placeSearchQuery.toLowerCase();
-        // Local DB search
-        const [{ data: svcData }, { data: namedData }] = await Promise.all([
+        const { getServiceAreasWithPolygons, isInsideAnyServiceArea } = await import("@/lib/service-area-filter");
+
+        // Local DB search + service area polygons in parallel
+        const [{ data: svcData }, { data: namedData }, areas] = await Promise.all([
           supabase.from("service_locations").select("id, name, address, lat, lng").eq("is_active", true).or(`name.ilike.%${q}%,address.ilike.%${q}%`).limit(5),
           supabase.from("named_locations").select("id, name, address, lat, lng").eq("is_active", true).eq("status", "approved").or(`name.ilike.%${q}%,address.ilike.%${q}%,description.ilike.%${q}%,group_name.ilike.%${q}%`).limit(10),
+          getServiceAreasWithPolygons(),
         ]);
         const localResults = [...(svcData || []), ...(namedData || [])].map((r: any, i: number) => ({
           place_id: i,
@@ -123,7 +126,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
           name: r.name,
         }));
 
-        // Also fetch Nominatim
+        // Nominatim — filtered by service area polygons
         const nomP = fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeSearchQuery)}&countrycodes=mv&limit=4&addressdetails=1`,
           { headers: { "Accept-Language": "en" } }
@@ -132,7 +135,11 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
         const nomData = await nomP;
         const existingNames = new Set(localResults.map(r => (r.name || "").toLowerCase()));
         const nomResults = (Array.isArray(nomData) ? nomData : [])
-          .filter((r: any) => !existingNames.has((r.name || "").toLowerCase()))
+          .filter((r: any) => {
+            const lat = parseFloat(r.lat);
+            const lng = parseFloat(r.lon);
+            return !existingNames.has((r.name || "").toLowerCase()) && isInsideAnyServiceArea(lat, lng, areas);
+          })
           .map((r: any, i: number) => ({
             place_id: 1000 + i,
             display_name: r.display_name || "",

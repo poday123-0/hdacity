@@ -3031,7 +3031,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       if (locSearchAbortRef.current) locSearchAbortRef.current.abort();
                       if (q.trim().length < 1) { setLocationSearchResults([]); return; }
 
-                      locSearchDebounceRef.current = setTimeout(() => {
+                      locSearchDebounceRef.current = setTimeout(async () => {
                         const abortCtrl = new AbortController();
                         locSearchAbortRef.current = abortCtrl;
                         const ql = q.trim().toLowerCase();
@@ -3069,19 +3069,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           setLocationSearchResults(sortResults([...merged]));
                         });
 
-                        // 2. Nominatim (free) — merge when ready
+                        // 2. Load service area polygons for filtering
+                        const { getServiceAreasWithPolygons, isInsideAnyServiceArea } = await import("@/lib/service-area-filter");
+                        const areas = await getServiceAreasWithPolygons();
+
+                        // 3. Nominatim (free) — merge when ready, filtered by service areas
                         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=mv&limit=8&addressdetails=1`, { headers: { "Accept-Language": "en" }, signal: abortCtrl.signal })
                           .then(r => r.json())
                           .then(data => {
                             if (abortCtrl.signal.aborted) return;
                             for (const r of data) {
+                              const lat = parseFloat(r.lat);
+                              const lng = parseFloat(r.lon);
+                              if (!isInsideAnyServiceArea(lat, lng, areas)) continue;
                               const name = r.name || r.display_name?.split(",")[0] || "";
-                              merged.push({ name, address: r.display_name?.split(",").slice(0, 3).join(", ") || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon), type: "nominatim" });
+                              merged.push({ name, address: r.display_name?.split(",").slice(0, 3).join(", ") || "", lat, lng, type: "nominatim" });
                             }
                             setLocationSearchResults(sortResults([...merged]));
                           }).catch(() => {});
 
-                        // 3. Photon (free OSM) — merge when ready
+                        // 4. Photon (free OSM) — merge when ready, filtered by service areas
                         fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=4.1755&lon=73.5093&limit=5&lang=en`, { signal: abortCtrl.signal })
                           .then(r => r.json())
                           .then(data => {
@@ -3091,6 +3098,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               const name = p.name || p.street || "";
                               if (!name) continue;
                               const [pLng, pLat] = f.geometry?.coordinates || [0, 0];
+                              if (!isInsideAnyServiceArea(pLat, pLng, areas)) continue;
                               merged.push({ name, address: [p.street, p.city, p.country].filter(Boolean).join(", "), lat: pLat, lng: pLng, type: "photon" });
                             }
                             setLocationSearchResults(sortResults([...merged]));
