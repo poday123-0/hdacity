@@ -258,22 +258,39 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       <div className="flex-1 relative">
         <div ref={mapRef} className="absolute inset-0" />
 
-        {/* Center pin */}
+        {/* Center pin with floating label */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="flex flex-col items-center">
+            {/* Floating location name label */}
+            <AnimatePresence>
+              {!isPanning && placeName && !loading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-2 px-3 py-1.5 rounded-lg bg-card/95 backdrop-blur-lg border border-border shadow-lg max-w-[200px]"
+                >
+                  <p className="text-[11px] font-semibold text-foreground truncate text-center">{placeName}</p>
+                  {address && address !== placeName && (
+                    <p className="text-[9px] text-muted-foreground truncate text-center">{address}</p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
             <motion.div
               animate={{ y: isPanning ? -14 : 0, scale: isPanning ? 1.1 : 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
               className="flex flex-col items-center"
             >
-              <div className="w-10 h-10 rounded-full bg-primary shadow-[0_4px_24px_rgba(var(--primary),0.5)] flex items-center justify-center ring-4 ring-primary/20">
-                <MapPin className="w-5 h-5 text-primary-foreground" />
+              <div className="w-12 h-12 rounded-full bg-primary shadow-[0_4px_24px_rgba(0,0,0,0.3)] flex items-center justify-center ring-4 ring-primary/30">
+                <MapPin className="w-6 h-6 text-primary-foreground" />
               </div>
-              <div className="w-0.5 h-5 bg-primary" />
+              <div className="w-1 h-6 bg-primary rounded-b" />
             </motion.div>
             <motion.div
-              animate={{ scale: isPanning ? 0.6 : 1, opacity: isPanning ? 0.3 : 0.5 }}
-              className="w-3 h-1.5 rounded-full bg-foreground/40 -mt-0.5 blur-[1px]"
+              animate={{ scale: isPanning ? 0.6 : 1, opacity: isPanning ? 0.3 : 0.6 }}
+              className="w-4 h-2 rounded-full bg-foreground/50 -mt-0.5 blur-[1px]"
             />
           </div>
         </div>
