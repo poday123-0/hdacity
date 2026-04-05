@@ -282,6 +282,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const locSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const locSearchAbortRef = useRef<AbortController | null>(null);
   const [isFreeNavigating, setIsFreeNavigating] = useState(false);
+  const [showExternalNavPopup, setShowExternalNavPopup] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
   // --- Online time tracking ---
