@@ -161,7 +161,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     const map = L.map(mapRef.current, {
       center: [center.lat, center.lng],
       zoom: 15,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false,
     });
 
