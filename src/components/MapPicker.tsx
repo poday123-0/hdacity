@@ -62,12 +62,16 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     load();
   }, []);
 
-  // Filter search results — local DB only
+  // Filter search results — local first, then Nominatim + Photon parallel
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
-    searchDebounceRef.current = setTimeout(() => {
+    searchDebounceRef.current = setTimeout(async () => {
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      const ctrl = new AbortController();
+      searchAbortRef.current = ctrl;
+
       const q = searchQuery.toLowerCase();
       const localMatches = searchLocations
         .filter(l =>
@@ -84,10 +88,58 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
           const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
           return aScore - bScore;
         })
-        .slice(0, 12)
+        .slice(0, 8)
         .map(l => ({ name: l.name, lat: Number(l.lat), lng: Number(l.lng), tag: l.tag }));
 
-      setSearchResults(localMatches);
+      // Show local results immediately
+      if (!ctrl.signal.aborted) setSearchResults(localMatches);
+
+      // Fetch Nominatim + Photon in parallel
+      if (localMatches.length < 5) {
+        try {
+          const existingNames = new Set(localMatches.map(r => r.name.toLowerCase()));
+          const externalResults: { name: string; lat: number; lng: number; tag: string }[] = [];
+
+          const [nomRes, photonRes] = await Promise.allSettled([
+            fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=mv&limit=5&addressdetails=1`,
+              { headers: { "Accept-Language": "en" }, signal: ctrl.signal }
+            ).then(r => r.json()),
+            fetch(
+              `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5&lat=4.1755&lon=73.5093&lang=en`,
+              { signal: ctrl.signal }
+            ).then(r => r.json()),
+          ]);
+
+          if (nomRes.status === "fulfilled" && Array.isArray(nomRes.value)) {
+            for (const r of nomRes.value) {
+              const name = r.name || r.display_name?.split(",")[0] || "";
+              if (name && !existingNames.has(name.toLowerCase())) {
+                externalResults.push({ name, lat: parseFloat(r.lat), lng: parseFloat(r.lon), tag: "Map" });
+                existingNames.add(name.toLowerCase());
+              }
+            }
+          }
+
+          if (photonRes.status === "fulfilled" && photonRes.value?.features) {
+            for (const f of photonRes.value.features) {
+              const name = f.properties?.name || "";
+              if (name && !existingNames.has(name.toLowerCase())) {
+                externalResults.push({ name, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], tag: "Map" });
+                existingNames.add(name.toLowerCase());
+              }
+            }
+          }
+
+          if (!ctrl.signal.aborted) {
+            setSearchResults([...localMatches, ...externalResults].slice(0, 12));
+          }
+        } catch (e: any) {
+          if (e?.name !== "AbortError" && !ctrl.signal.aborted) {
+            // keep local results on error
+          }
+        }
+      }
     }, 80);
 
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };

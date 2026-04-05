@@ -102,7 +102,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
     fetchSaved();
   }, [userProfile?.id]);
 
-  // Place search debounce — local DB only
+  // Place search debounce — local DB + Nominatim + Photon
   useEffect(() => {
     if (!placeSearchQuery.trim() || placeSearchQuery.length < 2) { setPlaceSearchResults([]); return; }
     if (placeSearchDebounce.current) clearTimeout(placeSearchDebounce.current);
@@ -110,18 +110,38 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
       setPlaceSearching(true);
       try {
         const q = placeSearchQuery.toLowerCase();
+        // Local DB search
         const [{ data: svcData }, { data: namedData }] = await Promise.all([
           supabase.from("service_locations").select("id, name, address, lat, lng").eq("is_active", true).or(`name.ilike.%${q}%,address.ilike.%${q}%`).limit(5),
           supabase.from("named_locations").select("id, name, address, lat, lng").eq("is_active", true).eq("status", "approved").or(`name.ilike.%${q}%,address.ilike.%${q}%,description.ilike.%${q}%,group_name.ilike.%${q}%`).limit(10),
         ]);
-        const results = [...(svcData || []), ...(namedData || [])].map((r: any, i: number) => ({
+        const localResults = [...(svcData || []), ...(namedData || [])].map((r: any, i: number) => ({
           place_id: i,
           display_name: `${r.name}${r.address ? `, ${r.address}` : ""}`,
           lat: String(r.lat),
           lon: String(r.lng),
           name: r.name,
         }));
-        setPlaceSearchResults(results);
+
+        // Also fetch Nominatim
+        const nomP = fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeSearchQuery)}&countrycodes=mv&limit=4&addressdetails=1`,
+          { headers: { "Accept-Language": "en" } }
+        ).then(r => r.json()).catch(() => []);
+
+        const nomData = await nomP;
+        const existingNames = new Set(localResults.map(r => (r.name || "").toLowerCase()));
+        const nomResults = (Array.isArray(nomData) ? nomData : [])
+          .filter((r: any) => !existingNames.has((r.name || "").toLowerCase()))
+          .map((r: any, i: number) => ({
+            place_id: 1000 + i,
+            display_name: r.display_name || "",
+            lat: r.lat,
+            lon: r.lon,
+            name: r.name || r.display_name?.split(",")[0] || "",
+          }));
+
+        setPlaceSearchResults([...localResults, ...nomResults]);
       } catch { setPlaceSearchResults([]); }
       setPlaceSearching(false);
     }, 80);
