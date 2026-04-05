@@ -203,20 +203,32 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
     return bestMatch;
   }, [serviceAreas, isPointInPolygon, calcPolygonArea]);
 
-  // Location search with debounce — admin locations shown first, then Nominatim fallback
+  // Fast location search — 80ms debounce, parallel fetch from Local DB + Nominatim + Photon
   useEffect(() => {
     if (!activeQuery.trim() || activeQuery.length < 2) {
       setPlaceResults([]);
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
 
-      // 1. Search admin-added service locations first
+    debounceRef.current = setTimeout(async () => {
+      // Cancel previous in-flight requests
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      const abort = new AbortController();
+      searchAbortRef.current = abort;
+
+      setSearching(true);
       const q = activeQuery.toLowerCase();
+
+      // 1. Instant local DB match (service_locations + named_locations already loaded)
       const adminMatches: PlaceResult[] = locations
-        .filter(loc => loc.name.toLowerCase().includes(q) || loc.address.toLowerCase().includes(q))
+        .filter(loc => {
+          const n = loc.name.toLowerCase();
+          const a = loc.address.toLowerCase();
+          const d = (loc.description || "").toLowerCase();
+          const g = (loc.group_name || "").toLowerCase();
+          return n.includes(q) || a.includes(q) || d.includes(q) || g.includes(q);
+        })
         .map(loc => ({
           place_id: `admin-${loc.id}`,
           name: loc.name,
@@ -225,41 +237,74 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
           lng: loc.lng,
         }));
 
-      // 2. Nominatim fallback (free)
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=8&addressdetails=1`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        const data = await res.json();
-        const filtered: PlaceResult[] = [];
-        for (const r of data) {
-          filtered.push({
-            place_id: String(r.place_id),
-            name: r.name || r.display_name.split(",")[0],
-            address: r.display_name.split(",").slice(0, 3).join(", "),
-            lat: parseFloat(r.lat),
-            lng: parseFloat(r.lon),
-          });
-        }
-        const adminNames = new Set(adminMatches.map(m => m.name.toLowerCase()));
-        const uniqueNom = filtered.filter(r => !adminNames.has(r.name.toLowerCase()));
-        const combined = [...adminMatches, ...uniqueNom];
-        combined.sort((a, b) => {
-          const an = a.name.toLowerCase();
-          const bn = b.name.toLowerCase();
-          const aScore = an === q ? 0 : an.startsWith(q) ? 1 : 2;
-          const bScore = bn === q ? 0 : bn.startsWith(q) ? 1 : 2;
-          return aScore - bScore;
+      // Show local results immediately
+      const scored = (arr: PlaceResult[], isLocal: boolean) =>
+        arr.map(r => {
+          const n = r.name.toLowerCase();
+          let score = n === q ? 0 : n.startsWith(q) ? 1 : n.includes(q) ? 2 : 3;
+          if (isLocal) score -= 1; // boost local
+          return { ...r, _score: score };
         });
-        setPlaceResults(combined);
-      } catch {
-        setPlaceResults(adminMatches);
+
+      const localScored = scored(adminMatches, true);
+      localScored.sort((a, b) => a._score - b._score);
+      if (!abort.signal.aborted) {
+        setPlaceResults(localScored);
       }
-      setSearching(false);
-    }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [activeQuery, serviceAreas, isInServiceArea, locations]);
+
+      // 2. Parallel fetch Nominatim + Photon
+      const nominatimP = fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeQuery)}&countrycodes=mv&limit=8&addressdetails=1`,
+        { headers: { "Accept-Language": "en" }, signal: abort.signal }
+      ).then(r => r.json()).then((data: any[]) =>
+        data.map(r => ({
+          place_id: `nom-${r.place_id}`,
+          name: r.name || r.display_name?.split(",")[0] || "",
+          address: r.display_name?.split(",").slice(0, 3).join(", ") || "",
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+        }))
+      ).catch(() => [] as PlaceResult[]);
+
+      const photonP = fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(activeQuery)}&limit=8&lat=4.175&lon=73.509&lang=en`,
+        { signal: abort.signal }
+      ).then(r => r.json()).then((data: any) =>
+        (data.features || []).map((f: any) => ({
+          place_id: `ph-${f.properties?.osm_id || Math.random()}`,
+          name: f.properties?.name || f.properties?.street || "",
+          address: [f.properties?.street, f.properties?.city, f.properties?.country].filter(Boolean).join(", "),
+          lat: f.geometry?.coordinates?.[1] || 0,
+          lng: f.geometry?.coordinates?.[0] || 0,
+        })).filter((r: PlaceResult) => r.name && r.lat)
+      ).catch(() => [] as PlaceResult[]);
+
+      const [nomResults, phResults] = await Promise.all([nominatimP, photonP]);
+      if (abort.signal.aborted) return;
+
+      // 3. Merge & deduplicate
+      const seen = new Set(adminMatches.map(m => m.name.toLowerCase()));
+      const external: PlaceResult[] = [];
+      for (const r of [...nomResults, ...phResults]) {
+        const key = r.name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          external.push(r);
+        }
+      }
+
+      const allScored = [...localScored, ...scored(external, false)];
+      allScored.sort((a, b) => a._score - b._score);
+      if (!abort.signal.aborted) {
+        setPlaceResults(allScored);
+        setSearching(false);
+      }
+    }, 80);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [activeQuery, locations]);
 
   const findNearestServiceArea = useCallback((lat: number, lng: number): ServiceLocation | null => {
     let nearest: ServiceLocation | null = null;
