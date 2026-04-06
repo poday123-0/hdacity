@@ -441,14 +441,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     mapInstance.current = map;
     onMapReady?.(map);
 
-    // Detect user interaction
+    // Detect user interaction (drag AND zoom)
     let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
-    map.on("dragstart", () => {
+    const pauseAutoFollow = () => {
       userInteractingRef.current = true;
       setUserPannedAway(true);
       setFollowDriver(false);
-    });
-    map.on("moveend", () => {
+    };
+    const scheduleResume = () => {
       if (userInteractingRef.current) {
         if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
         autoResumeTimeout = setTimeout(() => {
@@ -457,7 +457,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           setUserPannedAway(false);
         }, 8000);
       }
-    });
+    };
+    map.on("dragstart", pauseAutoFollow);
+    map.on("zoomstart", pauseAutoFollow);
+    map.on("moveend", scheduleResume);
+    map.on("zoomend", scheduleResume);
 
     // Long-press context menu for road closure reporting
     let lpTimer: ReturnType<typeof setTimeout> | null = null;
