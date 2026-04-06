@@ -79,8 +79,22 @@ const AdminBilling = () => {
     setPayments((data as any[]) || []);
   };
 
+  const fetchCenterData = async () => {
+    const [cvRes, cpRes] = await Promise.all([
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id").not("center_code", "is", null).eq("is_active", true),
+      (() => {
+        let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
+        if (centerFilter !== "all") q = q.eq("status", centerFilter);
+        return q;
+      })(),
+    ]);
+    setCenterVehicles((cvRes.data as any[]) || []);
+    setCenterPayments((cpRes.data as any[]) || []);
+  };
+
   useEffect(() => { fetchDrivers(); }, [search]);
   useEffect(() => { fetchPayments(); }, [paymentFilter]);
+  useEffect(() => { fetchCenterData(); }, [centerFilter]);
 
   const getDriverVehicleType = (driverId: string) => {
     const vehicle = vehicles.find(v => v.driver_id === driverId);
