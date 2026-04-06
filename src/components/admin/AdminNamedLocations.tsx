@@ -45,6 +45,7 @@ const AdminNamedLocations = () => {
   const [batchMode, setBatchMode] = useState(false);
   const [batchPins, setBatchPins] = useState<BatchPin[]>([]);
   const [savingBatch, setSavingBatch] = useState(false);
+  const [osmImporting, setOsmImporting] = useState(false);
   const batchMapRef = useRef<HTMLDivElement>(null);
   const batchMapInstance = useRef<any>(null);
   const batchPinsRef = useRef<BatchPin[]>([]);
