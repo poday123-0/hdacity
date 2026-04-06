@@ -5366,8 +5366,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         const isFreeCompany = companyInfo?.fee_free;
                         const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
                         
-                        // Calculate total fee from all active vehicles' vehicle types
-                        const vehicleFees = driverVehicles.map((v: any) => {
+                        // Calculate total fee from all active vehicles' vehicle types (exclude center-code vehicles that don't pay app fee)
+                        const vehicleFees = driverVehicles
+                          .filter((v: any) => !v.center_code || v.pays_app_fee)
+                          .map((v: any) => {
                           const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
                           return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
                         });
