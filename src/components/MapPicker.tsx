@@ -286,7 +286,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       };
       const closestLocal = searchLocations
         .map(l => ({ name: l.name, address: l.address || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
-        .filter(l => l.dist <= 100)
+        .filter(l => l.dist <= 50)
         .sort((a, b) => a.dist - b.dist)[0];
 
       if (closestLocal) {
