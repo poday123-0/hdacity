@@ -45,6 +45,7 @@ const AdminBilling = () => {
   const [selectedCenterPayment, setSelectedCenterPayment] = useState<any>(null);
   const [editingCenterVehicle, setEditingCenterVehicle] = useState<string | null>(null);
   const [editCenterVehicleData, setEditCenterVehicleData] = useState<any>({});
+  const [centerSearch, setCenterSearch] = useState("");
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -890,9 +891,19 @@ const AdminBilling = () => {
 
           {/* Center Vehicles List */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-foreground">Center Vehicles</h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Plate / Code"
+                    value={centerSearch}
+                    onChange={e => setCenterSearch(e.target.value)}
+                    className="pl-6 pr-2 py-1 w-28 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
                 <input
                   type="month"
                   value={centerMonth}
@@ -923,7 +934,13 @@ const AdminBilling = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {centerVehicles.map(cv => {
+                  {centerVehicles.filter(cv => {
+                    if (!centerSearch) return true;
+                    const s = centerSearch.toLowerCase();
+                    const driver = drivers.find(d => d.id === cv.driver_id);
+                    const driverName = driver ? `${driver.first_name} ${driver.last_name}`.toLowerCase() : "";
+                    return (cv.plate_number || "").toLowerCase().includes(s) || (cv.center_code || "").toLowerCase().includes(s) || driverName.includes(s);
+                  }).map(cv => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
                     const centerFee = (vt as any)?.center_fee || 0;
