@@ -337,6 +337,13 @@ const AdminVehicles = () => {
     const driverCompanyId = v.profiles?.company_id || null;
     const matchesCompany = !companyFilter || driverCompanyId === companyFilter;
     return matchesSearch && matchesStatus && matchesType && matchesCompany;
+  }).sort((a, b) => {
+    const codeA = a.center_code ? parseInt(a.center_code, 10) : NaN;
+    const codeB = b.center_code ? parseInt(b.center_code, 10) : NaN;
+    if (isNaN(codeA) && isNaN(codeB)) return 0;
+    if (isNaN(codeA)) return 1;
+    if (isNaN(codeB)) return -1;
+    return codeA - codeB;
   });
 
   return (
