@@ -283,7 +283,25 @@ const AdminNamedLocations = () => {
     toast({ title: current ? "Deactivated" : "Activated" }); fetchLocations();
   };
 
-  const q = search.toLowerCase();
+  const importFromOSM = async () => {
+    setOsmImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-osm-places", {
+        body: { import_all: true },
+      });
+      if (error) throw error;
+      toast({
+        title: "OSM Import Complete",
+        description: data?.message || `Imported ${data?.total_imported || 0} places`,
+      });
+      fetchLocations();
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setOsmImporting(false);
+    }
+  };
+
   const filtered = locations.filter(loc => {
     if (statusFilter !== "all" && loc.status !== statusFilter) return false;
     if (groupFilter !== "all") {
