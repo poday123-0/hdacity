@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2 } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -16,7 +16,7 @@ const AdminBilling = () => {
   const [paymentFilter, setPaymentFilter] = useState("submitted");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [billingDueDay, setBillingDueDay] = useState(25);
-  const [tab, setTab] = useState<"drivers" | "payments">("drivers");
+  const [tab, setTab] = useState<"drivers" | "payments" | "center">("drivers");
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [showBillingSettings, setShowBillingSettings] = useState(false);
   const [driverPayments, setDriverPayments] = useState<any[]>([]);
@@ -35,6 +35,19 @@ const AdminBilling = () => {
   const [editingVtFeeValue, setEditingVtFeeValue] = useState(0);
   const [savingVtFee, setSavingVtFee] = useState(false);
 
+  // Center billing state
+  const [centerPayments, setCenterPayments] = useState<any[]>([]);
+  const [centerFilter, setCenterFilter] = useState("pending");
+  const [centerVehicles, setCenterVehicles] = useState<any[]>([]);
+  const [editingCenterFee, setEditingCenterFee] = useState<string | null>(null);
+  const [editingCenterFeeValue, setEditingCenterFeeValue] = useState(0);
+  const [savingCenterFee, setSavingCenterFee] = useState(false);
+  const [selectedCenterPayment, setSelectedCenterPayment] = useState<any>(null);
+  const [centerMonth, setCenterMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
   const fetchDrivers = async () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
@@ -44,7 +57,7 @@ const AdminBilling = () => {
         return q;
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
-      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee").eq("is_active", true).order("sort_order"),
+      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day"]),
     ]);
@@ -66,8 +79,22 @@ const AdminBilling = () => {
     setPayments((data as any[]) || []);
   };
 
+  const fetchCenterData = async () => {
+    const [cvRes, cpRes] = await Promise.all([
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id").not("center_code", "is", null).eq("is_active", true),
+      (() => {
+        let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
+        if (centerFilter !== "all") q = q.eq("status", centerFilter);
+        return q;
+      })(),
+    ]);
+    setCenterVehicles((cvRes.data as any[]) || []);
+    setCenterPayments((cpRes.data as any[]) || []);
+  };
+
   useEffect(() => { fetchDrivers(); }, [search]);
   useEffect(() => { fetchPayments(); }, [paymentFilter]);
+  useEffect(() => { fetchCenterData(); }, [centerFilter]);
 
   const getDriverVehicleType = (driverId: string) => {
     const vehicle = vehicles.find(v => v.driver_id === driverId);
@@ -367,6 +394,14 @@ const AdminBilling = () => {
         <button onClick={() => setTab("payments")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "payments" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
           Payments
           {pendingPayments > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{pendingPayments}</span>}
+        </button>
+        <button onClick={() => setTab("center")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "center" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+          <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Center Billing</span>
+          {centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              {centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -756,6 +791,253 @@ const AdminBilling = () => {
                   {selectedPayment.rejection_reason && <p className="text-xs mt-1">{selectedPayment.rejection_reason}</p>}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== CENTER BILLING TAB ==================== */}
+      {tab === "center" && (
+        <div className="space-y-5">
+          {/* Center Fee Settings by Vehicle Type */}
+          <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Building2 className="w-4 h-4" /> Center Fee by Vehicle Type</h3>
+            <p className="text-[11px] text-muted-foreground">Set the monthly center fee for vehicles with center codes. These vehicles are app-free but pay to the center.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {vehicleTypes.map(vt => {
+                const centerVtCount = centerVehicles.filter(v => v.vehicle_type_id === vt.id).length;
+                const isEditing = editingCenterFee === vt.id;
+                return (
+                  <div key={vt.id} className="bg-surface rounded-lg p-3 border border-border">
+                    <p className="text-xs font-semibold text-foreground">{vt.name}</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="number"
+                          min={0}
+                          value={editingCenterFeeValue}
+                          onChange={e => setEditingCenterFeeValue(parseFloat(e.target.value) || 0)}
+                          className="w-20 px-2 py-1 bg-card border border-primary rounded-lg text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          autoFocus
+                        />
+                        <button
+                          disabled={savingCenterFee}
+                          onClick={async () => {
+                            setSavingCenterFee(true);
+                            await supabase.from("vehicle_types").update({ center_fee: editingCenterFeeValue, updated_at: new Date().toISOString() } as any).eq("id", vt.id);
+                            setSavingCenterFee(false);
+                            setEditingCenterFee(null);
+                            toast({ title: `${vt.name} center fee updated to ${editingCenterFeeValue} MVR` });
+                            fetchDrivers();
+                          }}
+                          className="w-7 h-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setEditingCenterFee(null)} className="w-7 h-7 rounded-lg bg-surface border border-border text-muted-foreground flex items-center justify-center">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-lg font-bold text-chart-2">{(vt as any).center_fee || 0} MVR</p>
+                        <button onClick={() => { setEditingCenterFee(vt.id); setEditingCenterFeeValue((vt as any).center_fee || 0); }} className="w-6 h-6 rounded-md bg-chart-2/10 text-chart-2 flex items-center justify-center hover:bg-chart-2/20 transition-colors">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">{centerVtCount} center vehicle{centerVtCount !== 1 ? "s" : ""}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Center Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Center Vehicles</p>
+              <p className="text-2xl font-bold text-foreground mt-0.5">{centerVehicles.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Expected Center Revenue</p>
+              <p className="text-2xl font-bold text-foreground mt-0.5">
+                {centerVehicles.reduce((sum, cv) => {
+                  const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
+                  return sum + ((vt as any)?.center_fee || 0);
+                }, 0).toLocaleString()} MVR
+              </p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-2xl font-bold text-chart-4 mt-0.5">{centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Approved This Month</p>
+              <p className="text-2xl font-bold text-primary mt-0.5">{centerPayments.filter(cp => cp.status === "approved" && cp.payment_month === centerMonth).length}</p>
+            </div>
+          </div>
+
+          {/* Center Vehicles List */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Center Vehicles</h3>
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={centerMonth}
+                  onChange={e => setCenterMonth(e.target.value)}
+                  className="px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <select value={centerFilter} onChange={e => setCenterFilter(e.target.value)} className="px-2 py-1 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-surface">
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Driver</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Plate</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Fee</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">{centerMonth} Status</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {centerVehicles.map(cv => {
+                    const driver = drivers.find(d => d.id === cv.driver_id);
+                    const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
+                    const centerFee = (vt as any)?.center_fee || 0;
+                    const monthPayment = centerPayments.find(cp => cp.vehicle_id === cv.id && cp.payment_month === centerMonth);
+                    return (
+                      <tr key={cv.id} className="border-t border-border hover:bg-muted/30">
+                        <td className="px-3 py-2 text-xs text-foreground">
+                          {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
+                          <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
+                        </td>
+                        <td className="px-3 py-2 text-xs font-mono text-foreground">{cv.plate_number}</td>
+                        <td className="px-3 py-2 text-xs font-mono font-bold text-chart-2">{cv.center_code}</td>
+                        <td className="px-3 py-2 text-xs text-foreground">{vt?.name || "—"}</td>
+                        <td className="px-3 py-2 text-xs font-bold text-foreground">{centerFee} MVR</td>
+                        <td className="px-3 py-2">
+                          {monthPayment ? (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              monthPayment.status === "approved" ? "bg-primary/10 text-primary" :
+                              monthPayment.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                              monthPayment.status === "submitted" ? "bg-chart-4/10 text-chart-4" :
+                              "bg-muted text-muted-foreground"
+                            }`}>
+                              {monthPayment.status === "approved" && <CheckCircle className="w-3 h-3" />}
+                              {monthPayment.status === "rejected" && <XCircle className="w-3 h-3" />}
+                              {monthPayment.status === "submitted" && <Clock className="w-3 h-3" />}
+                              {monthPayment.status}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">Not paid</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            {(!monthPayment || monthPayment.status === "rejected") && (
+                              <button
+                                onClick={async () => {
+                                  if (monthPayment) {
+                                    await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                  } else {
+                                    await supabase.from("center_payments").insert({
+                                      driver_id: cv.driver_id,
+                                      vehicle_id: cv.id,
+                                      vehicle_type_id: cv.vehicle_type_id,
+                                      amount: centerFee,
+                                      payment_month: centerMonth,
+                                      status: "approved",
+                                      approved_at: new Date().toISOString(),
+                                    } as any);
+                                  }
+                                  toast({ title: "Marked as paid" });
+                                  fetchCenterData();
+                                }}
+                                className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-semibold hover:bg-primary/20"
+                              >
+                                Mark Paid
+                              </button>
+                            )}
+                            {monthPayment?.status === "submitted" && (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    toast({ title: "Payment approved" });
+                                    fetchCenterData();
+                                  }}
+                                  className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-semibold hover:bg-primary/20"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const reason = prompt("Rejection reason:");
+                                    if (reason === null) return;
+                                    await supabase.from("center_payments").update({ status: "rejected", admin_notes: reason, updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    toast({ title: "Payment rejected" });
+                                    fetchCenterData();
+                                  }}
+                                  className="px-2 py-1 bg-destructive/10 text-destructive rounded-lg text-[10px] font-semibold hover:bg-destructive/20"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {monthPayment?.slip_url && (
+                              <button
+                                onClick={() => setSelectedCenterPayment(monthPayment)}
+                                className="px-2 py-1 bg-surface border border-border rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
+                            )}
+                            {monthPayment?.status === "approved" && (
+                              <span className="text-[10px] text-primary font-semibold">✓ Paid</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {centerVehicles.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No center vehicles found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Center Payment Slip Viewer */}
+      {selectedCenterPayment && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setSelectedCenterPayment(null)}>
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-foreground">Center Payment Slip</h3>
+              <button onClick={() => setSelectedCenterPayment(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            {selectedCenterPayment.slip_url && (
+              <img src={selectedCenterPayment.slip_url} alt="Payment slip" className="w-full rounded-xl border border-border" />
+            )}
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p><strong>Amount:</strong> {selectedCenterPayment.amount} MVR</p>
+              <p><strong>Month:</strong> {selectedCenterPayment.payment_month}</p>
+              <p><strong>Status:</strong> {selectedCenterPayment.status}</p>
+              {selectedCenterPayment.notes && <p><strong>Notes:</strong> {selectedCenterPayment.notes}</p>}
             </div>
           </div>
         </div>
