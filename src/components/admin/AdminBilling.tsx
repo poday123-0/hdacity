@@ -87,7 +87,7 @@ const AdminBilling = () => {
 
   const fetchCenterData = async () => {
     const [cvRes, cpRes] = await Promise.all([
-      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, make, model, color").not("center_code", "is", null).eq("is_active", true),
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
@@ -1066,6 +1066,10 @@ const AdminBilling = () => {
                                       approved_at: new Date().toISOString(),
                                     } as any);
                                   }
+                                  // Reactivate vehicle if it was deactivated
+                                  if (!cv.is_active) {
+                                    await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
+                                  }
                                   toast({ title: "Marked as paid" });
                                   fetchCenterData();
                                 }}
@@ -1079,6 +1083,9 @@ const AdminBilling = () => {
                                 <button
                                   onClick={async () => {
                                     await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    if (!cv.is_active) {
+                                      await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
+                                    }
                                     toast({ title: "Payment approved" });
                                     fetchCenterData();
                                   }}
