@@ -336,7 +336,7 @@ const AdminBilling = () => {
       </div>
 
       {/* Vehicle Type Fee Summary */}
-      {vehicleTypes.length > 0 && (
+      {tab !== "center" && vehicleTypes.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5 space-y-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Car className="w-4 h-4" /> Monthly Fee by Vehicle Type</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -391,6 +391,7 @@ const AdminBilling = () => {
       )}
 
       {/* Stats */}
+      {tab !== "center" && (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Expected Revenue</p>
@@ -409,6 +410,7 @@ const AdminBilling = () => {
           <p className="text-2xl font-bold text-foreground mt-0.5">{pendingPayments}</p>
         </div>
       </div>
+      )}
 
       {/* Tab toggle */}
       <div className="flex gap-2">
