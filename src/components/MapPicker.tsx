@@ -207,6 +207,58 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     };
   }, []);
 
+  // Show named location labels on map
+  const namedMarkersRef = useRef<L.Marker[]>([]);
+  useEffect(() => {
+    if (!mapInstance.current || !mapReady || searchLocations.length === 0) return;
+    const map = mapInstance.current;
+
+    const updateLabels = () => {
+      // Clear old markers
+      namedMarkersRef.current.forEach(m => map.removeLayer(m));
+      namedMarkersRef.current = [];
+
+      const zoom = map.getZoom();
+      if (zoom < 15) return; // Only show at close zoom
+
+      const bounds = map.getBounds();
+      const visible = searchLocations.filter(l => {
+        const lat = Number(l.lat);
+        const lng = Number(l.lng);
+        return bounds.contains([lat, lng]);
+      });
+
+      // Limit to prevent overload
+      const toShow = visible.slice(0, 60);
+
+      toShow.forEach(l => {
+        const lat = Number(l.lat);
+        const lng = Number(l.lng);
+        const label = l.name.length > 20 ? l.name.slice(0, 18) + "…" : l.name;
+        const isDark = document.documentElement.classList.contains("dark");
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [0, 0],
+          iconAnchor: [0, -4],
+          html: `<div style="white-space:nowrap;font-size:10px;font-weight:600;color:${isDark ? '#93c5fd' : '#1d4ed8'};text-shadow:${isDark ? '0 0 3px rgba(0,0,0,0.8)' : '0 0 3px rgba(255,255,255,0.9),0 0 3px rgba(255,255,255,0.9)'};pointer-events:none;transform:translateX(-50%)">${label}</div>`,
+        });
+        const m = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: -100 }).addTo(map);
+        namedMarkersRef.current.push(m);
+      });
+    };
+
+    updateLabels();
+    map.on("moveend", updateLabels);
+    map.on("zoomend", updateLabels);
+
+    return () => {
+      map.off("moveend", updateLabels);
+      map.off("zoomend", updateLabels);
+      namedMarkersRef.current.forEach(m => map.removeLayer(m));
+      namedMarkersRef.current = [];
+    };
+  }, [mapReady, searchLocations]);
+
   // Pan to initial center if map already created but center changed before map init
   useEffect(() => {
     if (mapInstance.current && !mapReady) {
