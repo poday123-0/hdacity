@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 import { supabase } from "@/integrations/supabase/client";
 import { getServiceAreasWithPolygons, isInsideAnyServiceArea } from "@/lib/service-area-filter";
+import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 
 interface NearbyPlace {
   name: string;

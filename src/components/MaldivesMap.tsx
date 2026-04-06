@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchOsrmRoute, pickShortestOsrmRoute } from "@/lib/osrm-routing";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 
 interface RideMapData {
   pickup?: { lat: number; lng: number; name: string };
