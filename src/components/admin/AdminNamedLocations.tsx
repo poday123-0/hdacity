@@ -349,6 +349,10 @@ const AdminNamedLocations = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          <button onClick={importFromOSM} disabled={osmImporting} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
+            <Globe className="w-4 h-4" />
+            {osmImporting ? "Importing..." : "Import from OSM (Free)"}
+          </button>
           <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
             {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
             {batchMode ? "Cancel Batch" : "Batch Add"}
