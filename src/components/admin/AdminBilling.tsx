@@ -1014,6 +1014,7 @@ const AdminBilling = () => {
                       />
                     </th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Driver</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Wallet</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Plate</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
