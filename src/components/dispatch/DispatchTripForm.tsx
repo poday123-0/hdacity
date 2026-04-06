@@ -1534,6 +1534,23 @@ const DispatchTripForm = ({
                     return;
                   }
 
+                  // Check center payment status
+                  const centerNow = new Date();
+                  const centerCurrentMonth = `${centerNow.getFullYear()}-${String(centerNow.getMonth() + 1).padStart(2, "0")}`;
+                  if (centerNow.getDate() >= 5) {
+                    const { data: centerPayment } = await supabase
+                      .from("center_payments")
+                      .select("status")
+                      .eq("vehicle_id", vCheck.id)
+                      .eq("payment_month", centerCurrentMonth)
+                      .eq("status", "approved")
+                      .maybeSingle();
+                    if (!centerPayment) {
+                      toast({ title: "Center payment pending", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}. Payment must be cleared first.`, variant: "destructive" });
+                      return;
+                    }
+                  }
+
                   // Re-fetch today_trips and loss status live
                   const nowUtcMs = Date.now();
                   const maldivesNow = new Date(nowUtcMs + 5 * 3600000);
