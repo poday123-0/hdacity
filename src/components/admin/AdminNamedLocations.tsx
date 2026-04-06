@@ -55,11 +55,22 @@ const AdminNamedLocations = () => {
 
   const fetchLocations = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("named_locations")
-      .select("*, profiles!named_locations_suggested_by_fkey(first_name, last_name, user_type)")
-      .order("created_at", { ascending: false });
-    setLocations(data || []);
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data } = await supabase
+        .from("named_locations")
+        .select("*, profiles!named_locations_suggested_by_fkey(first_name, last_name, user_type)")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (!data || data.length === 0) break;
+      allData = allData.concat(data);
+      hasMore = data.length === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+    setLocations(allData);
     setLoading(false);
   };
 
