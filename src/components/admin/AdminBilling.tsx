@@ -931,36 +931,58 @@ const AdminBilling = () => {
                   <option value="rejected">Rejected</option>
                 </select>
                 {selectedCenterIds.size > 0 && (
-                  <button
-                    disabled={bulkPaying}
-                    onClick={async () => {
-                      if (!confirm(`Mark ${selectedCenterIds.size} vehicles as paid for ${centerMonth}?`)) return;
-                      setBulkPaying(true);
-                      for (const cvId of selectedCenterIds) {
-                        const cv = centerVehicles.find((v: any) => v.id === cvId);
-                        if (!cv) continue;
-                        const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
-                        if (existing?.status === "approved") continue;
-                        const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
-                        const fee = (vt as any)?.center_fee || 0;
-                        if (existing) {
-                          await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
-                        } else {
-                          await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: fee, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
+                  <>
+                    <button
+                      disabled={bulkPaying}
+                      onClick={async () => {
+                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as paid for ${centerMonth}?`)) return;
+                        setBulkPaying(true);
+                        for (const cvId of selectedCenterIds) {
+                          const cv = centerVehicles.find((v: any) => v.id === cvId);
+                          if (!cv) continue;
+                          const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
+                          if (existing?.status === "approved") continue;
+                          const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
+                          const fee = (vt as any)?.center_fee || 0;
+                          if (existing) {
+                            await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                          } else {
+                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: fee, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
+                          }
+                          if (!cv.is_active) {
+                            await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
+                          }
                         }
-                        if (!cv.is_active) {
-                          await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
+                        setBulkPaying(false);
+                        setSelectedCenterIds(new Set());
+                        toast({ title: `${selectedCenterIds.size} vehicles marked as paid` });
+                        fetchCenterData();
+                      }}
+                      className="px-3 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {bulkPaying ? "Processing..." : `Mark ${selectedCenterIds.size} Paid`}
+                    </button>
+                    <button
+                      disabled={bulkPaying}
+                      onClick={async () => {
+                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as unpaid for ${centerMonth}?`)) return;
+                        setBulkPaying(true);
+                        for (const cvId of selectedCenterIds) {
+                          const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
+                          if (existing) {
+                            await supabase.from("center_payments").delete().eq("id", existing.id);
+                          }
                         }
-                      }
-                      setBulkPaying(false);
-                      setSelectedCenterIds(new Set());
-                      toast({ title: `${selectedCenterIds.size} vehicles marked as paid` });
-                      fetchCenterData();
-                    }}
-                    className="px-3 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {bulkPaying ? "Processing..." : `Mark ${selectedCenterIds.size} Paid`}
-                  </button>
+                        setBulkPaying(false);
+                        setSelectedCenterIds(new Set());
+                        toast({ title: `${selectedCenterIds.size} vehicles marked as unpaid` });
+                        fetchCenterData();
+                      }}
+                      className="px-3 py-1 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 disabled:opacity-50"
+                    >
+                      {bulkPaying ? "Processing..." : `Mark ${selectedCenterIds.size} Unpaid`}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
