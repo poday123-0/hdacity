@@ -1625,6 +1625,23 @@ const DispatchTripForm = ({
                     return;
                   }
 
+                  // Check center payment status
+                  const centerNow2 = new Date();
+                  const centerMonth2 = `${centerNow2.getFullYear()}-${String(centerNow2.getMonth() + 1).padStart(2, "0")}`;
+                  if (centerNow2.getDate() >= 5) {
+                    const { data: centerPmt } = await supabase
+                      .from("center_payments")
+                      .select("status")
+                      .eq("vehicle_id", vehicle.id)
+                      .eq("payment_month", centerMonth2)
+                      .eq("status", "approved")
+                      .maybeSingle();
+                    if (!centerPmt) {
+                      toast({ title: "Center payment pending", description: `Code "${code}" has unpaid center fee for ${centerMonth2}. Payment must be cleared first.`, variant: "destructive" });
+                      return;
+                    }
+                  }
+
                   let driverName: string | null = null;
                   let driverPhone: string | null = null;
                   let lastTripDate: string | null = null;
