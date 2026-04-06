@@ -1821,7 +1821,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     supabase.from("banks").select("id, name, logo_url").eq("is_active", true).order("name").then(({ data }) => {
       if (data) setAvailableBanks(data);
     });
-    supabase.from("vehicle_types").select("id, name, icon, image_url, map_icon_url, monthly_fee").eq("is_active", true).order("sort_order").then(({ data }) => {
+    supabase.from("vehicle_types").select("id, name, icon, image_url, map_icon_url, monthly_fee, center_fee").eq("is_active", true).order("sort_order").then(({ data }) => {
       if (data) setVehicleTypes(data);
     });
     supabase.from("system_settings").select("value").eq("key", "passenger_map_icon_url").single().then(({ data }) => {
