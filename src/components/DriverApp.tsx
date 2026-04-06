@@ -5456,22 +5456,132 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                   <span className="text-xs font-mono font-bold text-chart-2">Code {v.center_code}</span>
                                   <span className="text-xs font-semibold text-foreground">{v.plate_number}</span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs text-muted-foreground">{vt?.name || "Vehicle"}</span>
-                                  <span className="text-sm font-bold text-foreground">{centerFee} MVR/mo</span>
-                                </div>
-                                {v.pays_app_fee && (
-                                  <p className="text-[10px] text-muted-foreground">+ App fee also applies</p>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">Center fees are billed separately. Contact your center admin for payment details.</p>
-                      </div>
-                    )}
-                  </div>
-              }
+                                 <div className="flex items-center justify-between">
+                                   <span className="text-xs text-muted-foreground">{vt?.name || "Vehicle"}</span>
+                                   <span className="text-sm font-bold text-foreground">{centerFee} MVR/mo</span>
+                                 </div>
+                                 {v.pays_app_fee && (
+                                   <p className="text-[10px] text-muted-foreground">+ App fee also applies</p>
+                                 )}
+                                 {/* Payment status */}
+                                 {(() => {
+                                   const status = centerPaymentStatuses[v.id];
+                                   if (status === "approved") return (
+                                     <div className="flex items-center gap-1 text-primary text-xs font-semibold"><CheckCircle className="w-3.5 h-3.5" /> Paid this month</div>
+                                   );
+                                   if (status === "submitted") return (
+                                     <div className="flex items-center gap-1 text-chart-4 text-xs font-semibold"><Clock className="w-3.5 h-3.5" /> Payment under review</div>
+                                   );
+                                   return (
+                                     <button
+                                       onClick={() => { setCenterSlipVehicleId(v.id); setCenterSlipUrl(null); }}
+                                       className="w-full mt-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold active:scale-[0.97] transition-transform"
+                                     >
+                                       Submit Payment Slip
+                                     </button>
+                                   );
+                                 })()}
+                               </div>
+                             );
+                           })}
+                         </div>
+                         <p className="text-[10px] text-muted-foreground">Center fees are due by the 5th of each month.</p>
+                       </div>
+                     )}
+
+                     {/* Center Slip Upload Modal */}
+                     {centerSlipVehicleId && (() => {
+                       const sv = driverVehicles.find((v: any) => v.id === centerSlipVehicleId);
+                       const svt = vehicleTypes.find((t: any) => t.id === sv?.vehicle_type_id);
+                       const svFee = (svt as any)?.center_fee || 0;
+                       return (
+                         <div className="fixed inset-0 z-[200] bg-black/60 flex items-end justify-center" onClick={() => setCenterSlipVehicleId(null)}>
+                           <div className="bg-card w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                             <div className="flex items-center justify-between">
+                               <div>
+                                 <h3 className="text-base font-bold text-foreground">Center Payment</h3>
+                                 <p className="text-xs text-muted-foreground">Code {sv?.center_code} — {sv?.plate_number} — {svFee} MVR</p>
+                               </div>
+                               <button onClick={() => setCenterSlipVehicleId(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground"><X className="w-4 h-4" /></button>
+                             </div>
+
+                             <input
+                               ref={centerSlipFileRef}
+                               type="file"
+                               accept="image/*"
+                               className="hidden"
+                               onChange={async (e) => {
+                                 const file = e.target.files?.[0];
+                                 if (!file) return;
+                                 setCenterSlipUploading(true);
+                                 try {
+                                   const ext = file.name.split(".").pop() || "jpg";
+                                   const path = `${userProfile.id}/center-slip-${centerSlipVehicleId}-${Date.now()}.${ext}`;
+                                   const { error: uploadErr } = await supabase.storage.from("payment-slips").upload(path, file, { upsert: true });
+                                   if (uploadErr) throw uploadErr;
+                                   const { data: urlData } = supabase.storage.from("payment-slips").getPublicUrl(path);
+                                   setCenterSlipUrl(urlData.publicUrl);
+                                 } catch (err) {
+                                   toast({ title: "Upload failed", variant: "destructive" });
+                                 }
+                                 setCenterSlipUploading(false);
+                               }}
+                             />
+
+                             {centerSlipUrl ? (
+                               <div className="relative">
+                                 <img src={centerSlipUrl} alt="Payment slip" className="w-full rounded-xl border border-border max-h-48 object-contain" />
+                                 <button onClick={() => setCenterSlipUrl(null)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-foreground/70 text-background flex items-center justify-center"><X className="w-3 h-3" /></button>
+                               </div>
+                             ) : (
+                               <button
+                                 onClick={() => centerSlipFileRef.current?.click()}
+                                 disabled={centerSlipUploading}
+                                 className="w-full py-4 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center gap-2 text-sm text-muted-foreground active:scale-[0.98] transition-transform"
+                               >
+                                 {centerSlipUploading ? (
+                                   <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Uploading...</>
+                                 ) : (
+                                   <><Upload className="w-4 h-4" /> Take photo or upload slip</>
+                                 )}
+                               </button>
+                             )}
+
+                             <button
+                               disabled={!centerSlipUrl || centerSlipSubmitting}
+                               onClick={async () => {
+                                 if (!centerSlipUrl || !centerSlipVehicleId) return;
+                                 setCenterSlipSubmitting(true);
+                                 const currentMonth = new Date().toISOString().slice(0, 7);
+                                 await supabase.from("center_payments").insert({
+                                   driver_id: userProfile.id,
+                                   vehicle_id: centerSlipVehicleId,
+                                   vehicle_type_id: sv?.vehicle_type_id,
+                                   amount: svFee,
+                                   payment_month: currentMonth,
+                                   status: "submitted",
+                                   slip_url: centerSlipUrl,
+                                   submitted_at: new Date().toISOString(),
+                                 } as any);
+                                 setCenterPaymentStatuses(prev => ({ ...prev, [centerSlipVehicleId]: "submitted" }));
+                                 setCenterSlipSubmitting(false);
+                                 setCenterSlipVehicleId(null);
+                                 toast({ title: "Center payment submitted!", description: "Admin will review your payment slip." });
+                               }}
+                               className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
+                             >
+                               {centerSlipSubmitting ? (
+                                 <><div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> Submitting...</>
+                               ) : (
+                                 "Submit Payment for Approval"
+                               )}
+                             </button>
+                           </div>
+                         </div>
+                       );
+                     })()}
+                   </div>
+               }
 
               {profileTab === "settings" &&
             <div className="space-y-3">
