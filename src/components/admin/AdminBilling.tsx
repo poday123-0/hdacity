@@ -113,6 +113,9 @@ const AdminBilling = () => {
     setCenterVehicles(sorted);
     setCenterPayments((cpRes.data as any[]) || []);
     setCenterMonthPayments((cmRes.data as any[]) || []);
+    const wMap = new Map<string, number>();
+    for (const w of (walletsRes.data as any[]) || []) { wMap.set(w.user_id, w.balance || 0); }
+    setCenterWallets(wMap);
   };
 
   useEffect(() => { fetchDrivers(); }, [search]);
