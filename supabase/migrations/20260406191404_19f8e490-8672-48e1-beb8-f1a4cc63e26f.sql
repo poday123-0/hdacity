@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ADD COLUMN center_fee_exempt boolean NOT NULL DEFAULT false;
