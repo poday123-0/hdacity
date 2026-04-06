@@ -54,10 +54,10 @@ Deno.serve(async (req) => {
       (companies || []).filter((c) => c.fee_free).map((c) => c.id)
     );
 
-    // Fetch all active vehicles with their vehicle_type_id
+    // Fetch all active vehicles with their vehicle_type_id and center info
     const { data: allVehicles } = await supabase
       .from("vehicles")
-      .select("id, driver_id, vehicle_type_id")
+      .select("id, driver_id, vehicle_type_id, center_code, pays_app_fee")
       .eq("is_active", true);
 
     // Fetch all vehicle types with their monthly_fee
@@ -71,6 +71,8 @@ Deno.serve(async (req) => {
     const driverFeeMap = new Map<string, number>();
     for (const v of (allVehicles || [])) {
       if (!v.driver_id || !v.vehicle_type_id) continue;
+      // Skip center-code vehicles that don't pay app fee
+      if (v.center_code && !v.pays_app_fee) continue;
       const vtFee = vtFeeMap.get(v.vehicle_type_id) || 0;
       driverFeeMap.set(v.driver_id, (driverFeeMap.get(v.driver_id) || 0) + vtFee);
     }

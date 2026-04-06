@@ -2004,6 +2004,7 @@ export type Database = {
           is_active: boolean
           make: string | null
           model: string | null
+          pays_app_fee: boolean
           plate_number: string
           registration_url: string | null
           rejection_reason: string | null
@@ -2024,6 +2025,7 @@ export type Database = {
           is_active?: boolean
           make?: string | null
           model?: string | null
+          pays_app_fee?: boolean
           plate_number: string
           registration_url?: string | null
           rejection_reason?: string | null
@@ -2044,6 +2046,7 @@ export type Database = {
           is_active?: boolean
           make?: string | null
           model?: string | null
+          pays_app_fee?: boolean
           plate_number?: string
           registration_url?: string | null
           rejection_reason?: string | null
