@@ -1028,7 +1028,7 @@ const AdminBilling = () => {
                   }).map(cv => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-                    const centerFee = (vt as any)?.center_fee || 0;
+                    const centerFee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
                     const monthPayment = centerMonthPayments.find(cp => cp.vehicle_id === cv.id);
                     const isEditing = editingCenterVehicle === cv.id;
                     return (
@@ -1066,7 +1066,22 @@ const AdminBilling = () => {
                             </select>
                           ) : (vt?.name || "—")}
                         </td>
-                        <td className="px-3 py-2 text-xs font-bold text-foreground">{centerFee} MVR</td>
+                        <td className="px-3 py-2 text-xs font-bold text-foreground">
+                          <div className="flex items-center gap-1">
+                            <span className={cv.center_fee_exempt ? "line-through text-muted-foreground" : ""}>{centerFee} MVR</span>
+                            <button
+                              onClick={async () => {
+                                const newVal = !cv.center_fee_exempt;
+                                await supabase.from("vehicles").update({ center_fee_exempt: newVal } as any).eq("id", cv.id);
+                                toast({ title: newVal ? "Vehicle exempt from center fee" : "Center fee restored" });
+                                fetchCenterData();
+                              }}
+                              className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${cv.center_fee_exempt ? "bg-chart-2/10 text-chart-2" : "bg-muted text-muted-foreground"}`}
+                            >
+                              {cv.center_fee_exempt ? "Free" : "Exempt"}
+                            </button>
+                          </div>
+                        </td>
                         <td className="px-3 py-2">
                           <button
                             onClick={async () => {
