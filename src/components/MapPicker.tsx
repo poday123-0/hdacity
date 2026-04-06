@@ -285,8 +285,8 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       };
       const closestLocal = searchLocations
-        .map(l => ({ name: l.name, address: l.address || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
-        .filter(l => l.dist <= 50)
+        .map(l => ({ name: l.name, address: l.address || l.road_name || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
+        .filter(l => l.dist <= 100)
         .sort((a, b) => a.dist - b.dist)[0];
 
       if (closestLocal) {
