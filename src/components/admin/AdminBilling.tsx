@@ -1011,7 +1011,21 @@ const AdminBilling = () => {
                     const monthPayment = centerMonthPayments.find(cp => cp.vehicle_id === cv.id);
                     const isEditing = editingCenterVehicle === cv.id;
                     return (
-                      <tr key={cv.id} className="border-t border-border hover:bg-muted/30">
+                      <tr key={cv.id} className={`border-t border-border hover:bg-muted/30 ${selectedCenterIds.has(cv.id) ? "bg-primary/5" : ""}`}>
+                        <td className="px-2 py-2">
+                          {monthPayment?.status !== "approved" && (
+                            <input
+                              type="checkbox"
+                              checked={selectedCenterIds.has(cv.id)}
+                              onChange={e => {
+                                const next = new Set(selectedCenterIds);
+                                e.target.checked ? next.add(cv.id) : next.delete(cv.id);
+                                setSelectedCenterIds(next);
+                              }}
+                              className="w-3.5 h-3.5 rounded border-border accent-primary"
+                            />
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-xs text-foreground">
                           {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
                           <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
