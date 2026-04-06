@@ -953,7 +953,7 @@ const AdminBilling = () => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
                     const centerFee = (vt as any)?.center_fee || 0;
-                    const monthPayment = centerPayments.find(cp => cp.vehicle_id === cv.id && cp.payment_month === centerMonth);
+                    const monthPayment = centerMonthPayments.find(cp => cp.vehicle_id === cv.id);
                     const isEditing = editingCenterVehicle === cv.id;
                     return (
                       <tr key={cv.id} className="border-t border-border hover:bg-muted/30">
