@@ -1055,6 +1055,9 @@ const AdminBilling = () => {
                           {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
                           <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
                         </td>
+                        <td className="px-3 py-2 text-xs font-semibold text-chart-2">
+                          {cv.driver_id ? `${(centerWallets.get(cv.driver_id) || 0).toLocaleString()} MVR` : "—"}
+                        </td>
                         <td className="px-3 py-2 text-xs font-mono text-foreground">
                           {isEditing ? (
                             <input value={editCenterVehicleData.plate_number || ""} onChange={e => setEditCenterVehicleData((p: any) => ({ ...p, plate_number: e.target.value }))} className="w-20 px-1 py-0.5 bg-surface border border-border rounded text-[10px]" />
