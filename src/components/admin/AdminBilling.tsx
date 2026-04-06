@@ -46,6 +46,9 @@ const AdminBilling = () => {
   const [editingCenterVehicle, setEditingCenterVehicle] = useState<string | null>(null);
   const [editCenterVehicleData, setEditCenterVehicleData] = useState<any>({});
   const [centerSearch, setCenterSearch] = useState("");
+  const [centerHistoryVehicle, setCenterHistoryVehicle] = useState<any>(null);
+  const [centerHistory, setCenterHistory] = useState<any[]>([]);
+  const [centerHistoryLoading, setCenterHistoryLoading] = useState(false);
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -1034,6 +1037,19 @@ const AdminBilling = () => {
                                 <Pencil className="w-3 h-3" />
                               </button>
                             )}
+                            <button
+                              onClick={async () => {
+                                setCenterHistoryVehicle(cv);
+                                setCenterHistoryLoading(true);
+                                const { data } = await supabase.from("center_payments").select("*").eq("vehicle_id", cv.id).order("payment_month", { ascending: false });
+                                setCenterHistory((data as any[]) || []);
+                                setCenterHistoryLoading(false);
+                              }}
+                              className="px-2 py-1 bg-surface border border-border rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+                              title="Payment history"
+                            >
+                              <Calendar className="w-3 h-3" />
+                            </button>
                             {(!monthPayment || monthPayment.status === "rejected") && (
                               <button
                                 onClick={async () => {
@@ -1127,6 +1143,64 @@ const AdminBilling = () => {
               <p><strong>Status:</strong> {selectedCenterPayment.status}</p>
               {selectedCenterPayment.notes && <p><strong>Notes:</strong> {selectedCenterPayment.notes}</p>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Center Payment History Modal */}
+      {centerHistoryVehicle && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setCenterHistoryVehicle(null)}>
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg p-5 space-y-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-foreground">Payment History</h3>
+                <p className="text-xs text-muted-foreground">{centerHistoryVehicle.plate_number} — Code {centerHistoryVehicle.center_code}</p>
+              </div>
+              <button onClick={() => setCenterHistoryVehicle(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            {centerHistoryLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+            ) : centerHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No payment history found</p>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-surface">
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Month</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Amount</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Status</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Date</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Slip</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {centerHistory.map((h: any) => (
+                    <tr key={h.id} className="border-t border-border">
+                      <td className="px-3 py-2 text-xs font-mono text-foreground">{h.payment_month}</td>
+                      <td className="px-3 py-2 text-xs font-semibold text-foreground">{h.amount} MVR</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          h.status === "approved" ? "bg-primary/10 text-primary" :
+                          h.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                          h.status === "submitted" ? "bg-chart-4/10 text-chart-4" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {h.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-[10px] text-muted-foreground">
+                        {h.approved_at ? new Date(h.approved_at).toLocaleDateString() : h.submitted_at ? new Date(h.submitted_at).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {h.slip_url ? (
+                          <button onClick={() => { setCenterHistoryVehicle(null); setSelectedCenterPayment(h); }} className="text-[10px] text-primary font-semibold underline">View</button>
+                        ) : <span className="text-[10px] text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
