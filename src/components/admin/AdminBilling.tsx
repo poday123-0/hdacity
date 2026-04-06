@@ -46,6 +46,9 @@ const AdminBilling = () => {
   const [editingCenterVehicle, setEditingCenterVehicle] = useState<string | null>(null);
   const [editCenterVehicleData, setEditCenterVehicleData] = useState<any>({});
   const [centerSearch, setCenterSearch] = useState("");
+  const [centerHistoryVehicle, setCenterHistoryVehicle] = useState<any>(null);
+  const [centerHistory, setCenterHistory] = useState<any[]>([]);
+  const [centerHistoryLoading, setCenterHistoryLoading] = useState(false);
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
