@@ -1821,7 +1821,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     supabase.from("banks").select("id, name, logo_url").eq("is_active", true).order("name").then(({ data }) => {
       if (data) setAvailableBanks(data);
     });
-    supabase.from("vehicle_types").select("id, name, icon, image_url, map_icon_url, monthly_fee").eq("is_active", true).order("sort_order").then(({ data }) => {
+    supabase.from("vehicle_types").select("id, name, icon, image_url, map_icon_url, monthly_fee, center_fee").eq("is_active", true).order("sort_order").then(({ data }) => {
       if (data) setVehicleTypes(data);
     });
     supabase.from("system_settings").select("value").eq("key", "passenger_map_icon_url").single().then(({ data }) => {
@@ -5424,6 +5424,35 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         );
                       })()}
                     </div>
+
+                    {/* Center Billing — only for drivers with center-code vehicles */}
+                    {driverVehicles.some((v: any) => v.center_code) && (
+                      <div className="bg-surface rounded-xl p-3 space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Center Billing</p>
+                        <div className="space-y-2">
+                          {driverVehicles.filter((v: any) => v.center_code).map((v: any) => {
+                            const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                            const centerFee = (vt as any)?.center_fee || (vt as any)?.monthly_fee || 0;
+                            return (
+                              <div key={v.id} className="bg-card rounded-lg p-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-mono font-bold text-chart-2">Code {v.center_code}</span>
+                                  <span className="text-xs font-semibold text-foreground">{v.plate_number}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">{vt?.name || "Vehicle"}</span>
+                                  <span className="text-sm font-bold text-foreground">{centerFee} MVR/mo</span>
+                                </div>
+                                {v.pays_app_fee && (
+                                  <p className="text-[10px] text-muted-foreground">+ App fee also applies</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Center fees are billed separately. Contact your center admin for payment details.</p>
+                      </div>
+                    )}
                   </div>
               }
 

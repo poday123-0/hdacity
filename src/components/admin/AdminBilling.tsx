@@ -90,7 +90,14 @@ const AdminBilling = () => {
         return q;
       })(),
     ]);
-    const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => (a.center_code || "").localeCompare(b.center_code || ""));
+    const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => {
+      const codeA = parseInt(a.center_code || "0", 10);
+      const codeB = parseInt(b.center_code || "0", 10);
+      if (isNaN(codeA) && isNaN(codeB)) return (a.center_code || "").localeCompare(b.center_code || "");
+      if (isNaN(codeA)) return 1;
+      if (isNaN(codeB)) return -1;
+      return codeA - codeB;
+    });
     setCenterVehicles(sorted);
     setCenterPayments((cpRes.data as any[]) || []);
   };
