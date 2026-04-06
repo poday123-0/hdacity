@@ -910,6 +910,7 @@ const AdminBilling = () => {
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Fee</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">App Fee</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">{centerMonth} Status</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Actions</th>
                   </tr>
@@ -920,16 +921,44 @@ const AdminBilling = () => {
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
                     const centerFee = (vt as any)?.center_fee || 0;
                     const monthPayment = centerPayments.find(cp => cp.vehicle_id === cv.id && cp.payment_month === centerMonth);
+                    const isEditing = editingCenterVehicle === cv.id;
                     return (
                       <tr key={cv.id} className="border-t border-border hover:bg-muted/30">
                         <td className="px-3 py-2 text-xs text-foreground">
                           {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
                           <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
                         </td>
-                        <td className="px-3 py-2 text-xs font-mono text-foreground">{cv.plate_number}</td>
-                        <td className="px-3 py-2 text-xs font-mono font-bold text-chart-2">{cv.center_code}</td>
-                        <td className="px-3 py-2 text-xs text-foreground">{vt?.name || "—"}</td>
+                        <td className="px-3 py-2 text-xs font-mono text-foreground">
+                          {isEditing ? (
+                            <input value={editCenterVehicleData.plate_number || ""} onChange={e => setEditCenterVehicleData((p: any) => ({ ...p, plate_number: e.target.value }))} className="w-20 px-1 py-0.5 bg-surface border border-border rounded text-[10px]" />
+                          ) : cv.plate_number}
+                        </td>
+                        <td className="px-3 py-2 text-xs font-mono font-bold text-chart-2">
+                          {isEditing ? (
+                            <input value={editCenterVehicleData.center_code || ""} onChange={e => setEditCenterVehicleData((p: any) => ({ ...p, center_code: e.target.value }))} className="w-16 px-1 py-0.5 bg-surface border border-border rounded text-[10px]" />
+                          ) : cv.center_code}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-foreground">
+                          {isEditing ? (
+                            <select value={editCenterVehicleData.vehicle_type_id || ""} onChange={e => setEditCenterVehicleData((p: any) => ({ ...p, vehicle_type_id: e.target.value }))} className="px-1 py-0.5 bg-surface border border-border rounded text-[10px]">
+                              {vehicleTypes.map(vt2 => <option key={vt2.id} value={vt2.id}>{vt2.name}</option>)}
+                            </select>
+                          ) : (vt?.name || "—")}
+                        </td>
                         <td className="px-3 py-2 text-xs font-bold text-foreground">{centerFee} MVR</td>
+                        <td className="px-3 py-2">
+                          <button
+                            onClick={async () => {
+                              const newVal = !cv.pays_app_fee;
+                              await supabase.from("vehicles").update({ pays_app_fee: newVal } as any).eq("id", cv.id);
+                              toast({ title: newVal ? "App fee enabled" : "App fee disabled" });
+                              fetchCenterData();
+                            }}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${cv.pays_app_fee ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
+                          >
+                            {cv.pays_app_fee ? "Yes" : "No"}
+                          </button>
+                        </td>
                         <td className="px-3 py-2">
                           {monthPayment ? (
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -949,6 +978,38 @@ const AdminBilling = () => {
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    await supabase.from("vehicles").update({
+                                      plate_number: editCenterVehicleData.plate_number,
+                                      center_code: editCenterVehicleData.center_code,
+                                      vehicle_type_id: editCenterVehicleData.vehicle_type_id,
+                                    } as any).eq("id", cv.id);
+                                    toast({ title: "Vehicle updated" });
+                                    setEditingCenterVehicle(null);
+                                    fetchCenterData();
+                                  }}
+                                  className="px-2 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-semibold hover:bg-primary/20"
+                                >
+                                  <Save className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => setEditingCenterVehicle(null)} className="px-2 py-1 bg-muted text-muted-foreground rounded-lg text-[10px] font-semibold hover:text-foreground">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEditingCenterVehicle(cv.id);
+                                  setEditCenterVehicleData({ plate_number: cv.plate_number, center_code: cv.center_code, vehicle_type_id: cv.vehicle_type_id });
+                                }}
+                                className="px-2 py-1 bg-surface border border-border rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
                             {(!monthPayment || monthPayment.status === "rejected") && (
                               <button
                                 onClick={async () => {
@@ -1016,7 +1077,7 @@ const AdminBilling = () => {
                     );
                   })}
                   {centerVehicles.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No center vehicles found</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">No center vehicles found</td></tr>
                   )}
                 </tbody>
               </table>
