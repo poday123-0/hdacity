@@ -205,7 +205,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       namedLabelsRef.current.forEach(m => map.removeLayer(m));
       namedLabelsRef.current = [];
       const zoom = map.getZoom();
-      if (zoom < 15 || namedLocationsRef.current.length === 0) return;
+      if (zoom < 17 || namedLocationsRef.current.length === 0) return;
       const bounds = map.getBounds();
       const visible = namedLocationsRef.current.filter(l => bounds.contains([Number(l.lat), Number(l.lng)])).slice(0, 60);
       const isDark = document.documentElement.classList.contains("dark");
