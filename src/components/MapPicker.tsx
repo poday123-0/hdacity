@@ -266,7 +266,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     }
   }, [center, mapReady]);
 
-  // Reverse geocode on center change — check local DB + external APIs for nearby place names
+  // Reverse geocode on center change — check local DB + Photon reverse + fallback
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (skipReverseGeocodeRef.current) {
@@ -294,19 +294,58 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         setPlaceName(closestLocal.name);
         setAddress(closestLocal.address || closestLocal.name);
       } else {
-        // No local match — use full reverse geocode
+        // No local match — check Photon reverse for nearby buildings/flats (free OSM data)
+        let foundFromPhoton = false;
         try {
-          const result = await reverseGeocodeLocation(center.lat, center.lng);
-          if (result.name && result.name !== "Selected Location" && result.name !== result.address) {
-            setPlaceName(result.name);
-            setAddress(result.address || result.name);
-          } else {
-            setPlaceName("");
-            setAddress(result.address || result.name || `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+          const photonRes = await fetch(
+            `https://photon.komoot.io/reverse?lat=${center.lat}&lon=${center.lng}&radius=100&limit=5`
+          );
+          if (photonRes.ok) {
+            const photonData = await photonRes.json();
+            const buildings = (photonData.features || []).filter((f: any) => {
+              const key = f.properties?.osm_key;
+              const type = f.properties?.type;
+              return f.properties?.name && (key === "building" || key === "amenity" || key === "shop" || type === "house");
+            });
+            if (buildings.length > 0) {
+              // Find closest building
+              let closest = buildings[0];
+              let closestDist = Infinity;
+              for (const b of buildings) {
+                const coords = b.geometry?.coordinates;
+                if (!coords) continue;
+                const dist = haversine(center.lat, center.lng, coords[1], coords[0]);
+                if (dist < closestDist) {
+                  closestDist = dist;
+                  closest = b;
+                }
+              }
+              if (closestDist <= 80) {
+                const bName = closest.properties.name;
+                const bStreet = closest.properties.street || closest.properties.district || "";
+                setPlaceName(bName);
+                setAddress(bStreet || bName);
+                foundFromPhoton = true;
+              }
+            }
           }
-        } catch {
-          setPlaceName("");
-          setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+        } catch {}
+
+        if (!foundFromPhoton) {
+          // Fallback to standard reverse geocode
+          try {
+            const result = await reverseGeocodeLocation(center.lat, center.lng);
+            if (result.name && result.name !== "Selected Location" && result.name !== result.address) {
+              setPlaceName(result.name);
+              setAddress(result.address || result.name);
+            } else {
+              setPlaceName("");
+              setAddress(result.address || result.name || `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+            }
+          } catch {
+            setPlaceName("");
+            setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+          }
         }
       }
       setLoading(false);
