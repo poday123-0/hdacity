@@ -39,6 +39,7 @@ const AdminBilling = () => {
   const [centerPayments, setCenterPayments] = useState<any[]>([]);
   const [centerFilter, setCenterFilter] = useState("pending");
   const [centerVehicles, setCenterVehicles] = useState<any[]>([]);
+  const [centerMonthPayments, setCenterMonthPayments] = useState<any[]>([]);
   const [editingCenterFee, setEditingCenterFee] = useState<string | null>(null);
   const [editingCenterFeeValue, setEditingCenterFeeValue] = useState(0);
   const [savingCenterFee, setSavingCenterFee] = useState(false);
