@@ -193,8 +193,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   const namedLabelsRef = useRef<L.Marker[]>([]);
   const namedLocationsRef = useRef<any[]>([]);
   useEffect(() => {
-    supabase.from("named_locations").select("name, lat, lng").eq("is_active", true).eq("status", "approved")
-      .then(({ data }) => { if (data) namedLocationsRef.current = data; });
+    fetchAllNamedLocations("name, lat, lng")
+      .then((data) => { namedLocationsRef.current = data; });
   }, []);
 
   useEffect(() => {
