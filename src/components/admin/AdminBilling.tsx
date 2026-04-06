@@ -993,17 +993,10 @@ const AdminBilling = () => {
                     <th className="px-2 py-2">
                       <input
                         type="checkbox"
-                        checked={selectedCenterIds.size > 0 && selectedCenterIds.size === centerVehicles.filter(cv => {
-                          const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
-                          return !mp || mp.status !== "approved";
-                        }).length}
+                        checked={selectedCenterIds.size > 0 && selectedCenterIds.size === centerVehicles.length}
                         onChange={e => {
                           if (e.target.checked) {
-                            const unpaid = centerVehicles.filter(cv => {
-                              const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
-                              return !mp || mp.status !== "approved";
-                            }).map(cv => cv.id);
-                            setSelectedCenterIds(new Set(unpaid));
+                            setSelectedCenterIds(new Set(centerVehicles.map(cv => cv.id)));
                           } else {
                             setSelectedCenterIds(new Set());
                           }
