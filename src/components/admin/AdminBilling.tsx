@@ -934,7 +934,13 @@ const AdminBilling = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {centerVehicles.map(cv => {
+                  {centerVehicles.filter(cv => {
+                    if (!centerSearch) return true;
+                    const s = centerSearch.toLowerCase();
+                    const driver = drivers.find(d => d.id === cv.driver_id);
+                    const driverName = driver ? `${driver.first_name} ${driver.last_name}`.toLowerCase() : "";
+                    return (cv.plate_number || "").toLowerCase().includes(s) || (cv.center_code || "").toLowerCase().includes(s) || driverName.includes(s);
+                  }).map(cv => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
                     const centerFee = (vt as any)?.center_fee || 0;
