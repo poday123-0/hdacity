@@ -302,6 +302,7 @@ const AdminNamedLocations = () => {
     }
   };
 
+  const q = search.toLowerCase();
   const filtered = locations.filter(loc => {
     if (statusFilter !== "all" && loc.status !== statusFilter) return false;
     if (groupFilter !== "all") {
