@@ -1037,6 +1037,19 @@ const AdminBilling = () => {
                                 <Pencil className="w-3 h-3" />
                               </button>
                             )}
+                            <button
+                              onClick={async () => {
+                                setCenterHistoryVehicle(cv);
+                                setCenterHistoryLoading(true);
+                                const { data } = await supabase.from("center_payments").select("*").eq("vehicle_id", cv.id).order("payment_month", { ascending: false });
+                                setCenterHistory((data as any[]) || []);
+                                setCenterHistoryLoading(false);
+                              }}
+                              className="px-2 py-1 bg-surface border border-border rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+                              title="Payment history"
+                            >
+                              <Calendar className="w-3 h-3" />
+                            </button>
                             {(!monthPayment || monthPayment.status === "rejected") && (
                               <button
                                 onClick={async () => {
