@@ -211,6 +211,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
   // Free navigation state
+  const programmaticZoomRef = useRef(false);
   const [freeNavTarget, setFreeNavTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [freeNavEta, setFreeNavEta] = useState("");
   const [freeNavDist, setFreeNavDist] = useState("");
