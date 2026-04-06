@@ -68,6 +68,89 @@ export type Database = {
         }
         Relationships: []
       }
+      center_payments: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          notes: string | null
+          payment_month: string
+          slip_url: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_type_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          notes?: string | null
+          payment_month: string
+          slip_url?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          notes?: string | null
+          payment_month?: string
+          slip_url?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "center_payments_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "center_payments_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "center_payments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "center_payments_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string
@@ -1840,6 +1923,7 @@ export type Database = {
         Row: {
           base_fare: number
           capacity: number
+          center_fee: number
           created_at: string
           description: string | null
           driver_tax_pct: number
@@ -1862,6 +1946,7 @@ export type Database = {
         Insert: {
           base_fare?: number
           capacity?: number
+          center_fee?: number
           created_at?: string
           description?: string | null
           driver_tax_pct?: number
@@ -1884,6 +1969,7 @@ export type Database = {
         Update: {
           base_fare?: number
           capacity?: number
+          center_fee?: number
           created_at?: string
           description?: string | null
           driver_tax_pct?: number
