@@ -1066,6 +1066,10 @@ const AdminBilling = () => {
                                       approved_at: new Date().toISOString(),
                                     } as any);
                                   }
+                                  // Reactivate vehicle if it was deactivated
+                                  if (!cv.is_active) {
+                                    await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
+                                  }
                                   toast({ title: "Marked as paid" });
                                   fetchCenterData();
                                 }}
