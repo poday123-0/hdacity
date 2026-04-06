@@ -275,8 +275,12 @@ const AdminBilling = () => {
   const isCompanyFeeFree = (d: any) => companies.find(c => c.id === d.company_id)?.fee_free || false;
   const isFreeUntilActive = (d: any) => d.fee_free_until && new Date(d.fee_free_until) > new Date();
 
-  // Apply table filters
+  // Apply table filters — exclude drivers whose vehicles are ALL center-code (they have separate billing)
   const filteredDrivers = drivers.filter(d => {
+    // Exclude drivers who only have center-code vehicles (no app-fee vehicles)
+    const driverVehicles = vehicles.filter(v => v.driver_id === d.id);
+    if (driverVehicles.length > 0 && driverVehicles.every(v => v.center_code && !v.pays_app_fee)) return false;
+
     if (filterCompany && d.company_id !== filterCompany) return false;
     if (filterVehicleType) {
       const driverVehicle = vehicles.find(v => v.driver_id === d.id);
