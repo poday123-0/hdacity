@@ -86,13 +86,17 @@ const AdminBilling = () => {
   };
 
   const fetchCenterData = async () => {
-    const [cvRes, cpRes] = await Promise.all([
+    const now = new Date();
+    const currentCenterMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const [cvRes, cpRes, cmRes] = await Promise.all([
       supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
         return q;
       })(),
+      // Always fetch ALL current month payments (unfiltered) for status display
+      supabase.from("center_payments").select("id, vehicle_id, payment_month, status, amount, slip_url, approved_at, submitted_at").eq("payment_month", currentCenterMonth),
     ]);
     const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => {
       const codeA = parseInt(a.center_code || "0", 10);
@@ -104,6 +108,7 @@ const AdminBilling = () => {
     });
     setCenterVehicles(sorted);
     setCenterPayments((cpRes.data as any[]) || []);
+    setCenterMonthPayments((cmRes.data as any[]) || []);
   };
 
   useEffect(() => { fetchDrivers(); }, [search]);
