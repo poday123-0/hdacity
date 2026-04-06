@@ -160,6 +160,58 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- CENTER BILLING ENFORCEMENT (due day = 5th) ----
+    const centerDueDay = 5;
+    const isCenterDueDay = currentDay >= centerDueDay;
+    let centerDeactivated = 0;
+
+    if (isCenterDueDay) {
+      // Get all center-code vehicles
+      const { data: centerVehicles } = await supabase
+        .from("vehicles")
+        .select("id, center_code, vehicle_type_id, is_active")
+        .not("center_code", "is", null)
+        .eq("is_active", true);
+
+      if (centerVehicles && centerVehicles.length > 0) {
+        // Get approved center payments for current month
+        const { data: approvedCenterPayments } = await supabase
+          .from("center_payments")
+          .select("vehicle_id")
+          .eq("payment_month", currentMonth)
+          .eq("status", "approved");
+        const paidCenterVehicleIds = new Set((approvedCenterPayments || []).map((p) => p.vehicle_id));
+
+        // Get submitted (pending review) center payments
+        const { data: submittedCenterPayments } = await supabase
+          .from("center_payments")
+          .select("vehicle_id")
+          .eq("payment_month", currentMonth)
+          .eq("status", "submitted");
+        const pendingCenterVehicleIds = new Set((submittedCenterPayments || []).map((p) => p.vehicle_id));
+
+        // Get vehicle type center fees
+        const { data: vtCenterFees } = await supabase
+          .from("vehicle_types")
+          .select("id, center_fee");
+        const centerFeeMap = new Map((vtCenterFees || []).map((vt) => [vt.id, vt.center_fee || 0]));
+
+        for (const cv of centerVehicles) {
+          const fee = centerFeeMap.get(cv.vehicle_type_id) || 0;
+          if (fee === 0) continue; // No center fee
+          if (paidCenterVehicleIds.has(cv.id)) continue; // Already paid
+          if (pendingCenterVehicleIds.has(cv.id)) continue; // Payment pending review
+
+          // Deactivate vehicle
+          await supabase
+            .from("vehicles")
+            .update({ is_active: false })
+            .eq("id", cv.id);
+          centerDeactivated++;
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         currentMonth,
