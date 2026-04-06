@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchOsrmRoute, pickShortestOsrmRoute } from "@/lib/osrm-routing";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RideMapData {
   pickup?: { lat: number; lng: number; name: string };
@@ -187,6 +188,50 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       mapInstance.current = null;
     };
   }, [!!initialCenterRef.current]);
+
+  // Named location labels on map
+  const namedLabelsRef = useRef<L.Marker[]>([]);
+  const namedLocationsRef = useRef<any[]>([]);
+  useEffect(() => {
+    supabase.from("named_locations").select("name, lat, lng").eq("is_active", true).eq("status", "approved")
+      .then(({ data }) => { if (data) namedLocationsRef.current = data; });
+  }, []);
+
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
+
+    const updateLabels = () => {
+      namedLabelsRef.current.forEach(m => map.removeLayer(m));
+      namedLabelsRef.current = [];
+      const zoom = map.getZoom();
+      if (zoom < 15 || namedLocationsRef.current.length === 0) return;
+      const bounds = map.getBounds();
+      const visible = namedLocationsRef.current.filter(l => bounds.contains([Number(l.lat), Number(l.lng)])).slice(0, 60);
+      const isDark = document.documentElement.classList.contains("dark");
+      visible.forEach(l => {
+        const label = l.name.length > 20 ? l.name.slice(0, 18) + "…" : l.name;
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [0, 0],
+          iconAnchor: [0, -4],
+          html: `<div style="white-space:nowrap;font-size:10px;font-weight:600;color:${isDark ? '#93c5fd' : '#1d4ed8'};text-shadow:${isDark ? '0 0 3px rgba(0,0,0,0.8)' : '0 0 3px rgba(255,255,255,0.9),0 0 3px rgba(255,255,255,0.9)'};pointer-events:none;transform:translateX(-50%)">${label}</div>`,
+        });
+        const m = L.marker([Number(l.lat), Number(l.lng)], { icon, interactive: false, zIndexOffset: -100 }).addTo(map);
+        namedLabelsRef.current.push(m);
+      });
+    };
+
+    updateLabels();
+    map.on("moveend", updateLabels);
+    map.on("zoomend", updateLabels);
+    return () => {
+      map.off("moveend", updateLabels);
+      map.off("zoomend", updateLabels);
+      namedLabelsRef.current.forEach(m => map.removeLayer(m));
+      namedLabelsRef.current = [];
+    };
+  }, [!!mapInstance.current]);
 
   // Theme observer
   useEffect(() => {
