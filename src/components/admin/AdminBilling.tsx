@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2 } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -16,7 +16,7 @@ const AdminBilling = () => {
   const [paymentFilter, setPaymentFilter] = useState("submitted");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [billingDueDay, setBillingDueDay] = useState(25);
-  const [tab, setTab] = useState<"drivers" | "payments">("drivers");
+  const [tab, setTab] = useState<"drivers" | "payments" | "center">("drivers");
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [showBillingSettings, setShowBillingSettings] = useState(false);
   const [driverPayments, setDriverPayments] = useState<any[]>([]);
@@ -35,6 +35,19 @@ const AdminBilling = () => {
   const [editingVtFeeValue, setEditingVtFeeValue] = useState(0);
   const [savingVtFee, setSavingVtFee] = useState(false);
 
+  // Center billing state
+  const [centerPayments, setCenterPayments] = useState<any[]>([]);
+  const [centerFilter, setCenterFilter] = useState("pending");
+  const [centerVehicles, setCenterVehicles] = useState<any[]>([]);
+  const [editingCenterFee, setEditingCenterFee] = useState<string | null>(null);
+  const [editingCenterFeeValue, setEditingCenterFeeValue] = useState(0);
+  const [savingCenterFee, setSavingCenterFee] = useState(false);
+  const [selectedCenterPayment, setSelectedCenterPayment] = useState<any>(null);
+  const [centerMonth, setCenterMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
   const fetchDrivers = async () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
@@ -44,7 +57,7 @@ const AdminBilling = () => {
         return q;
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
-      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee").eq("is_active", true).order("sort_order"),
+      supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day"]),
     ]);
