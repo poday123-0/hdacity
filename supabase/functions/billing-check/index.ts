@@ -222,6 +222,8 @@ Deno.serve(async (req) => {
         driversOwingFees: driversOwingFees.length,
         smsCount,
         deactivatedCount,
+        centerDueDay,
+        centerDeactivated,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
