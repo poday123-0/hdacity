@@ -90,7 +90,8 @@ const AdminBilling = () => {
         return q;
       })(),
     ]);
-    setCenterVehicles((cvRes.data as any[]) || []);
+    const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => (a.center_code || "").localeCompare(b.center_code || ""));
+    setCenterVehicles(sorted);
     setCenterPayments((cpRes.data as any[]) || []);
   };
 
