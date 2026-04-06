@@ -535,7 +535,7 @@ const DispatchGoogleMap = () => {
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Search bar */}
-      <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-10">
+      <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-[1000]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
@@ -597,7 +597,7 @@ const DispatchGoogleMap = () => {
       </div>
 
       {/* Road closure toolbar */}
-      <div className="absolute top-3 right-3 sm:right-4 z-10 flex flex-col gap-2">
+      <div className="absolute top-3 right-3 sm:right-4 z-[1000] flex flex-col gap-2">
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-1.5 flex flex-col gap-1">
           <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             Road Closures
