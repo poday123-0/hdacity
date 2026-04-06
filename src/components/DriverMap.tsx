@@ -632,10 +632,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       driverMarkerRef.current.setIcon(driverArrowIcon(heading));
     }
 
-    // Auto-follow
+    // Auto-follow — skip while user is actively interacting (zoom/pan)
     const cameraThrottleMs = navSettings.followSensitivity === "high" ? 200 : navSettings.followSensitivity === "low" ? 600 : 350;
-    if (followDriver) {
-      userInteractingRef.current = false;
+    if (followDriver && !userInteractingRef.current) {
       const now = Date.now();
       if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
         lastCameraUpdateAtRef.current = now;
