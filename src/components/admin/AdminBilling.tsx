@@ -891,9 +891,19 @@ const AdminBilling = () => {
 
           {/* Center Vehicles List */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-foreground">Center Vehicles</h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Plate / Code"
+                    value={centerSearch}
+                    onChange={e => setCenterSearch(e.target.value)}
+                    className="pl-6 pr-2 py-1 w-28 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
                 <input
                   type="month"
                   value={centerMonth}
