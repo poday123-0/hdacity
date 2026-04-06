@@ -1037,7 +1037,6 @@ const AdminBilling = () => {
                     return (
                       <tr key={cv.id} className={`border-t border-border hover:bg-muted/30 ${selectedCenterIds.has(cv.id) ? "bg-primary/5" : ""}`}>
                         <td className="px-2 py-2">
-                          {monthPayment?.status !== "approved" && (
                             <input
                               type="checkbox"
                               checked={selectedCenterIds.has(cv.id)}
@@ -1048,7 +1047,6 @@ const AdminBilling = () => {
                               }}
                               className="w-3.5 h-3.5 rounded border-border accent-primary"
                             />
-                          )}
                         </td>
                         <td className="px-3 py-2 text-xs text-foreground">
                           {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
