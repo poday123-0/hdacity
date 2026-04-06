@@ -1198,15 +1198,13 @@ const DispatchTripForm = ({
                         <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
                       )}
                     </button>
-                    {r.lat && r.lng && (
+                    {r.lat && r.lon && (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowMapPicker(selecting || "pickup"); setTimeout(() => {}, 50); }}
-                        onClickCapture={(e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
-                          // Open map picker centered on this result's location
                           const field = selecting || "pickup";
-                          const loc = { lat: parseFloat(r.lat), lng: parseFloat(r.lng), address: r.name || r.display_name.split(",")[0] };
+                          const loc = { lat: parseFloat(r.lat), lng: parseFloat(r.lon), address: r.name || r.display_name.split(",")[0] };
                           if (field === "pickup") {
                             setPickup(loc);
                             setPickupQuery(loc.address);
