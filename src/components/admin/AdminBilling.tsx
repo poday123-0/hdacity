@@ -87,7 +87,7 @@ const AdminBilling = () => {
 
   const fetchCenterData = async () => {
     const [cvRes, cpRes] = await Promise.all([
-      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, make, model, color").not("center_code", "is", null).eq("is_active", true),
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
