@@ -284,10 +284,10 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       };
 
-      // Check local DB for named locations within 100m
+      // Check local DB for named locations within 15m (very close to pin)
       const closestLocal = searchLocations
         .map(l => ({ name: l.name, address: l.address || l.road_name || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
-        .filter(l => l.dist <= 100)
+        .filter(l => l.dist <= 15)
         .sort((a, b) => a.dist - b.dist)[0];
 
       if (closestLocal) {
@@ -298,7 +298,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         let foundFromPhoton = false;
         try {
           const photonRes = await fetch(
-            `https://photon.komoot.io/reverse?lat=${center.lat}&lon=${center.lng}&radius=100&limit=5`
+            `https://photon.komoot.io/reverse?lat=${center.lat}&lon=${center.lng}&radius=30&limit=5`
           );
           if (photonRes.ok) {
             const photonData = await photonRes.json();
@@ -320,7 +320,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
                   closest = b;
                 }
               }
-              if (closestDist <= 80) {
+              if (closestDist <= 15) {
                 const bName = closest.properties.name;
                 const bStreet = closest.properties.street || closest.properties.district || "";
                 setPlaceName(bName);
