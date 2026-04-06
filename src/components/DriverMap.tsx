@@ -292,7 +292,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }).addTo(map);
     freeNavPolylineRef.current = polyline;
 
-    map.setZoom(18);
+    programmaticZoomRef.current = true; map.setZoom(18);
     setFollowDriver(true);
     userInteractingRef.current = false;
     setUserPannedAway(false);
@@ -347,7 +347,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (freeNavMarkerRef.current) { freeNavMarkerRef.current.remove(); freeNavMarkerRef.current = null; }
     if (freeNavIntervalRef.current) { clearInterval(freeNavIntervalRef.current); freeNavIntervalRef.current = null; }
     const map = mapInstance.current;
-    if (map) map.setZoom(16);
+    if (map) { programmaticZoomRef.current = true; map.setZoom(16); }
   }, []);
 
   useEffect(() => () => { stopFreeNav(); }, [stopFreeNav]);
@@ -378,7 +378,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         setCurrentPos(prev => {
           if (!prev && mapInstance.current) {
             mapInstance.current.panTo([newPos.lat, newPos.lng]);
-            mapInstance.current.setZoom(17);
+            programmaticZoomRef.current = true; mapInstance.current.setZoom(17);
           }
           return newPos;
         });
@@ -401,7 +401,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     setCurrentPos(prev => {
       if (!prev && mapInstance.current) {
         mapInstance.current.panTo([externalPosition.lat, externalPosition.lng]);
-        mapInstance.current.setZoom(16);
+        programmaticZoomRef.current = true; mapInstance.current.setZoom(16);
       }
       return externalPosition;
     });
@@ -526,12 +526,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (pickupCoords) bounds.extend([pickupCoords[0], pickupCoords[1]]);
       if (dropoffCoords) bounds.extend([dropoffCoords[0], dropoffCoords[1]]);
       if (bounds.isValid()) {
+        programmaticZoomRef.current = true;
         map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
       } else {
-        map.setZoom(16);
+        programmaticZoomRef.current = true; map.setZoom(16);
       }
     } else {
-      map.setZoom(16);
+      programmaticZoomRef.current = true; map.setZoom(16);
     }
   }, [isNavigating]);
 
@@ -1052,7 +1053,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         setUserPannedAway(false);
         if (currentPos && mapInstance.current) {
           mapInstance.current.panTo([currentPos.lat, currentPos.lng]);
-          mapInstance.current.setZoom(16);
+          programmaticZoomRef.current = true; mapInstance.current.setZoom(16);
         }
       };
     }
@@ -1085,7 +1086,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
             if (currentPos) bounds.extend([currentPos.lat, currentPos.lng]);
             if (pickupCoords) bounds.extend([pickupCoords[0], pickupCoords[1]]);
             if (dropoffCoords) bounds.extend([dropoffCoords[0], dropoffCoords[1]]);
-            if (bounds.isValid()) mapInstance.current.fitBounds(bounds, { padding: [60, 60] });
+            if (bounds.isValid()) { programmaticZoomRef.current = true; mapInstance.current.fitBounds(bounds, { padding: [60, 60] }); }
           }
         } else {
           setFollowDriver(true);
@@ -1093,7 +1094,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
           setUserPannedAway(false);
           if (currentPos && mapInstance.current) {
             mapInstance.current.panTo([currentPos.lat, currentPos.lng]);
-            mapInstance.current.setZoom(18);
+            programmaticZoomRef.current = true; mapInstance.current.setZoom(18);
           }
         }
       };
