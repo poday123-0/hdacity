@@ -886,13 +886,13 @@ const AdminBilling = () => {
           </div>
 
           {/* Center Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-xs text-muted-foreground">Center Vehicles</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">{centerVehicles.length}</p>
             </div>
             <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-muted-foreground">Expected Center Revenue</p>
+              <p className="text-xs text-muted-foreground">Expected Revenue</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">
                 {centerVehicles.reduce((sum, cv) => {
                   if (cv.center_fee_exempt) return sum;
@@ -902,12 +902,18 @@ const AdminBilling = () => {
               </p>
             </div>
             <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-muted-foreground">Pending</p>
-              <p className="text-2xl font-bold text-chart-4 mt-0.5">{centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}</p>
+              <p className="text-xs text-muted-foreground">Received</p>
+              <p className="text-2xl font-bold text-primary mt-0.5">
+                {centerMonthPayments.filter(cp => cp.status === "approved").reduce((sum, cp) => sum + (cp.amount || 0), 0).toLocaleString()} MVR
+              </p>
             </div>
             <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-muted-foreground">Approved This Month</p>
-              <p className="text-2xl font-bold text-primary mt-0.5">{centerPayments.filter(cp => cp.status === "approved" && cp.payment_month === centerMonth).length}</p>
+              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-2xl font-bold text-chart-4 mt-0.5">{centerMonthPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Approved</p>
+              <p className="text-2xl font-bold text-primary mt-0.5">{centerMonthPayments.filter(cp => cp.status === "approved").length}</p>
             </div>
           </div>
 
