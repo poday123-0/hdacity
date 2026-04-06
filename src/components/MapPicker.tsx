@@ -266,7 +266,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     }
   }, [center, mapReady]);
 
-  // Reverse geocode on center change — only show named location label if within ~100m
+  // Reverse geocode on center change — check local DB + external APIs for nearby place names
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (skipReverseGeocodeRef.current) {
@@ -276,7 +276,6 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
 
-      // Check if any named/service location is within 100m
       const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
         const R = 6371000;
         const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -284,6 +283,8 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       };
+
+      // Check local DB for named locations within 100m
       const closestLocal = searchLocations
         .map(l => ({ name: l.name, address: l.address || l.road_name || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
         .filter(l => l.dist <= 100)
@@ -293,10 +294,9 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         setPlaceName(closestLocal.name);
         setAddress(closestLocal.address || closestLocal.name);
       } else {
-        // No nearby named location — use full reverse geocode including nearby place search
+        // No local match — use full reverse geocode
         try {
           const result = await reverseGeocodeLocation(center.lat, center.lng);
-          // If result name looks like a place (not just coordinates), show it
           if (result.name && result.name !== "Selected Location" && result.name !== result.address) {
             setPlaceName(result.name);
             setAddress(result.address || result.name);
@@ -314,7 +314,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [center.lat, center.lng, searchLocations]);
 
-  // Nearby places from local data
+  // Nearby places from local data + external Photon API
   useEffect(() => {
     const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       const R = 6371000;
@@ -324,13 +324,66 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
-    const nearby = searchLocations
+    // Local nearby from DB
+    const localNearby = searchLocations
       .map(l => ({ name: l.name, vicinity: l.address || "", lat: Number(l.lat), lng: Number(l.lng), dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
       .filter(l => l.dist <= 300 && l.name !== placeName)
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 6);
 
-    setNearbyPlaces(nearby);
+    setNearbyPlaces(localNearby);
+
+    // Also fetch from Photon reverse to find nearby buildings/flats not in DB
+    const fetchExternalNearby = async () => {
+      try {
+        const res = await fetch(
+          `https://photon.komoot.io/reverse?lat=${center.lat}&lon=${center.lng}&radius=200&limit=10`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const features = data.features || [];
+
+        const externalPlaces: NearbyPlace[] = [];
+        const seenNames = new Set(localNearby.map(l => l.name.toLowerCase()));
+        if (placeName) seenNames.add(placeName.toLowerCase());
+
+        for (const f of features) {
+          const name = f.properties?.name;
+          if (!name || name.length < 2 || seenNames.has(name.toLowerCase())) continue;
+          seenNames.add(name.toLowerCase());
+
+          const coords = f.geometry?.coordinates;
+          if (!coords) continue;
+          const fLat = coords[1];
+          const fLng = coords[0];
+          const dist = haversine(center.lat, center.lng, fLat, fLng);
+          if (dist > 300) continue;
+
+          externalPlaces.push({
+            name,
+            vicinity: f.properties?.street || f.properties?.city || "",
+            lat: fLat,
+            lng: fLng,
+          });
+        }
+
+        if (externalPlaces.length > 0) {
+          setNearbyPlaces(prev => {
+            const combined = [...prev];
+            const existingNames = new Set(combined.map(p => p.name.toLowerCase()));
+            for (const ep of externalPlaces) {
+              if (!existingNames.has(ep.name.toLowerCase())) {
+                combined.push(ep);
+                existingNames.add(ep.name.toLowerCase());
+              }
+            }
+            return combined.slice(0, 8);
+          });
+        }
+      } catch {}
+    };
+
+    fetchExternalNearby();
   }, [center.lat, center.lng, searchLocations, placeName]);
 
   const handleRecenter = () => {
