@@ -40,6 +40,7 @@ const AdminBilling = () => {
   const [centerFilter, setCenterFilter] = useState("pending");
   const [centerVehicles, setCenterVehicles] = useState<any[]>([]);
   const [centerMonthPayments, setCenterMonthPayments] = useState<any[]>([]);
+  const [centerWallets, setCenterWallets] = useState<Map<string, number>>(new Map());
   const [editingCenterFee, setEditingCenterFee] = useState<string | null>(null);
   const [editingCenterFeeValue, setEditingCenterFeeValue] = useState(0);
   const [savingCenterFee, setSavingCenterFee] = useState(false);
@@ -91,15 +92,15 @@ const AdminBilling = () => {
   const fetchCenterData = async () => {
     const now = new Date();
     const currentCenterMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const [cvRes, cpRes, cmRes] = await Promise.all([
+    const [cvRes, cpRes, cmRes, walletsRes] = await Promise.all([
       supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
         return q;
       })(),
-      // Always fetch ALL current month payments (unfiltered) for status display
       supabase.from("center_payments").select("id, vehicle_id, payment_month, status, amount, slip_url, approved_at, submitted_at").eq("payment_month", currentCenterMonth),
+      supabase.from("wallets").select("user_id, balance"),
     ]);
     const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => {
       const codeA = parseInt(a.center_code || "0", 10);
@@ -112,6 +113,9 @@ const AdminBilling = () => {
     setCenterVehicles(sorted);
     setCenterPayments((cpRes.data as any[]) || []);
     setCenterMonthPayments((cmRes.data as any[]) || []);
+    const wMap = new Map<string, number>();
+    for (const w of (walletsRes.data as any[]) || []) { wMap.set(w.user_id, w.balance || 0); }
+    setCenterWallets(wMap);
   };
 
   useEffect(() => { fetchDrivers(); }, [search]);
@@ -1010,6 +1014,7 @@ const AdminBilling = () => {
                       />
                     </th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Driver</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Wallet</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Plate</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
@@ -1049,6 +1054,9 @@ const AdminBilling = () => {
                         <td className="px-3 py-2 text-xs text-foreground">
                           {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
                           <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
+                        </td>
+                        <td className="px-3 py-2 text-xs font-semibold text-chart-2">
+                          {cv.driver_id ? `${(centerWallets.get(cv.driver_id) || 0).toLocaleString()} MVR` : "—"}
                         </td>
                         <td className="px-3 py-2 text-xs font-mono text-foreground">
                           {isEditing ? (
