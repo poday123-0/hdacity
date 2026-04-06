@@ -1187,16 +1187,42 @@ const DispatchTripForm = ({
             {selecting === "pickup" && (osmResults.length > 0 || searchQuery.trim().length >= 2) && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {osmResults.map((r, idx) => (
-                  <button key={r.place_id} onClick={() => { selectLocation(r); setResultHighlight(-1); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className={`flex items-center gap-2 w-full px-3 py-2 text-left transition-colors border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
-                    <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{r.road ? `${r.road} • ${r.tag || r.display_name.split("—").slice(1).join("—").trim()}` : (r.tag || r.display_name.split("—").slice(1).join("—").trim())}</p>
-                    </div>
-                    {r.tag && (
-                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
+                  <div key={r.place_id} className={`flex items-center gap-1 w-full px-3 py-2 border-b border-border last:border-0 ${idx === resultHighlight ? "bg-primary/10" : "hover:bg-surface"}`}>
+                    <button onClick={() => { selectLocation(r); setResultHighlight(-1); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className="flex items-center gap-2 min-w-0 flex-1 text-left">
+                      <Navigation className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{r.name || r.display_name.split(",")[0]}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{r.road ? `${r.road} • ${r.tag || r.display_name.split("—").slice(1).join("—").trim()}` : (r.tag || r.display_name.split("—").slice(1).join("—").trim())}</p>
+                      </div>
+                      {r.tag && (
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-primary/15 text-primary">{r.tag}</span>
+                      )}
+                    </button>
+                    {r.lat && r.lng && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowMapPicker(selecting || "pickup"); setTimeout(() => {}, 50); }}
+                        onClickCapture={(e) => {
+                          e.stopPropagation();
+                          // Open map picker centered on this result's location
+                          const field = selecting || "pickup";
+                          const loc = { lat: parseFloat(r.lat), lng: parseFloat(r.lng), address: r.name || r.display_name.split(",")[0] };
+                          if (field === "pickup") {
+                            setPickup(loc);
+                            setPickupQuery(loc.address);
+                          } else {
+                            setDropoff(loc);
+                          }
+                          setShowMapPicker(field as "pickup" | "dropoff");
+                          setSelecting(null);
+                        }}
+                        className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-primary/10 transition-colors"
+                        title="Show on map"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                      </button>
                     )}
-                  </button>
+                  </div>
                 ))}
                 {searchQuery.trim().length >= 2 && (
                   <button onClick={() => { useCustomLocation(searchQuery); setTimeout(() => toButtonsRef.current?.focus(), 50); }} className="flex items-center gap-2 w-full px-3 py-2 text-left transition-colors hover:bg-surface border-t border-border bg-muted/30">
