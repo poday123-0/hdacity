@@ -928,12 +928,65 @@ const AdminBilling = () => {
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
+                {selectedCenterIds.size > 0 && (
+                  <button
+                    disabled={bulkPaying}
+                    onClick={async () => {
+                      if (!confirm(`Mark ${selectedCenterIds.size} vehicles as paid for ${centerMonth}?`)) return;
+                      setBulkPaying(true);
+                      for (const cvId of selectedCenterIds) {
+                        const cv = centerVehicles.find((v: any) => v.id === cvId);
+                        if (!cv) continue;
+                        const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
+                        if (existing?.status === "approved") continue;
+                        const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
+                        const fee = (vt as any)?.center_fee || 0;
+                        if (existing) {
+                          await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                        } else {
+                          await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: fee, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
+                        }
+                        if (!cv.is_active) {
+                          await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
+                        }
+                      }
+                      setBulkPaying(false);
+                      setSelectedCenterIds(new Set());
+                      toast({ title: `${selectedCenterIds.size} vehicles marked as paid` });
+                      fetchCenterData();
+                    }}
+                    className="px-3 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {bulkPaying ? "Processing..." : `Mark ${selectedCenterIds.size} Paid`}
+                  </button>
+                )}
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-surface">
+                    <th className="px-2 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedCenterIds.size > 0 && selectedCenterIds.size === centerVehicles.filter(cv => {
+                          const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+                          return !mp || mp.status !== "approved";
+                        }).length}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            const unpaid = centerVehicles.filter(cv => {
+                              const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+                              return !mp || mp.status !== "approved";
+                            }).map(cv => cv.id);
+                            setSelectedCenterIds(new Set(unpaid));
+                          } else {
+                            setSelectedCenterIds(new Set());
+                          }
+                        }}
+                        className="w-3.5 h-3.5 rounded border-border accent-primary"
+                      />
+                    </th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Driver</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Plate</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
