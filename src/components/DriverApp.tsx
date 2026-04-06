@@ -2019,6 +2019,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Fetch all driver vehicles
         const { data: allVehicles } = await supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at");
         setDriverVehicles(allVehicles || []);
+        // Fetch center payment statuses for current month
+        const centerVehicleIds = (allVehicles || []).filter((v: any) => v.center_code).map((v: any) => v.id);
+        if (centerVehicleIds.length > 0) {
+          const curMonth = new Date().toISOString().slice(0, 7);
+          const { data: cpData } = await supabase.from("center_payments").select("vehicle_id, status").eq("payment_month", curMonth).in("vehicle_id", centerVehicleIds);
+          const statusMap: Record<string, string> = {};
+          (cpData || []).forEach((cp: any) => { statusMap[cp.vehicle_id] = cp.status; });
+          setCenterPaymentStatuses(statusMap);
+        }
         const activeVehicle = allVehicles?.[0];
         if (activeVehicle) {
           const savedId = selectedVehicleId || (() => {try {return localStorage.getItem("hda_last_vehicle_id");} catch {return null;}})();
