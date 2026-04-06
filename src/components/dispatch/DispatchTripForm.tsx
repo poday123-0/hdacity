@@ -1544,8 +1544,8 @@ const DispatchTripForm = ({
                       .eq("vehicle_id", vCheck.id)
                       .eq("payment_month", centerCurrentMonth)
                       .eq("status", "approved")
-                      .maybeSingle();
-                    if (!centerPayment) {
+                      .limit(1);
+                    if (!centerPayment || centerPayment.length === 0) {
                       toast({ title: "Center payment pending", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}. Payment must be cleared first.`, variant: "destructive" });
                       return;
                     }
