@@ -385,10 +385,6 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
 
     fetchExternalNearby();
   }, [center.lat, center.lng, searchLocations, placeName]);
-      .slice(0, 6);
-
-    setNearbyPlaces(nearby);
-  }, [center.lat, center.lng, searchLocations, placeName]);
 
   const handleRecenter = () => {
     if (!navigator.geolocation || !mapInstance.current) return;
