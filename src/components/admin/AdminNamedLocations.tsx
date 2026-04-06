@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag, ChevronRight, ChevronDown, Download, Globe } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
@@ -45,6 +45,7 @@ const AdminNamedLocations = () => {
   const [batchMode, setBatchMode] = useState(false);
   const [batchPins, setBatchPins] = useState<BatchPin[]>([]);
   const [savingBatch, setSavingBatch] = useState(false);
+  const [osmImporting, setOsmImporting] = useState(false);
   const batchMapRef = useRef<HTMLDivElement>(null);
   const batchMapInstance = useRef<any>(null);
   const batchPinsRef = useRef<BatchPin[]>([]);
@@ -282,6 +283,25 @@ const AdminNamedLocations = () => {
     toast({ title: current ? "Deactivated" : "Activated" }); fetchLocations();
   };
 
+  const importFromOSM = async () => {
+    setOsmImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-osm-places", {
+        body: { import_all: true },
+      });
+      if (error) throw error;
+      toast({
+        title: "OSM Import Complete",
+        description: data?.message || `Imported ${data?.total_imported || 0} places`,
+      });
+      fetchLocations();
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setOsmImporting(false);
+    }
+  };
+
   const q = search.toLowerCase();
   const filtered = locations.filter(loc => {
     if (statusFilter !== "all" && loc.status !== statusFilter) return false;
@@ -329,6 +349,10 @@ const AdminNamedLocations = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          <button onClick={importFromOSM} disabled={osmImporting} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
+            <Globe className="w-4 h-4" />
+            {osmImporting ? "Importing..." : "Import from OSM (Free)"}
+          </button>
           <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
             {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
             {batchMode ? "Cancel Batch" : "Batch Add"}
