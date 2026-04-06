@@ -197,6 +197,7 @@ Deno.serve(async (req) => {
         const centerFeeMap = new Map((vtCenterFees || []).map((vt) => [vt.id, vt.center_fee || 0]));
 
         for (const cv of centerVehicles) {
+          if ((cv as any).center_fee_exempt) continue; // Exempt from center fee
           const fee = centerFeeMap.get(cv.vehicle_type_id) || 0;
           if (fee === 0) continue; // No center fee
           if (paidCenterVehicleIds.has(cv.id)) continue; // Already paid
