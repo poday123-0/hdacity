@@ -445,11 +445,13 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Detect user interaction (drag AND zoom)
     let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
     const pauseAutoFollow = () => {
+      if (programmaticZoomRef.current) return; // ignore programmatic zoom/pan
       userInteractingRef.current = true;
       setUserPannedAway(true);
       setFollowDriver(false);
     };
     const scheduleResume = () => {
+      if (programmaticZoomRef.current) { programmaticZoomRef.current = false; return; }
       if (userInteractingRef.current) {
         if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
         autoResumeTimeout = setTimeout(() => {
