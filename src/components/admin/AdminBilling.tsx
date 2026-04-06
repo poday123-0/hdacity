@@ -92,7 +92,7 @@ const AdminBilling = () => {
     const now = new Date();
     const currentCenterMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const [cvRes, cpRes, cmRes] = await Promise.all([
-      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, make, model, color, is_active").not("center_code", "is", null),
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
@@ -891,6 +891,7 @@ const AdminBilling = () => {
               <p className="text-xs text-muted-foreground">Expected Center Revenue</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">
                 {centerVehicles.reduce((sum, cv) => {
+                  if (cv.center_fee_exempt) return sum;
                   const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
                   return sum + ((vt as any)?.center_fee || 0);
                 }, 0).toLocaleString()} MVR
@@ -947,7 +948,7 @@ const AdminBilling = () => {
                           const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
                           if (existing?.status === "approved") continue;
                           const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
-                          const fee = (vt as any)?.center_fee || 0;
+                          const fee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
                           if (existing) {
                             await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
                           } else {
@@ -1028,7 +1029,7 @@ const AdminBilling = () => {
                   }).map(cv => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-                    const centerFee = (vt as any)?.center_fee || 0;
+                    const centerFee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
                     const monthPayment = centerMonthPayments.find(cp => cp.vehicle_id === cv.id);
                     const isEditing = editingCenterVehicle === cv.id;
                     return (
@@ -1066,7 +1067,22 @@ const AdminBilling = () => {
                             </select>
                           ) : (vt?.name || "—")}
                         </td>
-                        <td className="px-3 py-2 text-xs font-bold text-foreground">{centerFee} MVR</td>
+                        <td className="px-3 py-2 text-xs font-bold text-foreground">
+                          <div className="flex items-center gap-1">
+                            <span className={cv.center_fee_exempt ? "line-through text-muted-foreground" : ""}>{centerFee} MVR</span>
+                            <button
+                              onClick={async () => {
+                                const newVal = !cv.center_fee_exempt;
+                                await supabase.from("vehicles").update({ center_fee_exempt: newVal } as any).eq("id", cv.id);
+                                toast({ title: newVal ? "Vehicle exempt from center fee" : "Center fee restored" });
+                                fetchCenterData();
+                              }}
+                              className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${cv.center_fee_exempt ? "bg-chart-2/10 text-chart-2" : "bg-muted text-muted-foreground"}`}
+                            >
+                              {cv.center_fee_exempt ? "Free" : "Exempt"}
+                            </button>
+                          </div>
+                        </td>
                         <td className="px-3 py-2">
                           <button
                             onClick={async () => {

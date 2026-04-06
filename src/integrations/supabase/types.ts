@@ -1995,6 +1995,7 @@ export type Database = {
         Row: {
           blocked_until: string | null
           center_code: string | null
+          center_fee_exempt: boolean
           color: string | null
           created_at: string
           driver_id: string | null
@@ -2016,6 +2017,7 @@ export type Database = {
         Insert: {
           blocked_until?: string | null
           center_code?: string | null
+          center_fee_exempt?: boolean
           color?: string | null
           created_at?: string
           driver_id?: string | null
@@ -2037,6 +2039,7 @@ export type Database = {
         Update: {
           blocked_until?: string | null
           center_code?: string | null
+          center_fee_exempt?: boolean
           color?: string | null
           created_at?: string
           driver_id?: string | null

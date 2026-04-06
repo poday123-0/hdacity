@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       // Get all center-code vehicles
       const { data: centerVehicles } = await supabase
         .from("vehicles")
-        .select("id, center_code, vehicle_type_id, is_active")
+        .select("id, center_code, vehicle_type_id, is_active, center_fee_exempt")
         .not("center_code", "is", null)
         .eq("is_active", true);
 
@@ -197,6 +197,7 @@ Deno.serve(async (req) => {
         const centerFeeMap = new Map((vtCenterFees || []).map((vt) => [vt.id, vt.center_fee || 0]));
 
         for (const cv of centerVehicles) {
+          if ((cv as any).center_fee_exempt) continue; // Exempt from center fee
           const fee = centerFeeMap.get(cv.vehicle_type_id) || 0;
           if (fee === 0) continue; // No center fee
           if (paidCenterVehicleIds.has(cv.id)) continue; // Already paid
