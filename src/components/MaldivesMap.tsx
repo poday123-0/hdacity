@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchOsrmRoute, pickShortestOsrmRoute } from "@/lib/osrm-routing";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 
 interface RideMapData {
   pickup?: { lat: number; lng: number; name: string };
@@ -193,8 +194,8 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
   const namedLabelsRef = useRef<L.Marker[]>([]);
   const namedLocationsRef = useRef<any[]>([]);
   useEffect(() => {
-    supabase.from("named_locations").select("name, lat, lng").eq("is_active", true).eq("status", "approved")
-      .then(({ data }) => { if (data) namedLocationsRef.current = data; });
+    fetchAllNamedLocations("name, lat, lng")
+      .then((data) => { namedLocationsRef.current = data; });
   }, []);
 
   useEffect(() => {

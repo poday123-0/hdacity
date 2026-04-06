@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 import { notifyTripRequested } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -207,11 +208,11 @@ const DispatchTripForm = ({
         setRecentBookings(_locationsCache.recentBookings);
         return;
       }
-      const [fzRes, scRes, slRes, nlRes, rbRes] = await Promise.all([
+      const [fzRes, scRes, slRes, nlData, rbRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
         supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true).order("name"),
-        supabase.from("named_locations").select("id, name, address, description, group_name, lat, lng, road_name, suggested_by_type").eq("is_active", true).eq("status", "approved"),
+        fetchAllNamedLocations("id, name, address, description, group_name, lat, lng, road_name, suggested_by_type"),
         supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
       ]);
       // Deduplicate recent booking addresses
@@ -237,7 +238,7 @@ const DispatchTripForm = ({
         fareZones: fzRes.data || [],
         surcharges: scRes.data || [],
         serviceLocations: sortedSl,
-        namedLocations: nlRes.data || [],
+        namedLocations: nlData,
         recentBookings: bookingLocs,
       };
       _locationsCache = cache;

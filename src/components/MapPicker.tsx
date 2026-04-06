@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 import { supabase } from "@/integrations/supabase/client";
 import { getServiceAreasWithPolygons, isInsideAnyServiceArea } from "@/lib/service-area-filter";
+import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 
 interface NearbyPlace {
   name: string;
@@ -51,13 +52,13 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
   // Load named + service locations once
   useEffect(() => {
     const load = async () => {
-      const [nlRes, slRes] = await Promise.all([
-        supabase.from("named_locations").select("name, lat, lng, address, description, group_name, road_name").eq("is_active", true).eq("status", "approved"),
+      const [nlData, slRes] = await Promise.all([
+        fetchAllNamedLocations("name, lat, lng, address, description, group_name, road_name"),
         supabase.from("service_locations").select("name, lat, lng, address, description").eq("is_active", true),
       ]);
       setSearchLocations([
         ...(slRes.data || []).map((s: any) => ({ ...s, tag: "Area" })),
-        ...(nlRes.data || []).map((n: any) => ({ ...n, tag: "Place" })),
+        ...nlData.map((n: any) => ({ ...n, tag: "Place" })),
       ]);
     };
     load();

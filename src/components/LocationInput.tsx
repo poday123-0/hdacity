@@ -2,6 +2,7 @@ import { MapPin, ChevronDown, ChevronUp, Loader2, Search, Locate, Users, Luggage
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 import { toast } from "@/hooks/use-toast";
 import MapPicker from "./MapPicker";
 import { reverseGeocodeLocation } from "@/lib/geocode";
@@ -106,25 +107,19 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
   // Fetch service locations + named locations + polygons + feature toggles
   useEffect(() => {
     const fetchLocations = async () => {
-      const [locRes, namedRes, settingsRes] = await Promise.all([
+      const [locRes, namedData, settingsRes] = await Promise.all([
         supabase
           .from("service_locations")
           .select("id, name, address, lat, lng, polygon")
           .eq("is_active", true)
           .order("name"),
-        supabase
-          .from("named_locations")
-          .select("id, name, address, lat, lng, description, group_name")
-          .eq("is_active", true)
-          .eq("status", "approved")
-          .order("name"),
+        fetchAllNamedLocations("id, name, address, lat, lng, description, group_name"),
         supabase
           .from("system_settings")
           .select("key, value")
           .in("key", ["feature_scheduled_rides", "feature_hourly_booking", "min_scheduled_lead_minutes"]),
       ]);
       const data = locRes.data;
-      const namedData = namedRes.data || [];
       if (data) {
         // Combine service locations + named locations for search
         const serviceLocs = data.map((d: any) => ({ id: d.id, name: d.name, address: d.address, lat: d.lat, lng: d.lng }));
