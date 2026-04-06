@@ -891,6 +891,7 @@ const AdminBilling = () => {
               <p className="text-xs text-muted-foreground">Expected Center Revenue</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">
                 {centerVehicles.reduce((sum, cv) => {
+                  if (cv.center_fee_exempt) return sum;
                   const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
                   return sum + ((vt as any)?.center_fee || 0);
                 }, 0).toLocaleString()} MVR
