@@ -948,7 +948,7 @@ const AdminBilling = () => {
                           const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
                           if (existing?.status === "approved") continue;
                           const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
-                          const fee = (vt as any)?.center_fee || 0;
+                          const fee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
                           if (existing) {
                             await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
                           } else {

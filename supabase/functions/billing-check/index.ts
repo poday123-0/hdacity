@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       // Get all center-code vehicles
       const { data: centerVehicles } = await supabase
         .from("vehicles")
-        .select("id, center_code, vehicle_type_id, is_active")
+        .select("id, center_code, vehicle_type_id, is_active, center_fee_exempt")
         .not("center_code", "is", null)
         .eq("is_active", true);
 
