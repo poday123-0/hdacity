@@ -238,7 +238,7 @@ const DispatchTripForm = ({
         fareZones: fzRes.data || [],
         surcharges: scRes.data || [],
         serviceLocations: sortedSl,
-        namedLocations: nlRes.data || [],
+        namedLocations: nlData,
         recentBookings: bookingLocs,
       };
       _locationsCache = cache;
