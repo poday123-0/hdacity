@@ -285,7 +285,7 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       };
       const closestLocal = searchLocations
-        .map(l => ({ name: l.name, address: l.address || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
+        .map(l => ({ name: l.name, address: l.address || l.road_name || "", dist: haversine(center.lat, center.lng, Number(l.lat), Number(l.lng)) }))
         .filter(l => l.dist <= 100)
         .sort((a, b) => a.dist - b.dist)[0];
 
@@ -293,11 +293,17 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
         setPlaceName(closestLocal.name);
         setAddress(closestLocal.address || closestLocal.name);
       } else {
-        // No nearby named location — just show address from reverse geocode, no prominent name
+        // No nearby named location — use full reverse geocode including nearby place search
         try {
-          const result = await reverseGeocodeLocation(center.lat, center.lng, { skipNearbyPlace: true });
-          setPlaceName(""); // Don't show floating label for far-away generic results
-          setAddress(result.address || result.name);
+          const result = await reverseGeocodeLocation(center.lat, center.lng);
+          // If result name looks like a place (not just coordinates), show it
+          if (result.name && result.name !== "Selected Location" && result.name !== result.address) {
+            setPlaceName(result.name);
+            setAddress(result.address || result.name);
+          } else {
+            setPlaceName("");
+            setAddress(result.address || result.name || `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
+          }
         } catch {
           setPlaceName("");
           setAddress(`${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`);
