@@ -3,7 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useRoadClosures, RoadClosure } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers, Calendar, Repeat, Construction, Car, TriangleAlert, Cone, Pencil } from "lucide-react";
+import { Search, X, AlertTriangle, Minus, MapPin, Trash2, Clock, Layers, Calendar, Repeat, Construction, Car, TriangleAlert, Cone, Pencil, Tag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getServiceAreasWithPolygons, isInsideAnyServiceArea } from "@/lib/service-area-filter";
 
@@ -51,6 +51,7 @@ const DispatchGoogleMap = () => {
   const [serviceAreas, setServiceAreas] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "service" }>>([]);
   const [filteredResults, setFilteredResults] = useState<Array<{ id: string; name: string; address: string; lat: number; lng: number; type: "named" | "service" }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showNamedLabels, setShowNamedLabels] = useState(false);
 
   // Road closure state
   const { closures, pendingClosures, addClosure, removeClosure, updateClosure, approveClosure, rejectClosure } = useRoadClosures();
@@ -114,8 +115,20 @@ const DispatchGoogleMap = () => {
   const namedLabelsRef = useRef<L.Marker[]>([]);
   const namedLocCacheRef = useRef<any[]>([]);
   useEffect(() => {
-    supabase.from("named_locations").select("name, lat, lng").eq("is_active", true).eq("status", "approved")
-      .then(({ data }) => { if (data) namedLocCacheRef.current = data; });
+    const fetchAll = async () => {
+      let all: any[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        const { data } = await supabase.from("named_locations").select("name, lat, lng").eq("is_active", true).eq("status", "approved").range(from, from + PAGE - 1);
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      namedLocCacheRef.current = all;
+    };
+    fetchAll();
   }, []);
 
   useEffect(() => {
@@ -125,10 +138,11 @@ const DispatchGoogleMap = () => {
     const updateLabels = () => {
       namedLabelsRef.current.forEach(m => map.removeLayer(m));
       namedLabelsRef.current = [];
+      if (!showNamedLabels) return;
       const zoom = map.getZoom();
       if (zoom < 15 || namedLocCacheRef.current.length === 0) return;
       const bounds = map.getBounds();
-      const visible = namedLocCacheRef.current.filter(l => bounds.contains([Number(l.lat), Number(l.lng)])).slice(0, 60);
+      const visible = namedLocCacheRef.current.filter(l => bounds.contains([Number(l.lat), Number(l.lng)])).slice(0, 120);
       const isDark = document.documentElement.classList.contains("dark");
       visible.forEach(l => {
         const label = l.name.length > 20 ? l.name.slice(0, 18) + "…" : l.name;
@@ -152,18 +166,24 @@ const DispatchGoogleMap = () => {
       namedLabelsRef.current.forEach(m => map.removeLayer(m));
       namedLabelsRef.current = [];
     };
-  }, [!!mapInstance.current]);
+  }, [!!mapInstance.current, showNamedLabels]);
 
-  // Load named locations & service areas
+  // Load named locations & service areas (paginated)
   useEffect(() => {
-    supabase
-      .from("named_locations")
-      .select("id, name, address, lat, lng")
-      .eq("is_active", true)
-      .eq("status", "approved")
-      .then(({ data }) => {
-        if (data) setNamedLocations(data.map((d) => ({ ...d, type: "named" as const })));
-      });
+    const fetchAllNamed = async () => {
+      let all: any[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        const { data } = await supabase.from("named_locations").select("id, name, address, lat, lng").eq("is_active", true).eq("status", "approved").range(from, from + PAGE - 1);
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      setNamedLocations(all.map((d) => ({ ...d, type: "named" as const })));
+    };
+    fetchAllNamed();
     supabase
       .from("service_locations")
       .select("id, name, address, lat, lng")
@@ -613,6 +633,20 @@ const DispatchGoogleMap = () => {
             </div>
           </button>
         </div>
+
+        {/* Named locations toggle */}
+        <button
+          onClick={() => setShowNamedLabels(prev => !prev)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-medium transition-all border shadow-lg backdrop-blur-sm ${
+            showNamedLabels
+              ? "bg-primary text-primary-foreground border-primary shadow-md"
+              : "bg-background/95 text-foreground border-border hover:bg-accent"
+          }`}
+          title="Toggle named location labels on map"
+        >
+          <Tag className="w-3.5 h-3.5" />
+          <span>Places</span>
+        </button>
       </div>
 
       {/* Drawing mode indicator */}
