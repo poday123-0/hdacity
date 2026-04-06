@@ -63,7 +63,7 @@ const AdminVehicles = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [v, vt, d, c, ol] = await Promise.all([
-      supabase.from("vehicles").select("*, vehicle_types(name), profiles!vehicles_driver_id_fkey(first_name, last_name, company_id, company_name)").order("created_at", { ascending: false }),
+      supabase.from("vehicles").select("*, vehicle_types(name), profiles!vehicles_driver_id_fkey(first_name, last_name, company_id, company_name)").order("center_code", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
       supabase.from("vehicle_types").select("*").eq("is_active", true),
       supabase.from("profiles").select("id, first_name, last_name, phone_number, country_code").ilike("user_type", "%Driver%"),
       supabase.from("companies").select("*").eq("is_active", true).order("name"),
