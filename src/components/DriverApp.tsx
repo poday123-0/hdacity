@@ -5378,43 +5378,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
 
                     {/* Monthly fee info — based on vehicle type */}
-                    <div className="bg-surface rounded-xl p-3 space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
-                      {(() => {
-                        const isFreeCompany = companyInfo?.fee_free;
-                        const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
-                        
-                        // Calculate total fee from all active vehicles' vehicle types (exclude center-code vehicles that don't pay app fee)
-                        const vehicleFees = driverVehicles
-                          .filter((v: any) => !v.center_code || v.pays_app_fee)
-                          .map((v: any) => {
-                          const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                          return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
-                        });
-                        const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
+                    {(() => {
+                      const isFreeCompany = companyInfo?.fee_free;
+                      const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
+                      const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
+                      const vehicleFees = appFeeVehicles.map((v: any) => {
+                        const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                        return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                      });
+                      const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
-                        if (isFreeCompany) {
+                      // Hide entire section if no app-fee vehicles or free period/company
+                      if (appFeeVehicles.length === 0 || isFreeCompany || isFreePeriod) {
+                        // Show free status only if they have app-fee vehicles but are on free period
+                        if ((isFreeCompany || isFreePeriod) && appFeeVehicles.length > 0) {
                           return (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">Status</span>
-                              <span className="text-lg font-bold text-primary">FREE (Company)</span>
-                            </div>
-                          );
-                        }
-                        if (isFreePeriod) {
-                          return (
-                            <div>
+                            <div className="bg-surface rounded-xl p-3 space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-muted-foreground">Status</span>
-                                <span className="text-lg font-bold text-primary">FREE</span>
+                                <span className="text-lg font-bold text-primary">FREE{isFreeCompany ? " (Company)" : ""}</span>
                               </div>
-                              <p className="text-xs text-primary mt-1">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
-                              <p className="text-xs text-muted-foreground mt-1">Normal fee would be {totalFee} MVR</p>
+                              {isFreePeriod && !isFreeCompany && (
+                                <p className="text-xs text-primary">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
+                              )}
                             </div>
                           );
                         }
+                        return null; // No app-fee vehicles at all — hide section
+                      }
 
-                        return (
+                      return (
+                        <div className="bg-surface rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
                           <div className="space-y-2">
                             {vehicleFees.map((v: any, i: number) => (
                               <div key={i} className="flex items-center justify-between">
@@ -5422,28 +5418,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 <span className="text-sm font-semibold text-foreground">{v.fee} MVR</span>
                               </div>
                             ))}
-                            {vehicleFees.length > 1 && (
-                              <div className="flex items-center justify-between border-t border-border pt-2">
-                                <span className="text-sm font-semibold text-muted-foreground">Total</span>
-                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
-                              </div>
-                            )}
-                            {vehicleFees.length === 1 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">Amount due</span>
-                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
-                              </div>
-                            )}
-                            {vehicleFees.length === 0 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">No vehicles</span>
-                                <span className="text-lg font-bold text-foreground">0 MVR</span>
-                              </div>
-                            )}
+                            <div className="flex items-center justify-between border-t border-border pt-2">
+                              <span className="text-sm font-semibold text-muted-foreground">Amount due</span>
+                              <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
+                            </div>
                           </div>
-                        );
-                      })()}
-                    </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Center Billing — only for drivers with center-code vehicles */}
                     {driverVehicles.some((v: any) => v.center_code) && (
