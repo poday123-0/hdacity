@@ -1752,7 +1752,19 @@ const AdminBilling = () => {
                                 setCenterHistoryVehicle(cv);
                                 setCenterHistoryLoading(true);
                                 const { data } = await supabase.from("center_payments").select("*").eq("vehicle_id", cv.id).order("payment_month", { ascending: false });
-                                setCenterHistory((data as any[]) || []);
+                                // Also fetch wallet transactions for this driver related to center fee deductions
+                                let walletTxns: any[] = [];
+                                if (cv.driver_id) {
+                                  const { data: wtData } = await supabase.from("wallet_transactions").select("*").eq("user_id", cv.driver_id).eq("type", "debit").ilike("reason", "%Center fee%").order("created_at", { ascending: false });
+                                  walletTxns = wtData || [];
+                                }
+                                // Attach wallet deduction to each payment by matching month
+                                const enriched = (data || []).map((p: any) => {
+                                  const monthLabel = formatMonth(p.payment_month);
+                                  const matchingTx = walletTxns.find((tx: any) => tx.reason?.includes(monthLabel));
+                                  return { ...p, wallet_deducted: matchingTx?.amount || 0 };
+                                });
+                                setCenterHistory(enriched);
                                 setCenterHistoryLoading(false);
                               }}
                               className="px-2 py-1 bg-surface border border-border rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground"
@@ -1903,6 +1915,7 @@ const AdminBilling = () => {
                   <tr className="bg-surface">
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Month</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Amount</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Wallet</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Status</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Date</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Slip</th>
@@ -1913,6 +1926,7 @@ const AdminBilling = () => {
                     <tr key={h.id} className="border-t border-border">
                       <td className="px-3 py-2 text-xs font-mono text-foreground">{formatMonth(h.payment_month)}</td>
                       <td className="px-3 py-2 text-xs font-semibold text-foreground">{h.amount} MVR</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{h.wallet_deducted > 0 ? <span className="text-primary font-semibold">-{h.wallet_deducted} MVR</span> : "—"}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                           h.status === "approved" ? "bg-primary/10 text-primary" :
