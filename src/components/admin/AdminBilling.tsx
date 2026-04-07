@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2, MessageSquare, Send, Loader2, UserPlus } from "lucide-react";
 
+const formatMonth = (m: string) => {
+  if (!m) return m;
+  const [y, mo] = m.split("-");
+  const d = new Date(Number(y), Number(mo) - 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+};
+
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
