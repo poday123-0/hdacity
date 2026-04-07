@@ -1949,6 +1949,116 @@ const AdminBilling = () => {
           </div>
         </div>
       )}
+
+      {/* Driver Profile Card Modal */}
+      {driverCardId && (() => {
+        const d = drivers.find(dr => dr.id === driverCardId);
+        if (!d) return null;
+        const driverVehicles = centerVehicles.filter(v => v.driver_id === driverCardId);
+        const walletBalance = centerWallets.get(driverCardId) || 0;
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setDriverCardId(null)}>
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-t-2xl">
+                <button onClick={() => setDriverCardId(null)} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-4">
+                  {d.avatar_url ? (
+                    <img src={d.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-3 ring-background shadow-lg" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary ring-3 ring-background shadow-lg">
+                      {d.first_name?.[0]}{d.last_name?.[0]}
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">{d.first_name} {d.last_name}</h3>
+                    <p className="text-sm text-muted-foreground">{d.phone_number}</p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${d.status === "Active" ? "bg-emerald-500/15 text-emerald-600" : d.status === "Billing_hold" ? "bg-orange-500/15 text-orange-600" : "bg-muted text-muted-foreground"}`}>
+                      {d.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Quick Stats */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-surface rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Wallet</p>
+                    <p className="text-sm font-bold text-chart-2">{walletBalance} MVR</p>
+                  </div>
+                  <div className="bg-surface rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Vehicles</p>
+                    <p className="text-sm font-bold text-foreground">{driverVehicles.length}</p>
+                  </div>
+                  <div className="bg-surface rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Updated</p>
+                    <p className="text-sm font-bold text-foreground">{d.updated_at ? new Date(d.updated_at).toLocaleDateString() : "—"}</p>
+                  </div>
+                </div>
+
+                {/* Vehicles */}
+                {driverVehicles.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5"><Car className="w-3.5 h-3.5" /> Vehicles</h4>
+                    {driverVehicles.map(v => {
+                      const vt = vehicleTypes.find(t => t.id === v.vehicle_type_id);
+                      const fee = v.center_fee_exempt ? 0 : (v.custom_center_fee != null ? v.custom_center_fee : ((vt as any)?.center_fee || 0));
+                      const mp = centerMonthPayments.find(cp => cp.vehicle_id === v.id);
+                      return (
+                        <div key={v.id} className="bg-surface rounded-xl p-3 flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">{v.plate_number}</p>
+                            <p className="text-[10px] text-muted-foreground">Code: {v.center_code} · {vt?.name || "—"}</p>
+                            {(v as any).center_fee_note && <p className="text-[9px] text-destructive italic">{(v as any).center_fee_note}</p>}
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-xs font-bold ${v.center_fee_exempt ? "text-emerald-500" : v.custom_center_fee != null ? "text-chart-4" : "text-foreground"}`}>
+                              {fee} MVR
+                            </p>
+                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${mp?.status === "approved" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>
+                              {mp?.status === "approved" ? "Paid" : "Unpaid"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Payment History */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Payment History</h4>
+                  {driverCardLoading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                  ) : driverCardPayments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">No payment records</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {driverCardPayments.map(p => (
+                        <div key={p.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
+                          <div>
+                            <p className="text-[11px] font-semibold text-foreground">{p.payment_month}</p>
+                            {p.approved_at && <p className="text-[9px] text-muted-foreground">Approved: {new Date(p.approved_at).toLocaleDateString()}</p>}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-bold text-foreground">{p.amount} MVR</p>
+                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${p.status === "approved" ? "bg-emerald-500/15 text-emerald-600" : p.status === "submitted" ? "bg-blue-500/15 text-blue-600" : p.status === "rejected" ? "bg-destructive/15 text-destructive" : "bg-orange-500/15 text-orange-600"}`}>
+                              {p.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
