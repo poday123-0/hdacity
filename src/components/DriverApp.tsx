@@ -3058,7 +3058,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 60, opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 350 }}
-              className="fixed bottom-0 left-0 right-0 z-[9991] px-3 pb-4"
+              className="fixed bottom-0 left-0 right-0 z-[9991] px-3" style={{ paddingBottom: "max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem), calc(var(--safe-bottom, 8px) + 0.5rem))" }}
             >
               <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
                 <div className="flex justify-center pt-2.5 pb-1">
@@ -3505,7 +3505,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.12)] z-[800] flex flex-col landscape-panel`}
-          style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 8px)", maxHeight: "min(60vh, calc(100dvh - 140px))" }}>
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 8px), 8px)", maxHeight: "min(60vh, calc(100dvh - 140px))" }}>
 
           <div className="px-4 pt-3 pb-5 space-y-3 overflow-y-auto flex-1 min-h-0">
             {/* Drag handle */}
@@ -3880,7 +3880,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </div>
 
               {/* Accept / Decline buttons - sticky at bottom */}
-              <div className="flex gap-2 px-4 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,8px)+0.5rem))] border-t border-border/30 shrink-0 bg-card">
+              <div className="flex gap-2 px-4 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,8px)+0.75rem))] border-t border-border/30 shrink-0 bg-card" style={{ paddingBottom: "max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem), calc(var(--safe-bottom, 8px) + 0.75rem))" }}>
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
@@ -4228,7 +4228,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </AnimatePresence>
 
           {/* Sticky action button - always visible */}
-          <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 border-t border-border/40 shrink-0 space-y-2">
+          <div className="px-4 pt-2 border-t border-border/40 shrink-0 space-y-2" style={{ paddingBottom: "max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem), calc(var(--safe-bottom, 8px) + 0.75rem))" }}>
             {/* Driver cancel trip button - hidden for dispatch trips */}
             {currentTrip?.dispatch_type !== "operator" && (
             <button

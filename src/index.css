@@ -138,6 +138,17 @@
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
 }
 
+/* Android 3-button nav bar overlap fix — 48px covers the standard nav bar height */
+:root {
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+/* Capacitor Android: increase fallback when env returns 0 and nav bar may overlap */
+@supports not (padding: env(safe-area-inset-bottom)) {
+  :root {
+    --safe-bottom: 48px;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
