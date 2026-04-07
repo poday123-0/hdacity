@@ -1409,7 +1409,7 @@ const AdminBilling = () => {
                               {centerFee} MVR
                             </span>
                             {(cv as any).center_fee_note ? (
-                              <span className="text-[8px] text-chart-4 font-normal italic">({(cv as any).center_fee_note})</span>
+                              <span className="text-[8px] text-destructive font-normal italic">({(cv as any).center_fee_note})</span>
                             ) : cv.custom_center_fee != null ? (
                               <span className="text-[8px] text-chart-4 font-normal">(custom)</span>
                             ) : null}
