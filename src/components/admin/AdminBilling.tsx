@@ -15,7 +15,8 @@ const AdminBilling = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [paymentFilter, setPaymentFilter] = useState("submitted");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
-  const [billingDueDay, setBillingDueDay] = useState(25);
+  const [billingDueDay, setBillingDueDay] = useState(1);
+  const [centerBillingDueDay, setCenterBillingDueDay] = useState(5);
   const [tab, setTab] = useState<"drivers" | "payments" | "center">("drivers");
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [showBillingSettings, setShowBillingSettings] = useState(false);
@@ -202,7 +203,7 @@ const AdminBilling = () => {
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
       supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
-      supabase.from("system_settings").select("key, value").in("key", ["billing_due_day"]),
+      supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "center_billing_due_day"]),
     ]);
     setDrivers((driversRes.data as any[]) || []);
     setCompanies((companiesRes.data as any[]) || []);
@@ -210,7 +211,8 @@ const AdminBilling = () => {
     setVehicles((vehiclesRes.data as any[]) || []);
 
     settingsRes.data?.forEach((s: any) => {
-      if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 25);
+      if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 1);
+      if (s.key === "center_billing_due_day") setCenterBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 5);
     });
     setLoading(false);
   };
@@ -323,7 +325,7 @@ const AdminBilling = () => {
   };
 
   const saveBillingSettings = async () => {
-    const entries: [string, any][] = [["billing_due_day", billingDueDay]];
+    const entries: [string, any][] = [["billing_due_day", billingDueDay], ["center_billing_due_day", centerBillingDueDay]];
     for (const [key, value] of entries) {
       const { data: existing } = await supabase.from("system_settings").select("id").eq("key", key as string).single();
       if (existing) {
@@ -459,11 +461,16 @@ const AdminBilling = () => {
         </button>
         {showBillingSettings && (
           <div className="p-5 space-y-4 border-t border-border">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Billing Due Day (of month)</label>
-                <input type="number" min={1} max={28} value={billingDueDay} onChange={(e) => setBillingDueDay(parseInt(e.target.value) || 25)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                <label className="text-xs font-medium text-muted-foreground">Driver Billing Due Day</label>
+                <input type="number" min={1} max={28} value={billingDueDay} onChange={(e) => setBillingDueDay(parseInt(e.target.value) || 1)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 <p className="text-[10px] text-muted-foreground mt-1">Drivers not paid by this date will be deactivated</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Center Vehicle Due Day</label>
+                <input type="number" min={1} max={28} value={centerBillingDueDay} onChange={(e) => setCenterBillingDueDay(parseInt(e.target.value) || 5)} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                <p className="text-[10px] text-muted-foreground mt-1">Center vehicles not paid by this date will be deactivated</p>
               </div>
               <div className="flex items-end">
                 <button onClick={saveBillingSettings} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold">Save Settings</button>
