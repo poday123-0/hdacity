@@ -3425,7 +3425,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </motion.div>
           }
 
-            {profileStatus !== "Rejected" && verificationIssues.length > 0 &&
+            {profileStatus !== "Rejected" && profileStatus !== "Suspended" && verificationIssues.length > 0 &&
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
