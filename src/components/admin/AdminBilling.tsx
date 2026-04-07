@@ -1797,7 +1797,9 @@ const AdminBilling = () => {
                               <>
                                 <button
                                   onClick={async () => {
-                                    await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    const wBalApp = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                                    const bDueApp = Math.max(0, centerFee - wBalApp);
+                                    await supabase.from("center_payments").update({ status: "approved", amount: bDueApp, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
                                     if (!cv.is_active) {
                                       await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
                                     }
