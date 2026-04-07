@@ -746,7 +746,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       };
 
-      const upsertLocation = async (lat: number, lng: number, force = false) => {
+      const upsertLocation = async (lat: number, lng: number, force = false, heading?: number | null) => {
         lastPosRef.current = { lat, lng };
         // Persist to localStorage for instant restore on reopen
         try { localStorage.setItem("hda_driver_last_lat", String(lat)); localStorage.setItem("hda_driver_last_lng", String(lng)); } catch {}
@@ -771,6 +771,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           vehicle_type_id: vehicleTypeId,
           lat,
           lng,
+          heading: (heading != null && !isNaN(heading)) ? heading : 0,
           is_online: true,
           updated_at: new Date().toISOString(),
           session_id: deviceSessionId.current

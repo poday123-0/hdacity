@@ -17,7 +17,7 @@ const isIOS = Capacitor.getPlatform() === "ios";
 let isTracking = false;
 let iosWatchId: string | null = null;
 
-export type BgLocationCallback = (lat: number, lng: number) => void;
+export type BgLocationCallback = (lat: number, lng: number, heading?: number | null) => void;
 
 /**
  * Start background location tracking (native only).
@@ -49,7 +49,8 @@ export async function startBackgroundLocation(
             return;
           }
           if (position) {
-            callback(position.coords.latitude, position.coords.longitude);
+            const h = position.coords.heading;
+            callback(position.coords.latitude, position.coords.longitude, (h != null && !isNaN(h)) ? h : null);
           }
         }
       );
@@ -83,7 +84,8 @@ export async function startBackgroundLocation(
             return;
           }
           if (location) {
-            callback(location.latitude, location.longitude);
+            const h = (location as any).bearing ?? (location as any).heading ?? null;
+            callback(location.latitude, location.longitude, (h != null && !isNaN(h)) ? h : null);
           }
         }
       );
