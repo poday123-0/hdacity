@@ -5784,10 +5784,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                    slip_url: centerSlipUrl,
                                    submitted_at: new Date().toISOString(),
                                  } as any);
-                                 setCenterPaymentStatuses(prev => ({ ...prev, [centerSlipVehicleId]: "submitted" }));
-                                 setCenterSlipSubmitting(false);
-                                 setCenterSlipVehicleId(null);
-                                 toast({ title: "Center payment submitted!", description: "Admin will review your payment slip." });
+                                  setCenterPaymentStatuses(prev => ({ ...prev, [centerSlipVehicleId]: "submitted" }));
+                                  setCenterSlipSubmitting(false);
+                                  setCenterSlipVehicleId(null);
+                                  toast({ title: "Center payment submitted!", description: "Admin will review your payment slip." });
+                                  // Notify admin via SMS
+                                  try {
+                                    await supabase.functions.invoke("notify-vehicle-update", {
+                                      body: {
+                                        driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
+                                        phone_number: userProfile.phone_number,
+                                        country_code: userProfile.country_code || "960",
+                                        plate_number: sv?.plate_number || "N/A",
+                                        update_type: `Center payment slip uploaded (Code: ${sv?.center_code || "N/A"}, Plate: ${sv?.plate_number || "N/A"}, ${svFee} MVR)`,
+                                      },
+                                    });
+                                  } catch (e) { console.warn("Admin SMS notify failed:", e); }
                                }}
                                className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
                              >
