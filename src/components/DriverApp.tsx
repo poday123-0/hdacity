@@ -3395,7 +3395,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </motion.div>
           }
 
-            {/* Verification checklist */}
+            {/* Suspended profile banner */}
+            {profileStatus === "Suspended" &&
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="relative bg-card rounded-2xl overflow-hidden shadow-lg w-full border border-destructive/20">
+                <div className="h-1.5 bg-gradient-to-r from-destructive via-destructive/70 to-destructive" />
+                <div className="p-5 space-y-3">
+                  <div className="flex items-start gap-4">
+                    <motion.div 
+                      animate={{ scale: [1, 1.1, 1] }} 
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center shrink-0">
+                      <Ban className="w-7 h-7 text-destructive" />
+                    </motion.div>
+                    <div className="space-y-1 flex-1">
+                      <h3 className="text-base font-extrabold text-destructive">Account Suspended</h3>
+                      {profileRejectionReason && (
+                        <div className="bg-destructive/5 rounded-lg px-3 py-2 mt-1.5">
+                          <p className="text-xs text-destructive/90 font-medium leading-relaxed">"{profileRejectionReason}"</p>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">Your account has been suspended. Please contact admin for assistance.</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+          }
+
             {profileStatus !== "Rejected" && verificationIssues.length > 0 &&
           <motion.div
             initial={{ opacity: 0, y: 10 }}
