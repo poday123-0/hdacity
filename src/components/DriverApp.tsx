@@ -5146,11 +5146,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       "bg-surface hover:bg-card"}`
                       }>
                           {/* Status strip */}
-                          {isSelected && !isPending && !isRejected &&
+                          {isSelected && !isPending && !isRejected && !isSuspended &&
                       <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />}
                           {isPending &&
                       <div className="absolute top-0 left-0 right-0 h-1 bg-yellow-500 rounded-t-2xl" />}
                           {isRejected &&
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-destructive rounded-t-2xl" />}
+                          {isSuspended &&
                       <div className="absolute top-0 left-0 right-0 h-1 bg-destructive rounded-t-2xl" />}
 
                           <div className="p-4">
@@ -5179,7 +5181,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       <XCircle className="w-3 h-3" />
                                       Rejected
                                     </span>}
-                                  {isSelected && !isPending && !isRejected &&
+                                  {isSuspended &&
+                              <span className="shrink-0 text-[10px] font-bold text-white bg-destructive px-2 py-0.5 rounded-full flex items-center gap-1">
+                                      <Ban className="w-3 h-3" />
+                                      Suspended
+                                    </span>}
+                                  {isSelected && !isPending && !isRejected && !isSuspended &&
                               <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                       Active
                                     </span>}
@@ -5191,6 +5198,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       <span className="italic">"{v.rejection_reason}"</span>
                                     </p>
                                     <p className="text-[10px] text-muted-foreground mt-1 ml-5">Re-upload documents below to resubmit.</p>
+                                  </div>
+                            }
+                                {isSuspended &&
+                            <div className="mt-2 bg-destructive/5 border border-destructive/15 rounded-lg px-3 py-2">
+                                    <p className="text-[11px] text-destructive font-medium flex items-start gap-1.5">
+                                      <Ban className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                      <span>This vehicle has been suspended</span>
+                                    </p>
+                                    {v.rejection_reason && (
+                                      <p className="text-[11px] text-destructive/80 mt-1 ml-5 italic">"{v.rejection_reason}"</p>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground mt-1 ml-5">Please contact admin for assistance.</p>
                                   </div>
                             }
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
