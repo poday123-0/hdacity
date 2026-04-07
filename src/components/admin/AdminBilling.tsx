@@ -128,7 +128,8 @@ const AdminBilling = () => {
       // Send SMS via bulk function — one per driver with all vehicle reminders
       const phoneNumbers: string[] = [];
       const smsTexts: string[] = [];
-      for (const [, info] of driverMessages) {
+      for (const entry of Array.from(driverMessages.values())) {
+        const info = entry;
         const fullPhone = info.phone.startsWith("+") ? info.phone : `+${info.cc}${info.phone}`;
         phoneNumbers.push(fullPhone);
         smsTexts.push(info.messages.join("\n\n"));
