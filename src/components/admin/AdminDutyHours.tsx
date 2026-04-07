@@ -545,6 +545,78 @@ const AdminDutyHours = () => {
           </table>
         </div>
       </div>
+
+      {/* Add Session Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Plus className="w-4 h-4 text-primary" /> Add Duty Session
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Dispatcher</label>
+                <select
+                  value={addDispatcherId}
+                  onChange={e => setAddDispatcherId(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                >
+                  <option value="">Select dispatcher...</option>
+                  {dispatchers.map(d => (
+                    <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Date</label>
+                <input
+                  type="date"
+                  value={addDate}
+                  onChange={e => setAddDate(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Start Time</label>
+                  <input
+                    type="time"
+                    value={addStartTime}
+                    onChange={e => setAddStartTime(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">End Time</label>
+                  <input
+                    type="time"
+                    value={addEndTime}
+                    onChange={e => setAddEndTime(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                  />
+                  <p className="text-[9px] text-muted-foreground mt-0.5">Leave empty for active session</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={addSession}
+              disabled={addSaving}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {addSaving ? "Adding..." : "Add Session"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
