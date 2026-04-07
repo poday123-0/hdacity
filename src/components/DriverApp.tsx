@@ -5245,7 +5245,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 </span>}
                             </div>
 
-                            {/* Document upload buttons */}
+                            {/* Center payment pending warning */}
+                            {v.center_code && (() => {
+                              const cpStatus = centerPaymentStatuses[v.id];
+                              if (cpStatus === "approved") return null;
+                              return (
+                                <div className="mt-2 bg-destructive/5 border border-destructive/15 rounded-lg px-3 py-2">
+                                  <p className="text-[11px] text-destructive font-medium flex items-start gap-1.5">
+                                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                    <span>Center fee payment {cpStatus === "submitted" ? "under review" : "pending"} — Code {v.center_code}</span>
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground mt-1 ml-5">
+                                    {cpStatus === "submitted" ? "Your payment slip is being reviewed by admin." : "Go to Billing tab to submit your center fee payment."}
+                                  </p>
+                                </div>
+                              );
+                            })()}
+
                             <div className="grid grid-cols-3 gap-2 mt-3">
                               {[
                           { key: "vehicle_registration_" + v.id, field: "registration_url", label: "Registration" },
