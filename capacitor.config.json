@@ -1,6 +1,6 @@
 {
   "appId": "com.hdataxi.passenger",
-  "appName": "HDA APP",
+  "appName": "Hda App",
   "webDir": "dist",
   "plugins": {
     "PushNotifications": {
