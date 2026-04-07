@@ -28,6 +28,7 @@ interface VehicleMarkerData {
   plate?: string;
   centerCode?: string;
   vehicleInfo?: string;
+  heading?: number | null;
 }
 
 interface TripRouteData {
@@ -67,20 +68,21 @@ const userDotIcon = L.divIcon({
   html: `<div style="width:16px;height:16px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
 });
 
-const vehicleIcon = (imageUrl?: string) => {
+const vehicleIcon = (imageUrl?: string, heading?: number | null) => {
+  const rotation = typeof heading === "number" ? `transform:rotate(${heading}deg)` : "";
   if (imageUrl) {
     return L.divIcon({
       className: "",
       iconSize: [28, 28],
       iconAnchor: [14, 14],
-      html: `<img src="${imageUrl}" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" crossorigin="anonymous" />`,
+      html: `<img src="${imageUrl}" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));${rotation}" crossorigin="anonymous" />`,
     });
   }
   return L.divIcon({
     className: "",
     iconSize: [28, 28],
     iconAnchor: [14, 14],
-    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚗</div>`,
+    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));${rotation}">🚗</div>`,
   });
 };
 
@@ -385,10 +387,10 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
       if (existing) {
         existing.setLatLng([v.lat, v.lng]);
-        if (v.imageUrl) existing.setIcon(vehicleIcon(v.imageUrl));
+        existing.setIcon(vehicleIcon(v.imageUrl, v.heading));
       } else {
         const marker = L.marker([v.lat, v.lng], {
-          icon: vehicleIcon(v.imageUrl),
+          icon: vehicleIcon(v.imageUrl, v.heading),
           zIndexOffset: 500,
         }).addTo(map);
 
