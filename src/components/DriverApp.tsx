@@ -819,7 +819,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           );
         }
       } else {
-        // Web: use watchPosition
+        // Web: use watchPosition — use shorter maximumAge for responsive map tracking
+        const webMaxAge = Math.min(gpsMaxAge, 3000);
         if (navigator.geolocation) {
           locationWatchRef.current = navigator.geolocation.watchPosition(
             (pos) => {
@@ -833,7 +834,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(false);
               toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
             },
-            { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: webMaxAge }
           );
         } else {
           toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
@@ -915,7 +916,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             console.warn("GPS unavailable after foreground:", err.message);
             setGpsEnabled(false);
           },
-          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: gpsMaxAge }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: webMaxAge }
         );
       };
       document.addEventListener("visibilitychange", onForeground);
