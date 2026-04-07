@@ -601,7 +601,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (jumpMeters > 150 && currentSpeed < 20) {
         displayPos = prevFiltered;
       } else {
-        const alpha = isNavigating ? (currentSpeed > 25 ? 0.45 : 0.3) : 0.35;
+        // Use higher alpha when not navigating for more responsive idle tracking
+        const alpha = isNavigating ? (currentSpeed > 25 ? 0.45 : 0.3) : 0.7;
         displayPos = {
           lat: prevFiltered.lat + (currentPos.lat - prevFiltered.lat) * alpha,
           lng: prevFiltered.lng + (currentPos.lng - prevFiltered.lng) * alpha,
