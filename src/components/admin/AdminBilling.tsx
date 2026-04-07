@@ -44,6 +44,8 @@ const AdminBilling = () => {
   const [centerWallets, setCenterWallets] = useState<Map<string, number>>(new Map());
   const [editingCenterFee, setEditingCenterFee] = useState<string | null>(null);
   const [editingCenterFeeValue, setEditingCenterFeeValue] = useState(0);
+  const [customFeeModal, setCustomFeeModal] = useState<{ vehicleId: string; plate: string; defaultFee: number; currentCustom: number | null } | null>(null);
+  const [customFeeInput, setCustomFeeInput] = useState("");
   const [savingCenterFee, setSavingCenterFee] = useState(false);
   const [selectedCenterPayment, setSelectedCenterPayment] = useState<any>(null);
   const [editingCenterVehicle, setEditingCenterVehicle] = useState<string | null>(null);
