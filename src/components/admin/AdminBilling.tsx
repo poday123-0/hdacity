@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2, MessageSquare, Send, Loader2, UserPlus } from "lucide-react";
 
+const formatMonth = (m: string) => {
+  if (!m) return m;
+  const [y, mo] = m.split("-");
+  const d = new Date(Number(y), Number(mo) - 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+};
+
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -741,7 +748,7 @@ const AdminBilling = () => {
                                         <tbody>
                                           {driverPayments.map(p => (
                                             <tr key={p.id} className="border-b border-border last:border-0">
-                                              <td className="px-3 py-2 text-xs text-foreground">{p.payment_month}</td>
+                                              <td className="px-3 py-2 text-xs text-foreground">{formatMonth(p.payment_month)}</td>
                                               <td className="px-3 py-2 text-xs font-semibold text-foreground">{p.amount} MVR</td>
                                               <td className="px-3 py-2">
                                                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
@@ -817,7 +824,7 @@ const AdminBilling = () => {
                         <p className="text-[10px] text-muted-foreground">+960 {p.driver?.phone_number}</p>
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-foreground">{p.amount} MVR</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{p.payment_month}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatMonth(p.payment_month)}</td>
                       <td className="px-4 py-3">
                         {p.slip_url ? (
                           <button onClick={() => setSelectedPayment(p)} className="flex items-center gap-1 text-xs text-primary font-medium hover:underline">
@@ -946,7 +953,7 @@ const AdminBilling = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span className="font-medium text-foreground">{selectedPayment.driver?.first_name} {selectedPayment.driver?.last_name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span className="font-medium text-foreground">+960 {selectedPayment.driver?.phone_number}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold text-foreground">{selectedPayment.amount} MVR</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Month</span><span className="font-medium text-foreground">{selectedPayment.payment_month}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Month</span><span className="font-medium text-foreground">{formatMonth(selectedPayment.payment_month)}</span></div>
               </div>
 
               {selectedPayment.slip_url && (
@@ -1625,7 +1632,7 @@ const AdminBilling = () => {
             )}
             <div className="text-xs text-muted-foreground space-y-1">
               <p><strong>Amount:</strong> {selectedCenterPayment.amount} MVR</p>
-              <p><strong>Month:</strong> {selectedCenterPayment.payment_month}</p>
+              <p><strong>Month:</strong> {formatMonth(selectedCenterPayment.payment_month)}</p>
               <p><strong>Status:</strong> {selectedCenterPayment.status}</p>
               {selectedCenterPayment.notes && <p><strong>Notes:</strong> {selectedCenterPayment.notes}</p>}
             </div>
@@ -1662,7 +1669,7 @@ const AdminBilling = () => {
                 <tbody>
                   {centerHistory.map((h: any) => (
                     <tr key={h.id} className="border-t border-border">
-                      <td className="px-3 py-2 text-xs font-mono text-foreground">{h.payment_month}</td>
+                      <td className="px-3 py-2 text-xs font-mono text-foreground">{formatMonth(h.payment_month)}</td>
                       <td className="px-3 py-2 text-xs font-semibold text-foreground">{h.amount} MVR</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -2040,7 +2047,7 @@ const AdminBilling = () => {
                       {driverCardPayments.map(p => (
                         <div key={p.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
                           <div>
-                            <p className="text-[11px] font-semibold text-foreground">{p.payment_month}</p>
+                            <p className="text-[11px] font-semibold text-foreground">{formatMonth(p.payment_month)}</p>
                             {p.approved_at && <p className="text-[9px] text-muted-foreground">Approved: {new Date(p.approved_at).toLocaleDateString()}</p>}
                           </div>
                           <div className="text-right">
