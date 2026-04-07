@@ -823,6 +823,29 @@ const AdminBilling = () => {
                             {temporaryFree && <p className="text-[10px] text-muted-foreground">Free until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
                             {temporaryFree && new Date(d.fee_free_until) < new Date("2099-01-01") && <p className="text-[9px] text-primary">🎁 From map promo / competition</p>}
                           </td>
+                          {(() => {
+                            const walletBal = appDriverWallets.get(d.id) || 0;
+                            const balanceDue = effectivelyFree ? 0 : Math.max(0, driverFee - walletBal);
+                            return (
+                              <>
+                                <td className="px-4 py-3 text-sm font-semibold text-chart-2">{walletBal.toLocaleString()} MVR</td>
+                                <td className="px-4 py-3 text-sm font-bold">
+                                  {effectivelyFree ? (
+                                    <span className="text-muted-foreground">—</span>
+                                  ) : balanceDue === 0 ? (
+                                    <span className="text-chart-2">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                                  ) : walletBal > 0 ? (
+                                    <div>
+                                      <span className="text-destructive">{balanceDue} MVR</span>
+                                      <span className="block text-[9px] font-normal text-muted-foreground">({driverFee} - {walletBal} wallet)</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-destructive">{balanceDue} MVR</span>
+                                  )}
+                                </td>
+                              </>
+                            );
+                          })()}
                           <td className="px-4 py-3">
                             <span className={`text-xs font-medium px-2 py-1 rounded-full ${d.status === "Active" ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
                               {d.status}
@@ -845,13 +868,23 @@ const AdminBilling = () => {
                                   <Calendar className="w-3 h-3" /> Free Period
                                 </button>
                               )}
+                              {!effectivelyFree && (
+                                <button
+                                  onClick={() => sendSingleAppReminder(d)}
+                                  disabled={sendingAppSmsId === d.id}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-chart-4 bg-chart-4/10 hover:bg-chart-4/20 transition-colors disabled:opacity-50"
+                                >
+                                  {sendingAppSmsId === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+                                  SMS
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
                         {/* Expanded billing history */}
                         {expandedDriver === d.id && (
                           <tr>
-                            <td colSpan={7} className="bg-surface/30 px-6 py-4">
+                            <td colSpan={9} className="bg-surface/30 px-6 py-4">
                               <div className="space-y-3">
                                 {/* Vehicle breakdown */}
                                 <div>
