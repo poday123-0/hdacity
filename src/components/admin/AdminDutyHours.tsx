@@ -101,10 +101,32 @@ const AdminDutyHours = () => {
     }
   };
 
+  const fetchDispatchers = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "dispatcher");
+    const ids = (data || []).map((r: any) => r.user_id);
+    // Also include admins who might dispatch
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    const allIds = [...new Set([...ids, ...(adminRoles || []).map((r: any) => r.user_id)])];
+    if (allIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, phone_number")
+        .in("id", allIds);
+      setDispatchers(profiles || []);
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
     fetchIpSettings();
     fetchSalaryRates();
+    fetchDispatchers();
   }, [dateFilter]);
 
   const saveIpSettings = async () => {
