@@ -73,6 +73,9 @@ const AdminBilling = () => {
   const [sendingSingleSmsId, setSendingSingleSmsId] = useState<string | null>(null);
   const [assigningDriverVehicle, setAssigningDriverVehicle] = useState<string | null>(null);
   const [assignDriverSearch, setAssignDriverSearch] = useState("");
+  const [driverCardId, setDriverCardId] = useState<string | null>(null);
+  const [driverCardPayments, setDriverCardPayments] = useState<any[]>([]);
+  const [driverCardLoading, setDriverCardLoading] = useState(false);
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
