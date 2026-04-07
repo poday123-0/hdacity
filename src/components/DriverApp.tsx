@@ -792,6 +792,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // On native, use ONLY background geolocation plugin (battery efficient, distance-filtered).
       // On web, fall back to watchPosition.
       const isNativePlatform = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor.isNativePlatform?.();
+      const webMaxAge = Math.min(gpsMaxAge, 3000);
 
       if (isNativePlatform) {
         // Native: rely solely on background geolocation plugin — much more battery efficient
