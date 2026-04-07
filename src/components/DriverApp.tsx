@@ -5201,7 +5201,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                     <p className="text-[10px] text-muted-foreground mt-1 ml-5">Re-upload documents below to resubmit.</p>
                                   </div>
                             }
-                                {isSuspended &&
+                                {isSuspended && !hasPendingCenterPayment &&
                             <div className="mt-2 bg-destructive/5 border border-destructive/15 rounded-lg px-3 py-2">
                                     <p className="text-[11px] text-destructive font-medium flex items-start gap-1.5">
                                       <Ban className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -5211,6 +5211,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       <p className="text-[11px] text-destructive/80 mt-1 ml-5 italic">"{v.rejection_reason}"</p>
                                     )}
                                     <p className="text-[10px] text-muted-foreground mt-1 ml-5">Please contact admin for assistance.</p>
+                                  </div>
+                            }
+                                {hasPendingCenterPayment &&
+                            <div className="mt-2 bg-destructive/5 border border-destructive/15 rounded-lg px-3 py-2">
+                                    <p className="text-[11px] text-destructive font-medium flex items-start gap-1.5">
+                                      <Ban className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                      <span>Suspended — Center fee unpaid (Code {v.center_code})</span>
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1 ml-5">
+                                      {centerPaymentStatuses[v.id] === "submitted" ? "Payment slip under review." : "Go to Billing tab to submit payment."}
+                                    </p>
                                   </div>
                             }
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
