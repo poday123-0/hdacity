@@ -24,6 +24,15 @@ const AdminDutyHours = () => {
   const [editingSalaryId, setEditingSalaryId] = useState<string | null>(null);
   const [editSalaryVal, setEditSalaryVal] = useState("");
 
+  // Add session modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [dispatchers, setDispatchers] = useState<any[]>([]);
+  const [addDispatcherId, setAddDispatcherId] = useState("");
+  const [addDate, setAddDate] = useState("");
+  const [addStartTime, setAddStartTime] = useState("");
+  const [addEndTime, setAddEndTime] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
+
   const fetchSessions = async () => {
     setLoading(true);
     let query = supabase
@@ -92,10 +101,32 @@ const AdminDutyHours = () => {
     }
   };
 
+  const fetchDispatchers = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "dispatcher");
+    const ids = (data || []).map((r: any) => r.user_id);
+    // Also include admins who might dispatch
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    const allIds = [...new Set([...ids, ...(adminRoles || []).map((r: any) => r.user_id)])];
+    if (allIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, phone_number")
+        .in("id", allIds);
+      setDispatchers(profiles || []);
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
     fetchIpSettings();
     fetchSalaryRates();
+    fetchDispatchers();
   }, [dateFilter]);
 
   const saveIpSettings = async () => {
@@ -218,6 +249,44 @@ const AdminDutyHours = () => {
     toast({ title: "Salary rate saved" });
   };
 
+  const addSession = async () => {
+    if (!addDispatcherId || !addDate || !addStartTime) {
+      toast({ title: "Please fill dispatcher, date & start time", variant: "destructive" });
+      return;
+    }
+    setAddSaving(true);
+    const clockIn = new Date(`${addDate}T${addStartTime}`).toISOString();
+    const clockOut = addEndTime ? new Date(`${addDate}T${addEndTime}`).toISOString() : null;
+    const { error } = await supabase.from("dispatch_duty_sessions").insert({
+      dispatcher_id: addDispatcherId,
+      clock_in: clockIn,
+      clock_out: clockOut,
+    } as any);
+    setAddSaving(false);
+    if (error) {
+      toast({ title: "Failed to add session", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Session added" });
+      setShowAddModal(false);
+      setAddDispatcherId("");
+      setAddDate("");
+      setAddStartTime("");
+      setAddEndTime("");
+      fetchSessions();
+    }
+  };
+
+  const deleteSession = async (id: string) => {
+    if (!confirm("Delete this duty session?")) return;
+    const { error } = await supabase.from("dispatch_duty_sessions").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Session deleted" });
+      fetchSessions();
+    }
+  };
+
   // Group sessions by dispatcher
   const dispatcherSummary = sessions.reduce((acc: any, s: any) => {
     const id = s.dispatcher_id;
@@ -305,16 +374,24 @@ const AdminDutyHours = () => {
             <Clock className="w-4 h-4 text-primary" />
             Dispatcher Duty Hours
           </h3>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="text-xs bg-surface border border-border rounded-lg px-2 py-1.5 text-foreground"
-          >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="all">All Time</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Add Session
+            </button>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="text-xs bg-surface border border-border rounded-lg px-2 py-1.5 text-foreground"
+            >
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
         </div>
 
         {/* Summary cards with salary */}
@@ -391,7 +468,7 @@ const AdminDutyHours = () => {
                 <th className="text-left py-2 px-2 font-medium">Clock Out</th>
                 <th className="text-left py-2 px-2 font-medium">Duration</th>
                 <th className="text-left py-2 px-2 font-medium">IP</th>
-                <th className="text-left py-2 px-2 font-medium w-16">Edit</th>
+                <th className="text-left py-2 px-2 font-medium w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -440,20 +517,27 @@ const AdminDutyHours = () => {
                   <td className="py-2 px-2 font-semibold text-foreground">{formatDuration(s.clock_in, s.clock_out)}</td>
                   <td className="py-2 px-2 text-muted-foreground font-mono text-[10px]">{s.ip_address || "-"}</td>
                   <td className="py-2 px-2">
-                    {editingId === s.id ? (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {editingId === s.id ? (
+                        <>
+                          <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => deleteSession(s.id)} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -461,6 +545,78 @@ const AdminDutyHours = () => {
           </table>
         </div>
       </div>
+
+      {/* Add Session Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Plus className="w-4 h-4 text-primary" /> Add Duty Session
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Dispatcher</label>
+                <select
+                  value={addDispatcherId}
+                  onChange={e => setAddDispatcherId(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                >
+                  <option value="">Select dispatcher...</option>
+                  {dispatchers.map(d => (
+                    <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Date</label>
+                <input
+                  type="date"
+                  value={addDate}
+                  onChange={e => setAddDate(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Start Time</label>
+                  <input
+                    type="time"
+                    value={addStartTime}
+                    onChange={e => setAddStartTime(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">End Time</label>
+                  <input
+                    type="time"
+                    value={addEndTime}
+                    onChange={e => setAddEndTime(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 text-xs bg-surface border border-border rounded-lg text-foreground"
+                  />
+                  <p className="text-[9px] text-muted-foreground mt-0.5">Leave empty for active session</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={addSession}
+              disabled={addSaving}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {addSaving ? "Adding..." : "Add Session"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
