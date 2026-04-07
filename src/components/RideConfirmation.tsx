@@ -92,6 +92,7 @@ const RideConfirmation = ({
       await onConfirm(paymentMethod);
     } catch (err) {
       console.error("Confirm ride error:", err);
+    } finally {
       setConfirming(false);
     }
   };

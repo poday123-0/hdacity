@@ -61,6 +61,7 @@ const AdminBilling = () => {
   const [smsReminderSending, setSmsReminderSending] = useState(false);
   const [smsReminderResult, setSmsReminderResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
   const [showSmsTemplateEditor, setShowSmsTemplateEditor] = useState(false);
+  const [sendingSingleSmsId, setSendingSingleSmsId] = useState<string | null>(null);
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -158,6 +159,35 @@ const AdminBilling = () => {
     setSmsReminderSending(false);
   };
 
+  const sendSingleReminder = async (cv: any) => {
+    const driver = drivers.find(d => d.id === cv.driver_id);
+    if (!driver?.phone_number) {
+      toast({ title: "No phone number for this driver", variant: "destructive" });
+      return;
+    }
+    const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
+    const fee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
+    const msg = smsTemplate
+      .replace(/\{driver_name\}/g, `${driver.first_name} ${driver.last_name}`)
+      .replace(/\{amount\}/g, String(fee))
+      .replace(/\{plate\}/g, cv.plate_number || "")
+      .replace(/\{center_code\}/g, cv.center_code || "")
+      .replace(/\{month\}/g, centerMonth);
+
+    const fullPhone = driver.phone_number.startsWith("+") ? driver.phone_number : `+960${driver.phone_number}`;
+
+    setSendingSingleSmsId(cv.id);
+    try {
+      const { error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: msg, target_type: "custom", phone_numbers: [fullPhone], sender_id: "HDA TAXI" },
+      });
+      if (error) throw error;
+      toast({ title: `Reminder sent to ${driver.first_name} ${driver.last_name}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
+    }
+    setSendingSingleSmsId(null);
+  };
   const fetchDrivers = async () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
@@ -1403,6 +1433,16 @@ const AdminBilling = () => {
                             )}
                             {monthPayment?.status === "approved" && (
                               <span className="text-[10px] text-primary font-semibold">✓ Paid</span>
+                            )}
+                            {(!monthPayment || (monthPayment.status !== "approved" && monthPayment.status !== "completed")) && !cv.center_fee_exempt && (
+                              <button
+                                onClick={() => sendSingleReminder(cv)}
+                                disabled={sendingSingleSmsId === cv.id}
+                                className="px-2 py-1 bg-chart-4/10 text-chart-4 rounded-lg text-[10px] font-semibold hover:bg-chart-4/20 disabled:opacity-40"
+                                title="Send payment reminder SMS"
+                              >
+                                {sendingSingleSmsId === cv.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              </button>
                             )}
                           </div>
                         </td>
