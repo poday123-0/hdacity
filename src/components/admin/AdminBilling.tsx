@@ -774,15 +774,17 @@ const AdminBilling = () => {
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicle Type</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
+                  <th className="text-left text-xs font-semibold text-chart-2 px-4 py-3">Wallet</th>
+                  <th className="text-left text-xs font-semibold text-destructive px-4 py-3">Balance Due</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : filteredDrivers.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
                 ) : (
                   filteredDrivers.map((d) => {
                     const companyFeeFree = isCompanyFeeFree(d);
