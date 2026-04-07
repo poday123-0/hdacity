@@ -5914,7 +5914,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Compact notification off indicator near top */}
       {screen === "online" && notifPermissionDenied && (
-        <div className="fixed top-[3.2rem] right-2 z-[9990]">
+        <div className="fixed bottom-24 left-3 z-[9990]">
           <button
             onClick={async () => {
               if ("Notification" in window && Notification.permission === "default") {
