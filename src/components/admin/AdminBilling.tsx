@@ -1340,10 +1340,10 @@ const AdminBilling = () => {
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Plate / Code"
+                    placeholder="Plate / Code / Driver"
                     value={centerSearch}
                     onChange={e => setCenterSearch(e.target.value)}
-                    className="pl-6 pr-2 py-1 w-28 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="pl-6 pr-2 py-1 w-36 bg-surface border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 <input
@@ -1475,7 +1475,8 @@ const AdminBilling = () => {
                     const s = centerSearch.toLowerCase();
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const driverName = driver ? `${driver.first_name} ${driver.last_name}`.toLowerCase() : "";
-                    return (cv.plate_number || "").toLowerCase().includes(s) || (cv.center_code || "").toLowerCase().includes(s) || driverName.includes(s);
+                    const driverPhone = driver ? (driver.phone_number || "").toLowerCase() : "";
+                    return (cv.plate_number || "").toLowerCase().includes(s) || (cv.center_code || "").toLowerCase().includes(s) || driverName.includes(s) || driverPhone.includes(s);
                   }).map(cv => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
