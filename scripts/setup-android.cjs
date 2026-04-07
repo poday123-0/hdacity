@@ -228,12 +228,21 @@ import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Enable edge-to-edge so env(safe-area-inset-bottom) works with 3-button nav
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        // Make status bar and nav bar transparent
+        getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+
         createNotificationChannels();
     }
 
