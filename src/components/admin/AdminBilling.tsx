@@ -1755,8 +1755,8 @@ const AdminBilling = () => {
                                 // Also fetch wallet transactions for this driver related to center fee deductions
                                 let walletTxns: any[] = [];
                                 if (cv.driver_id) {
-                                  const { data: wtData } = await supabase.from("wallet_transactions").select("*").eq("user_id", cv.driver_id).eq("type", "debit").ilike("reason", "%Center fee%").order("created_at", { ascending: false });
-                                  walletTxns = wtData || [];
+                                  const { data: wtData } = await supabase.from("wallet_transactions").select("*").eq("user_id", cv.driver_id).eq("type", "debit").order("created_at", { ascending: false });
+                                  walletTxns = (wtData || []).filter((tx: any) => tx.reason && (tx.reason.toLowerCase().includes("center fee") || tx.reason.toLowerCase().includes("centre fee")));
                                 }
                                 // Attach wallet deduction to each payment by matching month
                                 const enriched = (data || []).map((p: any) => {
