@@ -4655,6 +4655,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         </div>
                       </motion.div>
                 }
+                    {profileStatus === "Suspended" &&
+                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                  className="relative overflow-hidden rounded-xl border border-destructive/20">
+                        <div className="h-1 bg-gradient-to-r from-destructive via-destructive/60 to-destructive/30" />
+                        <div className="bg-destructive/5 px-4 py-3 flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                            <Ban className="w-4 h-4 text-destructive" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-destructive">Account Suspended</p>
+                            {profileRejectionReason && (
+                              <p className="text-[11px] text-destructive/80 mt-0.5 italic">"{profileRejectionReason}"</p>
+                            )}
+                            <p className="text-[11px] text-muted-foreground mt-1">Please contact admin for more details.</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                }
                     {profileStatus === "Pending Review" &&
                 <div className="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5" />
@@ -5085,6 +5103,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const vStatus = v.vehicle_status || "approved";
                   const isPending = vStatus === "pending";
                   const isRejected = vStatus === "rejected";
+                  const isApproved = vStatus === "approved";
                   const hasAllVehicleDocs = !!(v.registration_url && v.insurance_url && v.image_url);
                   const isUploadingVehicleDocs = !!uploading && uploading.endsWith(v.id) && uploading.startsWith("vehicle_");
                   const isSubmittingVehicleDocs = !!submittingVehicleDocsById[v.id];
@@ -5195,17 +5214,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           )}
                             </div>
 
-                            {!hasAllVehicleDocs && (
-                              <p className="text-[11px] text-muted-foreground mt-2">Upload all 3 vehicle documents, then submit once.</p>
+                            {isApproved ? (
+                              <div className="mt-3 bg-muted/50 rounded-xl px-4 py-2.5 text-center">
+                                <p className="text-[11px] text-muted-foreground">To update documents, please contact admin.</p>
+                              </div>
+                            ) : (
+                              <>
+                                {!hasAllVehicleDocs && (
+                                  <p className="text-[11px] text-muted-foreground mt-2">Upload all 3 vehicle documents, then submit once.</p>
+                                )}
+                                <button
+                                  onClick={() => submitVehicleDocuments(v)}
+                                  disabled={isPending || !hasAllVehicleDocs || isUploadingVehicleDocs || isSubmittingVehicleDocs}
+                                  className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40 active:scale-[0.98] transition-transform"
+                                >
+                                  {isSubmittingVehicleDocs ? "Submitting..." : isPending ? "Already Submitted" : "Submit Vehicle Documents"}
+                                </button>
+                              </>
                             )}
-
-                            <button
-                              onClick={() => submitVehicleDocuments(v)}
-                              disabled={isPending || !hasAllVehicleDocs || isUploadingVehicleDocs || isSubmittingVehicleDocs}
-                              className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40 active:scale-[0.98] transition-transform"
-                            >
-                              {isSubmittingVehicleDocs ? "Submitting..." : isPending ? "Already Submitted" : "Submit Vehicle Documents"}
-                            </button>
 
                             {/* Edit form */}
                             {isEditing &&
