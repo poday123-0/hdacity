@@ -203,7 +203,7 @@ const AdminBilling = () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
       (() => {
-        let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until, avatar_url").ilike("user_type", "%Driver%").order("first_name");
+        let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until, avatar_url, updated_at").ilike("user_type", "%Driver%").order("first_name");
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
         return q;
       })(),
@@ -1364,6 +1364,9 @@ const AdminBilling = () => {
                               <div>
                                 {driver ? `${driver.first_name} ${driver.last_name}` : <span className="text-muted-foreground italic">No driver</span>}
                                 <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
+                                {driver?.updated_at && (
+                                  <div className="text-[9px] text-muted-foreground/60">Updated: {new Date(driver.updated_at).toLocaleDateString()}</div>
+                                )}
                               </div>
                               <UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
