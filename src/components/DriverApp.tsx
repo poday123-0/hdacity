@@ -254,6 +254,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [centerPaymentHistory, setCenterPaymentHistory] = useState<any[]>([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
+
+  // Auto-fetch payment history when billing tab is opened
+  useEffect(() => {
+    if (profileTab !== "billing" || !userProfile?.id || paymentHistoryLoading) return;
+    if (appPaymentHistory.length > 0 || centerPaymentHistory.length > 0) return;
+    setPaymentHistoryLoading(true);
+    Promise.all([
+      supabase.from("driver_payments").select("*").eq("driver_id", userProfile.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("center_payments").select("*").eq("driver_id", userProfile.id).order("created_at", { ascending: false }).limit(50),
+    ]).then(([appRes, centerRes]) => {
+      setAppPaymentHistory(appRes.data || []);
+      setCenterPaymentHistory(centerRes.data || []);
+      setPaymentHistoryLoading(false);
+    });
+  }, [profileTab, userProfile?.id]);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
   const [sessionKicked, setSessionKicked] = useState(false);
