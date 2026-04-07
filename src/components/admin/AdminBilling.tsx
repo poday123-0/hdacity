@@ -1127,7 +1127,7 @@ const AdminBilling = () => {
             {showSmsTemplateEditor && (
               <div className="space-y-2 border-t border-border pt-3">
                 <p className="text-[11px] text-muted-foreground">
-                  Available placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{plate}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{center_code}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code>
+                  Available placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{plate}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{center_code}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{wallet}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{balance_due}"}</code>
                 </p>
                 <textarea
                   value={smsTemplate}
