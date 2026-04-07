@@ -727,7 +727,42 @@ const AdminBilling = () => {
             <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
               <Users className="w-4 h-4" /> Bulk Free
             </button>
+            <button onClick={() => setShowAppSmsModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-chart-4/10 text-chart-4 rounded-xl text-sm font-semibold hover:bg-chart-4/20 transition-colors">
+              <MessageSquare className="w-4 h-4" /> SMS Reminder
+            </button>
           </div>
+
+          {/* App SMS Reminder Modal */}
+          {showAppSmsModal && (
+            <div className="bg-card border-2 border-chart-4/30 rounded-xl p-5 space-y-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-chart-4" /> App Fee SMS Reminder</h3>
+                <button onClick={() => { setShowAppSmsModal(false); setAppSmsResult(null); }} className="w-7 h-7 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">SMS Template</label>
+                <textarea value={appSmsTemplate} onChange={e => setAppSmsTemplate(e.target.value)} rows={3} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{wallet}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{balance_due}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={saveAppSmsTemplate} disabled={appSmsTemplateSaving} className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                  {appSmsTemplateSaving ? "Saving..." : "Save Template"}
+                </button>
+                <button onClick={sendAppPaymentReminders} disabled={appSmsSending} className="flex items-center gap-2 px-4 py-2 bg-chart-4 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                  {appSmsSending ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending...</> : <><Send className="w-3 h-3" /> Send to All Unpaid Drivers</>}
+                </button>
+              </div>
+              {appSmsResult && (
+                <div className="bg-surface rounded-lg p-3 text-xs">
+                  <span className="text-chart-2 font-semibold">{appSmsResult.sent} sent</span>
+                  {appSmsResult.failed > 0 && <span className="text-destructive font-semibold ml-2">{appSmsResult.failed} failed</span>}
+                  <span className="text-muted-foreground ml-2">out of {appSmsResult.total}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Drivers billing table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
