@@ -1,0 +1,1 @@
+CREATE POLICY "Allow anon delete center_payments" ON public.center_payments FOR DELETE TO anon USING (true);
