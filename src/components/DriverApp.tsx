@@ -5609,7 +5609,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               {appPaymentHistory.filter((p: any) => p.status === "submitted" || p.status === "pending").map((p: any) => (
                                 <div key={p.id} className="flex items-center justify-between bg-amber-500/5 rounded-lg px-2.5 py-1.5">
                                   <div>
-                                    <span className="text-xs font-semibold text-foreground">{p.payment_month}</span>
+                                    <span className="text-xs font-semibold text-foreground">{formatMonth(p.payment_month)}</span>
                                     <span className="text-[10px] text-muted-foreground ml-2">{Number(p.amount).toFixed(0)} MVR</span>
                                   </div>
                                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
@@ -5719,7 +5719,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                    {appPaymentHistory.map((p: any) => (
                                      <div key={p.id} className="bg-card rounded-lg px-3 py-2 space-y-1">
                                        <div className="flex items-center justify-between">
-                                         <span className="text-xs font-semibold text-foreground">{p.payment_month}</span>
+                                         <span className="text-xs font-semibold text-foreground">{formatMonth(p.payment_month)}</span>
                                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                                            p.status === "approved" ? "bg-green-500/10 text-green-600" :
                                            p.status === "submitted" ? "bg-amber-500/10 text-amber-600" :
@@ -5746,7 +5746,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                      return (
                                        <div key={p.id} className="bg-card rounded-lg px-3 py-2 space-y-1">
                                          <div className="flex items-center justify-between">
-                                           <span className="text-xs font-semibold text-foreground">{p.payment_month}{v ? ` — ${v.plate_number}` : ""}</span>
+                                           <span className="text-xs font-semibold text-foreground">{formatMonth(p.payment_month)}{v ? ` — ${v.plate_number}` : ""}</span>
                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                                              p.status === "approved" ? "bg-green-500/10 text-green-600" :
                                              p.status === "submitted" ? "bg-amber-500/10 text-amber-600" :
