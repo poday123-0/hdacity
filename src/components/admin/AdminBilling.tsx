@@ -1468,11 +1468,16 @@ const AdminBilling = () => {
                           return (
                             <td className="px-3 py-2 text-xs font-bold">
                               {isPaid ? (
-                                <span className="text-emerald-500">Paid</span>
+                                <span className="text-chart-2">Paid</span>
                               ) : centerFee === 0 ? (
                                 <span className="text-muted-foreground">—</span>
                               ) : balanceDue === 0 ? (
-                                <span className="text-emerald-500">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                                <span className="text-chart-2">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                              ) : walletBal > 0 ? (
+                                <div>
+                                  <span className="text-destructive">{balanceDue} MVR</span>
+                                  <span className="block text-[9px] font-normal text-muted-foreground">({centerFee} - {walletBal} wallet)</span>
+                                </div>
                               ) : (
                                 <span className="text-destructive">{balanceDue} MVR</span>
                               )}
