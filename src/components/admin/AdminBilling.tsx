@@ -159,7 +159,36 @@ const AdminBilling = () => {
     setSmsReminderSending(false);
   };
 
-  const fetchDrivers = async () => {
+  const sendSingleReminder = async (cv: any) => {
+    const driver = drivers.find(d => d.id === cv.driver_id);
+    if (!driver?.phone_number) {
+      toast({ title: "No phone number for this driver", variant: "destructive" });
+      return;
+    }
+    const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
+    const fee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
+    const msg = smsTemplate
+      .replace(/\{driver_name\}/g, `${driver.first_name} ${driver.last_name}`)
+      .replace(/\{amount\}/g, String(fee))
+      .replace(/\{plate\}/g, cv.plate_number || "")
+      .replace(/\{center_code\}/g, cv.center_code || "")
+      .replace(/\{month\}/g, centerMonth);
+
+    const fullPhone = driver.phone_number.startsWith("+") ? driver.phone_number : `+960${driver.phone_number}`;
+
+    setSendingSingleSmsId(cv.id);
+    try {
+      const { error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: msg, target_type: "custom", phone_numbers: [fullPhone], sender_id: "HDA TAXI" },
+      });
+      if (error) throw error;
+      toast({ title: `Reminder sent to ${driver.first_name} ${driver.last_name}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
+    }
+    setSendingSingleSmsId(null);
+  };
+
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
       (() => {
