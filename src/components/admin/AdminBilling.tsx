@@ -70,7 +70,7 @@ const AdminBilling = () => {
   const [batchFeeSaving, setBatchFeeSaving] = useState(false);
   const [centerPaymentStatusFilter, setCenterPaymentStatusFilter] = useState<"all"|"pending"|"approved">("all");
   // SMS Reminder state
-  const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Please pay at the earliest. - HDA");
+  const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Wallet balance: {wallet} MVR. Amount to pay: {balance_due} MVR. Please pay at the earliest. - HDA");
   const [smsTemplateLoading, setSmsTemplateLoading] = useState(false);
   const [smsTemplateSaving, setSmsTemplateSaving] = useState(false);
   const [showSmsReminderModal, setShowSmsReminderModal] = useState(false);
