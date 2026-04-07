@@ -274,7 +274,7 @@ const DeleteAccount = () => {
             </div>
           )}
 
-          <p className="text-[10px] text-muted-foreground/60 text-center">{appName || "HDA APP"}</p>
+          <p className="text-[10px] text-muted-foreground/60 text-center">{appName || "Hda App"}</p>
         </div>
       </div>
     </div>

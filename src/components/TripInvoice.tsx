@@ -60,7 +60,7 @@ const TripInvoice = ({ trip, driverProfile, passengerProfile, onClose }: TripInv
   const driverName = driverProfile
     ? `${driverProfile.first_name || ""} ${driverProfile.last_name || ""}`.trim()
     : "—";
-  const companyName = branding.appName || "HDA TAXI";
+  const companyName = branding.appName || "Hda App";
   const logoUrl = branding.logoUrl;
   const tripDate = trip.completed_at || trip.created_at;
 
