@@ -1240,6 +1240,15 @@ const AdminBilling = () => {
                 </thead>
                 <tbody>
                   {centerVehicles.filter(cv => {
+                    // Payment status filter
+                    if (centerPaymentStatusFilter !== "all") {
+                      const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+                      if (centerPaymentStatusFilter === "pending") {
+                        if (mp && mp.status === "approved") return false;
+                      } else if (centerPaymentStatusFilter === "approved") {
+                        if (!mp || mp.status !== "approved") return false;
+                      }
+                    }
                     if (!centerSearch) return true;
                     const s = centerSearch.toLowerCase();
                     const driver = drivers.find(d => d.id === cv.driver_id);
