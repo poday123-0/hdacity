@@ -33,10 +33,12 @@ const LiveMap = () => {
   // Fetch online driver locations
   useEffect(() => {
     const fetchLocations = async () => {
+      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from("driver_locations")
         .select("id, lat, lng, heading, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
-        .eq("is_online", true);
+        .eq("is_online", true)
+        .gte("updated_at", threeHoursAgo);
 
       // Filter out drivers with inactive vehicles
       let activeData = data;

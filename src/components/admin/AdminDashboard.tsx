@@ -269,10 +269,12 @@ const AdminDashboard = () => {
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
     const fetchLocations = async () => {
+      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from("driver_locations")
         .select("id, lat, lng, heading, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, image_url, icon, map_icon_url), profiles:driver_id(first_name, last_name, phone_number), vehicles:vehicle_id(plate_number, center_code, make, model, color)")
-        .eq("is_online", true);
+        .eq("is_online", true)
+        .gte("updated_at", threeHoursAgo);
       if (data) {
         // Only show drivers linked to an active vehicle
         const activeDrivers = data.filter((d: any) => d.vehicle_id && d.vehicles);
