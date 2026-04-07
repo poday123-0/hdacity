@@ -1375,14 +1375,13 @@ const AdminBilling = () => {
                             <span
                               className={`cursor-pointer ${cv.center_fee_exempt ? "line-through text-muted-foreground" : cv.custom_center_fee != null ? "text-chart-4" : ""}`}
                               onClick={() => {
-                                const current = cv.custom_center_fee != null ? cv.custom_center_fee : centerFee;
-                                const input = prompt(`Custom center fee for ${cv.plate_number} (leave empty to use vehicle type default):`, cv.custom_center_fee != null ? String(cv.custom_center_fee) : "");
-                                if (input === null) return;
-                                const val = input.trim() === "" ? null : parseFloat(input);
-                                supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", cv.id).then(() => {
-                                  toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
-                                  fetchCenterData();
+                                setCustomFeeModal({
+                                  vehicleId: cv.id,
+                                  plate: cv.plate_number || cv.center_code,
+                                  defaultFee: (vt as any)?.center_fee || 0,
+                                  currentCustom: cv.custom_center_fee,
                                 });
+                                setCustomFeeInput(cv.custom_center_fee != null ? String(cv.custom_center_fee) : "");
                               }}
                               title={cv.custom_center_fee != null ? `Custom fee (type default: ${(vt as any)?.center_fee || 0})` : "Click to set custom fee"}
                             >
