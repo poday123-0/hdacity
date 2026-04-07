@@ -57,6 +57,10 @@ const AdminBilling = () => {
   const [centerHistoryLoading, setCenterHistoryLoading] = useState(false);
   const [selectedCenterIds, setSelectedCenterIds] = useState<Set<string>>(new Set());
   const [bulkPaying, setBulkPaying] = useState(false);
+  const [batchFeeModal, setBatchFeeModal] = useState(false);
+  const [batchFeeInput, setBatchFeeInput] = useState("");
+  const [batchFeeNote, setBatchFeeNote] = useState("");
+  const [batchFeeSaving, setBatchFeeSaving] = useState(false);
   const [centerPaymentStatusFilter, setCenterPaymentStatusFilter] = useState<"all"|"pending"|"approved">("all");
   // SMS Reminder state
   const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Please pay at the earliest. - HDA");
@@ -1219,6 +1223,12 @@ const AdminBilling = () => {
                     >
                       {bulkPaying ? "Processing..." : `Mark ${selectedCenterIds.size} Unpaid`}
                     </button>
+                    <button
+                      onClick={() => { setBatchFeeInput(""); setBatchFeeNote(""); setBatchFeeModal(true); }}
+                      className="px-3 py-1 bg-chart-4/10 text-chart-4 rounded-lg text-xs font-semibold hover:bg-chart-4/20"
+                    >
+                      Set Fee ({selectedCenterIds.size})
+                    </button>
                   </>
                 )}
               </div>
@@ -1830,6 +1840,87 @@ const AdminBilling = () => {
                 className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Custom Fee Modal */}
+      {batchFeeModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setBatchFeeModal(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-full bg-chart-4/10 flex items-center justify-center mx-auto">
+                <DollarSign className="w-6 h-6 text-chart-4" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Batch Custom Fee</h3>
+              <p className="text-sm text-muted-foreground">
+                Apply to <span className="font-semibold text-foreground">{selectedCenterIds.size} vehicles</span>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Custom fee amount (leave empty to reset to default)</label>
+              <div className="relative">
+                <input
+                  autoFocus
+                  type="number"
+                  min={0}
+                  placeholder="Enter fee..."
+                  value={batchFeeInput}
+                  onChange={e => setBatchFeeInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary pr-14"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">MVR</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Note (e.g. Sticker Installed, Special Rate)</label>
+              <input
+                type="text"
+                placeholder="Add a note..."
+                value={batchFeeNote}
+                onChange={e => setBatchFeeNote(e.target.value)}
+                className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div className="bg-surface rounded-xl p-3">
+              <p className="text-[11px] text-muted-foreground">
+                Selected vehicles: {Array.from(selectedCenterIds).map(id => {
+                  const cv = centerVehicles.find((v: any) => v.id === id);
+                  return cv?.plate_number || cv?.center_code || id.slice(0,6);
+                }).join(", ")}
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setBatchFeeModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-surface text-muted-foreground text-sm font-semibold hover:bg-muted/50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={batchFeeSaving}
+                onClick={async () => {
+                  setBatchFeeSaving(true);
+                  const val = batchFeeInput.trim() === "" ? null : parseFloat(batchFeeInput);
+                  const note = batchFeeNote.trim() || null;
+                  for (const cvId of selectedCenterIds) {
+                    await supabase.from("vehicles").update({ custom_center_fee: val, center_fee_note: note } as any).eq("id", cvId);
+                  }
+                  setBatchFeeSaving(false);
+                  setBatchFeeModal(false);
+                  setSelectedCenterIds(new Set());
+                  toast({ title: val != null ? `Custom fee ${val} MVR set for ${selectedCenterIds.size} vehicles` : `Reset ${selectedCenterIds.size} vehicles to default fee` });
+                  fetchCenterData();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {batchFeeSaving ? "Saving..." : "Apply to All"}
               </button>
             </div>
           </div>
