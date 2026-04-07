@@ -1297,7 +1297,16 @@ const AdminBilling = () => {
                                     <button
                                       key={d.id}
                                       onClick={async () => {
+                                        const currentDriver = driver ? `${driver.first_name} ${driver.last_name}` : "none";
+                                        if (!confirm(`Assign ${d.first_name} ${d.last_name} to vehicle ${cv.plate_number || cv.center_code}?\n\nCurrent driver: ${currentDriver}\n\nNote: Existing billing records stay with this vehicle.`)) return;
                                         await supabase.from("vehicles").update({ driver_id: d.id } as any).eq("id", cv.id);
+                                        // Update any pending center payments for this vehicle to reflect new driver
+                                        const { data: pendingPayments } = await supabase.from("center_payments").select("id").eq("vehicle_id", cv.id).eq("status", "pending");
+                                        if (pendingPayments && pendingPayments.length > 0) {
+                                          for (const pp of pendingPayments) {
+                                            await supabase.from("center_payments").update({ driver_id: d.id } as any).eq("id", pp.id);
+                                          }
+                                        }
                                         toast({ title: `Driver assigned: ${d.first_name} ${d.last_name}` });
                                         setAssigningDriverVehicle(null);
                                         setAssignDriverSearch("");
