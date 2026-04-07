@@ -821,7 +821,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         }
       } else {
         // Web: use watchPosition — use shorter maximumAge for responsive map tracking
-        const webMaxAge = Math.min(gpsMaxAge, 3000);
         if (navigator.geolocation) {
           locationWatchRef.current = navigator.geolocation.watchPosition(
             (pos) => {
