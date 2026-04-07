@@ -5578,9 +5578,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 </div>
                               ))}
                               <div className="flex items-center justify-between border-t border-border pt-2">
-                                <span className="text-sm font-semibold text-muted-foreground">Amount due</span>
+                                <span className="text-sm font-semibold text-muted-foreground">Total Fee</span>
                                 <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
                               </div>
+                              {totalFee > 0 && (driverWalletBalance || 0) > 0 && (() => {
+                                const balanceDue = Math.max(0, totalFee - (driverWalletBalance || 0));
+                                return (
+                                  <div className="flex items-center justify-between bg-card rounded-lg px-2.5 py-1.5">
+                                    <span className="text-[10px] text-muted-foreground">After wallet ({(driverWalletBalance || 0).toLocaleString()} MVR)</span>
+                                    <span className={`text-xs font-bold ${balanceDue === 0 ? "text-chart-2" : "text-destructive"}`}>
+                                      {balanceDue === 0 ? "Covered ✓" : `${balanceDue} MVR to pay`}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
 
