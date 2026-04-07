@@ -5278,7 +5278,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               );
                             })()}
 
-                            <div className="grid grid-cols-3 gap-2 mt-3">
+                            {!isApproved && <div className="grid grid-cols-3 gap-2 mt-3">
                               {[
                           { key: "vehicle_registration_" + v.id, field: "registration_url", label: "Registration" },
                           { key: "vehicle_insurance_" + v.id, field: "insurance_url", label: "Insurance" },
@@ -5299,7 +5299,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                   </span>
                                 </button>
                           )}
-                            </div>
+                            </div>}
 
                             {isApproved ? (
                               <div className="mt-3 bg-muted/50 rounded-xl px-4 py-2.5 text-center">
@@ -5347,11 +5347,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         }
 
                             {/* Select button (only for non-selected approved vehicles) */}
-                            {!isSelected && !isPending && !isRejected &&
+                            {!isSelected && isApproved &&
                         <button onClick={() => selectVehicle(v)}
                         className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform">
                                 Use this vehicle
                               </button>}
+                            {isSuspended && !isEditing &&
+                        <p className="text-[11px] text-destructive mt-3 text-center font-medium">⚠ Vehicle unavailable</p>}
                             {isPending && !isEditing &&
                         <p className="text-[11px] text-yellow-600 mt-3 text-center font-medium">⏳ Awaiting admin approval</p>}
                             {isRejected && !isEditing &&
