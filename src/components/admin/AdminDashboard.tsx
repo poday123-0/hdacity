@@ -271,7 +271,7 @@ const AdminDashboard = () => {
     const fetchLocations = async () => {
       const { data } = await supabase
         .from("driver_locations")
-        .select("id, lat, lng, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, image_url, icon, map_icon_url), profiles:driver_id(first_name, last_name, phone_number), vehicles:vehicle_id(plate_number, center_code, make, model, color)")
+        .select("id, lat, lng, heading, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, image_url, icon, map_icon_url), profiles:driver_id(first_name, last_name, phone_number), vehicles:vehicle_id(plate_number, center_code, make, model, color)")
         .eq("is_online", true);
       if (data) {
         // Only show drivers linked to an active vehicle
@@ -289,6 +289,7 @@ const AdminDashboard = () => {
           plate: (d.vehicles as any)?.plate_number || undefined,
           centerCode: (d.vehicles as any)?.center_code || undefined,
           vehicleInfo: d.vehicles ? `${(d.vehicles as any).make || ""} ${(d.vehicles as any).model || ""}`.trim() || undefined : undefined,
+          heading: d.heading,
         })));
       }
     };

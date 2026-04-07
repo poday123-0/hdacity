@@ -56,7 +56,7 @@ const LiveTripTracker = ({ tripId }: Props) => {
       if (data.driver_id) {
         const { data: loc } = await supabase
           .from("driver_locations")
-          .select("id, lat, lng, driver_id, vehicle_type_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
+          .select("id, lat, lng, heading, driver_id, vehicle_type_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
           .eq("driver_id", data.driver_id)
           .single();
         if (loc) {
@@ -68,6 +68,7 @@ const LiveTripTracker = ({ tripId }: Props) => {
             imageUrl: (loc as any).vehicle_types?.map_icon_url || undefined,
             isOnTrip: true,
             driverId: loc.driver_id,
+            heading: (loc as any).heading,
           }]);
         }
       }
@@ -95,7 +96,7 @@ const LiveTripTracker = ({ tripId }: Props) => {
         }, (payload) => {
           const newLoc = payload.new as any;
           setVehicleMarkers(prev => prev.map(v =>
-            v.driverId === data.driver_id ? { ...v, lat: newLoc.lat, lng: newLoc.lng } : v
+            v.driverId === data.driver_id ? { ...v, lat: newLoc.lat, lng: newLoc.lng, heading: newLoc.heading } : v
           ));
         })
         .subscribe();

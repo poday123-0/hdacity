@@ -401,7 +401,7 @@ const Index = () => {
 
     const { data } = await supabase
       .from("driver_locations")
-      .select("id, lat, lng, driver_id, vehicle_type_id, updated_at, vehicle_id")
+      .select("id, lat, lng, heading, driver_id, vehicle_type_id, updated_at, vehicle_id")
       .eq("is_online", true)
       .eq("is_on_trip", false)
       .gte("updated_at", staleThreshold);
@@ -443,6 +443,7 @@ const Index = () => {
         name: vtMap[dl.vehicle_type_id]?.name || "Driver",
         imageUrl: vtMap[dl.vehicle_type_id]?.map_icon_url || undefined,
         vehicleTypeId: dl.vehicle_type_id,
+        heading: dl.heading,
       }));
 
       // Deduplicate by driver_id
