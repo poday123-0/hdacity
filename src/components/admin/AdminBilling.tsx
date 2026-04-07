@@ -1394,6 +1394,9 @@ const AdminBilling = () => {
                             {cv.custom_center_fee != null && (
                               <span className="text-[8px] text-chart-4 font-normal">custom</span>
                             )}
+                            {(cv as any).center_fee_note && (
+                              <span className="text-[9px] text-muted-foreground font-normal italic" title={(cv as any).center_fee_note}>📝 {(cv as any).center_fee_note}</span>
+                            )}
                             <button
                               onClick={async () => {
                                 const newVal = !cv.center_fee_exempt;
