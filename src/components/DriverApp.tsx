@@ -5132,8 +5132,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const vStatus = v.vehicle_status || "approved";
                   const isPending = vStatus === "pending";
                   const isRejected = vStatus === "rejected";
-                  const isSuspended = vStatus === "suspended";
-                  const isApproved = vStatus === "approved";
+                  const hasPendingCenterPayment = !!(v.center_code && centerPaymentStatuses[v.id] !== "approved");
+                  const isSuspended = vStatus === "suspended" || hasPendingCenterPayment;
+                  const isApproved = vStatus === "approved" && !hasPendingCenterPayment;
                   const hasAllVehicleDocs = !!(v.registration_url && v.insurance_url && v.image_url);
                   const isUploadingVehicleDocs = !!uploading && uploading.endsWith(v.id) && uploading.startsWith("vehicle_");
                   const isSubmittingVehicleDocs = !!submittingVehicleDocsById[v.id];
