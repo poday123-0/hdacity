@@ -2555,11 +2555,24 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   const selectVehicle = async (v: any) => {
+    // Block selection if center fee payment is pending
+    const hasPendingCenter = !!(v.center_code && centerPaymentStatuses[v.id] !== "approved");
+    if (hasPendingCenter) {
+      toast({ title: "Vehicle unavailable", description: `Center fee payment is pending for ${v.plate_number}. Go to Billing tab to submit payment.`, variant: "destructive" });
+      return;
+    }
+    if (v.vehicle_status === "suspended") {
+      toast({ title: "Vehicle suspended", description: `${v.plate_number} is suspended. Contact admin for assistance.`, variant: "destructive" });
+      return;
+    }
+    if (v.vehicle_status === "pending") {
+      toast({ title: "Vehicle pending", description: `${v.plate_number} is pending approval.`, variant: "destructive" });
+      return;
+    }
     setSelectedVehicleId(v.id);
     try {localStorage.setItem("hda_last_vehicle_id", v.id);} catch {}
     setVehicleInfo({ make: v.make || "", model: v.model || "", plate_number: v.plate_number, color: v.color || "", vehicle_type_id: v.vehicle_type_id || "" });
     activeVehicleTypeIdRef.current = v.vehicle_type_id || null;
-    // Update driver_locations so the backend also reflects the current vehicle
     if (screen === "online" && userProfile?.id) {
       await supabase.from("driver_locations").update({
         vehicle_id: v.id,
@@ -5211,17 +5224,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       <p className="text-[11px] text-destructive/80 mt-1 ml-5 italic">"{v.rejection_reason}"</p>
                                     )}
                                     <p className="text-[10px] text-muted-foreground mt-1 ml-5">Please contact admin for assistance.</p>
-                                  </div>
-                            }
-                                {hasPendingCenterPayment &&
-                            <div className="mt-2 bg-destructive/5 border border-destructive/15 rounded-lg px-3 py-2">
-                                    <p className="text-[11px] text-destructive font-medium flex items-start gap-1.5">
-                                      <Ban className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                      <span>Suspended — Center fee unpaid (Code {v.center_code})</span>
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground mt-1 ml-5">
-                                      {centerPaymentStatuses[v.id] === "submitted" ? "Payment slip under review." : "Go to Billing tab to submit payment."}
-                                    </p>
                                   </div>
                             }
                                 <p className="text-xs text-muted-foreground mt-0.5">{vType?.name || "Unknown type"}</p>
