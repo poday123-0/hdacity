@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, AlertTriangle, X } from "lucide-react";
+import { Download, AlertTriangle } from "lucide-react";
 
 interface VersionConfig {
   latest_version: string;
@@ -24,37 +24,57 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-// Build-time version fallback — set VITE_APP_VERSION in .env or build command
 const BUILD_VERSION = import.meta.env.VITE_APP_VERSION || "";
 
 async function getAppVersion(): Promise<string | null> {
-  // 1. Check localStorage (set by native bridge or previous detection)
-  const cached = localStorage.getItem("native_app_version");
-  if (cached) return cached;
-
-  // 2. Check meta tag
-  const meta = document.querySelector('meta[name="app-version"]');
-  if (meta?.getAttribute("content")) return meta.getAttribute("content");
-
-  // 3. Try Capacitor App plugin (dynamically imported)
+  // 1. Try Capacitor App plugin first (most reliable)
   try {
     const { App } = await import("@capacitor/app");
     const info = await App.getInfo();
     if (info?.version) {
       localStorage.setItem("native_app_version", info.version);
+      console.log("[VersionCheck] Capacitor version:", info.version);
       return info.version;
     }
-  } catch {}
+  } catch (e) {
+    console.log("[VersionCheck] Capacitor App.getInfo failed:", e);
+  }
+
+  // 2. Check localStorage (set by native bridge or previous detection)
+  const cached = localStorage.getItem("native_app_version");
+  if (cached) {
+    console.log("[VersionCheck] Cached version:", cached);
+    return cached;
+  }
+
+  // 3. Check meta tag
+  const meta = document.querySelector('meta[name="app-version"]');
+  if (meta?.getAttribute("content")) {
+    console.log("[VersionCheck] Meta tag version:", meta.getAttribute("content"));
+    return meta.getAttribute("content");
+  }
 
   // 4. Build-time fallback
-  if (BUILD_VERSION) return BUILD_VERSION;
+  if (BUILD_VERSION) {
+    console.log("[VersionCheck] Build version:", BUILD_VERSION);
+    return BUILD_VERSION;
+  }
 
+  console.log("[VersionCheck] No version detected");
   return null;
+}
+
+function isNativePlatform(): boolean {
+  try {
+    return !!(window as any).Capacitor?.isNativePlatform?.();
+  } catch {
+    return false;
+  }
 }
 
 function getPlatform(): "android" | "ios" | "web" {
   const ua = navigator.userAgent.toLowerCase();
-  if ((window as any).Capacitor?.isNativePlatform?.()) {
+  if (isNativePlatform()) {
     return ua.includes("android") ? "android" : "ios";
   }
   return "web";
@@ -66,45 +86,104 @@ const AppVersionCheck = () => {
   const [isForced, setIsForced] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const check = useCallback(async () => {
+    const platform = getPlatform();
+    console.log("[VersionCheck] Platform:", platform);
+    if (platform === "web") return;
+
+    const appVersion = await getAppVersion();
+    if (!appVersion) {
+      console.log("[VersionCheck] Could not determine app version");
+      return;
+    }
+
+    console.log("[VersionCheck] Current app version:", appVersion);
+
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "app_version_control")
+      .single();
+
+    if (error || !data?.value) {
+      console.log("[VersionCheck] No version config found:", error?.message);
+      return;
+    }
+
+    const vc = data.value as unknown as VersionConfig;
+    console.log("[VersionCheck] Server config:", JSON.stringify(vc));
+    setConfig(vc);
+
+    // Check if current version is below minimum — always forced
+    if (compareVersions(appVersion, vc.min_version) < 0) {
+      console.log("[VersionCheck] Below min_version, forcing update");
+      setIsForced(true);
+      setShowPrompt(true);
+      setDismissed(false);
+    }
+    // Check if there's a newer version available
+    else if (compareVersions(appVersion, vc.latest_version) < 0) {
+      console.log("[VersionCheck] Below latest_version, force_update:", vc.force_update);
+      setIsForced(vc.force_update);
+      setShowPrompt(true);
+      // Only reset dismissed for forced updates
+      if (vc.force_update) setDismissed(false);
+    } else {
+      console.log("[VersionCheck] App is up to date");
+    }
+  }, []);
+
   useEffect(() => {
-    const check = async () => {
-      const platform = getPlatform();
-      if (platform === "web") return; // Only check for native apps
+    // Initial check with a small delay to let Capacitor bridge initialize
+    const timer = setTimeout(check, 1500);
 
-      const appVersion = await getAppVersion();
-      if (!appVersion) return;
-
-      const { data } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "app_version_control")
-        .single();
-
-      if (!data?.value) return;
-
-      const vc = data.value as unknown as VersionConfig;
-      setConfig(vc);
-
-      // Check if current version is below minimum
-      if (compareVersions(appVersion, vc.min_version) < 0) {
-        setIsForced(true);
-        setShowPrompt(true);
-      }
-      // Check if there's a newer version available
-      else if (compareVersions(appVersion, vc.latest_version) < 0) {
-        setIsForced(vc.force_update);
-        setShowPrompt(true);
+    // Re-check when app comes back to foreground
+    let cleanup: (() => void) | undefined;
+    
+    const setupForegroundListener = async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        const listener = await App.addListener("appStateChange", (state) => {
+          if (state.isActive) {
+            console.log("[VersionCheck] App resumed, re-checking...");
+            check();
+          }
+        });
+        cleanup = () => listener.remove();
+      } catch {
+        // Not in native — use visibilitychange as fallback
+        const handler = () => {
+          if (document.visibilityState === "visible") check();
+        };
+        document.addEventListener("visibilitychange", handler);
+        cleanup = () => document.removeEventListener("visibilitychange", handler);
       }
     };
 
-    check();
-  }, []);
+    setupForegroundListener();
+
+    return () => {
+      clearTimeout(timer);
+      cleanup?.();
+    };
+  }, [check]);
 
   const handleUpdate = () => {
     if (!config) return;
     const platform = getPlatform();
     const url = platform === "ios" ? config.app_store_url : config.play_store_url;
-    if (url) window.open(url, "_blank");
+    if (url) {
+      // Use Capacitor Browser plugin or window.open
+      try {
+        import("@capacitor/app").then(() => {
+          window.open(url, "_system");
+        }).catch(() => {
+          window.open(url, "_blank");
+        });
+      } catch {
+        window.open(url, "_blank");
+      }
+    }
   };
 
   if (!showPrompt || !config || dismissed) return null;
