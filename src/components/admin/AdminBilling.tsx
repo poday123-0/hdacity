@@ -479,6 +479,22 @@ const AdminBilling = () => {
             <p className="text-[11px] text-muted-foreground bg-surface rounded-lg px-3 py-2">
               💡 Admin notification phones are managed in <strong>Settings → Admin Notification Recipients</strong>
             </p>
+            {/* Tab toggle */}
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setTab("drivers")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${tab === "drivers" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Drivers</button>
+              <button onClick={() => setTab("payments")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "payments" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+                Payments
+                {pendingPayments > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{pendingPayments}</span>}
+              </button>
+              <button onClick={() => setTab("center")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "center" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+                <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Center Billing</span>
+                {centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                    {centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -560,22 +576,6 @@ const AdminBilling = () => {
       </div>
       )}
 
-      {/* Tab toggle */}
-      <div className="flex gap-2">
-        <button onClick={() => setTab("drivers")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${tab === "drivers" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Drivers</button>
-        <button onClick={() => setTab("payments")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "payments" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
-          Payments
-          {pendingPayments > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{pendingPayments}</span>}
-        </button>
-        <button onClick={() => setTab("center")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "center" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
-          <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Center Billing</span>
-          {centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-              {centerPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}
-            </span>
-          )}
-        </button>
-      </div>
 
       {tab === "drivers" && (
         <>
