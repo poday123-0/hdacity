@@ -1732,6 +1732,90 @@ const AdminBilling = () => {
           </div>
         </div>
       )}
+
+      {/* Custom Center Fee Modal */}
+      {customFeeModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-foreground/50 backdrop-blur-sm" onClick={() => setCustomFeeModal(null)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <DollarSign className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Custom Center Fee</h3>
+              <p className="text-sm text-muted-foreground">
+                Vehicle: <span className="font-semibold text-foreground">{customFeeModal.plate}</span>
+              </p>
+            </div>
+
+            <div className="bg-surface rounded-xl p-3 space-y-1">
+              <p className="text-[11px] text-muted-foreground">Vehicle type default fee</p>
+              <p className="text-lg font-bold text-foreground">{customFeeModal.defaultFee} MVR</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Custom fee amount (leave empty for default)</label>
+              <div className="relative">
+                <input
+                  autoFocus
+                  type="number"
+                  min={0}
+                  placeholder={String(customFeeModal.defaultFee)}
+                  value={customFeeInput}
+                  onChange={e => setCustomFeeInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      const val = customFeeInput.trim() === "" ? null : parseFloat(customFeeInput);
+                      supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                        toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
+                        setCustomFeeModal(null);
+                        fetchCenterData();
+                      });
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary pr-14"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">MVR</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              {customFeeModal.currentCustom != null && (
+                <button
+                  onClick={() => {
+                    supabase.from("vehicles").update({ custom_center_fee: null } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                      toast({ title: "Reset to default vehicle type fee" });
+                      setCustomFeeModal(null);
+                      fetchCenterData();
+                    });
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-destructive/10 text-destructive text-sm font-semibold hover:bg-destructive/20 transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={() => setCustomFeeModal(null)}
+                className="flex-1 py-2.5 rounded-xl bg-surface text-muted-foreground text-sm font-semibold hover:bg-muted/50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const val = customFeeInput.trim() === "" ? null : parseFloat(customFeeInput);
+                  supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                    toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
+                    setCustomFeeModal(null);
+                    fetchCenterData();
+                  });
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
