@@ -1547,8 +1547,8 @@ const DispatchTripForm = ({
                         .in("status", ["approved", "submitted"])
                         .limit(1);
                       if (!centerPayment || centerPayment.length === 0) {
-                        hasPendingPayment = true;
-                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}`, variant: "destructive" });
+                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}. Payment must be cleared first.`, variant: "destructive" });
+                        return;
                       }
                     }
                   }
@@ -1638,7 +1638,8 @@ const DispatchTripForm = ({
                         .in("status", ["approved", "submitted"])
                         .maybeSingle();
                       if (!centerPmt) {
-                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerMonth2}`, variant: "destructive" });
+                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerMonth2}. Payment must be cleared first.`, variant: "destructive" });
+                        return;
                       }
                     }
                   }
