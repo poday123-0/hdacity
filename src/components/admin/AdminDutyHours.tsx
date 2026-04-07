@@ -374,16 +374,24 @@ const AdminDutyHours = () => {
             <Clock className="w-4 h-4 text-primary" />
             Dispatcher Duty Hours
           </h3>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="text-xs bg-surface border border-border rounded-lg px-2 py-1.5 text-foreground"
-          >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="all">All Time</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Add Session
+            </button>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="text-xs bg-surface border border-border rounded-lg px-2 py-1.5 text-foreground"
+            >
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
         </div>
 
         {/* Summary cards with salary */}
