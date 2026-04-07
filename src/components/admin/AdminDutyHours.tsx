@@ -24,6 +24,15 @@ const AdminDutyHours = () => {
   const [editingSalaryId, setEditingSalaryId] = useState<string | null>(null);
   const [editSalaryVal, setEditSalaryVal] = useState("");
 
+  // Add session modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [dispatchers, setDispatchers] = useState<any[]>([]);
+  const [addDispatcherId, setAddDispatcherId] = useState("");
+  const [addDate, setAddDate] = useState("");
+  const [addStartTime, setAddStartTime] = useState("");
+  const [addEndTime, setAddEndTime] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
+
   const fetchSessions = async () => {
     setLoading(true);
     let query = supabase
