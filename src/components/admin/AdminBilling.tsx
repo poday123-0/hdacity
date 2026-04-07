@@ -1795,6 +1795,7 @@ const AdminBilling = () => {
                                     if (!cv.is_active) {
                                       await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
                                     }
+                                    await deductWalletForCenterFee(cv.driver_id, centerFee);
                                     toast({ title: "Payment approved" });
                                     fetchCenterData();
                                   }}
