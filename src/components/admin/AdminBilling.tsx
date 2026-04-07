@@ -28,6 +28,14 @@ const AdminBilling = () => {
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [showBillingSettings, setShowBillingSettings] = useState(false);
   const [driverPayments, setDriverPayments] = useState<any[]>([]);
+  const [appDriverWallets, setAppDriverWallets] = useState<Map<string, number>>(new Map());
+  // App driver SMS state
+  const [appSmsTemplate, setAppSmsTemplate] = useState("Dear {driver_name}, your app fee of {amount} MVR for {month} is due. Wallet: {wallet} MVR. Balance to pay: {balance_due} MVR. Please pay at the earliest. - HDA");
+  const [appSmsTemplateSaving, setAppSmsTemplateSaving] = useState(false);
+  const [showAppSmsModal, setShowAppSmsModal] = useState(false);
+  const [appSmsSending, setAppSmsSending] = useState(false);
+  const [appSmsResult, setAppSmsResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [sendingAppSmsId, setSendingAppSmsId] = useState<string | null>(null);
 
   // Bulk fee-free state
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -213,9 +221,91 @@ const AdminBilling = () => {
     }
     setSendingSingleSmsId(null);
   };
+
+  // App driver SMS functions
+  const saveAppSmsTemplate = async () => {
+    setAppSmsTemplateSaving(true);
+    const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "app_payment_sms_template").maybeSingle();
+    if (existing) {
+      await supabase.from("system_settings").update({ value: appSmsTemplate as any, updated_at: new Date().toISOString() }).eq("key", "app_payment_sms_template");
+    } else {
+      await supabase.from("system_settings").insert({ key: "app_payment_sms_template", value: appSmsTemplate as any, description: "SMS template for app payment reminders" });
+    }
+    setAppSmsTemplateSaving(false);
+    toast({ title: "App SMS template saved" });
+  };
+
+  const sendAppPaymentReminders = async () => {
+    setAppSmsSending(true);
+    setAppSmsResult(null);
+    try {
+      const unpaidDrivers = filteredDrivers.filter(d => {
+        const driverFee = getDriverFee(d.id);
+        return driverFee > 0 && !isCompanyFeeFree(d) && !isFreeUntilActive(d);
+      });
+      if (unpaidDrivers.length === 0) {
+        toast({ title: "No unpaid app drivers found" });
+        setAppSmsSending(false);
+        return;
+      }
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      let sent = 0, failed = 0;
+      for (const d of unpaidDrivers) {
+        if (!d.phone_number) continue;
+        const fee = getDriverFee(d.id);
+        const walletBal = appDriverWallets.get(d.id) || 0;
+        const balanceDue = Math.max(0, fee - walletBal);
+        const msg = appSmsTemplate
+          .replace(/\{driver_name\}/g, `${d.first_name} ${d.last_name}`)
+          .replace(/\{amount\}/g, String(fee))
+          .replace(/\{wallet\}/g, String(walletBal))
+          .replace(/\{balance_due\}/g, String(balanceDue))
+          .replace(/\{month\}/g, formatMonth(currentMonth));
+        const fullPhone = d.phone_number.startsWith("+") ? d.phone_number : `+960${d.phone_number}`;
+        const { error } = await supabase.functions.invoke("send-bulk-sms", {
+          body: { message: msg, target_type: "custom", phone_numbers: [fullPhone], sender_id: "HDA TAXI" },
+        });
+        if (error) failed++; else sent++;
+      }
+      setAppSmsResult({ sent, failed, total: unpaidDrivers.length });
+      toast({ title: `SMS sent: ${sent} success, ${failed} failed out of ${unpaidDrivers.length}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send reminders", description: err.message, variant: "destructive" });
+    }
+    setAppSmsSending(false);
+  };
+
+  const sendSingleAppReminder = async (d: any) => {
+    if (!d.phone_number) { toast({ title: "No phone number", variant: "destructive" }); return; }
+    const fee = getDriverFee(d.id);
+    const walletBal = appDriverWallets.get(d.id) || 0;
+    const balanceDue = Math.max(0, fee - walletBal);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const msg = appSmsTemplate
+      .replace(/\{driver_name\}/g, `${d.first_name} ${d.last_name}`)
+      .replace(/\{amount\}/g, String(fee))
+      .replace(/\{wallet\}/g, String(walletBal))
+      .replace(/\{balance_due\}/g, String(balanceDue))
+      .replace(/\{month\}/g, formatMonth(currentMonth));
+    const fullPhone = d.phone_number.startsWith("+") ? d.phone_number : `+960${d.phone_number}`;
+    setSendingAppSmsId(d.id);
+    try {
+      const { error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: msg, target_type: "custom", phone_numbers: [fullPhone], sender_id: "HDA TAXI" },
+      });
+      if (error) throw error;
+      toast({ title: `Reminder sent to ${d.first_name} ${d.last_name}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
+    }
+    setSendingAppSmsId(null);
+  };
+
   const fetchDrivers = async () => {
     setLoading(true);
-    const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
+    const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes, appWalletsRes, appSmsSettingRes] = await Promise.all([
       (() => {
         let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until, avatar_url, updated_at").ilike("user_type", "%Driver%").order("first_name");
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
@@ -225,11 +315,19 @@ const AdminBilling = () => {
       supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "center_billing_due_day"]),
+      supabase.from("wallets").select("user_id, balance").limit(5000),
+      supabase.from("system_settings").select("value").eq("key", "app_payment_sms_template").maybeSingle(),
     ]);
     setDrivers((driversRes.data as any[]) || []);
     setCompanies((companiesRes.data as any[]) || []);
     setVehicleTypes((vehicleTypesRes.data as any[]) || []);
     setVehicles((vehiclesRes.data as any[]) || []);
+
+    const wMap = new Map<string, number>();
+    for (const w of (appWalletsRes.data as any[]) || []) { wMap.set(w.user_id, w.balance || 0); }
+    setAppDriverWallets(wMap);
+
+    if (appSmsSettingRes.data?.value && typeof appSmsSettingRes.data.value === "string") setAppSmsTemplate(appSmsSettingRes.data.value);
 
     settingsRes.data?.forEach((s: any) => {
       if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 1);
@@ -629,7 +727,42 @@ const AdminBilling = () => {
             <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
               <Users className="w-4 h-4" /> Bulk Free
             </button>
+            <button onClick={() => setShowAppSmsModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-chart-4/10 text-chart-4 rounded-xl text-sm font-semibold hover:bg-chart-4/20 transition-colors">
+              <MessageSquare className="w-4 h-4" /> SMS Reminder
+            </button>
           </div>
+
+          {/* App SMS Reminder Modal */}
+          {showAppSmsModal && (
+            <div className="bg-card border-2 border-chart-4/30 rounded-xl p-5 space-y-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-chart-4" /> App Fee SMS Reminder</h3>
+                <button onClick={() => { setShowAppSmsModal(false); setAppSmsResult(null); }} className="w-7 h-7 rounded-full bg-surface flex items-center justify-center"><X className="w-4 h-4" /></button>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">SMS Template</label>
+                <textarea value={appSmsTemplate} onChange={e => setAppSmsTemplate(e.target.value)} rows={3} className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{wallet}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{balance_due}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={saveAppSmsTemplate} disabled={appSmsTemplateSaving} className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                  {appSmsTemplateSaving ? "Saving..." : "Save Template"}
+                </button>
+                <button onClick={sendAppPaymentReminders} disabled={appSmsSending} className="flex items-center gap-2 px-4 py-2 bg-chart-4 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                  {appSmsSending ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending...</> : <><Send className="w-3 h-3" /> Send to All Unpaid Drivers</>}
+                </button>
+              </div>
+              {appSmsResult && (
+                <div className="bg-surface rounded-lg p-3 text-xs">
+                  <span className="text-chart-2 font-semibold">{appSmsResult.sent} sent</span>
+                  {appSmsResult.failed > 0 && <span className="text-destructive font-semibold ml-2">{appSmsResult.failed} failed</span>}
+                  <span className="text-muted-foreground ml-2">out of {appSmsResult.total}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Drivers billing table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -641,15 +774,17 @@ const AdminBilling = () => {
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Company</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Vehicle Type</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Monthly Fee</th>
+                  <th className="text-left text-xs font-semibold text-chart-2 px-4 py-3">Wallet</th>
+                  <th className="text-left text-xs font-semibold text-destructive px-4 py-3">Balance Due</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : filteredDrivers.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No drivers found</td></tr>
                 ) : (
                   filteredDrivers.map((d) => {
                     const companyFeeFree = isCompanyFeeFree(d);
@@ -688,6 +823,29 @@ const AdminBilling = () => {
                             {temporaryFree && <p className="text-[10px] text-muted-foreground">Free until {new Date(d.fee_free_until).toLocaleDateString()}</p>}
                             {temporaryFree && new Date(d.fee_free_until) < new Date("2099-01-01") && <p className="text-[9px] text-primary">🎁 From map promo / competition</p>}
                           </td>
+                          {(() => {
+                            const walletBal = appDriverWallets.get(d.id) || 0;
+                            const balanceDue = effectivelyFree ? 0 : Math.max(0, driverFee - walletBal);
+                            return (
+                              <>
+                                <td className="px-4 py-3 text-sm font-semibold text-chart-2">{walletBal.toLocaleString()} MVR</td>
+                                <td className="px-4 py-3 text-sm font-bold">
+                                  {effectivelyFree ? (
+                                    <span className="text-muted-foreground">—</span>
+                                  ) : balanceDue === 0 ? (
+                                    <span className="text-chart-2">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                                  ) : walletBal > 0 ? (
+                                    <div>
+                                      <span className="text-destructive">{balanceDue} MVR</span>
+                                      <span className="block text-[9px] font-normal text-muted-foreground">({driverFee} - {walletBal} wallet)</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-destructive">{balanceDue} MVR</span>
+                                  )}
+                                </td>
+                              </>
+                            );
+                          })()}
                           <td className="px-4 py-3">
                             <span className={`text-xs font-medium px-2 py-1 rounded-full ${d.status === "Active" ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
                               {d.status}
@@ -710,13 +868,23 @@ const AdminBilling = () => {
                                   <Calendar className="w-3 h-3" /> Free Period
                                 </button>
                               )}
+                              {!effectivelyFree && (
+                                <button
+                                  onClick={() => sendSingleAppReminder(d)}
+                                  disabled={sendingAppSmsId === d.id}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-chart-4 bg-chart-4/10 hover:bg-chart-4/20 transition-colors disabled:opacity-50"
+                                >
+                                  {sendingAppSmsId === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+                                  SMS
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
                         {/* Expanded billing history */}
                         {expandedDriver === d.id && (
                           <tr>
-                            <td colSpan={7} className="bg-surface/30 px-6 py-4">
+                            <td colSpan={9} className="bg-surface/30 px-6 py-4">
                               <div className="space-y-3">
                                 {/* Vehicle breakdown */}
                                 <div>
