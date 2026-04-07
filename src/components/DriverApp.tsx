@@ -2896,6 +2896,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
           {/* Right: Bell + On/Off toggle */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {notifPermissionDenied && (
+              <button
+                onClick={async () => {
+                  if ("Notification" in window && Notification.permission === "default") {
+                    const result = await Notification.requestPermission();
+                    if (result === "granted") setNotifPermissionDenied(false);
+                  } else {
+                    toast({
+                      title: "Notifications are OFF",
+                      description: "You won't hear trip requests when minimized. Go to browser settings → Site Settings → Notifications → Allow for this site.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="flex items-center gap-1 bg-destructive/15 border border-destructive/30 rounded-full px-2 py-1 active:scale-95 transition-transform"
+              >
+                <BellIcon className="w-3 h-3 text-destructive animate-pulse" />
+                <span className="text-[9px] font-semibold text-destructive">OFF</span>
+              </button>
+            )}
             {!currentTrip &&
             <button
               onClick={() => setShowNotifications(true)}
@@ -5911,30 +5931,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <PWAInstallPrompt />
       <NotificationPermissionPrompt />
       <SuggestPlace userId={userProfile?.id} userType="driver" visible={showSuggestPlace} onClose={() => setShowSuggestPlace(false)} />
-
-      {/* Compact notification off indicator near top */}
-      {screen === "online" && notifPermissionDenied && (
-        <div className="fixed bottom-24 left-3 z-[9990]">
-          <button
-            onClick={async () => {
-              if ("Notification" in window && Notification.permission === "default") {
-                const result = await Notification.requestPermission();
-                if (result === "granted") setNotifPermissionDenied(false);
-              } else {
-                toast({
-                  title: "Notifications are OFF",
-                  description: "You won't hear trip requests when minimized. Go to browser settings → Site Settings → Notifications → Allow for this site.",
-                  variant: "destructive",
-                });
-              }
-            }}
-            className="flex items-center gap-1.5 bg-destructive/15 border border-destructive/30 rounded-full px-2.5 py-1 shadow-sm active:scale-95 transition-transform"
-          >
-            <BellIcon className="w-3.5 h-3.5 text-destructive animate-pulse" />
-            <span className="text-[10px] font-semibold text-destructive">OFF</span>
-          </button>
-        </div>
-      )}
 
       {/* Vehicle blocked banner */}
       {screen === "online" && vehicleBlockedUntil && blockCountdown && (
