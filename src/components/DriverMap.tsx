@@ -352,10 +352,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
   useEffect(() => () => { stopFreeNav(); }, [stopFreeNav]);
 
-  // GPS watcher — own high-accuracy GPS during navigation
+  // GPS watcher — fallback only when no live external position feed is available
   useEffect(() => {
+    const hasExternalPosition = !!externalPosition;
     const needsOwnGps = isNavigating || !!freeNavTarget;
-    if (!needsOwnGps) {
+    if (!needsOwnGps || hasExternalPosition) {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -393,11 +394,11 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       { enableHighAccuracy: true, maximumAge: 2000 }
     );
     return () => { if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; } };
-  }, [isNavigating, freeNavTarget]);
+  }, [isNavigating, freeNavTarget, externalPosition?.lat, externalPosition?.lng]);
 
-  // External position from parent when not navigating
+  // External position from parent — primary source for native/live driver tracking
   useEffect(() => {
-    if (isNavigating || freeNavTarget || !externalPosition) return;
+    if (!externalPosition) return;
     setCurrentPos(prev => {
       if (!prev && mapInstance.current) {
         mapInstance.current.panTo([externalPosition.lat, externalPosition.lng]);
@@ -405,7 +406,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       }
       return externalPosition;
     });
-  }, [isNavigating, externalPosition?.lat, externalPosition?.lng]);
+  }, [externalPosition?.lat, externalPosition?.lng]);
 
   const DEFAULT_MAP_CENTER: [number, number] = [4.1755, 73.5093];
   const initialCenterRef = useRef<[number, number] | null>(null);
