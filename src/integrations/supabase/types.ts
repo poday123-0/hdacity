@@ -1996,6 +1996,7 @@ export type Database = {
           blocked_until: string | null
           center_code: string | null
           center_fee_exempt: boolean
+          center_fee_note: string | null
           color: string | null
           created_at: string
           custom_center_fee: number | null
@@ -2019,6 +2020,7 @@ export type Database = {
           blocked_until?: string | null
           center_code?: string | null
           center_fee_exempt?: boolean
+          center_fee_note?: string | null
           color?: string | null
           created_at?: string
           custom_center_fee?: number | null
@@ -2042,6 +2044,7 @@ export type Database = {
           blocked_until?: string | null
           center_code?: string | null
           center_fee_exempt?: boolean
+          center_fee_note?: string | null
           color?: string | null
           created_at?: string
           custom_center_fee?: number | null

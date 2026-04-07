@@ -44,8 +44,9 @@ const AdminBilling = () => {
   const [centerWallets, setCenterWallets] = useState<Map<string, number>>(new Map());
   const [editingCenterFee, setEditingCenterFee] = useState<string | null>(null);
   const [editingCenterFeeValue, setEditingCenterFeeValue] = useState(0);
-  const [customFeeModal, setCustomFeeModal] = useState<{ vehicleId: string; plate: string; defaultFee: number; currentCustom: number | null } | null>(null);
+  const [customFeeModal, setCustomFeeModal] = useState<{ vehicleId: string; plate: string; defaultFee: number; currentCustom: number | null; currentNote: string | null } | null>(null);
   const [customFeeInput, setCustomFeeInput] = useState("");
+  const [customFeeNote, setCustomFeeNote] = useState("");
   const [savingCenterFee, setSavingCenterFee] = useState(false);
   const [selectedCenterPayment, setSelectedCenterPayment] = useState<any>(null);
   const [editingCenterVehicle, setEditingCenterVehicle] = useState<string | null>(null);
@@ -1381,8 +1382,10 @@ const AdminBilling = () => {
                                   plate: cv.plate_number || cv.center_code,
                                   defaultFee: (vt as any)?.center_fee || 0,
                                   currentCustom: cv.custom_center_fee,
+                                  currentNote: (cv as any).center_fee_note || null,
                                 });
                                 setCustomFeeInput(cv.custom_center_fee != null ? String(cv.custom_center_fee) : "");
+                                setCustomFeeNote((cv as any).center_fee_note || "");
                               }}
                               title={cv.custom_center_fee != null ? `Custom fee (type default: ${(vt as any)?.center_fee || 0})` : "Click to set custom fee"}
                             >
@@ -1390,6 +1393,9 @@ const AdminBilling = () => {
                             </span>
                             {cv.custom_center_fee != null && (
                               <span className="text-[8px] text-chart-4 font-normal">custom</span>
+                            )}
+                            {(cv as any).center_fee_note && (
+                              <span className="text-[9px] text-muted-foreground font-normal italic" title={(cv as any).center_fee_note}>📝 {(cv as any).center_fee_note}</span>
                             )}
                             <button
                               onClick={async () => {
@@ -1766,7 +1772,8 @@ const AdminBilling = () => {
                   onKeyDown={e => {
                     if (e.key === "Enter") {
                       const val = customFeeInput.trim() === "" ? null : parseFloat(customFeeInput);
-                      supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                      const note = customFeeNote.trim() || null;
+                      supabase.from("vehicles").update({ custom_center_fee: val, center_fee_note: note } as any).eq("id", customFeeModal.vehicleId).then(() => {
                         toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
                         setCustomFeeModal(null);
                         fetchCenterData();
@@ -1779,11 +1786,22 @@ const AdminBilling = () => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Note (e.g. Sticker Installed, Special Rate)</label>
+              <input
+                type="text"
+                placeholder="Add a note..."
+                value={customFeeNote}
+                onChange={e => setCustomFeeNote(e.target.value)}
+                className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
             <div className="flex gap-2 pt-1">
               {customFeeModal.currentCustom != null && (
                 <button
                   onClick={() => {
-                    supabase.from("vehicles").update({ custom_center_fee: null } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                    supabase.from("vehicles").update({ custom_center_fee: null, center_fee_note: null } as any).eq("id", customFeeModal.vehicleId).then(() => {
                       toast({ title: "Reset to default vehicle type fee" });
                       setCustomFeeModal(null);
                       fetchCenterData();
@@ -1803,7 +1821,8 @@ const AdminBilling = () => {
               <button
                 onClick={() => {
                   const val = customFeeInput.trim() === "" ? null : parseFloat(customFeeInput);
-                  supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                  const note = customFeeNote.trim() || null;
+                  supabase.from("vehicles").update({ custom_center_fee: val, center_fee_note: note } as any).eq("id", customFeeModal.vehicleId).then(() => {
                     toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
                     setCustomFeeModal(null);
                     fetchCenterData();
