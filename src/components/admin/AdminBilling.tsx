@@ -57,6 +57,10 @@ const AdminBilling = () => {
   const [centerHistoryLoading, setCenterHistoryLoading] = useState(false);
   const [selectedCenterIds, setSelectedCenterIds] = useState<Set<string>>(new Set());
   const [bulkPaying, setBulkPaying] = useState(false);
+  const [batchFeeModal, setBatchFeeModal] = useState(false);
+  const [batchFeeInput, setBatchFeeInput] = useState("");
+  const [batchFeeNote, setBatchFeeNote] = useState("");
+  const [batchFeeSaving, setBatchFeeSaving] = useState(false);
   const [centerPaymentStatusFilter, setCenterPaymentStatusFilter] = useState<"all"|"pending"|"approved">("all");
   // SMS Reminder state
   const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Please pay at the earliest. - HDA");
