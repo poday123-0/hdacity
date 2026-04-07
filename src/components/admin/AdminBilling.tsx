@@ -1223,6 +1223,12 @@ const AdminBilling = () => {
                     >
                       {bulkPaying ? "Processing..." : `Mark ${selectedCenterIds.size} Unpaid`}
                     </button>
+                    <button
+                      onClick={() => { setBatchFeeInput(""); setBatchFeeNote(""); setBatchFeeModal(true); }}
+                      className="px-3 py-1 bg-chart-4/10 text-chart-4 rounded-lg text-xs font-semibold hover:bg-chart-4/20"
+                    >
+                      Set Fee ({selectedCenterIds.size})
+                    </button>
                   </>
                 )}
               </div>
