@@ -489,8 +489,8 @@ const AdminBilling = () => {
       {/* Tab toggle */}
       <div className="flex gap-2">
         <button onClick={() => setTab("drivers")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${tab === "drivers" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Drivers</button>
-        <button onClick={() => setTab("payments")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "payments" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
-          Payments
+          <button onClick={() => setTab("payments")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "payments" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
+            App Payments
           {pendingPayments > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{pendingPayments}</span>}
         </button>
         <button onClick={() => setTab("center")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative ${tab === "center" ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"}`}>
