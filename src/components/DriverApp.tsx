@@ -5216,11 +5216,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               </div>
 
                               <div className="flex items-center gap-1 shrink-0">
+                                {!isApproved && (
                                 <button onClick={() => isEditing ? setEditingVehicleId(null) : startEditVehicle(v)}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => deleteVehicle(v.id)}
+                                )}
+                                <button onClick={() => {
+                                  if (window.confirm(`Are you sure you want to delete ${v.make || ""} ${v.model || ""} (${v.plate_number})?`)) {
+                                    deleteVehicle(v.id);
+                                  }
+                                }}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
