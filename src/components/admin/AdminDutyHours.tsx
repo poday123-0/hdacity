@@ -249,6 +249,44 @@ const AdminDutyHours = () => {
     toast({ title: "Salary rate saved" });
   };
 
+  const addSession = async () => {
+    if (!addDispatcherId || !addDate || !addStartTime) {
+      toast({ title: "Please fill dispatcher, date & start time", variant: "destructive" });
+      return;
+    }
+    setAddSaving(true);
+    const clockIn = new Date(`${addDate}T${addStartTime}`).toISOString();
+    const clockOut = addEndTime ? new Date(`${addDate}T${addEndTime}`).toISOString() : null;
+    const { error } = await supabase.from("dispatch_duty_sessions").insert({
+      dispatcher_id: addDispatcherId,
+      clock_in: clockIn,
+      clock_out: clockOut,
+    } as any);
+    setAddSaving(false);
+    if (error) {
+      toast({ title: "Failed to add session", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Session added" });
+      setShowAddModal(false);
+      setAddDispatcherId("");
+      setAddDate("");
+      setAddStartTime("");
+      setAddEndTime("");
+      fetchSessions();
+    }
+  };
+
+  const deleteSession = async (id: string) => {
+    if (!confirm("Delete this duty session?")) return;
+    const { error } = await supabase.from("dispatch_duty_sessions").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Session deleted" });
+      fetchSessions();
+    }
+  };
+
   // Group sessions by dispatcher
   const dispatcherSummary = sessions.reduce((acc: any, s: any) => {
     const id = s.dispatcher_id;
