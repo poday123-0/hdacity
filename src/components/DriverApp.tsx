@@ -820,11 +820,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Native: rely solely on background geolocation plugin — much more battery efficient
         // It uses the OS-level distance filter and doesn't keep GPS radio on constantly
         startBackgroundLocation(
-          (lat, lng) => {
+          (lat, lng, heading) => {
             setGpsEnabled(true);
             setDriverLat(lat);
             setDriverLng(lng);
-            upsertLocation(lat, lng);
+            upsertLocation(lat, lng, false, heading);
           },
           { distanceFilter: MIN_MOVE_METERS }
         );
@@ -835,7 +835,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(true);
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
-              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+              const h = pos.coords.heading;
+              upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             () => {},
             { enableHighAccuracy: false, timeout: 10000, maximumAge: 15000 }
@@ -849,7 +850,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(true);
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
-              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+              const h = pos.coords.heading;
+              upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             (err) => {
               console.warn("GPS unavailable:", err.message);
