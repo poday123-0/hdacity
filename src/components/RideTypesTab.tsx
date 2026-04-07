@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Car, Clock } from "lucide-react";
+import { Car, Clock, CheckCircle } from "lucide-react";
 
 interface RideTypesTabProps {
   userId?: string;
@@ -33,10 +33,28 @@ const RideTypesTab = ({ userId, vehicleTypes, vehicles = [] }: RideTypesTabProps
 
   useEffect(() => { fetchRideTypes(); }, [fetchRideTypes]);
 
+  // Merge legacy entries (no vehicle_id) into each vehicle's entries
+  const getEntriesForVehicle = (vehicleId: string): RideTypeEntry[] => {
+    const vehicleEntries = vehicleRideTypes[vehicleId] || [];
+    const legacyEntries = vehicleRideTypes["_legacy"] || [];
+    // Merge legacy entries that aren't already in vehicle-specific entries
+    const merged = [...vehicleEntries];
+    legacyEntries.forEach(le => {
+      if (!merged.find(e => e.vehicle_type_id === le.vehicle_type_id)) {
+        merged.push(le);
+      }
+    });
+    return merged;
+  };
+
+  const hasAnyApproved = (vehicleId: string): boolean => {
+    return getEntriesForVehicle(vehicleId).some(e => e.status === "approved");
+  };
+
   const toggle = async (vehicleId: string, vtId: string) => {
     if (!userId) return;
-    const current = vehicleRideTypes[vehicleId] || [];
-    const existing = current.find(e => e.vehicle_type_id === vtId);
+    const entries = getEntriesForVehicle(vehicleId);
+    const existing = entries.find(e => e.vehicle_type_id === vtId);
     if (existing) {
       // Only allow removing if it's pending (not yet approved)
       if (existing.status === "pending") {
@@ -85,8 +103,9 @@ const RideTypesTab = ({ userId, vehicleTypes, vehicles = [] }: RideTypesTabProps
       </div>
 
       {activeVehicles.map((vehicle) => {
-        const entries = vehicleRideTypes[vehicle.id] || [];
+        const entries = getEntriesForVehicle(vehicle.id);
         const vTypeName = vehicleTypes.find(vt => vt.id === vehicle.vehicle_type_id)?.name;
+        const vehicleHasApproved = hasAnyApproved(vehicle.id);
 
         return (
           <div key={vehicle.id} className="bg-surface rounded-xl p-3 space-y-2 border border-border">
@@ -109,15 +128,17 @@ const RideTypesTab = ({ userId, vehicleTypes, vehicles = [] }: RideTypesTabProps
                 return (
                   <button
                     key={vt.id}
-                    onClick={() => toggle(vehicle.id, vt.id)}
+                    onClick={() => !isApproved && toggle(vehicle.id, vt.id)}
+                    disabled={isApproved}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 ${
                       isApproved
-                        ? "bg-primary text-primary-foreground cursor-default"
+                        ? "bg-primary text-primary-foreground cursor-default opacity-90"
                         : isPending
                         ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30"
                         : "bg-card text-muted-foreground border border-border"
                     }`}
                   >
+                    {isApproved && <CheckCircle className="w-3 h-3" />}
                     {isPending && <Clock className="w-3 h-3" />}
                     {vt.name}
                     {isPending && <span className="text-[9px]">(pending)</span>}
@@ -125,8 +146,11 @@ const RideTypesTab = ({ userId, vehicleTypes, vehicles = [] }: RideTypesTabProps
                 );
               })}
             </div>
-            {entries.filter(e => e.status === "approved").length === 0 && (
+            {!vehicleHasApproved && (
               <p className="text-[10px] text-yellow-600">⚠ No approved ride types — this vehicle won't receive trip requests</p>
+            )}
+            {vehicleHasApproved && (
+              <p className="text-[10px] text-muted-foreground">Approved types are locked. Contact admin to change.</p>
             )}
           </div>
         );
