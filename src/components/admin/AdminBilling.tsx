@@ -1027,7 +1027,11 @@ const AdminBilling = () => {
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-xs text-muted-foreground">Expected Revenue</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">
-                {centerMonthPayments.reduce((sum, cp) => sum + (cp.amount || 0), 0).toLocaleString()} MVR
+                {centerVehicles.reduce((sum, cv) => {
+                  if (cv.center_fee_exempt) return sum;
+                  const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
+                  return sum + ((vt as any)?.center_fee || 0);
+                }, 0).toLocaleString()} MVR
               </p>
             </div>
             <div className="bg-card border border-border rounded-xl p-4">
