@@ -1,4 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+
+const formatMonth = (m: string) => {
+  if (!m) return m;
+  const [y, mo] = m.split("-");
+  const d = new Date(Number(y), Number(mo) - 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+};
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
