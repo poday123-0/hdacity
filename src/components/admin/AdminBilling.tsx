@@ -1177,7 +1177,16 @@ const AdminBilling = () => {
                         for (const cvId of selectedCenterIds) {
                           const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
                           if (existing) {
-                            await supabase.from("center_payments").delete().eq("id", existing.id);
+                            await supabase.from("center_payments").update({ status: "pending", approved_at: null, approved_by: null, submitted_at: null, slip_url: null, updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                          }
+                          // Deactivate vehicle when marked unpaid
+                          const cv = centerVehicles.find((v: any) => v.id === cvId);
+                          if (cv && cv.is_active) {
+                            const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
+                            const fee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
+                            if (fee > 0) {
+                              await supabase.from("vehicles").update({ is_active: false } as any).eq("id", cvId);
+                            }
                           }
                         }
                         setBulkPaying(false);
