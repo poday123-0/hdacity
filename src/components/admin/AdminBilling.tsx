@@ -53,6 +53,7 @@ const AdminBilling = () => {
   const [centerHistoryLoading, setCenterHistoryLoading] = useState(false);
   const [selectedCenterIds, setSelectedCenterIds] = useState<Set<string>>(new Set());
   const [bulkPaying, setBulkPaying] = useState(false);
+  const [centerPaymentStatusFilter, setCenterPaymentStatusFilter] = useState<"all"|"pending"|"approved">("all");
   // SMS Reminder state
   const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Please pay at the earliest. - HDA");
   const [smsTemplateLoading, setSmsTemplateLoading] = useState(false);
@@ -1037,11 +1038,17 @@ const AdminBilling = () => {
                 {centerMonthPayments.filter(cp => cp.status === "approved").reduce((sum, cp) => sum + (cp.amount || 0), 0).toLocaleString()} MVR
               </p>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div
+              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "pending" ? "border-chart-4 ring-1 ring-chart-4" : "border-border hover:border-chart-4/50"}`}
+              onClick={() => setCenterPaymentStatusFilter(f => f === "pending" ? "all" : "pending")}
+            >
               <p className="text-xs text-muted-foreground">Pending</p>
               <p className="text-2xl font-bold text-chart-4 mt-0.5">{centerMonthPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}</p>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div
+              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "approved" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+              onClick={() => setCenterPaymentStatusFilter(f => f === "approved" ? "all" : "approved")}
+            >
               <p className="text-xs text-muted-foreground">Approved</p>
               <p className="text-2xl font-bold text-primary mt-0.5">{centerMonthPayments.filter(cp => cp.status === "approved").length}</p>
             </div>
@@ -1233,6 +1240,15 @@ const AdminBilling = () => {
                 </thead>
                 <tbody>
                   {centerVehicles.filter(cv => {
+                    // Payment status filter
+                    if (centerPaymentStatusFilter !== "all") {
+                      const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+                      if (centerPaymentStatusFilter === "pending") {
+                        if (mp && mp.status === "approved") return false;
+                      } else if (centerPaymentStatusFilter === "approved") {
+                        if (!mp || mp.status !== "approved") return false;
+                      }
+                    }
                     if (!centerSearch) return true;
                     const s = centerSearch.toLowerCase();
                     const driver = drivers.find(d => d.id === cv.driver_id);
