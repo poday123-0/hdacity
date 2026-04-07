@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
       // Get all center-code vehicles
       const { data: centerVehicles } = await supabase
         .from("vehicles")
-        .select("id, center_code, vehicle_type_id, is_active, center_fee_exempt")
+        .select("id, center_code, vehicle_type_id, is_active, center_fee_exempt, custom_center_fee")
         .not("center_code", "is", null)
         .eq("is_active", true);
 
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
 
         for (const cv of centerVehicles) {
           if ((cv as any).center_fee_exempt) continue; // Exempt from center fee
-          const fee = centerFeeMap.get(cv.vehicle_type_id) || 0;
+          const fee = (cv as any).custom_center_fee != null ? (cv as any).custom_center_fee : (centerFeeMap.get(cv.vehicle_type_id) || 0);
           if (fee === 0) continue; // No center fee
           if (paidCenterVehicleIds.has(cv.id)) continue; // Already paid
           if (pendingCenterVehicleIds.has(cv.id)) continue; // Payment pending review
