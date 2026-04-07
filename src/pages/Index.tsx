@@ -1338,10 +1338,6 @@ const Index = () => {
           <div className="fixed top-16 left-3 right-3 z-[450] pointer-events-auto max-w-lg mx-auto capacitor-safe-top">
             <AdBanner audience="passengers" />
           </div>
-*** Update File: src/pages/Index.tsx
-@@
-          <div className="fixed top-16 left-3 right-3 z-[450] pointer-events-auto max-w-lg mx-auto capacitor-safe-top">
-            <AdBanner audience="passengers" />
         )}
       </div>
 
