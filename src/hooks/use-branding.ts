@@ -103,7 +103,7 @@ export const useBranding = () => {
   // Apply dynamic PWA manifest so install icon/name reflect admin branding immediately
   useEffect(() => {
     const iconUrl = branding.pwaAppIconUrl || branding.logoUrl;
-    const appName = branding.appName || "HDA APP";
+    const appName = branding.appName || "Hda App";
 
     const manifest = {
       id: "/",

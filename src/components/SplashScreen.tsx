@@ -10,7 +10,7 @@ interface SplashScreenProps {
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [phase, setPhase] = useState<"logo" | "exit">("logo");
   const { appName, _loaded } = useBranding();
-  const displayName = appName || "HDA APP";
+  const displayName = appName || "Hda App";
 
   // Only start the exit timer once branding has loaded
   useEffect(() => {
