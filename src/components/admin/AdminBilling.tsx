@@ -151,7 +151,7 @@ const AdminBilling = () => {
           .replace(/\{center_code\}/g, cv.center_code || "")
           .replace(/\{wallet\}/g, String(walletBal))
           .replace(/\{balance_due\}/g, String(balanceDue))
-          .replace(/\{month\}/g, centerMonth);
+          .replace(/\{month\}/g, formatMonth(centerMonth));
 
         if (!driverMessages.has(driver.id)) {
           driverMessages.set(driver.id, { phone: driver.phone_number, cc: "960", messages: [] });
@@ -209,7 +209,7 @@ const AdminBilling = () => {
       .replace(/\{center_code\}/g, cv.center_code || "")
       .replace(/\{wallet\}/g, String(walletBal))
       .replace(/\{balance_due\}/g, String(balanceDue))
-      .replace(/\{month\}/g, centerMonth);
+      .replace(/\{month\}/g, formatMonth(centerMonth));
 
     const fullPhone = driver.phone_number.startsWith("+") ? driver.phone_number : `+960${driver.phone_number}`;
 
@@ -1330,7 +1330,7 @@ const AdminBilling = () => {
                       .replace(/\{center_code\}/g, "5")
                       .replace(/\{wallet\}/g, "100")
                       .replace(/\{balance_due\}/g, "500")
-                      .replace(/\{month\}/g, centerMonth)}
+                      .replace(/\{month\}/g, formatMonth(centerMonth))}
                   </p>
                 </div>
               </div>
