@@ -1286,6 +1286,7 @@ const AdminBilling = () => {
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Fee</th>
+                    <th className="text-left text-[10px] font-semibold text-destructive px-3 py-2">Balance Due</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">App Fee</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">{formatMonth(centerMonth)} Status</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Actions</th>
