@@ -1364,22 +1364,24 @@ const AdminBilling = () => {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 group cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }}>
-                              {driver?.avatar_url ? (
-                                <img src={driver.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                              ) : (
-                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                                  {driver ? `${driver.first_name?.[0] || ""}${driver.last_name?.[0] || ""}` : "?"}
-                                </div>
-                              )}
-                              <div>
-                                {driver ? `${driver.first_name} ${driver.last_name}` : <span className="text-muted-foreground italic">No driver</span>}
+                            <div className="flex items-center gap-2 group">
+                              <div className="cursor-pointer" onClick={() => driver && openDriverCard(driver.id)}>
+                                {driver?.avatar_url ? (
+                                  <img src={driver.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 hover:ring-2 hover:ring-primary transition-all" />
+                                ) : (
+                                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 hover:ring-2 hover:ring-primary transition-all">
+                                    {driver ? `${driver.first_name?.[0] || ""}${driver.last_name?.[0] || ""}` : "?"}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="cursor-pointer" onClick={() => driver && openDriverCard(driver.id)}>
+                                {driver ? <span className="hover:text-primary transition-colors">{driver.first_name} {driver.last_name}</span> : <span className="text-muted-foreground italic">No driver</span>}
                                 <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
                                 {driver?.updated_at && (
                                   <div className="text-[9px] text-muted-foreground/60">Updated: {new Date(driver.updated_at).toLocaleDateString()}</div>
                                 )}
                               </div>
-                              <UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                              <UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }} title="Reassign driver" />
                             </div>
                           )}
                         </td>
