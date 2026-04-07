@@ -226,6 +226,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [uploadTarget, setUploadTarget] = useState<string>("");
   const [profileStatus, setProfileStatus] = useState<string>("Active");
   const [profileRejectionReason, setProfileRejectionReason] = useState<string>("");
+  const [driverFeeFreeUntil, setDriverFeeFreeUntil] = useState<string | null>((userProfile as any)?.fee_free_until || null);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [adminBankInfo, setAdminBankInfo] = useState<any>(null);
   const [verificationIssues, setVerificationIssues] = useState<string[]>([]);
@@ -1978,7 +1979,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
 
       if (userProfile?.id) {
-        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason").eq("id", userProfile.id).single();
+        const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason, fee_free_until").eq("id", userProfile.id).single();
         // Use admin default if driver hasn't customized (still at DB default of 10)
         const dbDefault = 10;
         const driverRadius = data?.trip_radius_km;
@@ -1994,6 +1995,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         setTaxiPermitBackUrl((data as any)?.taxi_permit_back_url || null);
         setProfileStatus(data?.status || "Pending");
         setProfileRejectionReason((data as any)?.rejection_reason || "");
+        setDriverFeeFreeUntil((data as any)?.fee_free_until || null);
         // Check if driver is on billing hold
         if (data?.status === "Billing_hold") {
           setBillingHold(true);
@@ -5398,7 +5400,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {/* Monthly fee info — based on vehicle type */}
                     {(() => {
                       const isFreeCompany = companyInfo?.fee_free;
-                      const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
+                      const effectiveFeeFreeUntil = driverFeeFreeUntil || (userProfile as any)?.fee_free_until || null;
+                      const isFreePeriod = effectiveFeeFreeUntil && new Date(effectiveFeeFreeUntil) > new Date();
                       const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
                       const vehicleFees = appFeeVehicles.map((v: any) => {
                         const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
@@ -5419,7 +5422,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 <span className="text-lg font-bold text-primary">FREE{isFreeCompany ? " (Company)" : ""}</span>
                               </div>
                               {isFreePeriod && !isFreeCompany && (
-                                <p className="text-xs text-primary">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
+                                <p className="text-xs text-primary">Free until {new Date(effectiveFeeFreeUntil).toLocaleDateString()}</p>
                               )}
                             </div>
                           ) : (
