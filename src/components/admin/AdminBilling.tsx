@@ -199,12 +199,16 @@ const AdminBilling = () => {
       return;
     }
     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-    const fee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
+    const fee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
+    const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+    const balanceDue = Math.max(0, fee - walletBal);
     const msg = smsTemplate
       .replace(/\{driver_name\}/g, `${driver.first_name} ${driver.last_name}`)
       .replace(/\{amount\}/g, String(fee))
       .replace(/\{plate\}/g, cv.plate_number || "")
       .replace(/\{center_code\}/g, cv.center_code || "")
+      .replace(/\{wallet\}/g, String(walletBal))
+      .replace(/\{balance_due\}/g, String(balanceDue))
       .replace(/\{month\}/g, centerMonth);
 
     const fullPhone = driver.phone_number.startsWith("+") ? driver.phone_number : `+960${driver.phone_number}`;
@@ -1324,6 +1328,8 @@ const AdminBilling = () => {
                       .replace(/\{amount\}/g, "600")
                       .replace(/\{plate\}/g, "P1234")
                       .replace(/\{center_code\}/g, "5")
+                      .replace(/\{wallet\}/g, "100")
+                      .replace(/\{balance_due\}/g, "500")
                       .replace(/\{month\}/g, centerMonth)}
                   </p>
                 </div>
