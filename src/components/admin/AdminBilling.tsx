@@ -1400,10 +1400,12 @@ const AdminBilling = () => {
                           if (existing?.status === "approved") continue;
                           const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
                           const fee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
+                          const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                          const balanceDue = Math.max(0, fee - walletBal);
                           if (existing) {
-                            await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                            await supabase.from("center_payments").update({ status: "approved", amount: balanceDue, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
                           } else {
-                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: fee, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
+                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: balanceDue, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
                           }
                           await deductWalletForCenterFee(cv.driver_id, fee);
                           if (!cv.is_active) {
@@ -1762,13 +1764,17 @@ const AdminBilling = () => {
                               <button
                                 onClick={async () => {
                                   if (monthPayment) {
-                                    await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    const wBalUpd = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                                    const bDueUpd = Math.max(0, centerFee - wBalUpd);
+                                    await supabase.from("center_payments").update({ status: "approved", amount: bDueUpd, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
                                   } else {
+                                    const wBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                                    const bDue = Math.max(0, centerFee - wBal);
                                     await supabase.from("center_payments").insert({
                                       driver_id: cv.driver_id,
                                       vehicle_id: cv.id,
                                       vehicle_type_id: cv.vehicle_type_id,
-                                      amount: centerFee,
+                                      amount: bDue,
                                       payment_month: centerMonth,
                                       status: "approved",
                                       approved_at: new Date().toISOString(),
@@ -1791,7 +1797,9 @@ const AdminBilling = () => {
                               <>
                                 <button
                                   onClick={async () => {
-                                    await supabase.from("center_payments").update({ status: "approved", approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    const wBalApp = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                                    const bDueApp = Math.max(0, centerFee - wBalApp);
+                                    await supabase.from("center_payments").update({ status: "approved", amount: bDueApp, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
                                     if (!cv.is_active) {
                                       await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
                                     }
