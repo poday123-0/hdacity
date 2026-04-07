@@ -35,7 +35,7 @@ const LiveMap = () => {
     const fetchLocations = async () => {
       const { data } = await supabase
         .from("driver_locations")
-        .select("id, lat, lng, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
+        .select("id, lat, lng, heading, driver_id, is_on_trip, vehicle_type_id, vehicle_id, vehicle_types:vehicle_type_id(name, map_icon_url)")
         .eq("is_online", true);
 
       // Filter out drivers with inactive vehicles
@@ -61,6 +61,7 @@ const LiveMap = () => {
           imageUrl: d.vehicle_types?.map_icon_url || undefined,
           isOnTrip: d.is_on_trip,
           driverId: d.driver_id,
+          heading: d.heading,
         })));
         setLastUpdated(new Date());
       }
@@ -178,7 +179,7 @@ const LiveMap = () => {
         }, (payload) => {
           const newLoc = payload.new as any;
           setVehicleMarkers(prev => prev.map(v => 
-            v.driverId === trip.driver_id ? { ...v, lat: newLoc.lat, lng: newLoc.lng } : v
+            v.driverId === trip.driver_id ? { ...v, lat: newLoc.lat, lng: newLoc.lng, heading: newLoc.heading } : v
           ));
         })
         .subscribe();
