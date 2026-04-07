@@ -659,6 +659,13 @@ const AdminBilling = () => {
                           <td className="px-4 py-3 text-sm font-medium text-foreground">
                             <div className="flex items-center gap-2">
                               <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${expandedDriver === d.id ? "rotate-90" : ""}`} />
+                              {d.avatar_url ? (
+                                <img src={d.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                                  {d.first_name?.[0]}{d.last_name?.[0]}
+                                </div>
+                              )}
                               {d.first_name} {d.last_name}
                             </div>
                           </td>
