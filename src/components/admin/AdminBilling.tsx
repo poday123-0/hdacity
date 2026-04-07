@@ -133,12 +133,16 @@ const AdminBilling = () => {
         const driver = drivers.find(d => d.id === cv.driver_id);
         if (!driver?.phone_number) continue;
         const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-        const fee = (vt as any)?.center_fee || 0;
+        const fee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
+        const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+        const balanceDue = Math.max(0, fee - walletBal);
         const msg = smsTemplate
           .replace(/\{driver_name\}/g, `${driver.first_name} ${driver.last_name}`)
           .replace(/\{amount\}/g, String(fee))
           .replace(/\{plate\}/g, cv.plate_number || "")
           .replace(/\{center_code\}/g, cv.center_code || "")
+          .replace(/\{wallet\}/g, String(walletBal))
+          .replace(/\{balance_due\}/g, String(balanceDue))
           .replace(/\{month\}/g, centerMonth);
 
         if (!driverMessages.has(driver.id)) {
