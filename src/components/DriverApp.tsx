@@ -2042,11 +2042,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (!banks || banks.length === 0) issues.push("At least one bank account required");
         setVerificationIssues(issues);
 
-        // Fetch all driver vehicles
-        const { data: allVehicles } = await supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at");
-        setDriverVehicles(allVehicles || []);
+        // Fetch all driver vehicles (include inactive center-code vehicles so drivers can see pending billing)
+        const [activeVehRes, inactiveCenterVehRes] = await Promise.all([
+          supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at"),
+          supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", false).not("center_code", "is", null).order("created_at"),
+        ]);
+        const activeVehicles = activeVehRes.data || [];
+        const inactiveCenterVehicles = (inactiveCenterVehRes.data || []).filter((v: any) => !activeVehicles.some((a: any) => a.id === v.id));
+        const allVehicles = [...activeVehicles, ...inactiveCenterVehicles];
+        setDriverVehicles(allVehicles);
         // Fetch center payment statuses for current month
-        const centerVehicleIds = (allVehicles || []).filter((v: any) => v.center_code).map((v: any) => v.id);
+        const centerVehicleIds = allVehicles.filter((v: any) => v.center_code).map((v: any) => v.id);
         if (centerVehicleIds.length > 0) {
           const curMonth = new Date().toISOString().slice(0, 7);
           const { data: cpData } = await supabase.from("center_payments").select("vehicle_id, status").eq("payment_month", curMonth).in("vehicle_id", centerVehicleIds);
