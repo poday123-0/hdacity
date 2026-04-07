@@ -70,7 +70,7 @@ const AdminBilling = () => {
   const [batchFeeSaving, setBatchFeeSaving] = useState(false);
   const [centerPaymentStatusFilter, setCenterPaymentStatusFilter] = useState<"all"|"pending"|"approved">("all");
   // SMS Reminder state
-  const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Please pay at the earliest. - HDA");
+  const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Wallet balance: {wallet} MVR. Amount to pay: {balance_due} MVR. Please pay at the earliest. - HDA");
   const [smsTemplateLoading, setSmsTemplateLoading] = useState(false);
   const [smsTemplateSaving, setSmsTemplateSaving] = useState(false);
   const [showSmsReminderModal, setShowSmsReminderModal] = useState(false);
@@ -133,12 +133,16 @@ const AdminBilling = () => {
         const driver = drivers.find(d => d.id === cv.driver_id);
         if (!driver?.phone_number) continue;
         const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-        const fee = (vt as any)?.center_fee || 0;
+        const fee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
+        const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+        const balanceDue = Math.max(0, fee - walletBal);
         const msg = smsTemplate
           .replace(/\{driver_name\}/g, `${driver.first_name} ${driver.last_name}`)
           .replace(/\{amount\}/g, String(fee))
           .replace(/\{plate\}/g, cv.plate_number || "")
           .replace(/\{center_code\}/g, cv.center_code || "")
+          .replace(/\{wallet\}/g, String(walletBal))
+          .replace(/\{balance_due\}/g, String(balanceDue))
           .replace(/\{month\}/g, centerMonth);
 
         if (!driverMessages.has(driver.id)) {
@@ -1123,7 +1127,7 @@ const AdminBilling = () => {
             {showSmsTemplateEditor && (
               <div className="space-y-2 border-t border-border pt-3">
                 <p className="text-[11px] text-muted-foreground">
-                  Available placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{plate}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{center_code}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code>
+                  Available placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{plate}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{center_code}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{wallet}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{balance_due}"}</code>
                 </p>
                 <textarea
                   value={smsTemplate}
@@ -1282,6 +1286,7 @@ const AdminBilling = () => {
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Code</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Fee</th>
+                    <th className="text-left text-[10px] font-semibold text-destructive px-3 py-2">Balance Due</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">App Fee</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">{formatMonth(centerMonth)} Status</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Actions</th>
@@ -1456,6 +1461,24 @@ const AdminBilling = () => {
                             </button>
                           </div>
                         </td>
+                        {(() => {
+                          const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                          const balanceDue = Math.max(0, centerFee - walletBal);
+                          const isPaid = monthPayment?.status === "approved";
+                          return (
+                            <td className="px-3 py-2 text-xs font-bold">
+                              {isPaid ? (
+                                <span className="text-emerald-500">Paid</span>
+                              ) : centerFee === 0 ? (
+                                <span className="text-muted-foreground">—</span>
+                              ) : balanceDue === 0 ? (
+                                <span className="text-emerald-500">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                              ) : (
+                                <span className="text-destructive">{balanceDue} MVR</span>
+                              )}
+                            </td>
+                          );
+                        })()}
                         <td className="px-3 py-2">
                           <button
                             onClick={async () => {

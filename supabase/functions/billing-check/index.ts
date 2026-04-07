@@ -106,6 +106,14 @@ Deno.serve(async (req) => {
     let smsCount = 0;
     let deactivatedCount = 0;
 
+    // Fetch wallet balances for drivers
+    const driverIds = drivers.map(d => d.id);
+    const { data: walletData } = await supabase
+      .from("wallets")
+      .select("user_id, balance")
+      .in("user_id", driverIds);
+    const walletMap = new Map((walletData || []).map(w => [w.user_id, Number(w.balance) || 0]));
+
     // Send SMS reminders 24hrs before due date
     if (isReminderDay) {
       const msgOwlKey = Deno.env.get("MSGOWL_API_KEY");
@@ -115,8 +123,10 @@ Deno.serve(async (req) => {
           if (pendingDriverIds.has(driver.id)) continue;
 
           const totalFee = driverFeeMap.get(driver.id) || 0;
+          const walletBal = walletMap.get(driver.id) || 0;
+          const balanceDue = Math.max(0, totalFee - walletBal);
           const phone = `${driver.country_code || "960"}${driver.phone_number}`;
-          const message = `Hi ${driver.first_name}, your monthly fee of ${totalFee} MVR is due tomorrow. Please pay to continue driving. - HDA`;
+          const message = `Hi ${driver.first_name}, your monthly fee of ${totalFee} MVR is due tomorrow. Wallet: ${walletBal} MVR. Balance to pay: ${balanceDue} MVR. Please pay to continue driving. - HDA`;
 
           try {
             await fetch("https://rest.msgowl.com/messages", {

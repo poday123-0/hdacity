@@ -5612,7 +5612,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <div className="space-y-2">
                           {driverVehicles.filter((v: any) => v.center_code).map((v: any) => {
                             const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                            const centerFee = (vt as any)?.center_fee || (vt as any)?.monthly_fee || 0;
+                            const centerFee = v.center_fee_exempt ? 0 : (v.custom_center_fee != null ? v.custom_center_fee : ((vt as any)?.center_fee || (vt as any)?.monthly_fee || 0));
+                            const balanceDue = Math.max(0, centerFee - (driverWalletBalance || 0));
                             return (
                               <div key={v.id} className={`bg-card rounded-lg p-2.5 space-y-1.5 ${!v.is_active ? "border border-destructive/30" : ""}`}>
                                 <div className="flex items-center justify-between">
@@ -5626,6 +5627,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                    <span className="text-xs text-muted-foreground">{vt?.name || "Vehicle"}</span>
                                    <span className="text-sm font-bold text-foreground">{centerFee} MVR/mo</span>
                                  </div>
+                                 {centerFee > 0 && (driverWalletBalance || 0) > 0 && (
+                                   <div className="flex items-center justify-between bg-surface rounded-lg px-2 py-1">
+                                     <span className="text-[10px] text-muted-foreground">After wallet ({(driverWalletBalance || 0).toLocaleString()} MVR)</span>
+                                     <span className={`text-xs font-bold ${balanceDue === 0 ? "text-emerald-500" : "text-destructive"}`}>
+                                       {balanceDue === 0 ? "Covered ✓" : `${balanceDue} MVR to pay`}
+                                     </span>
+                                   </div>
+                                 )}
                                  {v.pays_app_fee && (
                                    <p className="text-[10px] text-muted-foreground">+ App fee also applies</p>
                                  )}
