@@ -1434,6 +1434,16 @@ const AdminBilling = () => {
                             {monthPayment?.status === "approved" && (
                               <span className="text-[10px] text-primary font-semibold">✓ Paid</span>
                             )}
+                            {(!monthPayment || (monthPayment.status !== "approved" && monthPayment.status !== "completed")) && !cv.center_fee_exempt && (
+                              <button
+                                onClick={() => sendSingleReminder(cv)}
+                                disabled={sendingSingleSmsId === cv.id}
+                                className="px-2 py-1 bg-chart-4/10 text-chart-4 rounded-lg text-[10px] font-semibold hover:bg-chart-4/20 disabled:opacity-40"
+                                title="Send payment reminder SMS"
+                              >
+                                {sendingSingleSmsId === cv.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
