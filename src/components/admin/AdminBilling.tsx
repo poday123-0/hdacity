@@ -1226,12 +1226,12 @@ const AdminBilling = () => {
                     <button
                       disabled={bulkPaying}
                       onClick={async () => {
-                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as unpaid for ${formatMonth(centerMonth)}?`)) return;
+                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as unpaid for ${formatMonth(centerMonth)}? This will also delete payment records.`)) return;
                         setBulkPaying(true);
                         for (const cvId of selectedCenterIds) {
                           const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
                           if (existing) {
-                            await supabase.from("center_payments").update({ status: "pending", approved_at: null, approved_by: null, submitted_at: null, slip_url: null, updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                            await supabase.from("center_payments").delete().eq("id", existing.id);
                           }
                           // Deactivate vehicle when marked unpaid
                           const cv = centerVehicles.find((v: any) => v.id === cvId);
@@ -1245,7 +1245,7 @@ const AdminBilling = () => {
                         }
                         setBulkPaying(false);
                         setSelectedCenterIds(new Set());
-                        toast({ title: `${selectedCenterIds.size} vehicles marked as unpaid` });
+                        toast({ title: `${selectedCenterIds.size} vehicles marked as unpaid & records deleted` });
                         fetchCenterData();
                       }}
                       className="px-3 py-1 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 disabled:opacity-50"
