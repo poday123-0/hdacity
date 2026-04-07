@@ -203,7 +203,7 @@ const AdminBilling = () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
       (() => {
-        let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until").ilike("user_type", "%Driver%").order("first_name");
+        let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until, avatar_url").ilike("user_type", "%Driver%").order("first_name");
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
         return q;
       })(),
@@ -1353,7 +1353,14 @@ const AdminBilling = () => {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1 group cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }}>
+                            <div className="flex items-center gap-2 group cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }}>
+                              {driver?.avatar_url ? (
+                                <img src={driver.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                                  {driver ? `${driver.first_name?.[0] || ""}${driver.last_name?.[0] || ""}` : "?"}
+                                </div>
+                              )}
                               <div>
                                 {driver ? `${driver.first_name} ${driver.last_name}` : <span className="text-muted-foreground italic">No driver</span>}
                                 <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
