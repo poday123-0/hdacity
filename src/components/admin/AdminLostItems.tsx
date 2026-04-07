@@ -62,10 +62,11 @@ const AdminLostItems = () => {
 
   const submitReport = async () => {
     if (!form.description.trim()) { toast({ title: "Enter description", variant: "destructive" }); return; }
+    if (!form.trip_id) { toast({ title: "Please link a trip", description: "A trip must be selected for the lost item report.", variant: "destructive" }); return; }
     setSaving(true);
     const payload: any = {
       description: form.description.trim(),
-      trip_id: form.trip_id || null,
+      trip_id: form.trip_id,
       reporter_name: form.reporter_name.trim() || null,
       reporter_phone: form.reporter_phone.trim() || null,
       status: "reported",
@@ -129,7 +130,7 @@ const AdminLostItems = () => {
               <input value={form.reporter_phone} onChange={e => setForm({ ...form, reporter_phone: e.target.value })} placeholder="e.g. 7771234" className={inputCls} />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground">Link to Trip (optional)</label>
+              <label className="text-xs font-medium text-muted-foreground">Link to Trip <span className="text-destructive">*</span></label>
               <input value={tripSearch} onChange={e => searchTrips(e.target.value)} placeholder="Search by customer name, phone, or address..." className={inputCls} />
               {form.trip_id && (
                 <div className="flex items-center gap-2 mt-1.5">
