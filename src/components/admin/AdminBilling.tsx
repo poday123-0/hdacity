@@ -223,7 +223,7 @@ const AdminBilling = () => {
   };
   const fetchDrivers = async () => {
     setLoading(true);
-    const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
+    const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes, appWalletsRes, appSmsSettingRes] = await Promise.all([
       (() => {
         let q = supabase.from("profiles").select("id, first_name, last_name, phone_number, company_id, company_name, monthly_fee, status, fee_free_until, avatar_url, updated_at").ilike("user_type", "%Driver%").order("first_name");
         if (search) q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
@@ -233,11 +233,19 @@ const AdminBilling = () => {
       supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
       supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "center_billing_due_day"]),
+      supabase.from("wallets").select("user_id, balance").limit(5000),
+      supabase.from("system_settings").select("value").eq("key", "app_payment_sms_template").maybeSingle(),
     ]);
     setDrivers((driversRes.data as any[]) || []);
     setCompanies((companiesRes.data as any[]) || []);
     setVehicleTypes((vehicleTypesRes.data as any[]) || []);
     setVehicles((vehiclesRes.data as any[]) || []);
+
+    const wMap = new Map<string, number>();
+    for (const w of (appWalletsRes.data as any[]) || []) { wMap.set(w.user_id, w.balance || 0); }
+    setAppDriverWallets(wMap);
+
+    if (appSmsSettingRes.data?.value && typeof appSmsSettingRes.data.value === "string") setAppSmsTemplate(appSmsSettingRes.data.value);
 
     settingsRes.data?.forEach((s: any) => {
       if (s.key === "billing_due_day") setBillingDueDay(typeof s.value === "number" ? s.value : parseInt(s.value) || 1);
