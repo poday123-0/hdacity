@@ -2042,11 +2042,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (!banks || banks.length === 0) issues.push("At least one bank account required");
         setVerificationIssues(issues);
 
-        // Fetch all driver vehicles
-        const { data: allVehicles } = await supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at");
-        setDriverVehicles(allVehicles || []);
+        // Fetch all driver vehicles (include inactive center-code vehicles so drivers can see pending billing)
+        const [activeVehRes, inactiveCenterVehRes] = await Promise.all([
+          supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", true).order("created_at"),
+          supabase.from("vehicles").select("*").eq("driver_id", userProfile.id).eq("is_active", false).not("center_code", "is", null).order("created_at"),
+        ]);
+        const activeVehicles = activeVehRes.data || [];
+        const inactiveCenterVehicles = (inactiveCenterVehRes.data || []).filter((v: any) => !activeVehicles.some((a: any) => a.id === v.id));
+        const allVehicles = [...activeVehicles, ...inactiveCenterVehicles];
+        setDriverVehicles(allVehicles);
         // Fetch center payment statuses for current month
-        const centerVehicleIds = (allVehicles || []).filter((v: any) => v.center_code).map((v: any) => v.id);
+        const centerVehicleIds = allVehicles.filter((v: any) => v.center_code).map((v: any) => v.id);
         if (centerVehicleIds.length > 0) {
           const curMonth = new Date().toISOString().slice(0, 7);
           const { data: cpData } = await supabase.from("center_payments").select("vehicle_id, status").eq("payment_month", curMonth).in("vehicle_id", centerVehicleIds);
@@ -5473,10 +5479,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                             const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
                             const centerFee = (vt as any)?.center_fee || (vt as any)?.monthly_fee || 0;
                             return (
-                              <div key={v.id} className="bg-card rounded-lg p-2.5 space-y-1.5">
+                              <div key={v.id} className={`bg-card rounded-lg p-2.5 space-y-1.5 ${!v.is_active ? "border border-destructive/30" : ""}`}>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-mono font-bold text-chart-2">Code {v.center_code}</span>
-                                  <span className="text-xs font-semibold text-foreground">{v.plate_number}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {!v.is_active && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive">Suspended</span>}
+                                    <span className="text-xs font-semibold text-foreground">{v.plate_number}</span>
+                                  </div>
                                 </div>
                                  <div className="flex items-center justify-between">
                                    <span className="text-xs text-muted-foreground">{vt?.name || "Vehicle"}</span>
