@@ -5479,10 +5479,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                             const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
                             const centerFee = (vt as any)?.center_fee || (vt as any)?.monthly_fee || 0;
                             return (
-                              <div key={v.id} className="bg-card rounded-lg p-2.5 space-y-1.5">
+                              <div key={v.id} className={`bg-card rounded-lg p-2.5 space-y-1.5 ${!v.is_active ? "border border-destructive/30" : ""}`}>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-mono font-bold text-chart-2">Code {v.center_code}</span>
-                                  <span className="text-xs font-semibold text-foreground">{v.plate_number}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {!v.is_active && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive">Suspended</span>}
+                                    <span className="text-xs font-semibold text-foreground">{v.plate_number}</span>
+                                  </div>
                                 </div>
                                  <div className="flex items-center justify-between">
                                    <span className="text-xs text-muted-foreground">{vt?.name || "Vehicle"}</span>
