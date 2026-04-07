@@ -28,6 +28,14 @@ const AdminBilling = () => {
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
   const [showBillingSettings, setShowBillingSettings] = useState(false);
   const [driverPayments, setDriverPayments] = useState<any[]>([]);
+  const [appDriverWallets, setAppDriverWallets] = useState<Map<string, number>>(new Map());
+  // App driver SMS state
+  const [appSmsTemplate, setAppSmsTemplate] = useState("Dear {driver_name}, your app fee of {amount} MVR for {month} is due. Wallet: {wallet} MVR. Balance to pay: {balance_due} MVR. Please pay at the earliest. - HDA");
+  const [appSmsTemplateSaving, setAppSmsTemplateSaving] = useState(false);
+  const [showAppSmsModal, setShowAppSmsModal] = useState(false);
+  const [appSmsSending, setAppSmsSending] = useState(false);
+  const [appSmsResult, setAppSmsResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [sendingAppSmsId, setSendingAppSmsId] = useState<string | null>(null);
 
   // Bulk fee-free state
   const [showBulkModal, setShowBulkModal] = useState(false);
