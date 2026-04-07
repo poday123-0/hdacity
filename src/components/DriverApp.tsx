@@ -5519,7 +5519,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                        }
                      }}>
                        <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
-                         <span className="text-xs font-semibold text-foreground">Payment History</span>
+                         <span className="text-xs font-semibold text-foreground">
+                           Payment History
+                           {(appPaymentHistory.length + centerPaymentHistory.length) > 0 && (
+                             <span className="ml-1.5 text-[10px] text-muted-foreground">({appPaymentHistory.length + centerPaymentHistory.length})</span>
+                           )}
+                         </span>
                          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
                        </CollapsibleTrigger>
                        <CollapsibleContent>
