@@ -792,7 +792,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // On native, use ONLY background geolocation plugin (battery efficient, distance-filtered).
       // On web, fall back to watchPosition.
       const isNativePlatform = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor.isNativePlatform?.();
-      const webMaxAge = Math.min(gpsMaxAge, 3000);
+      // Web: use balanced GPS — enableHighAccuracy false to save battery,
+      // but shorter maximumAge (5s) so map still tracks while driving
+      const webMaxAge = Math.min(gpsMaxAge, 5000);
 
       if (isNativePlatform) {
         // Native: rely solely on background geolocation plugin — much more battery efficient
@@ -834,7 +836,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(false);
               toast({ title: "GPS Required", description: "Please enable location services to go online.", variant: "destructive" });
             },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: webMaxAge }
+            { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: webMaxAge }
           );
         } else {
           toast({ title: "GPS Not Supported", description: "Your device does not support GPS.", variant: "destructive" });
