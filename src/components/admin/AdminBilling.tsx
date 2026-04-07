@@ -1461,6 +1461,24 @@ const AdminBilling = () => {
                             </button>
                           </div>
                         </td>
+                        {(() => {
+                          const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
+                          const balanceDue = Math.max(0, centerFee - walletBal);
+                          const isPaid = monthPayment?.status === "approved";
+                          return (
+                            <td className="px-3 py-2 text-xs font-bold">
+                              {isPaid ? (
+                                <span className="text-emerald-500">Paid</span>
+                              ) : centerFee === 0 ? (
+                                <span className="text-muted-foreground">—</span>
+                              ) : balanceDue === 0 ? (
+                                <span className="text-emerald-500">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                              ) : (
+                                <span className="text-destructive">{balanceDue} MVR</span>
+                              )}
+                            </td>
+                          );
+                        })()}
                         <td className="px-3 py-2">
                           <button
                             onClick={async () => {
