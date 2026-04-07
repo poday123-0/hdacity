@@ -2868,14 +2868,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     map((v) => {
                       const vType = vehicleTypes.find((vt) => vt.id === v.vehicle_type_id);
                       const isSelected = selectedVehicleId === v.id;
+                      const isBlocked = !!(v.center_code && centerPaymentStatuses[v.id] !== "approved") || v.vehicle_status === "suspended" || v.vehicle_status === "pending";
                       return (
                         <button
                           key={v.id}
                           onClick={() => {
                             if (!isSelected) selectVehicle(v);
-                            setShowVehicleSwitcher(false);
+                            if (!isBlocked) setShowVehicleSwitcher(false);
                           }}
                           className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors ${
+                          isBlocked ? "opacity-50" : ""} ${
                           isSelected ? "bg-primary/5 border-l-2 border-primary" : "hover:bg-surface active:bg-surface border-l-2 border-transparent"}`
                           }>
 
@@ -2892,7 +2894,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               <p className={`text-sm font-semibold truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
                                 {v.make} {v.model}
                               </p>
-                              <p className="text-xs text-muted-foreground">{v.plate_number}{v.color ? ` · ${v.color}` : ""}</p>
+                              <p className="text-xs text-muted-foreground">{v.plate_number}{v.color ? ` · ${v.color}` : ""}{isBlocked ? " · ⚠ Unavailable" : ""}</p>
                             </div>
                             {isSelected &&
                           <CheckCircle className="w-4 h-4 text-primary shrink-0" />
