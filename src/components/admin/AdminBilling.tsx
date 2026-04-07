@@ -1263,7 +1263,7 @@ const AdminBilling = () => {
                     const monthPayment = centerMonthPayments.find(cp => cp.vehicle_id === cv.id);
                     const isEditing = editingCenterVehicle === cv.id;
                     return (
-                      <tr key={cv.id} className={`border-t border-border hover:bg-muted/30 ${selectedCenterIds.has(cv.id) ? "bg-primary/5" : ""}`}>
+                      <tr key={cv.id} className={`border-t border-border hover:bg-muted/30 ${selectedCenterIds.has(cv.id) ? "bg-primary/5" : cv.center_fee_exempt ? "bg-emerald-500/10" : (monthPayment && monthPayment.status !== "approved") ? "bg-orange-500/10" : ""}`}>
                         <td className="px-2 py-2">
                             <input
                               type="checkbox"
