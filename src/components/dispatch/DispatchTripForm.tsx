@@ -1664,8 +1664,7 @@ const DispatchTripForm = ({
                     const { data: codeVehicles } = await supabase
                       .from("vehicles")
                       .select("id")
-                      .eq("center_code", code)
-                      ;
+                      .eq("center_code", code);
                     const codeVehicleIds = (codeVehicles || []).map((v: any) => v.id);
 
                     const [{ data: profile }, { data: lastTrip }, { count: todayCount }, { count: lossCount }] = await Promise.all([
