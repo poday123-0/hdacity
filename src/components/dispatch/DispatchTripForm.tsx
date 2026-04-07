@@ -1565,7 +1565,7 @@ const DispatchTripForm = ({
                     .from("vehicles")
                     .select("id")
                     .eq("center_code", code)
-                    .eq("is_active", true);
+                    ;
                   const codeVehicleIds = (codeVehicles || []).map((v: any) => v.id);
 
                   const [{ count: todayCount }, { count: lossCount }] = await Promise.all([
