@@ -1998,6 +1998,7 @@ export type Database = {
           center_fee_exempt: boolean
           color: string | null
           created_at: string
+          custom_center_fee: number | null
           driver_id: string | null
           id: string
           image_url: string | null
@@ -2020,6 +2021,7 @@ export type Database = {
           center_fee_exempt?: boolean
           color?: string | null
           created_at?: string
+          custom_center_fee?: number | null
           driver_id?: string | null
           id?: string
           image_url?: string | null
@@ -2042,6 +2044,7 @@ export type Database = {
           center_fee_exempt?: boolean
           color?: string | null
           created_at?: string
+          custom_center_fee?: number | null
           driver_id?: string | null
           id?: string
           image_url?: string | null

@@ -228,7 +228,7 @@ const AdminBilling = () => {
     const now = new Date();
     const currentCenterMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const [cvRes, cpRes, cmRes, walletsRes] = await Promise.all([
-      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, make, model, color, is_active").not("center_code", "is", null),
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, custom_center_fee, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
@@ -1037,7 +1037,8 @@ const AdminBilling = () => {
                 {centerVehicles.reduce((sum, cv) => {
                   if (cv.center_fee_exempt) return sum;
                   const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-                  return sum + ((vt as any)?.center_fee || 0);
+                  const fee = cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0);
+                  return sum + fee;
                 }, 0).toLocaleString()} MVR
               </p>
             </div>
@@ -1266,7 +1267,7 @@ const AdminBilling = () => {
                   }).map(cv => {
                     const driver = drivers.find(d => d.id === cv.driver_id);
                     const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
-                    const centerFee = cv.center_fee_exempt ? 0 : ((vt as any)?.center_fee || 0);
+                    const centerFee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
                     const monthPayment = centerMonthPayments.find(cp => cp.vehicle_id === cv.id);
                     const isEditing = editingCenterVehicle === cv.id;
                     return (
@@ -1369,7 +1370,25 @@ const AdminBilling = () => {
                         </td>
                         <td className="px-3 py-2 text-xs font-bold text-foreground">
                           <div className="flex items-center gap-1">
-                            <span className={cv.center_fee_exempt ? "line-through text-muted-foreground" : ""}>{centerFee} MVR</span>
+                            <span
+                              className={`cursor-pointer ${cv.center_fee_exempt ? "line-through text-muted-foreground" : cv.custom_center_fee != null ? "text-chart-4" : ""}`}
+                              onClick={() => {
+                                const current = cv.custom_center_fee != null ? cv.custom_center_fee : centerFee;
+                                const input = prompt(`Custom center fee for ${cv.plate_number} (leave empty to use vehicle type default):`, cv.custom_center_fee != null ? String(cv.custom_center_fee) : "");
+                                if (input === null) return;
+                                const val = input.trim() === "" ? null : parseFloat(input);
+                                supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", cv.id).then(() => {
+                                  toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
+                                  fetchCenterData();
+                                });
+                              }}
+                              title={cv.custom_center_fee != null ? `Custom fee (type default: ${(vt as any)?.center_fee || 0})` : "Click to set custom fee"}
+                            >
+                              {centerFee} MVR
+                            </span>
+                            {cv.custom_center_fee != null && (
+                              <span className="text-[8px] text-chart-4 font-normal">custom</span>
+                            )}
                             <button
                               onClick={async () => {
                                 const newVal = !cv.center_fee_exempt;

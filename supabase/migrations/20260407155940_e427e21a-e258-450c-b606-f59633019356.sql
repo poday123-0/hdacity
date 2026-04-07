@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ADD COLUMN custom_center_fee numeric DEFAULT NULL;
