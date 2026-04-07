@@ -221,6 +221,88 @@ const AdminBilling = () => {
     }
     setSendingSingleSmsId(null);
   };
+
+  // App driver SMS functions
+  const saveAppSmsTemplate = async () => {
+    setAppSmsTemplateSaving(true);
+    const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "app_payment_sms_template").maybeSingle();
+    if (existing) {
+      await supabase.from("system_settings").update({ value: appSmsTemplate as any, updated_at: new Date().toISOString() }).eq("key", "app_payment_sms_template");
+    } else {
+      await supabase.from("system_settings").insert({ key: "app_payment_sms_template", value: appSmsTemplate as any, description: "SMS template for app payment reminders" });
+    }
+    setAppSmsTemplateSaving(false);
+    toast({ title: "App SMS template saved" });
+  };
+
+  const sendAppPaymentReminders = async () => {
+    setAppSmsSending(true);
+    setAppSmsResult(null);
+    try {
+      const unpaidDrivers = filteredDrivers.filter(d => {
+        const driverFee = getDriverFee(d.id);
+        return driverFee > 0 && !isCompanyFeeFree(d) && !isFreeUntilActive(d);
+      });
+      if (unpaidDrivers.length === 0) {
+        toast({ title: "No unpaid app drivers found" });
+        setAppSmsSending(false);
+        return;
+      }
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      let sent = 0, failed = 0;
+      for (const d of unpaidDrivers) {
+        if (!d.phone_number) continue;
+        const fee = getDriverFee(d.id);
+        const walletBal = appDriverWallets.get(d.id) || 0;
+        const balanceDue = Math.max(0, fee - walletBal);
+        const msg = appSmsTemplate
+          .replace(/\{driver_name\}/g, `${d.first_name} ${d.last_name}`)
+          .replace(/\{amount\}/g, String(fee))
+          .replace(/\{wallet\}/g, String(walletBal))
+          .replace(/\{balance_due\}/g, String(balanceDue))
+          .replace(/\{month\}/g, formatMonth(currentMonth));
+        const fullPhone = d.phone_number.startsWith("+") ? d.phone_number : `+960${d.phone_number}`;
+        const { error } = await supabase.functions.invoke("send-bulk-sms", {
+          body: { message: msg, target_type: "custom", phone_numbers: [fullPhone], sender_id: "HDA TAXI" },
+        });
+        if (error) failed++; else sent++;
+      }
+      setAppSmsResult({ sent, failed, total: unpaidDrivers.length });
+      toast({ title: `SMS sent: ${sent} success, ${failed} failed out of ${unpaidDrivers.length}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send reminders", description: err.message, variant: "destructive" });
+    }
+    setAppSmsSending(false);
+  };
+
+  const sendSingleAppReminder = async (d: any) => {
+    if (!d.phone_number) { toast({ title: "No phone number", variant: "destructive" }); return; }
+    const fee = getDriverFee(d.id);
+    const walletBal = appDriverWallets.get(d.id) || 0;
+    const balanceDue = Math.max(0, fee - walletBal);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const msg = appSmsTemplate
+      .replace(/\{driver_name\}/g, `${d.first_name} ${d.last_name}`)
+      .replace(/\{amount\}/g, String(fee))
+      .replace(/\{wallet\}/g, String(walletBal))
+      .replace(/\{balance_due\}/g, String(balanceDue))
+      .replace(/\{month\}/g, formatMonth(currentMonth));
+    const fullPhone = d.phone_number.startsWith("+") ? d.phone_number : `+960${d.phone_number}`;
+    setSendingAppSmsId(d.id);
+    try {
+      const { error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: msg, target_type: "custom", phone_numbers: [fullPhone], sender_id: "HDA TAXI" },
+      });
+      if (error) throw error;
+      toast({ title: `Reminder sent to ${d.first_name} ${d.last_name}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
+    }
+    setSendingAppSmsId(null);
+  };
+
   const fetchDrivers = async () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes, appWalletsRes, appSmsSettingRes] = await Promise.all([
