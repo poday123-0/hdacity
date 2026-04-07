@@ -1772,7 +1772,8 @@ const AdminBilling = () => {
                   onKeyDown={e => {
                     if (e.key === "Enter") {
                       const val = customFeeInput.trim() === "" ? null : parseFloat(customFeeInput);
-                      supabase.from("vehicles").update({ custom_center_fee: val } as any).eq("id", customFeeModal.vehicleId).then(() => {
+                      const note = customFeeNote.trim() || null;
+                      supabase.from("vehicles").update({ custom_center_fee: val, center_fee_note: note } as any).eq("id", customFeeModal.vehicleId).then(() => {
                         toast({ title: val != null ? `Custom fee set: ${val} MVR` : "Using default vehicle type fee" });
                         setCustomFeeModal(null);
                         fetchCenterData();
