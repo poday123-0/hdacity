@@ -250,6 +250,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [centerSlipSubmitting, setCenterSlipSubmitting] = useState(false);
   const [centerPaymentStatuses, setCenterPaymentStatuses] = useState<Record<string, string>>({});
   const centerSlipFileRef = useRef<HTMLInputElement>(null);
+  const [appPaymentHistory, setAppPaymentHistory] = useState<any[]>([]);
+  const [centerPaymentHistory, setCenterPaymentHistory] = useState<any[]>([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
@@ -5378,43 +5381,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 }
 
                     {/* Monthly fee info — based on vehicle type */}
-                    <div className="bg-surface rounded-xl p-3 space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
-                      {(() => {
-                        const isFreeCompany = companyInfo?.fee_free;
-                        const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
-                        
-                        // Calculate total fee from all active vehicles' vehicle types (exclude center-code vehicles that don't pay app fee)
-                        const vehicleFees = driverVehicles
-                          .filter((v: any) => !v.center_code || v.pays_app_fee)
-                          .map((v: any) => {
-                          const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                          return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
-                        });
-                        const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
+                    {(() => {
+                      const isFreeCompany = companyInfo?.fee_free;
+                      const isFreePeriod = (userProfile as any)?.fee_free_until && new Date((userProfile as any).fee_free_until) > new Date();
+                      const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
+                      const vehicleFees = appFeeVehicles.map((v: any) => {
+                        const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                        return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                      });
+                      const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
-                        if (isFreeCompany) {
+                      // Hide entire section if no app-fee vehicles or free period/company
+                      if (appFeeVehicles.length === 0 || isFreeCompany || isFreePeriod) {
+                        // Show free status only if they have app-fee vehicles but are on free period
+                        if ((isFreeCompany || isFreePeriod) && appFeeVehicles.length > 0) {
                           return (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">Status</span>
-                              <span className="text-lg font-bold text-primary">FREE (Company)</span>
-                            </div>
-                          );
-                        }
-                        if (isFreePeriod) {
-                          return (
-                            <div>
+                            <div className="bg-surface rounded-xl p-3 space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-muted-foreground">Status</span>
-                                <span className="text-lg font-bold text-primary">FREE</span>
+                                <span className="text-lg font-bold text-primary">FREE{isFreeCompany ? " (Company)" : ""}</span>
                               </div>
-                              <p className="text-xs text-primary mt-1">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
-                              <p className="text-xs text-muted-foreground mt-1">Normal fee would be {totalFee} MVR</p>
+                              {isFreePeriod && !isFreeCompany && (
+                                <p className="text-xs text-primary">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
+                              )}
                             </div>
                           );
                         }
+                        return null; // No app-fee vehicles at all — hide section
+                      }
 
-                        return (
+                      return (
+                        <div className="bg-surface rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
                           <div className="space-y-2">
                             {vehicleFees.map((v: any, i: number) => (
                               <div key={i} className="flex items-center justify-between">
@@ -5422,28 +5421,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 <span className="text-sm font-semibold text-foreground">{v.fee} MVR</span>
                               </div>
                             ))}
-                            {vehicleFees.length > 1 && (
-                              <div className="flex items-center justify-between border-t border-border pt-2">
-                                <span className="text-sm font-semibold text-muted-foreground">Total</span>
-                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
-                              </div>
-                            )}
-                            {vehicleFees.length === 1 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">Amount due</span>
-                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
-                              </div>
-                            )}
-                            {vehicleFees.length === 0 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">No vehicles</span>
-                                <span className="text-lg font-bold text-foreground">0 MVR</span>
-                              </div>
-                            )}
+                            <div className="flex items-center justify-between border-t border-border pt-2">
+                              <span className="text-sm font-semibold text-muted-foreground">Amount due</span>
+                              <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
+                            </div>
                           </div>
-                        );
-                      })()}
-                    </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Center Billing — only for drivers with center-code vehicles */}
                     {driverVehicles.some((v: any) => v.center_code) && (
@@ -5491,6 +5476,96 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                          <p className="text-[10px] text-muted-foreground">Center fees are due by the 5th of each month.</p>
                        </div>
                      )}
+
+                     {/* Payment History */}
+                     <Collapsible defaultOpen={false} onOpenChange={async (open) => {
+                       if (open && appPaymentHistory.length === 0 && centerPaymentHistory.length === 0 && !paymentHistoryLoading) {
+                         setPaymentHistoryLoading(true);
+                         const [appRes, centerRes] = await Promise.all([
+                           supabase.from("driver_payments").select("*").eq("driver_id", userProfile.id).order("created_at", { ascending: false }).limit(50),
+                           supabase.from("center_payments").select("*").eq("driver_id", userProfile.id).order("created_at", { ascending: false }).limit(50),
+                         ]);
+                         setAppPaymentHistory(appRes.data || []);
+                         setCenterPaymentHistory(centerRes.data || []);
+                         setPaymentHistoryLoading(false);
+                       }
+                     }}>
+                       <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
+                         <span className="text-xs font-semibold text-foreground">Payment History</span>
+                         <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                       </CollapsibleTrigger>
+                       <CollapsibleContent>
+                         <div className="space-y-2 mt-2">
+                           {paymentHistoryLoading ? (
+                             <div className="flex items-center justify-center py-6">
+                               <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                             </div>
+                           ) : (
+                             <>
+                               {/* App fee payments */}
+                               {appPaymentHistory.length > 0 && (
+                                 <div className="space-y-1.5">
+                                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">App Fee Payments</p>
+                                   {appPaymentHistory.map((p: any) => (
+                                     <div key={p.id} className="bg-card rounded-lg px-3 py-2 space-y-1">
+                                       <div className="flex items-center justify-between">
+                                         <span className="text-xs font-semibold text-foreground">{p.payment_month}</span>
+                                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                           p.status === "approved" ? "bg-green-500/10 text-green-600" :
+                                           p.status === "submitted" ? "bg-amber-500/10 text-amber-600" :
+                                           p.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                                           "bg-muted text-muted-foreground"
+                                         }`}>{p.status}</span>
+                                       </div>
+                                       <div className="flex items-center justify-between">
+                                         <span className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</span>
+                                         <span className="text-xs font-bold text-foreground">{Number(p.amount).toFixed(0)} MVR</span>
+                                       </div>
+                                       {p.rejection_reason && <p className="text-[10px] text-destructive">{p.rejection_reason}</p>}
+                                     </div>
+                                   ))}
+                                 </div>
+                               )}
+
+                               {/* Center payments */}
+                               {centerPaymentHistory.length > 0 && (
+                                 <div className="space-y-1.5">
+                                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">Center Fee Payments</p>
+                                   {centerPaymentHistory.map((p: any) => {
+                                     const v = driverVehicles.find((dv: any) => dv.id === p.vehicle_id);
+                                     return (
+                                       <div key={p.id} className="bg-card rounded-lg px-3 py-2 space-y-1">
+                                         <div className="flex items-center justify-between">
+                                           <span className="text-xs font-semibold text-foreground">{p.payment_month}{v ? ` — ${v.plate_number}` : ""}</span>
+                                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                             p.status === "approved" ? "bg-green-500/10 text-green-600" :
+                                             p.status === "submitted" ? "bg-amber-500/10 text-amber-600" :
+                                             p.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                                             "bg-muted text-muted-foreground"
+                                           }`}>{p.status}</span>
+                                         </div>
+                                         <div className="flex items-center justify-between">
+                                           <span className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</span>
+                                           <span className="text-xs font-bold text-foreground">{Number(p.amount).toFixed(0)} MVR</span>
+                                         </div>
+                                         {p.admin_notes && <p className="text-[10px] text-primary italic">{p.admin_notes}</p>}
+                                       </div>
+                                     );
+                                   })}
+                                 </div>
+                               )}
+
+                               {appPaymentHistory.length === 0 && centerPaymentHistory.length === 0 && (
+                                 <div className="text-center py-6">
+                                   <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                                   <p className="text-sm text-muted-foreground">No payment records yet</p>
+                                 </div>
+                               )}
+                             </>
+                           )}
+                         </div>
+                       </CollapsibleContent>
+                     </Collapsible>
 
                      {/* Center Slip Upload Modal */}
                      {centerSlipVehicleId && (() => {
