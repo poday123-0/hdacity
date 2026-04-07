@@ -254,6 +254,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [centerPaymentHistory, setCenterPaymentHistory] = useState<any[]>([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [gpsEnabled, setGpsEnabled] = useState(false);
+
+  // Auto-fetch payment history when billing tab is opened
+  useEffect(() => {
+    if (profileTab !== "billing" || !userProfile?.id || paymentHistoryLoading) return;
+    if (appPaymentHistory.length > 0 || centerPaymentHistory.length > 0) return;
+    setPaymentHistoryLoading(true);
+    Promise.all([
+      supabase.from("driver_payments").select("*").eq("driver_id", userProfile.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("center_payments").select("*").eq("driver_id", userProfile.id).order("created_at", { ascending: false }).limit(50),
+    ]).then(([appRes, centerRes]) => {
+      setAppPaymentHistory(appRes.data || []);
+      setCenterPaymentHistory(centerRes.data || []);
+      setPaymentHistoryLoading(false);
+    });
+  }, [profileTab, userProfile?.id]);
   const [passengerMapIconUrl, setPassengerMapIconUrl] = useState<string | null>(null);
   const [recenterAvailable, setRecenterAvailable] = useState(false);
   const [sessionKicked, setSessionKicked] = useState(false);
@@ -5391,13 +5406,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       });
                       const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
-                      // Hide entire section if no app-fee vehicles or free period/company
-                      if (appFeeVehicles.length === 0 || isFreeCompany || isFreePeriod) {
-                        // Show free status only if they have app-fee vehicles but are on free period
-                        if ((isFreeCompany || isFreePeriod) && appFeeVehicles.length > 0) {
-                          return (
-                            <div className="bg-surface rounded-xl p-3 space-y-2">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
+                      // No app-fee vehicles at all — hide section
+                      if (appFeeVehicles.length === 0) return null;
+
+                      return (
+                        <div className="bg-surface rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
+                          {isFreeCompany || isFreePeriod ? (
+                            <div>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-muted-foreground">Status</span>
                                 <span className="text-lg font-bold text-primary">FREE{isFreeCompany ? " (Company)" : ""}</span>
@@ -5406,26 +5422,38 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 <p className="text-xs text-primary">Free until {new Date((userProfile as any).fee_free_until).toLocaleDateString()}</p>
                               )}
                             </div>
-                          );
-                        }
-                        return null; // No app-fee vehicles at all — hide section
-                      }
-
-                      return (
-                        <div className="bg-surface rounded-xl p-3 space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
-                          <div className="space-y-2">
-                            {vehicleFees.map((v: any, i: number) => (
-                              <div key={i} className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">{v.plate} ({v.typeName})</span>
-                                <span className="text-sm font-semibold text-foreground">{v.fee} MVR</span>
+                          ) : (
+                            <div className="space-y-2">
+                              {vehicleFees.map((v: any, i: number) => (
+                                <div key={i} className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">{v.plate} ({v.typeName})</span>
+                                  <span className="text-sm font-semibold text-foreground">{v.fee} MVR</span>
+                                </div>
+                              ))}
+                              <div className="flex items-center justify-between border-t border-border pt-2">
+                                <span className="text-sm font-semibold text-muted-foreground">Amount due</span>
+                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
                               </div>
-                            ))}
-                            <div className="flex items-center justify-between border-t border-border pt-2">
-                              <span className="text-sm font-semibold text-muted-foreground">Amount due</span>
-                              <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
                             </div>
-                          </div>
+                          )}
+
+                          {/* Pending app payments */}
+                          {appPaymentHistory.filter((p: any) => p.status === "submitted" || p.status === "pending").length > 0 && (
+                            <div className="border-t border-border pt-2 space-y-1.5">
+                              <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Pending Payments</p>
+                              {appPaymentHistory.filter((p: any) => p.status === "submitted" || p.status === "pending").map((p: any) => (
+                                <div key={p.id} className="flex items-center justify-between bg-amber-500/5 rounded-lg px-2.5 py-1.5">
+                                  <div>
+                                    <span className="text-xs font-semibold text-foreground">{p.payment_month}</span>
+                                    <span className="text-[10px] text-muted-foreground ml-2">{Number(p.amount).toFixed(0)} MVR</span>
+                                  </div>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                                    <Clock className="w-3 h-3 inline mr-0.5" />{p.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -5491,7 +5519,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                        }
                      }}>
                        <CollapsibleTrigger className="flex items-center justify-between w-full bg-surface rounded-xl px-3 py-2.5 active:bg-muted/30 transition-colors group">
-                         <span className="text-xs font-semibold text-foreground">Payment History</span>
+                         <span className="text-xs font-semibold text-foreground">
+                           Payment History
+                           {(appPaymentHistory.length + centerPaymentHistory.length) > 0 && (
+                             <span className="ml-1.5 text-[10px] text-muted-foreground">({appPaymentHistory.length + centerPaymentHistory.length})</span>
+                           )}
+                         </span>
                          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
                        </CollapsibleTrigger>
                        <CollapsibleContent>
