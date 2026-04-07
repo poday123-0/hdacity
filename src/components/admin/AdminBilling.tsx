@@ -587,13 +587,6 @@ const AdminBilling = () => {
       </div>
       )}
 
-  const openDriverCard = async (driverId: string) => {
-    setDriverCardId(driverId);
-    setDriverCardLoading(true);
-    const { data } = await supabase.from("center_payments").select("*").eq("driver_id", driverId).order("payment_month", { ascending: false }).limit(12);
-    setDriverCardPayments(data || []);
-    setDriverCardLoading(false);
-  };
 
       {tab === "drivers" && (
         <>
