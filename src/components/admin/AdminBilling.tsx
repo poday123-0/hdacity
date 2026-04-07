@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2, MessageSquare, Send, Loader2 } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2, MessageSquare, Send, Loader2, UserPlus } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -63,6 +63,8 @@ const AdminBilling = () => {
   const [smsReminderResult, setSmsReminderResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
   const [showSmsTemplateEditor, setShowSmsTemplateEditor] = useState(false);
   const [sendingSingleSmsId, setSendingSingleSmsId] = useState<string | null>(null);
+  const [assigningDriverVehicle, setAssigningDriverVehicle] = useState<string | null>(null);
+  const [assignDriverSearch, setAssignDriverSearch] = useState("");
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -1274,9 +1276,60 @@ const AdminBilling = () => {
                               className="w-3.5 h-3.5 rounded border-border accent-primary"
                             />
                         </td>
-                        <td className="px-3 py-2 text-xs text-foreground">
-                          {driver ? `${driver.first_name} ${driver.last_name}` : "—"}
-                          <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
+                        <td className="px-3 py-2 text-xs text-foreground min-w-[160px]">
+                          {assigningDriverVehicle === cv.id ? (
+                            <div className="relative">
+                              <input
+                                autoFocus
+                                type="text"
+                                placeholder="Name or phone..."
+                                value={assignDriverSearch}
+                                onChange={e => setAssignDriverSearch(e.target.value)}
+                                onKeyDown={e => { if (e.key === "Escape") { setAssigningDriverVehicle(null); setAssignDriverSearch(""); } }}
+                                className="w-full px-2 py-1 bg-surface border border-primary rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              {assignDriverSearch.length >= 2 && (
+                                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                  {drivers.filter(d => {
+                                    const s = assignDriverSearch.toLowerCase();
+                                    return `${d.first_name} ${d.last_name}`.toLowerCase().includes(s) || (d.phone_number || "").includes(s);
+                                  }).slice(0, 8).map(d => (
+                                    <button
+                                      key={d.id}
+                                      onClick={async () => {
+                                        await supabase.from("vehicles").update({ driver_id: d.id } as any).eq("id", cv.id);
+                                        toast({ title: `Driver assigned: ${d.first_name} ${d.last_name}` });
+                                        setAssigningDriverVehicle(null);
+                                        setAssignDriverSearch("");
+                                        fetchCenterData();
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 hover:bg-muted/50 text-[11px] border-b border-border last:border-0"
+                                    >
+                                      <span className="font-medium">{d.first_name} {d.last_name}</span>
+                                      <span className="text-muted-foreground ml-1">{d.phone_number}</span>
+                                    </button>
+                                  ))}
+                                  {drivers.filter(d => {
+                                    const s = assignDriverSearch.toLowerCase();
+                                    return `${d.first_name} ${d.last_name}`.toLowerCase().includes(s) || (d.phone_number || "").includes(s);
+                                  }).length === 0 && (
+                                    <div className="px-3 py-2 text-[10px] text-muted-foreground">No drivers found</div>
+                                  )}
+                                </div>
+                              )}
+                              <button onClick={() => { setAssigningDriverVehicle(null); setAssignDriverSearch(""); }} className="absolute right-1 top-1/2 -translate-y-1/2">
+                                <X className="w-3 h-3 text-muted-foreground" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 group cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }}>
+                              <div>
+                                {driver ? `${driver.first_name} ${driver.last_name}` : <span className="text-muted-foreground italic">No driver</span>}
+                                <div className="text-[10px] text-muted-foreground">{driver?.phone_number}</div>
+                              </div>
+                              <UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-xs font-semibold text-chart-2">
                           {cv.driver_id ? `${(centerWallets.get(cv.driver_id) || 0).toLocaleString()} MVR` : "—"}
