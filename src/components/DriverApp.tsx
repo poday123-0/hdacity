@@ -918,7 +918,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             console.warn("GPS unavailable after foreground:", err.message);
             setGpsEnabled(false);
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: webMaxAge }
+          { enableHighAccuracy: gpsHighAccuracy, timeout: 15000, maximumAge: webMaxAge }
         );
       };
       document.addEventListener("visibilitychange", onForeground);
