@@ -1381,7 +1381,7 @@ const AdminBilling = () => {
                                   <div className="text-[9px] text-muted-foreground/60">Updated: {new Date(driver.updated_at).toLocaleDateString()}</div>
                                 )}
                               </div>
-                              <UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }} title="Reassign driver" />
+                              <span className="cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }}><UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" /></span>
                             </div>
                           )}
                         </td>
