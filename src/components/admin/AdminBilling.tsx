@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2 } from "lucide-react";
+import { Search, DollarSign, ShieldCheck, Calendar, X, CheckCircle, XCircle, Eye, Clock, Image, Users, Car, Pencil, Save, ChevronRight, ChevronDown, Building2, MessageSquare, Send, Loader2 } from "lucide-react";
 
 const AdminBilling = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -53,10 +53,110 @@ const AdminBilling = () => {
   const [centerHistoryLoading, setCenterHistoryLoading] = useState(false);
   const [selectedCenterIds, setSelectedCenterIds] = useState<Set<string>>(new Set());
   const [bulkPaying, setBulkPaying] = useState(false);
+  // SMS Reminder state
+  const [smsTemplate, setSmsTemplate] = useState("Dear {driver_name}, your center fee of {amount} MVR for vehicle {plate} (Code: {center_code}) for {month} is due. Please pay at the earliest. - HDA");
+  const [smsTemplateLoading, setSmsTemplateLoading] = useState(false);
+  const [smsTemplateSaving, setSmsTemplateSaving] = useState(false);
+  const [showSmsReminderModal, setShowSmsReminderModal] = useState(false);
+  const [smsReminderSending, setSmsReminderSending] = useState(false);
+  const [smsReminderResult, setSmsReminderResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [showSmsTemplateEditor, setShowSmsTemplateEditor] = useState(false);
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
+
+  // Load SMS template from system_settings
+  useEffect(() => {
+    (async () => {
+      setSmsTemplateLoading(true);
+      const { data } = await supabase.from("system_settings").select("value").eq("key", "center_payment_sms_template").maybeSingle();
+      if (data?.value && typeof data.value === "string") setSmsTemplate(data.value);
+      setSmsTemplateLoading(false);
+    })();
+  }, []);
+
+  const saveSmsTemplate = async () => {
+    setSmsTemplateSaving(true);
+    const { data: existing } = await supabase.from("system_settings").select("id").eq("key", "center_payment_sms_template").maybeSingle();
+    if (existing) {
+      await supabase.from("system_settings").update({ value: smsTemplate as any, updated_at: new Date().toISOString() }).eq("key", "center_payment_sms_template");
+    } else {
+      await supabase.from("system_settings").insert({ key: "center_payment_sms_template", value: smsTemplate as any, description: "SMS template for center payment reminders" });
+    }
+    setSmsTemplateSaving(false);
+    toast({ title: "SMS template saved" });
+  };
+
+  const sendCenterPaymentReminders = async () => {
+    setSmsReminderSending(true);
+    setSmsReminderResult(null);
+    try {
+      // Find unpaid center vehicles for the selected month
+      const unpaidVehicles = centerVehicles.filter(cv => {
+        if (cv.center_fee_exempt) return false;
+        const monthPayment = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+        return !monthPayment || (monthPayment.status !== "approved" && monthPayment.status !== "completed");
+      });
+
+      if (unpaidVehicles.length === 0) {
+        toast({ title: "No unpaid vehicles found for this month" });
+        setSmsReminderSending(false);
+        return;
+      }
+
+      // Group by driver to avoid duplicate SMS
+      const driverMessages = new Map<string, { phone: string; cc: string; messages: string[] }>();
+      for (const cv of unpaidVehicles) {
+        const driver = drivers.find(d => d.id === cv.driver_id);
+        if (!driver?.phone_number) continue;
+        const vt = vehicleTypes.find(v => v.id === cv.vehicle_type_id);
+        const fee = (vt as any)?.center_fee || 0;
+        const msg = smsTemplate
+          .replace(/\{driver_name\}/g, `${driver.first_name} ${driver.last_name}`)
+          .replace(/\{amount\}/g, String(fee))
+          .replace(/\{plate\}/g, cv.plate_number || "")
+          .replace(/\{center_code\}/g, cv.center_code || "")
+          .replace(/\{month\}/g, centerMonth);
+
+        if (!driverMessages.has(driver.id)) {
+          driverMessages.set(driver.id, { phone: driver.phone_number, cc: "960", messages: [] });
+        }
+        driverMessages.get(driver.id)!.messages.push(msg);
+      }
+
+      // Send SMS via bulk function — one per driver with all vehicle reminders
+      const phoneNumbers: string[] = [];
+      const smsTexts: string[] = [];
+      for (const entry of Array.from(driverMessages.values())) {
+        const info = entry;
+        const fullPhone = info.phone.startsWith("+") ? info.phone : `+${info.cc}${info.phone}`;
+        phoneNumbers.push(fullPhone);
+        smsTexts.push(info.messages.join("\n\n"));
+      }
+
+      // Send individually via bulk-sms with custom phone_numbers
+      let sent = 0, failed = 0;
+      for (let i = 0; i < phoneNumbers.length; i++) {
+        const { error } = await supabase.functions.invoke("send-bulk-sms", {
+          body: {
+            message: smsTexts[i],
+            target_type: "custom",
+            phone_numbers: [phoneNumbers[i]],
+            sender_id: "HDA TAXI",
+          },
+        });
+        if (error) failed++;
+        else sent++;
+      }
+
+      setSmsReminderResult({ sent, failed, total: phoneNumbers.length });
+      toast({ title: `SMS sent: ${sent} success, ${failed} failed out of ${phoneNumbers.length}` });
+    } catch (err: any) {
+      toast({ title: "Failed to send reminders", description: err.message, variant: "destructive" });
+    }
+    setSmsReminderSending(false);
+  };
 
   const fetchDrivers = async () => {
     setLoading(true);
@@ -886,7 +986,7 @@ const AdminBilling = () => {
           </div>
 
           {/* Center Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-xs text-muted-foreground">Center Vehicles</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">{centerVehicles.length}</p>
@@ -915,6 +1015,68 @@ const AdminBilling = () => {
               <p className="text-xs text-muted-foreground">Approved</p>
               <p className="text-2xl font-bold text-primary mt-0.5">{centerMonthPayments.filter(cp => cp.status === "approved").length}</p>
             </div>
+          </div>
+
+          {/* SMS Reminder & Template Section */}
+          <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Payment Reminder SMS
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSmsTemplateEditor(!showSmsTemplateEditor)}
+                  className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                >
+                  <Pencil className="w-3 h-3" /> Edit Template
+                </button>
+                <button
+                  onClick={() => { setSmsReminderResult(null); setShowSmsReminderModal(true); }}
+                  className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+                >
+                  <Send className="w-3 h-3" /> Send Reminders
+                </button>
+              </div>
+            </div>
+
+            {/* Template Editor */}
+            {showSmsTemplateEditor && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Available placeholders: <code className="bg-surface px-1 rounded text-[10px]">{"{driver_name}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{amount}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{plate}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{center_code}"}</code> <code className="bg-surface px-1 rounded text-[10px]">{"{month}"}</code>
+                </p>
+                <textarea
+                  value={smsTemplate}
+                  onChange={e => setSmsTemplate(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  placeholder="Enter SMS template..."
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground">{smsTemplate.length} chars · {Math.ceil(smsTemplate.length / 160) || 0} SMS</p>
+                  <button
+                    onClick={saveSmsTemplate}
+                    disabled={smsTemplateSaving}
+                    className="px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <Save className="w-3 h-3" /> {smsTemplateSaving ? "Saving..." : "Save Template"}
+                  </button>
+                </div>
+
+                {/* Preview */}
+                <div className="bg-surface rounded-lg p-3 border border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Preview</p>
+                  <p className="text-xs text-foreground whitespace-pre-wrap">
+                    {smsTemplate
+                      .replace(/\{driver_name\}/g, "Ahmed Ali")
+                      .replace(/\{amount\}/g, "600")
+                      .replace(/\{plate\}/g, "P1234")
+                      .replace(/\{center_code\}/g, "5")
+                      .replace(/\{month\}/g, centerMonth)}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Center Vehicles List */}
@@ -1332,6 +1494,87 @@ const AdminBilling = () => {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* SMS Reminder Confirmation Modal */}
+      {showSmsReminderModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4" onClick={() => !smsReminderSending && setShowSmsReminderModal(false)}>
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-primary/10 p-4 text-center">
+              <Send className="w-8 h-8 text-primary mx-auto mb-2" />
+              <h3 className="text-lg font-bold text-foreground">Send Payment Reminders</h3>
+              <p className="text-xs text-muted-foreground mt-1">Send SMS to drivers with unpaid center fees for {centerMonth}</p>
+            </div>
+            <div className="p-4 space-y-3">
+              {(() => {
+                const unpaidCount = centerVehicles.filter(cv => {
+                  if (cv.center_fee_exempt) return false;
+                  const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+                  return !mp || (mp.status !== "approved" && mp.status !== "completed");
+                }).length;
+                const unpaidDriverIds = new Set(
+                  centerVehicles.filter(cv => {
+                    if (cv.center_fee_exempt) return false;
+                    const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
+                    return !mp || (mp.status !== "approved" && mp.status !== "completed");
+                  }).map(cv => cv.driver_id)
+                );
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-surface rounded-lg p-3 text-center">
+                        <p className="text-lg font-bold text-foreground">{unpaidCount}</p>
+                        <p className="text-[10px] text-muted-foreground">Unpaid Vehicles</p>
+                      </div>
+                      <div className="bg-surface rounded-lg p-3 text-center">
+                        <p className="text-lg font-bold text-foreground">{unpaidDriverIds.size}</p>
+                        <p className="text-[10px] text-muted-foreground">Drivers to notify</p>
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg p-3 border border-border">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Message Preview</p>
+                      <p className="text-xs text-foreground whitespace-pre-wrap">
+                        {smsTemplate
+                          .replace(/\{driver_name\}/g, "Driver Name")
+                          .replace(/\{amount\}/g, "XXX")
+                          .replace(/\{plate\}/g, "PXXXX")
+                          .replace(/\{center_code\}/g, "XX")
+                          .replace(/\{month\}/g, centerMonth)}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
+
+              {smsReminderResult && (
+                <div className={`rounded-lg p-3 text-center ${smsReminderResult.failed > 0 ? "bg-destructive/10" : "bg-primary/10"}`}>
+                  <p className="text-sm font-semibold text-foreground">
+                    ✅ {smsReminderResult.sent} sent {smsReminderResult.failed > 0 && <span className="text-destructive">· ❌ {smsReminderResult.failed} failed</span>}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowSmsReminderModal(false)}
+                  disabled={smsReminderSending}
+                  className="flex-1 py-2.5 rounded-xl bg-surface text-foreground text-sm font-semibold disabled:opacity-50"
+                >
+                  {smsReminderResult ? "Close" : "Cancel"}
+                </button>
+                {!smsReminderResult && (
+                  <button
+                    onClick={sendCenterPaymentReminders}
+                    disabled={smsReminderSending}
+                    className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {smsReminderSending ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : <><Send className="w-4 h-4" /> Send Now</>}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
