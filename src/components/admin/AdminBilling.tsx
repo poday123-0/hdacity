@@ -188,7 +188,7 @@ const AdminBilling = () => {
     }
     setSendingSingleSmsId(null);
   };
-
+  const fetchDrivers = async () => {
     setLoading(true);
     const [driversRes, companiesRes, vehicleTypesRes, vehiclesRes, settingsRes] = await Promise.all([
       (() => {
