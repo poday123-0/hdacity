@@ -746,7 +746,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       };
 
-      const upsertLocation = async (lat: number, lng: number, force = false) => {
+      const upsertLocation = async (lat: number, lng: number, force = false, heading?: number | null) => {
         lastPosRef.current = { lat, lng };
         // Persist to localStorage for instant restore on reopen
         try { localStorage.setItem("hda_driver_last_lat", String(lat)); localStorage.setItem("hda_driver_last_lng", String(lng)); } catch {}
@@ -771,6 +771,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           vehicle_type_id: vehicleTypeId,
           lat,
           lng,
+          heading: (heading != null && !isNaN(heading)) ? heading : 0,
           is_online: true,
           updated_at: new Date().toISOString(),
           session_id: deviceSessionId.current
@@ -819,11 +820,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Native: rely solely on background geolocation plugin — much more battery efficient
         // It uses the OS-level distance filter and doesn't keep GPS radio on constantly
         startBackgroundLocation(
-          (lat, lng) => {
+          (lat, lng, heading) => {
             setGpsEnabled(true);
             setDriverLat(lat);
             setDriverLng(lng);
-            upsertLocation(lat, lng);
+            upsertLocation(lat, lng, false, heading);
           },
           { distanceFilter: MIN_MOVE_METERS }
         );
@@ -834,7 +835,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(true);
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
-              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+              const h = pos.coords.heading;
+              upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             () => {},
             { enableHighAccuracy: false, timeout: 10000, maximumAge: 15000 }
@@ -848,7 +850,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(true);
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
-              upsertLocation(pos.coords.latitude, pos.coords.longitude);
+              const h = pos.coords.heading;
+              upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             (err) => {
               console.warn("GPS unavailable:", err.message);
