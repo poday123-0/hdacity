@@ -256,7 +256,7 @@ const AdminBilling = () => {
         return q;
       })(),
       supabase.from("center_payments").select("id, vehicle_id, payment_month, status, amount, slip_url, approved_at, submitted_at").eq("payment_month", currentCenterMonth),
-      supabase.from("wallets").select("user_id, balance"),
+      supabase.from("wallets").select("user_id, balance").limit(5000),
     ]);
     const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => {
       const codeA = parseInt(a.center_code || "0", 10);
