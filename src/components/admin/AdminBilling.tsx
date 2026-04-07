@@ -61,6 +61,7 @@ const AdminBilling = () => {
   const [smsReminderSending, setSmsReminderSending] = useState(false);
   const [smsReminderResult, setSmsReminderResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
   const [showSmsTemplateEditor, setShowSmsTemplateEditor] = useState(false);
+  const [sendingSingleSmsId, setSendingSingleSmsId] = useState<string | null>(null);
   const [centerMonth, setCenterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
