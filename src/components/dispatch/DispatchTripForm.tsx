@@ -1507,13 +1507,12 @@ const DispatchTripForm = ({
                 if (cached) {
                   const { data: vCheck } = await supabase
                     .from("vehicles")
-                    .select("id, blocked_until")
+                    .select("id, blocked_until, is_active, center_fee_exempt")
                     .eq("center_code", code)
-                    .eq("is_active", true)
                     .limit(1)
                     .maybeSingle();
                   if (!vCheck) {
-                    toast({ title: "Vehicle inactive", description: `Code "${code}" belongs to an inactive vehicle`, variant: "destructive" });
+                    toast({ title: "No vehicle found", description: `Code "${code}" not found`, variant: "destructive" });
                     return;
                   }
                   if (vCheck.blocked_until && new Date(vCheck.blocked_until as string) > new Date()) {
@@ -1534,20 +1533,23 @@ const DispatchTripForm = ({
                     return;
                   }
 
-                  // Check center payment status
-                  const centerNow = new Date();
-                  const centerCurrentMonth = `${centerNow.getFullYear()}-${String(centerNow.getMonth() + 1).padStart(2, "0")}`;
-                  if (centerNow.getDate() >= 5) {
-                    const { data: centerPayment } = await supabase
-                      .from("center_payments")
-                      .select("status")
-                      .eq("vehicle_id", vCheck.id)
-                      .eq("payment_month", centerCurrentMonth)
-                      .eq("status", "approved")
-                      .limit(1);
-                    if (!centerPayment || centerPayment.length === 0) {
-                      toast({ title: "Center payment pending", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}. Payment must be cleared first.`, variant: "destructive" });
-                      return;
+                  // Check center payment status (skip if exempt)
+                  let hasPendingPayment = false;
+                  if (!(vCheck as any).center_fee_exempt) {
+                    const centerNow = new Date();
+                    const centerCurrentMonth = `${centerNow.getFullYear()}-${String(centerNow.getMonth() + 1).padStart(2, "0")}`;
+                    if (centerNow.getDate() >= 5) {
+                      const { data: centerPayment } = await supabase
+                        .from("center_payments")
+                        .select("status")
+                        .eq("vehicle_id", vCheck.id)
+                        .eq("payment_month", centerCurrentMonth)
+                        .in("status", ["approved", "submitted"])
+                        .limit(1);
+                      if (!centerPayment || centerPayment.length === 0) {
+                        hasPendingPayment = true;
+                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}`, variant: "destructive" });
+                      }
                     }
                   }
 
@@ -1562,8 +1564,7 @@ const DispatchTripForm = ({
                   const { data: codeVehicles } = await supabase
                     .from("vehicles")
                     .select("id")
-                    .eq("center_code", code)
-                    .eq("is_active", true);
+                    .eq("center_code", code);
                   const codeVehicleIds = (codeVehicles || []).map((v: any) => v.id);
 
                   const [{ count: todayCount }, { count: lossCount }] = await Promise.all([
@@ -1591,9 +1592,8 @@ const DispatchTripForm = ({
                 try {
                   const { data: vehicle } = await supabase
                     .from("vehicles")
-                    .select("id, plate_number, color, vehicle_type_id, driver_id, blocked_until, vehicle_types:vehicle_type_id(name)")
+                    .select("id, plate_number, color, vehicle_type_id, driver_id, blocked_until, center_fee_exempt, vehicle_types:vehicle_type_id(name)")
                     .eq("center_code", code)
-                    .eq("is_active", true)
                     .limit(1)
                     .maybeSingle();
 
@@ -1625,20 +1625,21 @@ const DispatchTripForm = ({
                     return;
                   }
 
-                  // Check center payment status
-                  const centerNow2 = new Date();
-                  const centerMonth2 = `${centerNow2.getFullYear()}-${String(centerNow2.getMonth() + 1).padStart(2, "0")}`;
-                  if (centerNow2.getDate() >= 5) {
-                    const { data: centerPmt } = await supabase
-                      .from("center_payments")
-                      .select("status")
-                      .eq("vehicle_id", vehicle.id)
-                      .eq("payment_month", centerMonth2)
-                      .eq("status", "approved")
-                      .maybeSingle();
-                    if (!centerPmt) {
-                      toast({ title: "Center payment pending", description: `Code "${code}" has unpaid center fee for ${centerMonth2}. Payment must be cleared first.`, variant: "destructive" });
-                      return;
+                  // Check center payment status (skip if exempt)
+                  if (!(vehicle as any).center_fee_exempt) {
+                    const centerNow2 = new Date();
+                    const centerMonth2 = `${centerNow2.getFullYear()}-${String(centerNow2.getMonth() + 1).padStart(2, "0")}`;
+                    if (centerNow2.getDate() >= 5) {
+                      const { data: centerPmt } = await supabase
+                        .from("center_payments")
+                        .select("status")
+                        .eq("vehicle_id", vehicle.id)
+                        .eq("payment_month", centerMonth2)
+                        .in("status", ["approved", "submitted"])
+                        .maybeSingle();
+                      if (!centerPmt) {
+                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerMonth2}`, variant: "destructive" });
+                      }
                     }
                   }
 
@@ -1663,8 +1664,7 @@ const DispatchTripForm = ({
                     const { data: codeVehicles } = await supabase
                       .from("vehicles")
                       .select("id")
-                      .eq("center_code", code)
-                      .eq("is_active", true);
+                      .eq("center_code", code);
                     const codeVehicleIds = (codeVehicles || []).map((v: any) => v.id);
 
                     const [{ data: profile }, { data: lastTrip }, { count: todayCount }, { count: lossCount }] = await Promise.all([
