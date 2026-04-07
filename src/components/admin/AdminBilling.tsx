@@ -1388,7 +1388,7 @@ const AdminBilling = () => {
                                   <div className="text-[9px] text-muted-foreground/60">Updated: {new Date(driver.updated_at).toLocaleDateString()}</div>
                                 )}
                               </div>
-                              <span className="cursor-pointer" onClick={() => { setAssigningDriverVehicle(cv.id); setAssignDriverSearch(""); }}><UserPlus className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" /></span>
+                              
                             </div>
                           )}
                         </td>
@@ -2015,20 +2015,71 @@ const AdminBilling = () => {
                       const fee = v.center_fee_exempt ? 0 : (v.custom_center_fee != null ? v.custom_center_fee : ((vt as any)?.center_fee || 0));
                       const mp = centerMonthPayments.find(cp => cp.vehicle_id === v.id);
                       return (
-                        <div key={v.id} className="bg-surface rounded-xl p-3 flex items-center justify-between">
-                          <div>
-                            <p className="text-xs font-semibold text-foreground">{v.plate_number}</p>
-                            <p className="text-[10px] text-muted-foreground">Code: {v.center_code} · {vt?.name || "—"}</p>
-                            {(v as any).center_fee_note && <p className="text-[9px] text-destructive italic">{(v as any).center_fee_note}</p>}
+                        <div key={v.id} className="bg-surface rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-semibold text-foreground">{v.plate_number}</p>
+                              <p className="text-[10px] text-muted-foreground">Code: {v.center_code} · {vt?.name || "—"}</p>
+                              {(v as any).center_fee_note && <p className="text-[9px] text-destructive italic">{(v as any).center_fee_note}</p>}
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-xs font-bold ${v.center_fee_exempt ? "text-emerald-500" : v.custom_center_fee != null ? "text-chart-4" : "text-foreground"}`}>
+                                {fee} MVR
+                              </p>
+                              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${mp?.status === "approved" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>
+                                {mp?.status === "approved" ? "Paid" : "Unpaid"}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className={`text-xs font-bold ${v.center_fee_exempt ? "text-emerald-500" : v.custom_center_fee != null ? "text-chart-4" : "text-foreground"}`}>
-                              {fee} MVR
-                            </p>
-                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${mp?.status === "approved" ? "bg-emerald-500/15 text-emerald-600" : "bg-orange-500/15 text-orange-600"}`}>
-                              {mp?.status === "approved" ? "Paid" : "Unpaid"}
-                            </span>
-                          </div>
+                          {/* Reassign driver */}
+                          {assigningDriverVehicle === v.id ? (
+                            <div className="relative">
+                              <input
+                                autoFocus
+                                placeholder="Search driver..."
+                                value={assignDriverSearch}
+                                onChange={e => setAssignDriverSearch(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-lg"
+                              />
+                              {assignDriverSearch && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-32 overflow-y-auto z-50">
+                                  {drivers.filter(dr => {
+                                    const s = assignDriverSearch.toLowerCase();
+                                    return `${dr.first_name} ${dr.last_name}`.toLowerCase().includes(s) || (dr.phone_number || "").includes(s);
+                                  }).slice(0, 8).map(dr => (
+                                    <button
+                                      key={dr.id}
+                                      onClick={async () => {
+                                        if (!confirm(`Assign ${dr.first_name} ${dr.last_name} to ${v.plate_number}?`)) return;
+                                        await supabase.from("vehicles").update({ driver_id: dr.id } as any).eq("id", v.id);
+                                        const { data: pp } = await supabase.from("center_payments").select("id").eq("vehicle_id", v.id).eq("status", "pending");
+                                        if (pp?.length) for (const p of pp) await supabase.from("center_payments").update({ driver_id: dr.id } as any).eq("id", p.id);
+                                        toast({ title: `Driver assigned: ${dr.first_name} ${dr.last_name}` });
+                                        setAssigningDriverVehicle(null);
+                                        setAssignDriverSearch("");
+                                        setDriverCardId(null);
+                                        fetchCenterData();
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 hover:bg-muted/50 text-[11px] border-b border-border last:border-0"
+                                    >
+                                      <span className="font-medium">{dr.first_name} {dr.last_name}</span>
+                                      <span className="text-muted-foreground ml-1">{dr.phone_number}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <button onClick={() => { setAssigningDriverVehicle(null); setAssignDriverSearch(""); }} className="absolute right-2 top-1.5">
+                                <X className="w-3 h-3 text-muted-foreground" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setAssigningDriverVehicle(v.id); setAssignDriverSearch(""); }}
+                              className="flex items-center gap-1.5 text-[10px] text-primary hover:text-primary/80 transition-colors font-medium"
+                            >
+                              <UserPlus className="w-3 h-3" /> Reassign Driver
+                            </button>
+                          )}
                         </div>
                       );
                     })}
