@@ -1507,13 +1507,12 @@ const DispatchTripForm = ({
                 if (cached) {
                   const { data: vCheck } = await supabase
                     .from("vehicles")
-                    .select("id, blocked_until")
+                    .select("id, blocked_until, is_active, center_fee_exempt")
                     .eq("center_code", code)
-                    .eq("is_active", true)
                     .limit(1)
                     .maybeSingle();
                   if (!vCheck) {
-                    toast({ title: "Vehicle inactive", description: `Code "${code}" belongs to an inactive vehicle`, variant: "destructive" });
+                    toast({ title: "No vehicle found", description: `Code "${code}" not found`, variant: "destructive" });
                     return;
                   }
                   if (vCheck.blocked_until && new Date(vCheck.blocked_until as string) > new Date()) {
@@ -1534,20 +1533,23 @@ const DispatchTripForm = ({
                     return;
                   }
 
-                  // Check center payment status
-                  const centerNow = new Date();
-                  const centerCurrentMonth = `${centerNow.getFullYear()}-${String(centerNow.getMonth() + 1).padStart(2, "0")}`;
-                  if (centerNow.getDate() >= 5) {
-                    const { data: centerPayment } = await supabase
-                      .from("center_payments")
-                      .select("status")
-                      .eq("vehicle_id", vCheck.id)
-                      .eq("payment_month", centerCurrentMonth)
-                      .eq("status", "approved")
-                      .limit(1);
-                    if (!centerPayment || centerPayment.length === 0) {
-                      toast({ title: "Center payment pending", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}. Payment must be cleared first.`, variant: "destructive" });
-                      return;
+                  // Check center payment status (skip if exempt)
+                  let hasPendingPayment = false;
+                  if (!(vCheck as any).center_fee_exempt) {
+                    const centerNow = new Date();
+                    const centerCurrentMonth = `${centerNow.getFullYear()}-${String(centerNow.getMonth() + 1).padStart(2, "0")}`;
+                    if (centerNow.getDate() >= 5) {
+                      const { data: centerPayment } = await supabase
+                        .from("center_payments")
+                        .select("status")
+                        .eq("vehicle_id", vCheck.id)
+                        .eq("payment_month", centerCurrentMonth)
+                        .in("status", ["approved", "submitted"])
+                        .limit(1);
+                      if (!centerPayment || centerPayment.length === 0) {
+                        hasPendingPayment = true;
+                        toast({ title: "⚠️ Pending payment", description: `Code "${code}" has unpaid center fee for ${centerCurrentMonth}`, variant: "destructive" });
+                      }
                     }
                   }
 
