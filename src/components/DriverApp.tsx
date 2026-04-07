@@ -5794,7 +5794,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                       body: {
                                         driver_name: `${userProfile.first_name} ${userProfile.last_name}`.trim(),
                                         phone_number: userProfile.phone_number,
-                                        country_code: userProfile.country_code || "960",
+                                        country_code: (userProfile as any).country_code || "960",
                                         plate_number: sv?.plate_number || "N/A",
                                         update_type: `Center payment slip uploaded (Code: ${sv?.center_code || "N/A"}, Plate: ${sv?.plate_number || "N/A"}, ${svFee} MVR)`,
                                       },
