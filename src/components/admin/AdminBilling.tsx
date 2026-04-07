@@ -235,7 +235,7 @@ const AdminBilling = () => {
     const now = new Date();
     const currentCenterMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const [cvRes, cpRes, cmRes, walletsRes] = await Promise.all([
-      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, custom_center_fee, make, model, color, is_active").not("center_code", "is", null),
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, custom_center_fee, center_fee_note, make, model, color, is_active").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
