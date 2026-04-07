@@ -1185,7 +1185,7 @@ const AdminBilling = () => {
                     <button
                       disabled={bulkPaying}
                       onClick={async () => {
-                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as paid for ${centerMonth}?`)) return;
+                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as paid for ${formatMonth(centerMonth)}?`)) return;
                         setBulkPaying(true);
                         for (const cvId of selectedCenterIds) {
                           const cv = centerVehicles.find((v: any) => v.id === cvId);
@@ -1215,7 +1215,7 @@ const AdminBilling = () => {
                     <button
                       disabled={bulkPaying}
                       onClick={async () => {
-                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as unpaid for ${centerMonth}?`)) return;
+                        if (!confirm(`Mark ${selectedCenterIds.size} vehicles as unpaid for ${formatMonth(centerMonth)}?`)) return;
                         setBulkPaying(true);
                         for (const cvId of selectedCenterIds) {
                           const existing = centerMonthPayments.find((cp: any) => cp.vehicle_id === cvId);
@@ -1276,7 +1276,7 @@ const AdminBilling = () => {
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Type</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Center Fee</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">App Fee</th>
-                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">{centerMonth} Status</th>
+                    <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">{formatMonth(centerMonth)} Status</th>
                     <th className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-2">Actions</th>
                   </tr>
                 </thead>
@@ -1705,7 +1705,7 @@ const AdminBilling = () => {
             <div className="bg-primary/10 p-4 text-center">
               <Send className="w-8 h-8 text-primary mx-auto mb-2" />
               <h3 className="text-lg font-bold text-foreground">Send Payment Reminders</h3>
-              <p className="text-xs text-muted-foreground mt-1">Send SMS to drivers with unpaid center fees for {centerMonth}</p>
+              <p className="text-xs text-muted-foreground mt-1">Send SMS to drivers with unpaid center fees for {formatMonth(centerMonth)}</p>
             </div>
             <div className="p-4 space-y-3">
               {(() => {
