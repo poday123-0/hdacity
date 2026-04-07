@@ -160,8 +160,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- CENTER BILLING ENFORCEMENT (due day = 5th) ----
-    const centerDueDay = 5;
+    // ---- CENTER BILLING ENFORCEMENT ----
+    const { data: centerDueDaySetting } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "center_billing_due_day")
+      .single();
+    const centerDueDay = centerDueDaySetting?.value
+      ? typeof centerDueDaySetting.value === "number"
+        ? centerDueDaySetting.value
+        : parseInt(String(centerDueDaySetting.value)) || 5
+      : 5;
     const isCenterDueDay = currentDay >= centerDueDay;
     let centerDeactivated = 0;
 
