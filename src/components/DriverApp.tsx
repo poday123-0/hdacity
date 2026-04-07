@@ -3880,7 +3880,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </div>
 
               {/* Accept / Decline buttons - sticky at bottom */}
-              <div className="flex gap-2 px-4 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,8px)+0.5rem))] border-t border-border/30 shrink-0 bg-card">
+              <div className="flex gap-2 px-4 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,8px)+0.75rem))] border-t border-border/30 shrink-0 bg-card" style={{ paddingBottom: "max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem), calc(var(--safe-bottom, 8px) + 0.75rem))" }}>
                 <button onClick={async () => {
                 if (rideRequestTimerRef.current) {clearInterval(rideRequestTimerRef.current);rideRequestTimerRef.current = null;}
                 stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
@@ -4228,7 +4228,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </AnimatePresence>
 
           {/* Sticky action button - always visible */}
-          <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-2 border-t border-border/40 shrink-0 space-y-2">
+          <div className="px-4 pt-2 border-t border-border/40 shrink-0 space-y-2" style={{ paddingBottom: "max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem), calc(var(--safe-bottom, 8px) + 0.75rem))" }}>
             {/* Driver cancel trip button - hidden for dispatch trips */}
             {currentTrip?.dispatch_type !== "operator" && (
             <button
