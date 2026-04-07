@@ -459,6 +459,14 @@ const AdminBilling = () => {
     return drivers.filter(d => matchingDriverIds.includes(d.id)).length;
   };
 
+  const openDriverCard = async (driverId: string) => {
+    setDriverCardId(driverId);
+    setDriverCardLoading(true);
+    const { data } = await supabase.from("center_payments").select("*").eq("driver_id", driverId).order("payment_month", { ascending: false }).limit(12);
+    setDriverCardPayments(data || []);
+    setDriverCardLoading(false);
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Driver Billing</h2>
