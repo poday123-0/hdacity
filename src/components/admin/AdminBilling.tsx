@@ -2038,55 +2038,13 @@ const AdminBilling = () => {
                               </span>
                             </div>
                           </div>
-                          {/* Reassign driver */}
-                          {assigningDriverVehicle === v.id ? (
-                            <div className="relative">
-                              <input
-                                autoFocus
-                                placeholder="Search driver..."
-                                value={assignDriverSearch}
-                                onChange={e => setAssignDriverSearch(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-lg"
-                              />
-                              {assignDriverSearch && (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-32 overflow-y-auto z-50">
-                                  {drivers.filter(dr => {
-                                    const s = assignDriverSearch.toLowerCase();
-                                    return `${dr.first_name} ${dr.last_name}`.toLowerCase().includes(s) || (dr.phone_number || "").includes(s);
-                                  }).slice(0, 8).map(dr => (
-                                    <button
-                                      key={dr.id}
-                                      onClick={async () => {
-                                        if (!confirm(`Assign ${dr.first_name} ${dr.last_name} to ${v.plate_number}?`)) return;
-                                        await supabase.from("vehicles").update({ driver_id: dr.id } as any).eq("id", v.id);
-                                        const { data: pp } = await supabase.from("center_payments").select("id").eq("vehicle_id", v.id).eq("status", "pending");
-                                        if (pp?.length) for (const p of pp) await supabase.from("center_payments").update({ driver_id: dr.id } as any).eq("id", p.id);
-                                        toast({ title: `Driver assigned: ${dr.first_name} ${dr.last_name}` });
-                                        setAssigningDriverVehicle(null);
-                                        setAssignDriverSearch("");
-                                        setDriverCardId(null);
-                                        fetchCenterData();
-                                      }}
-                                      className="w-full text-left px-3 py-1.5 hover:bg-muted/50 text-[11px] border-b border-border last:border-0"
-                                    >
-                                      <span className="font-medium">{dr.first_name} {dr.last_name}</span>
-                                      <span className="text-muted-foreground ml-1">{dr.phone_number}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              <button onClick={() => { setAssigningDriverVehicle(null); setAssignDriverSearch(""); }} className="absolute right-2 top-1.5">
-                                <X className="w-3 h-3 text-muted-foreground" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => { setAssigningDriverVehicle(v.id); setAssignDriverSearch(""); }}
-                              className="flex items-center gap-1.5 text-[10px] text-primary hover:text-primary/80 transition-colors font-medium"
-                            >
-                              <UserPlus className="w-3 h-3" /> Reassign Driver
-                            </button>
-                          )}
+                          {/* Change Driver */}
+                          <button
+                            onClick={() => { setAssigningDriverVehicle(v.id); setAssignDriverSearch(""); }}
+                            className="flex items-center gap-1.5 text-[10px] text-primary hover:text-primary/80 transition-colors font-medium"
+                          >
+                            <UserPlus className="w-3 h-3" /> Change Driver
+                          </button>
                         </div>
                       );
                     })}
