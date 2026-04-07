@@ -256,7 +256,7 @@ const AdminBilling = () => {
         return q;
       })(),
       supabase.from("center_payments").select("id, vehicle_id, payment_month, status, amount, slip_url, approved_at, submitted_at").eq("payment_month", currentCenterMonth),
-      supabase.from("wallets").select("user_id, balance"),
+      supabase.from("wallets").select("user_id, balance").limit(5000),
     ]);
     const sorted = ((cvRes.data as any[]) || []).sort((a: any, b: any) => {
       const codeA = parseInt(a.center_code || "0", 10);
@@ -1468,11 +1468,16 @@ const AdminBilling = () => {
                           return (
                             <td className="px-3 py-2 text-xs font-bold">
                               {isPaid ? (
-                                <span className="text-emerald-500">Paid</span>
+                                <span className="text-chart-2">Paid</span>
                               ) : centerFee === 0 ? (
                                 <span className="text-muted-foreground">—</span>
                               ) : balanceDue === 0 ? (
-                                <span className="text-emerald-500">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                                <span className="text-chart-2">0 MVR <span className="text-[9px] font-normal">(wallet covers)</span></span>
+                              ) : walletBal > 0 ? (
+                                <div>
+                                  <span className="text-destructive">{balanceDue} MVR</span>
+                                  <span className="block text-[9px] font-normal text-muted-foreground">({centerFee} - {walletBal} wallet)</span>
+                                </div>
                               ) : (
                                 <span className="text-destructive">{balanceDue} MVR</span>
                               )}
