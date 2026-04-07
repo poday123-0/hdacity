@@ -5346,8 +5346,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               </div>
                         }
 
-                            {/* Select button (only for non-selected approved vehicles) */}
-                            {!isSelected && isApproved &&
+                            {/* Select button (only for non-selected approved vehicles that are available) */}
+                            {!isSelected && isApproved && !isSuspended &&
                         <button onClick={() => selectVehicle(v)}
                         className="w-full mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-[0.98] transition-transform">
                                 Use this vehicle
