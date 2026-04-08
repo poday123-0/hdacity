@@ -274,15 +274,38 @@ export const usePushNotifications = (
 
           await PushNotifications.register();
 
-          PushNotifications.addListener("registration", async (token) => {
-            try {
-              console.log("FCM Token (native):", token.value);
-              const deviceType = Capacitor.getPlatform() === "ios" ? "ios" : "android";
-              await registerDeviceToken(userId, token.value, userType, deviceType);
-            } catch (err) {
-              console.error("Failed to register device token:", err);
-            }
-          });
+          // On iOS, Capacitor returns the raw APNs token which FCM can't use.
+          // We listen for the real FCM token posted from native AppDelegate via
+          // messaging(_:didReceiveRegistrationToken:) → evaluateJavaScript.
+          if (Capacitor.getPlatform() === "ios") {
+            // Listen for the real FCM token from the native bridge
+            const handleFcmToken = async (event: Event) => {
+              const fcmToken = (event as CustomEvent).detail?.token;
+              if (fcmToken && typeof fcmToken === "string" && fcmToken.length > 20) {
+                console.log("FCM Token (iOS native bridge):", fcmToken);
+                await registerDeviceToken(userId, fcmToken, userType, "ios");
+                registeredRef.current = true;
+              }
+            };
+            window.addEventListener("fcm-token-received", handleFcmToken);
+
+            // Also try Capacitor's registration event as fallback for Android
+            PushNotifications.addListener("registration", async (token) => {
+              console.log("APNs Token (iOS, ignored for FCM):", token.value.slice(0, 20) + "...");
+              // Don't register APNs token — wait for FCM token from native bridge
+            });
+          } else {
+            // Android: Capacitor returns the real FCM token
+            PushNotifications.addListener("registration", async (token) => {
+              try {
+                console.log("FCM Token (native):", token.value);
+                await registerDeviceToken(userId, token.value, userType, "android");
+                registeredRef.current = true;
+              } catch (err) {
+                console.error("Failed to register device token:", err);
+              }
+            });
+          }
 
           PushNotifications.addListener("registrationError", (error) => {
             console.error("Push registration error:", error);
