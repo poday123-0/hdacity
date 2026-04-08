@@ -277,7 +277,8 @@ export const usePushNotifications = (
           if (Capacitor.getPlatform() === "ios") {
             // iOS: Capacitor returns APNs hex token which FCM can't use.
             // Strategy: 1) Listen for native bridge FCM token
-            //           2) Proactively fetch via Firebase JS SDK as fallback
+            //           2) Poll for global variable
+            //           3) Fallback to Firebase JS SDK getToken()
             const registerFcm = async (fcmToken: string, source: string) => {
               if (registeredRef.current) return;
               if (!fcmToken || typeof fcmToken !== "string" || fcmToken.length < 100) {
@@ -287,6 +288,38 @@ export const usePushNotifications = (
               console.log(`FCM Token (iOS ${source}):`, fcmToken.slice(0, 30) + "...");
               await registerDeviceToken(userId, fcmToken, userType, "ios");
               registeredRef.current = true;
+            };
+
+            // Firebase JS SDK fallback — uses the APNs token internally to get a real FCM token
+            const tryFirebaseJsFallback = async () => {
+              if (registeredRef.current) return;
+              console.log("iOS: Attempting Firebase JS SDK getToken() fallback...");
+              try {
+                const { initializeApp, getApps } = await import("firebase/app");
+                const { getMessaging, getToken: getFcmToken } = await import("firebase/messaging");
+                const { supabase: sb } = await import("@/integrations/supabase/client");
+                const { data: settingsData } = await sb
+                  .from("system_settings")
+                  .select("key, value")
+                  .in("key", ["firebase_config", "firebase_vapid_key"]);
+                const configSetting = settingsData?.find((s: any) => s.key === "firebase_config");
+                if (!configSetting?.value) return;
+                const firebaseConfig = typeof configSetting.value === "string"
+                  ? JSON.parse(configSetting.value)
+                  : configSetting.value;
+                const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+                const messaging = getMessaging(app);
+                const vapidSetting = settingsData?.find((s: any) => s.key === "firebase_vapid_key");
+                const vapidKey = vapidSetting?.value
+                  ? (typeof vapidSetting.value === "string" ? vapidSetting.value : String(vapidSetting.value))
+                  : undefined;
+                const token = await getFcmToken(messaging, { vapidKey: vapidKey || undefined });
+                if (token) {
+                  await registerFcm(token, "firebase-js-sdk");
+                }
+              } catch (e) {
+                console.warn("iOS Firebase JS SDK fallback failed:", e);
+              }
             };
 
             // 1) Check if native bridge already set the token before JS was ready
@@ -315,9 +348,14 @@ export const usePushNotifications = (
             setTimeout(pollForToken, 5000);
             setTimeout(pollForToken, 8000);
 
+            // 4) Firebase JS SDK fallback after 10s if native bridge didn't deliver
+            setTimeout(() => {
+              if (!registeredRef.current) tryFirebaseJsFallback();
+            }, 10000);
+
             // Ignore APNs token from Capacitor
             PushNotifications.addListener("registration", async (token) => {
-              console.log("APNs Token (iOS, ignored):", token.value.slice(0, 20) + "...");
+              console.log("APNs Token (iOS, ignored for FCM):", token.value.slice(0, 20) + "...");
             });
           } else {
             // Android: Capacitor returns the real FCM token
