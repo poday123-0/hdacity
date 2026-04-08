@@ -118,6 +118,12 @@
     overflow: hidden;
     height: 100dvh;
     width: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+  input, select, textarea {
+    font-size: 16px !important;
   }
 
   /* PWA standalone: extend background behind status bar */
