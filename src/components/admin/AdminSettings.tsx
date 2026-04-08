@@ -914,7 +914,6 @@ const AdminSettings = () => {
 
       {/* Native App Version Control */}
       <SectionCard title="Native App Version Control" description="Manage version requirements for iOS & Android apps" icon={Smartphone}>
-        <div className="space-y-4">
         <div className="space-y-3">
           <p className="text-xs font-bold text-primary flex items-center gap-1.5">
             <Smartphone className="w-3.5 h-3.5" /> Android
