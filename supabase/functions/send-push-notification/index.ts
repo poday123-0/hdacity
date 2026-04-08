@@ -368,9 +368,14 @@ Deno.serve(async (req) => {
             },
             payload: {
               aps: {
+                alert: {
+                  title: title || "Notification",
+                  body: body || "",
+                },
                 sound: iosBackgroundSound,
                 badge: 1,
                 "content-available": 1,
+                "mutable-content": 1,
                 "interruption-level": isUrgent ? "time-sensitive" : "active",
               },
             },
