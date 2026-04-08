@@ -274,25 +274,63 @@ export const usePushNotifications = (
 
           await PushNotifications.register();
 
-          // On iOS, Capacitor returns the raw APNs token which FCM can't use.
-          // We listen for the real FCM token posted from native AppDelegate via
-          // messaging(_:didReceiveRegistrationToken:) → evaluateJavaScript.
           if (Capacitor.getPlatform() === "ios") {
-            // Listen for the real FCM token from the native bridge
-            const handleFcmToken = async (event: Event) => {
-              const fcmToken = (event as CustomEvent).detail?.token;
-              if (fcmToken && typeof fcmToken === "string" && fcmToken.length > 20) {
-                console.log("FCM Token (iOS native bridge):", fcmToken);
-                await registerDeviceToken(userId, fcmToken, userType, "ios");
-                registeredRef.current = true;
+            // iOS: Capacitor returns APNs hex token which FCM can't use.
+            // Strategy: 1) Listen for native bridge FCM token
+            //           2) Proactively fetch via Firebase JS SDK as fallback
+            const registerFcm = async (fcmToken: string, source: string) => {
+              if (registeredRef.current) return;
+              if (!fcmToken || typeof fcmToken !== "string" || fcmToken.length < 100) {
+                console.log(`iOS: Ignoring short/invalid token from ${source} (len=${fcmToken?.length})`);
+                return;
               }
+              console.log(`FCM Token (iOS ${source}):`, fcmToken.slice(0, 30) + "...");
+              await registerDeviceToken(userId, fcmToken, userType, "ios");
+              registeredRef.current = true;
+            };
+
+            // 1) Listen for native bridge event from AppDelegate
+            const handleFcmToken = (event: Event) => {
+              registerFcm((event as CustomEvent).detail?.token, "native-bridge");
             };
             window.addEventListener("fcm-token-received", handleFcmToken);
 
-            // Also try Capacitor's registration event as fallback for Android
+            // 2) Proactively get FCM token via Firebase JS SDK (works in WebView)
+            const fetchFcmToken = async () => {
+              if (registeredRef.current) return;
+              try {
+                const { supabase } = await import("@/integrations/supabase/client");
+                const { data: settingsData } = await supabase
+                  .from("system_settings")
+                  .select("key, value")
+                  .in("key", ["firebase_config"]);
+                const configSetting = settingsData?.find((s: any) => s.key === "firebase_config");
+                if (!configSetting?.value) return;
+                const firebaseConfig = typeof configSetting.value === "string"
+                  ? JSON.parse(configSetting.value)
+                  : configSetting.value;
+
+                const { initializeApp, getApps } = await import("firebase/app");
+                const { getMessaging, getToken: getFcmToken } = await import("firebase/messaging");
+                const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+                const messaging = getMessaging(app);
+                const token = await getFcmToken(messaging);
+                if (token) {
+                  await registerFcm(token, "firebase-js-sdk");
+                }
+              } catch (e) {
+                console.warn("iOS: Firebase JS SDK getToken failed:", e);
+              }
+            };
+
+            // Wait a bit for native bridge, then try Firebase JS SDK
+            setTimeout(fetchFcmToken, 3000);
+            // Retry once more after 8s if still not registered
+            setTimeout(() => { if (!registeredRef.current) fetchFcmToken(); }, 8000);
+
+            // Ignore APNs token from Capacitor
             PushNotifications.addListener("registration", async (token) => {
-              console.log("APNs Token (iOS, ignored for FCM):", token.value.slice(0, 20) + "...");
-              // Don't register APNs token — wait for FCM token from native bridge
+              console.log("APNs Token (iOS, ignored):", token.value.slice(0, 20) + "...");
             });
           } else {
             // Android: Capacitor returns the real FCM token
