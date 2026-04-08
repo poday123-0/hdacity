@@ -355,6 +355,7 @@ export const usePushNotifications = (
             // 2) Listen for native bridge event from AppDelegate
             const handleFcmToken = (event: Event) => {
               const token = (event as CustomEvent).detail?.token;
+              console.log("iOS: fcm-token-received event fired, token length:", token?.length);
               cacheIosFcmToken(token);
               registerFcm(token, "native-bridge");
             };
@@ -364,6 +365,7 @@ export const usePushNotifications = (
             const pollForToken = () => {
               if (registeredRef.current) return;
               const token = (window as any)._fcmToken || getCachedIosFcmToken();
+              console.log("iOS: Polling for token, found:", token ? `${token.slice(0,20)}... (len=${token.length})` : "none");
               if (token) {
                 registerFcm(token, "native-bridge-poll");
               }
@@ -372,11 +374,35 @@ export const usePushNotifications = (
             setTimeout(pollForToken, 3000);
             setTimeout(pollForToken, 5000);
             setTimeout(pollForToken, 8000);
+            // Extra polls for slow native bridge delivery
+            setTimeout(pollForToken, 12000);
+            setTimeout(pollForToken, 20000);
+            setTimeout(pollForToken, 30000);
 
             // 4) Firebase JS SDK fallback after 10s if native bridge didn't deliver
             setTimeout(() => {
               if (!registeredRef.current) tryFirebaseJsFallback();
             }, 10000);
+
+            // 5) Intercept future _fcmToken assignments via Object.defineProperty
+            // This catches the case where native bridge sets the token AFTER the hook mounts
+            try {
+              let _storedFcmToken = (window as any)._fcmToken || null;
+              Object.defineProperty(window, "_fcmToken", {
+                get: () => _storedFcmToken,
+                set: (val: string) => {
+                  _storedFcmToken = val;
+                  console.log("iOS: _fcmToken setter fired, len:", val?.length);
+                  if (val && !registeredRef.current) {
+                    cacheIosFcmToken(val);
+                    registerFcm(val, "native-bridge-setter");
+                  }
+                },
+                configurable: true,
+              });
+            } catch (e) {
+              console.warn("iOS: Could not define _fcmToken property trap:", e);
+            }
 
             // Capacitor can return APNs or, in some setups, the real FCM token.
             PushNotifications.addListener("registration", async (token) => {
