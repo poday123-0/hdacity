@@ -846,10 +846,15 @@ const DispatchTripForm = ({
       // Fire trip insert + broadcast pre-fetch in parallel
       const tripInsertPromise = supabase.from("trips").insert(tripPayload).select("*").single();
 
+      const driverLocQuery = supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false);
+      // Only send to drivers currently operating the requested vehicle type
+      if (selectedVehicleType) {
+        driverLocQuery.eq("vehicle_type_id", selectedVehicleType);
+      }
+
       const broadcastPreFetchPromise = isBroadcast ? Promise.all([
-        supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false),
+        driverLocQuery,
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single()).catch(() => ({ data: null })),
-        selectedVehicleType ? supabase.from("driver_vehicle_types").select("driver_id").eq("vehicle_type_id", selectedVehicleType).eq("status", "approved") : Promise.resolve({ data: null }),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
@@ -858,16 +863,8 @@ const DispatchTripForm = ({
       if (error) throw error;
 
       if (broadcastData) {
-        const [driversRes, timeoutRes, dvtRes] = broadcastData as any;
-        let allDrivers = driversRes?.data || [];
-        
-        // Filter drivers by vehicle type eligibility
-        if (selectedVehicleType && allDrivers.length > 0) {
-          const dvtDriverIds = new Set((dvtRes?.data || []).map((r: any) => r.driver_id));
-          allDrivers = allDrivers.filter((d: any) => 
-            d.vehicle_type_id === selectedVehicleType || dvtDriverIds.has(d.driver_id)
-          );
-        }
+        const [driversRes, timeoutRes] = broadcastData as any;
+        const allDrivers = driversRes?.data || [];
         
         broadcastDriversCache = allDrivers;
         if (timeoutRes?.data?.value) {
@@ -899,7 +896,7 @@ const DispatchTripForm = ({
 
       // Fire notifications non-blocking for speed
       if (isAssigned && assignedDriverId) {
-        notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address).catch(console.warn);
+        notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address, selectedVehicleType || undefined).catch(console.warn);
       } else if (pickup) {
         // Pre-fetched in parallel above — use cached results for zero delay
         const tripId = trip.id;
@@ -937,7 +934,7 @@ const DispatchTripForm = ({
             onTripCreated();
           } else {
             // Send push notification immediately — no awaits needed
-            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address).catch(console.warn);
+            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address, selectedVehicleType || undefined).catch(console.warn);
             toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
             // Auto-cancel after configurable timeout

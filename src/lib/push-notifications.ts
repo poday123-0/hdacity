@@ -94,12 +94,12 @@ export const sendTopicNotification = async (
  */
 
 /** Notify driver(s) of a new ride request */
-export const notifyTripRequested = async (driverIds: string[], tripId: string, pickupAddress: string) => {
+export const notifyTripRequested = async (driverIds: string[], tripId: string, pickupAddress: string, vehicleTypeId?: string) => {
   await sendPushNotification(
     driverIds,
     "🚗 New Ride Request!",
     `Pickup: ${pickupAddress}`,
-    { trip_id: tripId, type: "trip_requested" }
+    { trip_id: tripId, type: "trip_requested", ...(vehicleTypeId ? { vehicle_type_id: vehicleTypeId } : {}) }
   );
 };
 
