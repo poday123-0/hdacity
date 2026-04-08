@@ -170,11 +170,12 @@ interface DriverMapProps {
   resetNorthRef?: React.MutableRefObject<(() => void) | null>;
   onMapReady?: (map: any) => void;
   externalPosition?: { lat: number; lng: number } | null;
+  externalHeading?: number | null;
   startFreeNavRef?: React.MutableRefObject<((target: { lat: number; lng: number }) => void) | null>;
   onFreeNavChange?: (active: boolean) => void;
 }
 
-const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, startFreeNavRef, onFreeNavChange }: DriverMapProps) => {
+const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, externalHeading, startFreeNavRef, onFreeNavChange }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
@@ -229,6 +230,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const lastRerouteOriginRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastCameraUpdateAtRef = useRef(0);
   const hasReceivedFirstGpsRef = useRef(false);
+  const rawGpsSampleRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
   const passengerLiveLocationRef = useRef(passengerLiveLocation);
   passengerLiveLocationRef.current = passengerLiveLocation;
 
@@ -401,8 +403,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (!externalPosition) return;
     setCurrentPos(prev => {
       if (!prev && mapInstance.current) {
+        programmaticZoomRef.current = true;
         mapInstance.current.panTo([externalPosition.lat, externalPosition.lng]);
-        programmaticZoomRef.current = true; mapInstance.current.setZoom(16);
+        mapInstance.current.setZoom(16);
       }
       return externalPosition;
     });
@@ -585,9 +588,33 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   useEffect(() => {
     if (!currentPos || !driverMarkerRef.current || !mapInstance.current) return;
     const map = mapInstance.current;
+    const usingExternalFeed = !!externalPosition;
+    const sampleNow = Date.now();
+    const previousRawSample = rawGpsSampleRef.current;
+    let derivedSpeed = currentSpeed;
+    let derivedHeading = externalHeading ?? currentHeading ?? null;
+
+    if (previousRawSample) {
+      const sampleDistance = getDistanceMeters(previousRawSample, currentPos);
+      const sampleElapsedSeconds = Math.max((sampleNow - previousRawSample.at) / 1000, 0.001);
+      derivedSpeed = Math.round((sampleDistance / sampleElapsedSeconds) * 3.6);
+
+      if ((derivedHeading == null || isNaN(derivedHeading)) && sampleDistance > 1) {
+        const dLngRad = (currentPos.lng - previousRawSample.lng) * Math.PI / 180;
+        const lat1 = previousRawSample.lat * Math.PI / 180;
+        const lat2 = currentPos.lat * Math.PI / 180;
+        const y = Math.sin(dLngRad) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLngRad);
+        derivedHeading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      }
+    }
+
+    rawGpsSampleRef.current = { lat: currentPos.lat, lng: currentPos.lng, at: sampleNow };
+    const effectiveSpeed = currentSpeed > 0 ? currentSpeed : Math.max(derivedSpeed, 0);
 
     if (!hasReceivedFirstGpsRef.current) {
       hasReceivedFirstGpsRef.current = true;
+      programmaticZoomRef.current = true;
       map.setView([currentPos.lat, currentPos.lng], map.getZoom());
       driverMarkerRef.current.setLatLng([currentPos.lat, currentPos.lng]);
       filteredPosRef.current = currentPos;
@@ -599,11 +626,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     let displayPos = currentPos;
     if (prevFiltered) {
       const jumpMeters = getDistanceMeters(prevFiltered, currentPos);
-      if (jumpMeters > 150 && currentSpeed < 20) {
+      if (!usingExternalFeed && jumpMeters > 150 && effectiveSpeed < 20) {
         displayPos = prevFiltered;
       } else {
-        // Use higher alpha when not navigating for more responsive idle tracking
-        const alpha = isNavigating ? (currentSpeed > 25 ? 0.45 : 0.3) : 0.7;
+        const alpha = usingExternalFeed
+          ? (isNavigating ? (effectiveSpeed > 35 ? 0.95 : effectiveSpeed > 15 ? 0.88 : 0.78) : 0.9)
+          : (isNavigating ? (effectiveSpeed > 25 ? 0.45 : 0.3) : 0.7);
         displayPos = {
           lat: prevFiltered.lat + (currentPos.lat - prevFiltered.lat) * alpha,
           lng: prevFiltered.lng + (currentPos.lng - prevFiltered.lng) * alpha,
@@ -614,8 +642,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Calculate heading
     let heading = prevHeadingRef.current;
-    if (currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
+    if (externalHeading != null && !isNaN(externalHeading)) {
+      heading = externalHeading;
+    } else if (currentHeading != null && !isNaN(currentHeading) && effectiveSpeed > 2) {
       heading = currentHeading;
+    } else if (derivedHeading != null && !isNaN(derivedHeading) && effectiveSpeed > 2) {
+      heading = derivedHeading;
     } else if (prevMarkerPosRef.current) {
       const prev = prevMarkerPosRef.current;
       const dLat = displayPos.lat - prev.lat;
@@ -630,7 +662,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
       }
     }
-    if (isNavigating && currentSpeed <= 2 && navSteps[currentStepIndex]?.endLat != null) {
+    if (isNavigating && effectiveSpeed <= 2 && navSteps[currentStepIndex]?.endLat != null) {
       const nextStep = navSteps[currentStepIndex];
       if (nextStep.endLat && nextStep.endLng) {
         const dLng = (nextStep.endLng - displayPos.lng) * Math.PI / 180;
@@ -690,7 +722,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         lastCameraUpdateAtRef.current = now;
         if (isNavigating || freeNavTarget) {
           const lookAheadBase = navSettings.lookAheadDistance === "far" ? { slow: 80, mid: 110, fast: 140 } : navSettings.lookAheadDistance === "short" ? { slow: 25, mid: 40, fast: 60 } : { slow: 50, mid: 70, fast: 95 };
-          const lookAheadMeters = currentSpeed > 40 ? lookAheadBase.fast : currentSpeed > 20 ? lookAheadBase.mid : lookAheadBase.slow;
+          const lookAheadMeters = effectiveSpeed > 40 ? lookAheadBase.fast : effectiveSpeed > 20 ? lookAheadBase.mid : lookAheadBase.slow;
           const cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
           map.panTo([cameraTarget.lat, cameraTarget.lng], { animate: true, duration: 0.3 });
           // Don't force zoom — respect driver's manual zoom level
@@ -699,7 +731,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
         }
       }
     }
-  }, [currentPos, isNavigating, freeNavTarget, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings]);
+  }, [currentPos, isNavigating, freeNavTarget, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings, externalHeading, externalPosition]);
 
   // Trim route polyline behind driver
   useEffect(() => {

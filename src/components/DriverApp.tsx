@@ -306,6 +306,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
   const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
+  const [driverHeading, setDriverHeading] = useState<number | null>(null);
   // Load last known position from localStorage for instant display
   const [driverLat, setDriverLat] = useState<number | null>(() => {
     try { const v = localStorage.getItem("hda_driver_last_lat"); return v ? parseFloat(v) : null; } catch { return null; }
@@ -667,10 +668,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (driverLat != null && driverLng != null) return; // Already have a cached position
     (async () => {
       try {
-        const { data } = await supabase.from("driver_locations").select("lat, lng").eq("driver_id", userProfile.id).single();
+        const { data } = await supabase.from("driver_locations").select("lat, lng, heading").eq("driver_id", userProfile.id).single();
         if (data?.lat && data?.lng) {
           setDriverLat(data.lat);
           setDriverLng(data.lng);
+          setDriverHeading(typeof (data as any).heading === "number" && !isNaN((data as any).heading) ? (data as any).heading : null);
           lastPosRef.current = { lat: data.lat, lng: data.lng };
           try { localStorage.setItem("hda_driver_last_lat", String(data.lat)); localStorage.setItem("hda_driver_last_lng", String(data.lng)); } catch {}
         }
@@ -831,6 +833,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(true);
             setDriverLat(lat);
             setDriverLng(lng);
+            setDriverHeading(heading != null && !isNaN(heading) ? heading : null);
             upsertLocation(lat, lng, false, heading);
           },
           { distanceFilter: MIN_MOVE_METERS }
@@ -843,6 +846,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
               const h = pos.coords.heading;
+              setDriverHeading(h != null && !isNaN(h) ? h : null);
               upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             () => {},
@@ -858,6 +862,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
               const h = pos.coords.heading;
+              setDriverHeading(h != null && !isNaN(h) ? h : null);
               upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             (err) => {
@@ -909,8 +914,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               setGpsEnabled(true);
               setDriverLat(pos.coords.latitude);
               setDriverLng(pos.coords.longitude);
+              const h = pos.coords.heading;
+              setDriverHeading(h != null && !isNaN(h) ? h : null);
               lastPosRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-              upsertLocation(pos.coords.latitude, pos.coords.longitude, true);
+              upsertLocation(pos.coords.latitude, pos.coords.longitude, true, (h != null && !isNaN(h)) ? h : null);
             },
             () => {
               // Fallback: upsert last known position if fresh fix fails
@@ -927,7 +934,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(true);
             setDriverLat(pos.coords.latitude);
             setDriverLng(pos.coords.longitude);
-            upsertLocation(pos.coords.latitude, pos.coords.longitude);
+            const h = pos.coords.heading;
+            setDriverHeading(h != null && !isNaN(h) ? h : null);
+            upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
           },
           () => {},
           { enableHighAccuracy: gpsHighAccuracy, timeout: 10000, maximumAge: 0 }
@@ -941,7 +950,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setGpsEnabled(true);
             setDriverLat(pos.coords.latitude);
             setDriverLng(pos.coords.longitude);
-            upsertLocation(pos.coords.latitude, pos.coords.longitude);
+            const h = pos.coords.heading;
+            setDriverHeading(h != null && !isNaN(h) ? h : null);
+            upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
           },
           (err) => {
             console.warn("GPS unavailable after foreground:", err.message);
@@ -3010,6 +3021,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         onMapReady={setDriverMapInstance}
         resetNorthRef={resetNorthRef}
         externalPosition={driverLat != null && driverLng != null ? { lat: driverLat, lng: driverLng } : null}
+        externalHeading={driverHeading}
         startFreeNavRef={startFreeNavRef}
         onFreeNavChange={setIsFreeNavigating} />
 
