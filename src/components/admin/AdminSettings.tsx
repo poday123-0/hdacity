@@ -116,8 +116,10 @@ const AdminSettings = () => {
   const [brandingUploadKey, setBrandingUploadKey] = useState("");
   const [clearingData, setClearingData] = useState<string | null>(null);
   const [versionConfig, setVersionConfig] = useState({
-    latest_version: "1.0.0",
-    min_version: "1.0.0",
+    android_latest_version: "1.0.0",
+    android_min_version: "1.0.0",
+    ios_latest_version: "1.0.0",
+    ios_min_version: "1.0.0",
     force_update: false,
     play_store_url: "",
     app_store_url: "",
@@ -913,14 +915,18 @@ const AdminSettings = () => {
       {/* Native App Version Control */}
       <SectionCard title="Native App Version Control" description="Manage version requirements for iOS & Android apps" icon={Smartphone}>
         <div className="space-y-4">
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-primary flex items-center gap-1.5">
+            <Smartphone className="w-3.5 h-3.5" /> Android
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1.5">Latest Version</label>
               <input
                 type="text"
-                value={versionConfig.latest_version}
-                onChange={e => setVersionConfig(prev => ({ ...prev, latest_version: e.target.value }))}
-                placeholder="1.0.0"
+                value={versionConfig.android_latest_version}
+                onChange={e => setVersionConfig(prev => ({ ...prev, android_latest_version: e.target.value }))}
+                placeholder="2.0.4"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
               />
               <p className="text-[10px] text-muted-foreground mt-1">Users below this see an update prompt</p>
@@ -929,9 +935,9 @@ const AdminSettings = () => {
               <label className="text-xs font-semibold text-foreground block mb-1.5">Minimum Version (Required)</label>
               <input
                 type="text"
-                value={versionConfig.min_version}
-                onChange={e => setVersionConfig(prev => ({ ...prev, min_version: e.target.value }))}
-                placeholder="1.0.0"
+                value={versionConfig.android_min_version}
+                onChange={e => setVersionConfig(prev => ({ ...prev, android_min_version: e.target.value }))}
+                placeholder="2.0.3"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
               />
               <p className="text-[10px] text-muted-foreground mt-1">Users below this MUST update (can't skip)</p>
@@ -946,6 +952,35 @@ const AdminSettings = () => {
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
               />
             </div>
+          </div>
+
+          <div className="border-t border-border pt-3 mt-3" />
+          <p className="text-xs font-bold text-primary flex items-center gap-1.5">
+            <Smartphone className="w-3.5 h-3.5" /> iOS
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Latest Version</label>
+              <input
+                type="text"
+                value={versionConfig.ios_latest_version}
+                onChange={e => setVersionConfig(prev => ({ ...prev, ios_latest_version: e.target.value }))}
+                placeholder="20.0"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Users below this see an update prompt</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Minimum Version (Required)</label>
+              <input
+                type="text"
+                value={versionConfig.ios_min_version}
+                onChange={e => setVersionConfig(prev => ({ ...prev, ios_min_version: e.target.value }))}
+                placeholder="20.0"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Users below this MUST update (can't skip)</p>
+            </div>
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1.5">App Store URL</label>
               <input
@@ -956,6 +991,11 @@ const AdminSettings = () => {
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground"
               />
             </div>
+          </div>
+
+          <div className="border-t border-border pt-3 mt-3" />
+          <p className="text-xs font-bold text-muted-foreground">Shared Settings</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold text-foreground block mb-1.5">Update Message (optional)</label>
               <input
@@ -980,7 +1020,7 @@ const AdminSettings = () => {
           <button
             onClick={async () => {
               await updateSetting("app_version_control", versionConfig);
-              toast({ title: "Version control saved!", description: `Latest: ${versionConfig.latest_version}, Min: ${versionConfig.min_version}` });
+              toast({ title: "Version control saved!", description: `Android: ${versionConfig.android_latest_version}, iOS: ${versionConfig.ios_latest_version}` });
             }}
             className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold active:scale-95 transition-transform hover:opacity-90"
           >
