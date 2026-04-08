@@ -1,0 +1,1 @@
+UPDATE device_tokens SET is_active = false WHERE device_type = 'ios' AND LENGTH(token) < 100;
