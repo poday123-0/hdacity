@@ -203,16 +203,21 @@ Deno.serve(async (req) => {
     let filteredUserIds = user_ids;
 
     if (isTripRequestType && user_ids.length > 0) {
-      // Check driver_locations to see who is actually online and available
-      const { data: onlineDrivers } = await supabase
+      // Check driver_locations to see who is actually online and operating the correct vehicle type
+      let driverLocQuery = supabase
         .from("driver_locations")
         .select("driver_id")
         .in("driver_id", user_ids)
         .eq("is_online", true);
 
-      const onlineSet = new Set((onlineDrivers || []).map((d: any) => d.driver_id));
+      // If a vehicle_type_id is specified in the notification data, only notify drivers
+      // currently operating that vehicle type (prevents e.g. Mini Pickup drivers getting Car requests)
+      if (data?.vehicle_type_id) {
+        driverLocQuery = driverLocQuery.eq("vehicle_type_id", data.vehicle_type_id);
+      }
 
-      // Also check device_tokens user_type — only send to tokens registered as "driver"
+      const { data: onlineDrivers } = await driverLocQuery;
+      const onlineSet = new Set((onlineDrivers || []).map((d: any) => d.driver_id));
       filteredUserIds = user_ids.filter((id: string) => onlineSet.has(id));
 
       if (filteredUserIds.length === 0) {
