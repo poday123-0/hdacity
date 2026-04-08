@@ -13,9 +13,31 @@ export const usePushNotifications = (
   userId: string | undefined,
   userType: "driver" | "passenger" | "admin" | "dispatcher"
 ) => {
+  const IOS_FCM_TOKEN_CACHE_KEY = "hda_ios_fcm_token";
   const registeredRef = useRef(false);
   const swListenerRef = useRef(false);
   const swUpdateTimerRef = useRef<number | null>(null);
+
+  const isLikelyFcmToken = useCallback((token?: string | null) => {
+    if (!token || typeof token !== "string") return false;
+    return token.includes(":") || token.length >= 100;
+  }, []);
+
+  const cacheIosFcmToken = useCallback((token?: string | null) => {
+    if (!isLikelyFcmToken(token)) return;
+    try {
+      localStorage.setItem(IOS_FCM_TOKEN_CACHE_KEY, token);
+    } catch {}
+  }, [isLikelyFcmToken]);
+
+  const getCachedIosFcmToken = useCallback(() => {
+    try {
+      const token = localStorage.getItem(IOS_FCM_TOKEN_CACHE_KEY);
+      return isLikelyFcmToken(token) ? token : null;
+    } catch {
+      return null;
+    }
+  }, [isLikelyFcmToken]);
 
   const setupWeb = useCallback(async () => {
     if (!userId || registeredRef.current) return;
@@ -281,10 +303,11 @@ export const usePushNotifications = (
             //           3) Fallback to Firebase JS SDK getToken()
             const registerFcm = async (fcmToken: string, source: string) => {
               if (registeredRef.current) return;
-              if (!fcmToken || typeof fcmToken !== "string" || fcmToken.length < 100) {
+              if (!isLikelyFcmToken(fcmToken)) {
                 console.log(`iOS: Ignoring short/invalid token from ${source} (len=${fcmToken?.length})`);
                 return;
               }
+              cacheIosFcmToken(fcmToken);
               console.log(`FCM Token (iOS ${source}):`, fcmToken.slice(0, 30) + "...");
               await registerDeviceToken(userId, fcmToken, userType, "ios");
               registeredRef.current = true;
@@ -323,22 +346,24 @@ export const usePushNotifications = (
             };
 
             // 1) Check if native bridge already set the token before JS was ready
-            const earlyToken = (window as any)._fcmToken;
+            const earlyToken = (window as any)._fcmToken || getCachedIosFcmToken();
             if (earlyToken) {
-              console.log("iOS: Found early FCM token from native bridge");
+              console.log("iOS: Found cached/early FCM token");
               await registerFcm(earlyToken, "native-bridge-early");
             }
 
             // 2) Listen for native bridge event from AppDelegate
             const handleFcmToken = (event: Event) => {
-              registerFcm((event as CustomEvent).detail?.token, "native-bridge");
+              const token = (event as CustomEvent).detail?.token;
+              cacheIosFcmToken(token);
+              registerFcm(token, "native-bridge");
             };
             window.addEventListener("fcm-token-received", handleFcmToken);
 
             // 3) Poll for the global variable in case native bridge fires between checks
             const pollForToken = () => {
               if (registeredRef.current) return;
-              const token = (window as any)._fcmToken;
+              const token = (window as any)._fcmToken || getCachedIosFcmToken();
               if (token) {
                 registerFcm(token, "native-bridge-poll");
               }
@@ -353,8 +378,13 @@ export const usePushNotifications = (
               if (!registeredRef.current) tryFirebaseJsFallback();
             }, 10000);
 
-            // Ignore APNs token from Capacitor
+            // Capacitor can return APNs or, in some setups, the real FCM token.
             PushNotifications.addListener("registration", async (token) => {
+              if (isLikelyFcmToken(token.value)) {
+                cacheIosFcmToken(token.value);
+                await registerFcm(token.value, "capacitor-registration");
+                return;
+              }
               console.log("APNs Token (iOS, ignored for FCM):", token.value.slice(0, 20) + "...");
             });
           } else {
@@ -451,5 +481,5 @@ export const usePushNotifications = (
         }
       };
     }
-  }, [userId, userType, setupWeb]);
+  }, [cacheIosFcmToken, getCachedIosFcmToken, isLikelyFcmToken, userId, userType, setupWeb]);
 };
