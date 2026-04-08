@@ -227,11 +227,11 @@ const AppVersionCheck = () => {
                 ? "Please update the app to continue using it."
                 : "A new version is available with improvements and fixes.")}
             </p>
-            {config.latest_version && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Version {config.latest_version}
-              </p>
-            )}
+            {(() => {
+              const p = getPlatform();
+              const ver = p === "ios" ? config.ios_latest_version : config.android_latest_version;
+              return ver ? <p className="text-xs text-muted-foreground mt-2">Version {ver}</p> : null;
+            })()}
           </div>
 
           <div className="px-6 py-4 space-y-2">
