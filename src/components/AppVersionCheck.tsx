@@ -4,8 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Download, AlertTriangle } from "lucide-react";
 
 interface VersionConfig {
-  latest_version: string;
-  min_version: string;
+  android_latest_version: string;
+  android_min_version: string;
+  ios_latest_version: string;
+  ios_min_version: string;
   force_update: boolean;
   play_store_url: string;
   app_store_url: string;
@@ -114,19 +116,27 @@ const AppVersionCheck = () => {
     console.log("[VersionCheck] Server config:", JSON.stringify(vc));
     setConfig(vc);
 
+    // Pick platform-specific versions
+    const latestVersion = platform === "ios" ? vc.ios_latest_version : vc.android_latest_version;
+    const minVersion = platform === "ios" ? vc.ios_min_version : vc.android_min_version;
+
+    if (!latestVersion || !minVersion) {
+      console.log("[VersionCheck] No version config for platform:", platform);
+      return;
+    }
+
     // Check if current version is below minimum — always forced
-    if (compareVersions(appVersion, vc.min_version) < 0) {
+    if (compareVersions(appVersion, minVersion) < 0) {
       console.log("[VersionCheck] Below min_version, forcing update");
       setIsForced(true);
       setShowPrompt(true);
       setDismissed(false);
     }
     // Check if there's a newer version available
-    else if (compareVersions(appVersion, vc.latest_version) < 0) {
+    else if (compareVersions(appVersion, latestVersion) < 0) {
       console.log("[VersionCheck] Below latest_version, force_update:", vc.force_update);
       setIsForced(vc.force_update);
       setShowPrompt(true);
-      // Only reset dismissed for forced updates
       if (vc.force_update) setDismissed(false);
     } else {
       console.log("[VersionCheck] App is up to date");
