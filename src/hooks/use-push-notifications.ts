@@ -289,44 +289,31 @@ export const usePushNotifications = (
               registeredRef.current = true;
             };
 
-            // 1) Listen for native bridge event from AppDelegate
+            // 1) Check if native bridge already set the token before JS was ready
+            const earlyToken = (window as any)._fcmToken;
+            if (earlyToken) {
+              console.log("iOS: Found early FCM token from native bridge");
+              await registerFcm(earlyToken, "native-bridge-early");
+            }
+
+            // 2) Listen for native bridge event from AppDelegate
             const handleFcmToken = (event: Event) => {
               registerFcm((event as CustomEvent).detail?.token, "native-bridge");
             };
             window.addEventListener("fcm-token-received", handleFcmToken);
 
-            // 2) Proactively get FCM token via Firebase JS SDK (works in WebView)
-            const fetchFcmToken = async () => {
+            // 3) Poll for the global variable in case native bridge fires between checks
+            const pollForToken = () => {
               if (registeredRef.current) return;
-              try {
-                const { supabase } = await import("@/integrations/supabase/client");
-                const { data: settingsData } = await supabase
-                  .from("system_settings")
-                  .select("key, value")
-                  .in("key", ["firebase_config"]);
-                const configSetting = settingsData?.find((s: any) => s.key === "firebase_config");
-                if (!configSetting?.value) return;
-                const firebaseConfig = typeof configSetting.value === "string"
-                  ? JSON.parse(configSetting.value)
-                  : configSetting.value;
-
-                const { initializeApp, getApps } = await import("firebase/app");
-                const { getMessaging, getToken: getFcmToken } = await import("firebase/messaging");
-                const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-                const messaging = getMessaging(app);
-                const token = await getFcmToken(messaging);
-                if (token) {
-                  await registerFcm(token, "firebase-js-sdk");
-                }
-              } catch (e) {
-                console.warn("iOS: Firebase JS SDK getToken failed:", e);
+              const token = (window as any)._fcmToken;
+              if (token) {
+                registerFcm(token, "native-bridge-poll");
               }
             };
-
-            // Wait a bit for native bridge, then try Firebase JS SDK
-            setTimeout(fetchFcmToken, 3000);
-            // Retry once more after 8s if still not registered
-            setTimeout(() => { if (!registeredRef.current) fetchFcmToken(); }, 8000);
+            setTimeout(pollForToken, 1500);
+            setTimeout(pollForToken, 3000);
+            setTimeout(pollForToken, 5000);
+            setTimeout(pollForToken, 8000);
 
             // Ignore APNs token from Capacitor
             PushNotifications.addListener("registration", async (token) => {
