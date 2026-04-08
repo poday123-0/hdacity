@@ -896,7 +896,7 @@ const DispatchTripForm = ({
 
       // Fire notifications non-blocking for speed
       if (isAssigned && assignedDriverId) {
-        notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address).catch(console.warn);
+        notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address, selectedVehicleType || undefined).catch(console.warn);
       } else if (pickup) {
         // Pre-fetched in parallel above — use cached results for zero delay
         const tripId = trip.id;
@@ -934,7 +934,7 @@ const DispatchTripForm = ({
             onTripCreated();
           } else {
             // Send push notification immediately — no awaits needed
-            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address).catch(console.warn);
+            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address, selectedVehicleType || undefined).catch(console.warn);
             toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
             // Auto-cancel after configurable timeout

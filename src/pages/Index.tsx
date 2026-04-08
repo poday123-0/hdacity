@@ -798,7 +798,7 @@ const Index = () => {
           const eligible = locData || [];
           if (eligible.length > 0) {
             const driverIds = eligible.map((d: any) => d.driver_id);
-            await notifyTripRequested(driverIds, data.id, pickup.name);
+            await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
           }
         } catch (pushErr) {
           console.warn("Push notification failed:", pushErr);
@@ -832,7 +832,7 @@ const Index = () => {
           const eligible = locData || [];
           if (eligible.length > 0) {
             const driverIds = eligible.map((d: any) => d.driver_id);
-            await notifyTripRequested(driverIds, data.id, pickup.name);
+            await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
           }
         } catch (pushErr) {
           console.warn("Push notification failed:", pushErr);
