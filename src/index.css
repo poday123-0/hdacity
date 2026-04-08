@@ -121,9 +121,12 @@
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
-  input, select, textarea {
-    font-size: 16px !important;
+  /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) —
+     only on small screens (mobile). Desktop dispatch forms use compact 11px inputs. */
+  @media (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
 
   /* PWA standalone: extend background behind status bar */
