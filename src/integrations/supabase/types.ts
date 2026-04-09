@@ -1993,6 +1993,7 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          app_fee_comment: string | null
           blocked_until: string | null
           center_code: string | null
           center_fee_exempt: boolean
@@ -2017,6 +2018,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          app_fee_comment?: string | null
           blocked_until?: string | null
           center_code?: string | null
           center_fee_exempt?: boolean
@@ -2041,6 +2043,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          app_fee_comment?: string | null
           blocked_until?: string | null
           center_code?: string | null
           center_fee_exempt?: boolean
