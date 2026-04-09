@@ -103,11 +103,15 @@ Deno.serve(async (req) => {
       .eq("status", "submitted");
     const pendingDriverIds = new Set((pendingPayments || []).map((p) => p.driver_id));
 
-    // Filter drivers who owe fees (based on vehicle type monthly_fee)
+    // Filter drivers who owe fees (based on vehicle type monthly_fee or company monthly_fee for pays_app_fee)
     const driversOwingFees = drivers.filter((d) => {
       const totalFee = driverFeeMap.get(d.id) || 0;
       if (totalFee === 0) return false;
-      if (feeFreeCompanyIds.has(d.company_id)) return false;
+      // If company is fee_free, only exempt if driver has NO pays_app_fee vehicles
+      if (feeFreeCompanyIds.has(d.company_id)) {
+        const hasAppFeeVehicle = (allVehicles || []).some((v) => v.driver_id === d.id && v.pays_app_fee);
+        if (!hasAppFeeVehicle) return false;
+      }
       if (d.fee_free_until && new Date(d.fee_free_until) > now) return false;
       if (paidDriverIds.has(d.id)) return false;
       return true;
