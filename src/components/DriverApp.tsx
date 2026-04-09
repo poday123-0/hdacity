@@ -5563,12 +5563,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                        const effectiveFeeFreeUntil = driverFeeFreeUntil || (userProfile as any)?.fee_free_until || null;
                        const isFreePeriod = effectiveFeeFreeUntil && new Date(effectiveFeeFreeUntil) > new Date();
                        const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
-                       // If driver is in free company but has pays_app_fee vehicles, they still pay
+                       // If driver is in free company but has pays_app_fee vehicles, they pay the company monthly_fee as app fee
                        const hasPayingAppFee = appFeeVehicles.some((v: any) => v.pays_app_fee);
                        const actuallyFree = (isFreeCompany && !hasPayingAppFee) || isFreePeriod;
+                       // For pays_app_fee vehicles in free company, use company monthly_fee; otherwise use vehicle type monthly_fee
+                       const companyMonthlyFee = companyInfo?.monthly_fee || 0;
                        const vehicleFees = appFeeVehicles.map((v: any) => {
                          const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                         return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                         // If vehicle has pays_app_fee and is in a free company, charge company's monthly_fee
+                         const fee = (v.pays_app_fee && isFreeCompany && companyMonthlyFee > 0) ? companyMonthlyFee : (vt?.monthly_fee || 0);
+                         return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee };
                        });
                        const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
