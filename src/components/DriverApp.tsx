@@ -5503,7 +5503,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           {companyInfo.logo_url && <img src={companyInfo.logo_url} alt={companyInfo.name} className="w-10 h-10 rounded-lg object-contain" />}
                           <div>
                             <p className="text-sm font-semibold text-foreground">{companyInfo.name}</p>
-                            {companyInfo.fee_free && <span className="text-xs text-primary font-semibold">Free</span>}
+                            {companyInfo.fee_free && <span className={`text-xs text-primary font-semibold ${driverVehicles.some((v: any) => v.pays_app_fee) ? "line-through" : ""}`}>Free</span>}
                             {/* Show app fee info if any vehicle has pays_app_fee */}
                             {(() => {
                               const appFeeVeh = driverVehicles.find((v: any) => v.pays_app_fee);
