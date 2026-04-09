@@ -317,7 +317,7 @@ const AdminBilling = () => {
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
       supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
-      supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
+      supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number, pays_app_fee, center_code").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "center_billing_due_day"]),
       supabase.from("wallets").select("user_id, balance").limit(5000),
       supabase.from("system_settings").select("value").eq("key", "app_payment_sms_template").maybeSingle(),
@@ -405,13 +405,20 @@ const AdminBilling = () => {
     return getDriverVehicleType(driverId)?.name || "—";
   };
 
-  // Calculate total monthly fee for a driver based on their vehicles' vehicle types
+  // Calculate total monthly fee for a driver based on their app-fee vehicles
   const getDriverFee = (driverId: string): number => {
     const driverVehs = vehicles.filter(v => v.driver_id === driverId);
-    return driverVehs.reduce((sum, v) => {
+    // Only count vehicles that are app-fee vehicles (no center_code, or has center_code but pays_app_fee=true)
+    const appFeeVehs = driverVehs.filter(v => !v.center_code || v.pays_app_fee);
+    return appFeeVehs.reduce((sum, v) => {
       const vt = vehicleTypes.find(t => t.id === v.vehicle_type_id);
       return sum + (vt?.monthly_fee || 0);
     }, 0);
+  };
+
+  // Check if driver has any vehicles with pays_app_fee enabled (overrides company free)
+  const hasAppFeeVehicles = (driverId: string): boolean => {
+    return vehicles.some(v => v.driver_id === driverId && v.pays_app_fee);
   };
 
   // Toggle fee-free is now handled via fee_free_until or company setting
