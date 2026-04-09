@@ -41,10 +41,18 @@ const AdminUsers = () => {
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
 
+  const getCallerId = () => {
+    try {
+      const stored = localStorage.getItem("hda_admin");
+      if (stored) return JSON.parse(stored).id;
+    } catch {}
+    return null;
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "list" },
+      body: { action: "list", caller_id: getCallerId() },
     });
     if (error) {
       console.error("Fetch users error:", error);
@@ -122,7 +130,7 @@ const AdminUsers = () => {
       body.last_name = newLastName.trim();
     }
 
-    const { data, error } = await supabase.functions.invoke("manage-user-role", { body });
+    const { data, error } = await supabase.functions.invoke("manage-user-role", { body: { ...body, caller_id: getCallerId() } });
 
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
@@ -138,7 +146,7 @@ const AdminUsers = () => {
     if (!confirm(`Remove role from ${userName}?`)) return;
 
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "remove", role_id: roleId },
+      body: { action: "remove", role_id: roleId, caller_id: getCallerId() },
     });
 
     if (error || data?.error) {
@@ -151,7 +159,7 @@ const AdminUsers = () => {
 
   const updatePermissions = async (roleId: string) => {
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions },
+      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions, caller_id: getCallerId() },
     });
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
