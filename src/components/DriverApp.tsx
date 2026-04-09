@@ -6358,7 +6358,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
 
               {/* Pay from wallet option */}
-              {(() => { const vtTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0); return driverWalletBalance >= vtTotal && vtTotal > 0; })() && (
+              {(() => { const isFCo = companyInfo?.fee_free; const cMF = companyInfo?.monthly_fee || 0; const vtTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); const fee = (v.pays_app_fee && isFCo && cMF > 0) ? cMF : (vt?.monthly_fee || 0); return s + fee; }, 0); return driverWalletBalance >= vtTotal && vtTotal > 0; })() && (
                 <button
                   onClick={() => {
                     setShowBillingPayPopup(false);
