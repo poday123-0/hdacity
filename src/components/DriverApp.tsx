@@ -5575,32 +5575,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       // No app-fee vehicles at all — hide section
                       if (appFeeVehicles.length === 0) return null;
 
-                      return (
-                        <div className="bg-surface rounded-xl p-3 space-y-2">
+                        return (
+                         <div className="bg-surface rounded-xl p-3 space-y-2">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
-                          {isFreeCompany || isFreePeriod ? (
-                            <div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">Status</span>
-                                <span className="text-lg font-bold text-primary">FREE{isFreeCompany ? " (Company)" : ""}</span>
-                              </div>
-                              {isFreePeriod && !isFreeCompany && (
-                                <p className="text-xs text-primary">Free until {new Date(effectiveFeeFreeUntil).toLocaleDateString()}</p>
-                              )}
+                          {(isFreeCompany || isFreePeriod) && (
+                            <div className="flex items-center justify-between bg-primary/5 rounded-lg px-2.5 py-1.5 mb-1">
+                              <span className="text-xs text-primary font-semibold">
+                                {isFreeCompany ? "FREE (Company)" : `Free until ${new Date(effectiveFeeFreeUntil).toLocaleDateString()}`}
+                              </span>
                             </div>
-                          ) : (
+                          )}
                             <div className="space-y-2">
                               {vehicleFees.map((v: any, i: number) => (
                                 <div key={i} className="flex items-center justify-between">
                                   <span className="text-sm text-muted-foreground">{v.plate} ({v.typeName})</span>
-                                  <span className="text-sm font-semibold text-foreground">{v.fee} MVR</span>
+                                  <span className={`text-sm font-semibold ${isFreeCompany || isFreePeriod ? "text-muted-foreground line-through" : "text-foreground"}`}>{v.fee} MVR</span>
                                 </div>
                               ))}
                               <div className="flex items-center justify-between border-t border-border pt-2">
                                 <span className="text-sm font-semibold text-muted-foreground">Total Fee</span>
-                                <span className="text-lg font-bold text-foreground">{totalFee} MVR</span>
+                                <span className={`text-lg font-bold ${isFreeCompany || isFreePeriod ? "text-muted-foreground line-through" : "text-foreground"}`}>{totalFee} MVR</span>
                               </div>
-                              {totalFee > 0 && (driverWalletBalance || 0) > 0 && (() => {
+                              {!isFreeCompany && !isFreePeriod && totalFee > 0 && (driverWalletBalance || 0) > 0 && (() => {
                                 const balanceDue = Math.max(0, totalFee - (driverWalletBalance || 0));
                                 return (
                                   <div className="flex items-center justify-between bg-card rounded-lg px-2.5 py-1.5">
@@ -5612,7 +5608,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                 );
                               })()}
                             </div>
-                          )}
 
                           {/* Pending app payments */}
                           {appPaymentHistory.filter((p: any) => p.status === "submitted" || p.status === "pending").length > 0 && (
