@@ -6159,7 +6159,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Pay Fee from Wallet Modal */}
       {showPayFeeModal && (() => {
-        const vtFeeTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0);
+        const isFreeComp = companyInfo?.fee_free;
+        const compMoFee = companyInfo?.monthly_fee || 0;
+        const vtFeeTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); const fee = (v.pays_app_fee && isFreeComp && compMoFee > 0) ? compMoFee : (vt?.monthly_fee || 0); return s + fee; }, 0);
         return (
       <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowPayFeeModal(false)}>
           <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -6222,9 +6224,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
               <h3 className="text-lg font-bold text-foreground">Monthly Fee Payment</h3>
               {(() => {
+                const isFreeComp2 = companyInfo?.fee_free;
+                const compMoFee2 = companyInfo?.monthly_fee || 0;
                 const vFees = driverVehicles.map((v: any) => {
                   const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                  return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                  const fee = (v.pays_app_fee && isFreeComp2 && compMoFee2 > 0) ? compMoFee2 : (vt?.monthly_fee || 0);
+                  return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee };
                 });
                 const total = vFees.reduce((s: number, v: any) => s + v.fee, 0);
                 return (
@@ -6323,9 +6328,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const currentMonth = new Date().toISOString().slice(0, 7);
                   const now = new Date().toISOString();
 
+                  const isFreeComp3 = companyInfo?.fee_free;
+                  const compMoFee3 = companyInfo?.monthly_fee || 0;
                   const totalVtFee = driverVehicles.reduce((s: number, v: any) => {
                     const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                    return s + (vt?.monthly_fee || 0);
+                    const fee = (v.pays_app_fee && isFreeComp3 && compMoFee3 > 0) ? compMoFee3 : (vt?.monthly_fee || 0);
+                    return s + fee;
                   }, 0);
 
                   await supabase.from("driver_payments").insert({
