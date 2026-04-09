@@ -130,7 +130,7 @@ const AdminUsers = () => {
       body.last_name = newLastName.trim();
     }
 
-    const { data, error } = await supabase.functions.invoke("manage-user-role", { body });
+    const { data, error } = await supabase.functions.invoke("manage-user-role", { body: { ...body, caller_id: getCallerId() } });
 
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
