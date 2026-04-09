@@ -1711,6 +1711,24 @@ const AdminBilling = () => {
                           >
                             {cv.pays_app_fee ? "Yes" : "No"}
                           </button>
+                          {cv.pays_app_fee && (
+                            <div className="mt-1">
+                              <input
+                                type="text"
+                                placeholder="App fee reason..."
+                                defaultValue={(cv as any).app_fee_comment || ""}
+                                onBlur={async (e) => {
+                                  const val = e.target.value.trim();
+                                  if (val !== ((cv as any).app_fee_comment || "")) {
+                                    await supabase.from("vehicles").update({ app_fee_comment: val || null } as any).eq("id", cv.id);
+                                    toast({ title: "App fee comment saved" });
+                                    fetchCenterData();
+                                  }
+                                }}
+                                className="w-full text-[9px] px-1.5 py-0.5 rounded border border-border bg-background text-foreground"
+                              />
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           {monthPayment ? (
