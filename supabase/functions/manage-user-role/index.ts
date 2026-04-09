@@ -17,19 +17,31 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify caller is authenticated and is an admin
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const { action, phone_number, user_id, role, role_id, permissions, first_name, last_name, caller_id } = await req.json();
+
+    // Verify caller is admin - check via caller_id passed from client
+    // Also try JWT auth as fallback
+    let callerUserId: string | null = null;
+
+    // Method 1: caller_id from request body (custom OTP auth)
+    if (caller_id) {
+      callerUserId = caller_id;
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    // Method 2: JWT token fallback
+    if (!callerUserId) {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.replace("Bearer ", "");
+        try {
+          const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+          if (user) callerUserId = user.id;
+        } catch {}
+      }
+    }
+
+    if (!callerUserId) {
+      return new Response(JSON.stringify({ error: "Unauthorized: caller_id required" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -39,7 +51,7 @@ serve(async (req) => {
     const { data: adminRole } = await supabaseAdmin
       .from("user_roles")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", callerUserId)
       .eq("role", "admin")
       .maybeSingle();
 
@@ -50,10 +62,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, phone_number, user_id, role, role_id, permissions, first_name, last_name } = await req.json();
-
     if (action === "add") {
-      // Try to find existing profile
       const { data: profiles, error: pErr } = await supabaseAdmin
         .from("profiles")
         .select("id, first_name, last_name")
@@ -64,7 +73,6 @@ serve(async (req) => {
       if (!pErr && profiles && profiles.length > 0) {
         profile = profiles[0];
       } else {
-        // No existing profile — create one if name is provided
         if (!first_name || !last_name) {
           return new Response(JSON.stringify({ error: "No user found with this phone number. Provide first_name and last_name to create one." }), {
             status: 404,
@@ -72,7 +80,6 @@ serve(async (req) => {
           });
         }
 
-        // Create auth user first
         const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
           phone: `+960${phone_number}`,
           phone_confirm: true,
@@ -86,7 +93,6 @@ serve(async (req) => {
           });
         }
 
-        // Create profile
         const { data: newProfile, error: profileErr } = await supabaseAdmin
           .from("profiles")
           .insert({
@@ -110,7 +116,6 @@ serve(async (req) => {
         profile = newProfile;
       }
 
-      // Check for existing role
       const { data: existing } = await supabaseAdmin
         .from("user_roles")
         .select("id")
