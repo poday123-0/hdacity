@@ -4880,20 +4880,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     {/* ID Card */}
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID Card</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <DocumentUpload label="Front" url={idCardFrontUrl} uploading={uploading === "id_front"} onUpload={() => triggerUpload("id_front")} />
-                      <DocumentUpload label="Back" url={idCardBackUrl} uploading={uploading === "id_back"} onUpload={() => triggerUpload("id_back")} />
+                      <DocumentUpload label="ID Card (Front)" url={idCardFrontUrl} uploading={uploading === "id_front"} onUpload={() => triggerUpload("id_front")} />
+                      <DocumentUpload label="ID Card (Back)" url={idCardBackUrl} uploading={uploading === "id_back"} onUpload={() => triggerUpload("id_back")} />
                     </div>
                     {/* License */}
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Driving License</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <DocumentUpload label="Front" url={licenseFrontUrl} uploading={uploading === "license_front"} onUpload={() => triggerUpload("license_front")} />
-                      <DocumentUpload label="Back" url={licenseBackUrl} uploading={uploading === "license_back"} onUpload={() => triggerUpload("license_back")} />
+                      <DocumentUpload label="License (Front)" url={licenseFrontUrl} uploading={uploading === "license_front"} onUpload={() => triggerUpload("license_front")} />
+                      <DocumentUpload label="License (Back)" url={licenseBackUrl} uploading={uploading === "license_back"} onUpload={() => triggerUpload("license_back")} />
                     </div>
                     {/* Taxi Permit (optional) */}
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Taxi Permit <span className="text-[10px] font-normal normal-case">(optional)</span></p>
                     <div className="grid grid-cols-2 gap-2">
-                      <DocumentUpload label="Front" url={taxiPermitFrontUrl} uploading={uploading === "taxi_permit_front"} onUpload={() => triggerUpload("taxi_permit_front")} />
-                      <DocumentUpload label="Back" url={taxiPermitBackUrl} uploading={uploading === "taxi_permit_back"} onUpload={() => triggerUpload("taxi_permit_back")} />
+                      <DocumentUpload label="Taxi Permit (Front)" url={taxiPermitFrontUrl} uploading={uploading === "taxi_permit_front"} onUpload={() => triggerUpload("taxi_permit_front")} />
+                      <DocumentUpload label="Taxi Permit (Back)" url={taxiPermitBackUrl} uploading={uploading === "taxi_permit_back"} onUpload={() => triggerUpload("taxi_permit_back")} />
                     </div>
 
                     {(!idCardFrontUrl || !idCardBackUrl || !licenseFrontUrl || !licenseBackUrl) && (
