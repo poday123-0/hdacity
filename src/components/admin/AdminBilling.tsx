@@ -541,7 +541,12 @@ const AdminBilling = () => {
   };
 
   const getCompanyName = (d: any) => companies.find(c => c.id === d.company_id)?.name || d.company_name || "—";
-  const isCompanyFeeFree = (d: any) => companies.find(c => c.id === d.company_id)?.fee_free || false;
+  const isCompanyFeeFree = (d: any) => {
+    const companyFree = companies.find(c => c.id === d.company_id)?.fee_free || false;
+    // If driver has vehicles with pays_app_fee, company free doesn't exempt them
+    if (companyFree && hasAppFeeVehicles(d.id)) return false;
+    return companyFree;
+  };
   const isFreeUntilActive = (d: any) => d.fee_free_until && new Date(d.fee_free_until) > new Date();
 
   // Apply table filters — exclude drivers whose vehicles are ALL center-code (they have separate billing)
