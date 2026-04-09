@@ -159,7 +159,7 @@ const AdminUsers = () => {
 
   const updatePermissions = async (roleId: string) => {
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions },
+      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions, caller_id: getCallerId() },
     });
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
