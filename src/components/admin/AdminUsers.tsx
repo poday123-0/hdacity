@@ -41,10 +41,18 @@ const AdminUsers = () => {
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
 
+  const getCallerId = () => {
+    try {
+      const stored = localStorage.getItem("hda_admin");
+      if (stored) return JSON.parse(stored).id;
+    } catch {}
+    return null;
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "list" },
+      body: { action: "list", caller_id: getCallerId() },
     });
     if (error) {
       console.error("Fetch users error:", error);
