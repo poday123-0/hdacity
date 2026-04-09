@@ -21,6 +21,7 @@ import DriverCompleteScreen from "@/components/DriverCompleteScreen";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/image-compress";
+import { getDefaultDocImage } from "@/lib/default-images";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
 import {
@@ -6421,21 +6422,28 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 };
 
 // Document upload card component
-const DocumentUpload = ({ label, url, uploading, onUpload }: {label: string;url: string | null;uploading: boolean;onUpload: () => void;}) =>
-<button onClick={onUpload} className="relative aspect-[3/2] rounded-xl bg-surface border-2 border-dashed border-border overflow-hidden flex items-center justify-center active:scale-95 transition-transform">
-    {url ?
-  <img src={url} alt={label} className="w-full h-full object-cover" /> :
-
-  <div className="text-center">
-        <Camera className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-        <p className="text-xs text-muted-foreground">{label}</p>
+const DocumentUpload = ({ label, url, uploading, onUpload }: {label: string;url: string | null;uploading: boolean;onUpload: () => void;}) => {
+  const defaultImg = getDefaultDocImage(label);
+  return (
+  <button onClick={onUpload} className="relative aspect-[3/2] rounded-xl bg-surface border-2 border-dashed border-border overflow-hidden flex items-center justify-center active:scale-95 transition-transform">
+    {url ? (
+      <img src={url} alt={label} className="w-full h-full object-cover" />
+    ) : (
+      <div className="relative w-full h-full flex items-center justify-center">
+        <img src={defaultImg} alt={label} className="w-full h-full object-contain opacity-30" loading="lazy" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <Camera className="w-5 h-5 text-muted-foreground mb-1" />
+          <p className="text-xs text-muted-foreground font-medium">{label}</p>
+        </div>
       </div>
-  }
-    {uploading &&
-  <div className="absolute inset-0 bg-foreground/30 flex items-center justify-center">
+    )}
+    {uploading && (
+      <div className="absolute inset-0 bg-foreground/30 flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
       </div>
-  }
-  </button>;
+    )}
+  </button>
+  );
+};
 
 export default DriverApp;
