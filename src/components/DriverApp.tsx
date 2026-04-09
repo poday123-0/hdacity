@@ -5504,14 +5504,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <div>
                             <p className="text-sm font-semibold text-foreground">{companyInfo.name}</p>
                             {companyInfo.fee_free && <span className="text-xs text-primary font-semibold">Free</span>}
-                          </div>
-                        </div>
-                        {companyInfo.discount_pct > 0 &&
-                  <p className="text-xs text-muted-foreground">Discount: <span className="font-semibold text-primary">{companyInfo.discount_pct}%</span></p>
-                  }
-                        {companyInfo.monthly_fee > 0 &&
-                  <p className="text-xs text-muted-foreground">Monthly fee: <span className="font-semibold text-foreground">{companyInfo.monthly_fee} MVR</span></p>
-                  }
+                           </div>
+                         </div>
+                         {companyInfo.discount_pct > 0 &&
+                   <p className="text-xs text-muted-foreground">Discount: <span className="font-semibold text-primary">{companyInfo.discount_pct}%</span></p>
+                   }
                       </div> :
 
                 <div className="bg-surface rounded-xl p-3">
