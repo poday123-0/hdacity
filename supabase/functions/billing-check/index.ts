@@ -45,13 +45,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch companies to check fee_free
+    // Fetch companies to check fee_free and monthly_fee
     const { data: companies } = await supabase
       .from("companies")
-      .select("id, fee_free")
+      .select("id, fee_free, monthly_fee")
       .eq("is_active", true);
     const feeFreeCompanyIds = new Set(
       (companies || []).filter((c) => c.fee_free).map((c) => c.id)
+    );
+    const companyFeeMap = new Map(
+      (companies || []).map((c) => [c.id, { fee_free: c.fee_free, monthly_fee: c.monthly_fee || 0 }])
     );
 
     // Fetch all active vehicles with their vehicle_type_id and center info
@@ -68,13 +71,20 @@ Deno.serve(async (req) => {
     const vtFeeMap = new Map((vehicleTypes || []).map((vt) => [vt.id, vt.monthly_fee || 0]));
 
     // Calculate per-driver fee from their vehicles' vehicle types
+    // For pays_app_fee vehicles in free companies, use company monthly_fee
     const driverFeeMap = new Map<string, number>();
     for (const v of (allVehicles || [])) {
       if (!v.driver_id || !v.vehicle_type_id) continue;
       // Skip center-code vehicles that don't pay app fee
       if (v.center_code && !v.pays_app_fee) continue;
+      
+      // Determine fee: if pays_app_fee and driver's company is free with monthly_fee set, use company fee
+      const driver = drivers?.find((d) => d.id === v.driver_id);
+      const compInfo = driver?.company_id ? companyFeeMap.get(driver.company_id) : null;
       const vtFee = vtFeeMap.get(v.vehicle_type_id) || 0;
-      driverFeeMap.set(v.driver_id, (driverFeeMap.get(v.driver_id) || 0) + vtFee);
+      const fee = (v.pays_app_fee && compInfo?.fee_free && compInfo.monthly_fee > 0) ? compInfo.monthly_fee : vtFee;
+      
+      driverFeeMap.set(v.driver_id, (driverFeeMap.get(v.driver_id) || 0) + fee);
     }
 
     // Fetch approved payments for current month
