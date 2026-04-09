@@ -5504,6 +5504,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <div>
                             <p className="text-sm font-semibold text-foreground">{companyInfo.name}</p>
                             {companyInfo.fee_free && <span className="text-xs text-primary font-semibold">Free</span>}
+                            {/* Show app fee info if any vehicle has pays_app_fee */}
+                            {(() => {
+                              const appFeeVeh = driverVehicles.find((v: any) => v.pays_app_fee);
+                              if (!appFeeVeh || !companyInfo.fee_free) return null;
+                              const appFee = companyInfo.monthly_fee || 0;
+                              return (
+                                <div className="mt-1">
+                                  <span className="text-[10px] text-amber-600 font-semibold">App Fee: {appFee} MVR</span>
+                                  {(appFeeVeh as any).app_fee_comment && (
+                                    <p className="text-[9px] text-muted-foreground italic">{(appFeeVeh as any).app_fee_comment}</p>
+                                  )}
+                                </div>
+                              );
+                            })()}
                            </div>
                          </div>
                          {companyInfo.discount_pct > 0 &&
