@@ -3503,7 +3503,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <div className="space-y-1.5">
                   <h3 className="text-lg font-bold text-destructive">Payment Required</h3>
                   <p className="text-sm text-muted-foreground">Your monthly fee is overdue. Please submit payment to continue driving.</p>
-                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0)} MVR</span></p>
+                  <p className="text-xs text-muted-foreground">Fee: <span className="font-bold text-foreground">{driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); const fee = (v.pays_app_fee && companyInfo?.fee_free && (companyInfo?.monthly_fee || 0) > 0) ? companyInfo.monthly_fee : (vt?.monthly_fee || 0); return s + fee; }, 0)} MVR</span></p>
                 </div>
                 <button
               onClick={() => { setShowBillingPayPopup(true); setBillingSlipUrl(null); }}
@@ -5504,14 +5504,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                           <div>
                             <p className="text-sm font-semibold text-foreground">{companyInfo.name}</p>
                             {companyInfo.fee_free && <span className="text-xs text-primary font-semibold">Free</span>}
-                          </div>
-                        </div>
-                        {companyInfo.discount_pct > 0 &&
-                  <p className="text-xs text-muted-foreground">Discount: <span className="font-semibold text-primary">{companyInfo.discount_pct}%</span></p>
-                  }
-                        {companyInfo.monthly_fee > 0 &&
-                  <p className="text-xs text-muted-foreground">Monthly fee: <span className="font-semibold text-foreground">{companyInfo.monthly_fee} MVR</span></p>
-                  }
+                           </div>
+                         </div>
+                         {companyInfo.discount_pct > 0 &&
+                   <p className="text-xs text-muted-foreground">Discount: <span className="font-semibold text-primary">{companyInfo.discount_pct}%</span></p>
+                   }
                       </div> :
 
                 <div className="bg-surface rounded-xl p-3">
@@ -5566,12 +5563,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                        const effectiveFeeFreeUntil = driverFeeFreeUntil || (userProfile as any)?.fee_free_until || null;
                        const isFreePeriod = effectiveFeeFreeUntil && new Date(effectiveFeeFreeUntil) > new Date();
                        const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
-                       // If driver is in free company but has pays_app_fee vehicles, they still pay
+                       // If driver is in free company but has pays_app_fee vehicles, they pay the company monthly_fee as app fee
                        const hasPayingAppFee = appFeeVehicles.some((v: any) => v.pays_app_fee);
                        const actuallyFree = (isFreeCompany && !hasPayingAppFee) || isFreePeriod;
+                       // For pays_app_fee vehicles in free company, use company monthly_fee; otherwise use vehicle type monthly_fee
+                       const companyMonthlyFee = companyInfo?.monthly_fee || 0;
                        const vehicleFees = appFeeVehicles.map((v: any) => {
                          const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                         return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                         // If vehicle has pays_app_fee and is in a free company, charge company's monthly_fee
+                         const fee = (v.pays_app_fee && isFreeCompany && companyMonthlyFee > 0) ? companyMonthlyFee : (vt?.monthly_fee || 0);
+                         return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee };
                        });
                        const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
@@ -6158,7 +6159,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
       {/* Pay Fee from Wallet Modal */}
       {showPayFeeModal && (() => {
-        const vtFeeTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0);
+        const isFreeComp = companyInfo?.fee_free;
+        const compMoFee = companyInfo?.monthly_fee || 0;
+        const vtFeeTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); const fee = (v.pays_app_fee && isFreeComp && compMoFee > 0) ? compMoFee : (vt?.monthly_fee || 0); return s + fee; }, 0);
         return (
       <div className="fixed inset-0 z-[900] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={() => setShowPayFeeModal(false)}>
           <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -6221,9 +6224,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
               <h3 className="text-lg font-bold text-foreground">Monthly Fee Payment</h3>
               {(() => {
+                const isFreeComp2 = companyInfo?.fee_free;
+                const compMoFee2 = companyInfo?.monthly_fee || 0;
                 const vFees = driverVehicles.map((v: any) => {
                   const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                  return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                  const fee = (v.pays_app_fee && isFreeComp2 && compMoFee2 > 0) ? compMoFee2 : (vt?.monthly_fee || 0);
+                  return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee };
                 });
                 const total = vFees.reduce((s: number, v: any) => s + v.fee, 0);
                 return (
@@ -6322,9 +6328,12 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const currentMonth = new Date().toISOString().slice(0, 7);
                   const now = new Date().toISOString();
 
+                  const isFreeComp3 = companyInfo?.fee_free;
+                  const compMoFee3 = companyInfo?.monthly_fee || 0;
                   const totalVtFee = driverVehicles.reduce((s: number, v: any) => {
                     const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                    return s + (vt?.monthly_fee || 0);
+                    const fee = (v.pays_app_fee && isFreeComp3 && compMoFee3 > 0) ? compMoFee3 : (vt?.monthly_fee || 0);
+                    return s + fee;
                   }, 0);
 
                   await supabase.from("driver_payments").insert({
@@ -6349,7 +6358,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </button>
 
               {/* Pay from wallet option */}
-              {(() => { const vtTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); return s + (vt?.monthly_fee || 0); }, 0); return driverWalletBalance >= vtTotal && vtTotal > 0; })() && (
+              {(() => { const isFCo = companyInfo?.fee_free; const cMF = companyInfo?.monthly_fee || 0; const vtTotal = driverVehicles.reduce((s: number, v: any) => { const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id); const fee = (v.pays_app_fee && isFCo && cMF > 0) ? cMF : (vt?.monthly_fee || 0); return s + fee; }, 0); return driverWalletBalance >= vtTotal && vtTotal > 0; })() && (
                 <button
                   onClick={() => {
                     setShowBillingPayPopup(false);
