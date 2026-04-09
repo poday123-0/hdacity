@@ -5562,26 +5562,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
                     {/* Monthly fee info — based on vehicle type */}
                     {(() => {
-                      const isFreeCompany = companyInfo?.fee_free;
-                      const effectiveFeeFreeUntil = driverFeeFreeUntil || (userProfile as any)?.fee_free_until || null;
-                      const isFreePeriod = effectiveFeeFreeUntil && new Date(effectiveFeeFreeUntil) > new Date();
-                      const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
-                      const vehicleFees = appFeeVehicles.map((v: any) => {
-                        const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
-                        return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
-                      });
-                      const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
+                       const isFreeCompany = companyInfo?.fee_free;
+                       const effectiveFeeFreeUntil = driverFeeFreeUntil || (userProfile as any)?.fee_free_until || null;
+                       const isFreePeriod = effectiveFeeFreeUntil && new Date(effectiveFeeFreeUntil) > new Date();
+                       const appFeeVehicles = driverVehicles.filter((v: any) => !v.center_code || v.pays_app_fee);
+                       // If driver is in free company but has pays_app_fee vehicles, they still pay
+                       const hasPayingAppFee = appFeeVehicles.some((v: any) => v.pays_app_fee);
+                       const actuallyFree = (isFreeCompany && !hasPayingAppFee) || isFreePeriod;
+                       const vehicleFees = appFeeVehicles.map((v: any) => {
+                         const vt = vehicleTypes.find((t: any) => t.id === v.vehicle_type_id);
+                         return { plate: v.plate_number, typeName: vt?.name || "Unknown", fee: vt?.monthly_fee || 0 };
+                       });
+                       const totalFee = vehicleFees.reduce((sum: number, v: any) => sum + v.fee, 0);
 
-                      // No app-fee vehicles at all — hide section
-                      if (appFeeVehicles.length === 0) return null;
+                       // No app-fee vehicles at all — hide section
+                       if (appFeeVehicles.length === 0) return null;
 
                         return (
                          <div className="bg-surface rounded-xl p-3 space-y-2">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Monthly Fee</p>
-                          {(isFreeCompany || isFreePeriod) && (
+                          {actuallyFree && (
                             <div className="flex items-center justify-between bg-primary/5 rounded-lg px-2.5 py-1.5 mb-1">
                               <span className="text-xs text-primary font-semibold">
-                                {isFreeCompany ? "FREE (Company)" : `Free until ${new Date(effectiveFeeFreeUntil).toLocaleDateString()}`}
+                                {isFreeCompany && !hasPayingAppFee ? "FREE (Company)" : `Free until ${new Date(effectiveFeeFreeUntil).toLocaleDateString()}`}
                               </span>
                             </div>
                           )}
@@ -5589,14 +5592,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                               {vehicleFees.map((v: any, i: number) => (
                                 <div key={i} className="flex items-center justify-between">
                                   <span className="text-sm text-muted-foreground">{v.plate} ({v.typeName})</span>
-                                  <span className={`text-sm font-semibold ${isFreeCompany || isFreePeriod ? "text-muted-foreground line-through" : "text-foreground"}`}>{v.fee} MVR</span>
+                                  <span className={`text-sm font-semibold ${actuallyFree ? "text-muted-foreground line-through" : "text-foreground"}`}>{v.fee} MVR</span>
                                 </div>
                               ))}
                               <div className="flex items-center justify-between border-t border-border pt-2">
                                 <span className="text-sm font-semibold text-muted-foreground">Total Fee</span>
-                                <span className={`text-lg font-bold ${isFreeCompany || isFreePeriod ? "text-muted-foreground line-through" : "text-foreground"}`}>{totalFee} MVR</span>
+                                <span className={`text-lg font-bold ${actuallyFree ? "text-muted-foreground line-through" : "text-foreground"}`}>{totalFee} MVR</span>
                               </div>
-                              {!isFreeCompany && !isFreePeriod && totalFee > 0 && (driverWalletBalance || 0) > 0 && (() => {
+                              {!actuallyFree && totalFee > 0 && (driverWalletBalance || 0) > 0 && (() => {
                                 const balanceDue = Math.max(0, totalFee - (driverWalletBalance || 0));
                                 return (
                                   <div className="flex items-center justify-between bg-card rounded-lg px-2.5 py-1.5">
