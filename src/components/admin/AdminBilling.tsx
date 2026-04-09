@@ -317,7 +317,7 @@ const AdminBilling = () => {
       })(),
       supabase.from("companies").select("id, name, fee_free, monthly_fee").eq("is_active", true),
       supabase.from("vehicle_types").select("id, name, base_fare, monthly_fee, center_fee").eq("is_active", true).order("sort_order"),
-      supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number").eq("is_active", true),
+      supabase.from("vehicles").select("id, driver_id, vehicle_type_id, plate_number, pays_app_fee, center_code").eq("is_active", true),
       supabase.from("system_settings").select("key, value").in("key", ["billing_due_day", "center_billing_due_day"]),
       supabase.from("wallets").select("user_id, balance").limit(5000),
       supabase.from("system_settings").select("value").eq("key", "app_payment_sms_template").maybeSingle(),
@@ -405,13 +405,20 @@ const AdminBilling = () => {
     return getDriverVehicleType(driverId)?.name || "—";
   };
 
-  // Calculate total monthly fee for a driver based on their vehicles' vehicle types
+  // Calculate total monthly fee for a driver based on their app-fee vehicles
   const getDriverFee = (driverId: string): number => {
     const driverVehs = vehicles.filter(v => v.driver_id === driverId);
-    return driverVehs.reduce((sum, v) => {
+    // Only count vehicles that are app-fee vehicles (no center_code, or has center_code but pays_app_fee=true)
+    const appFeeVehs = driverVehs.filter(v => !v.center_code || v.pays_app_fee);
+    return appFeeVehs.reduce((sum, v) => {
       const vt = vehicleTypes.find(t => t.id === v.vehicle_type_id);
       return sum + (vt?.monthly_fee || 0);
     }, 0);
+  };
+
+  // Check if driver has any vehicles with pays_app_fee enabled (overrides company free)
+  const hasAppFeeVehicles = (driverId: string): boolean => {
+    return vehicles.some(v => v.driver_id === driverId && v.pays_app_fee);
   };
 
   // Toggle fee-free is now handled via fee_free_until or company setting
@@ -534,7 +541,12 @@ const AdminBilling = () => {
   };
 
   const getCompanyName = (d: any) => companies.find(c => c.id === d.company_id)?.name || d.company_name || "—";
-  const isCompanyFeeFree = (d: any) => companies.find(c => c.id === d.company_id)?.fee_free || false;
+  const isCompanyFeeFree = (d: any) => {
+    const companyFree = companies.find(c => c.id === d.company_id)?.fee_free || false;
+    // If driver has vehicles with pays_app_fee, company free doesn't exempt them
+    if (companyFree && hasAppFeeVehicles(d.id)) return false;
+    return companyFree;
+  };
   const isFreeUntilActive = (d: any) => d.fee_free_until && new Date(d.fee_free_until) > new Date();
 
   // Apply table filters — exclude drivers whose vehicles are ALL center-code (they have separate billing)
@@ -836,7 +848,11 @@ const AdminBilling = () => {
                           <td className="px-4 py-3 text-sm text-muted-foreground">+960 {d.phone_number}</td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {getCompanyName(d)}
-                            {companyFeeFree && <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Free</span>}
+                            {companies.find(c => c.id === d.company_id)?.fee_free && (
+                              <span className="ml-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                                {hasAppFeeVehicles(d.id) ? "Free Co (App Fee)" : "Free"}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">{getDriverVehicleTypeName(d.id)}</td>
                           <td className="px-4 py-3">
