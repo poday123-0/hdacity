@@ -146,7 +146,7 @@ const AdminUsers = () => {
     if (!confirm(`Remove role from ${userName}?`)) return;
 
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "remove", role_id: roleId },
+      body: { action: "remove", role_id: roleId, caller_id: getCallerId() },
     });
 
     if (error || data?.error) {
