@@ -5664,9 +5664,32 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                                      </span>
                                    </div>
                                  )}
-                                 {v.pays_app_fee && (
-                                   <p className="text-[10px] text-muted-foreground">+ App fee also applies</p>
-                                 )}
+                                 {v.pays_app_fee && (() => {
+                                   const isFreeCompany = companyInfo?.fee_free;
+                                   const companyMFee = companyInfo?.monthly_fee || 0;
+                                   const vtFee = vt?.monthly_fee || 0;
+                                   const appFee = (isFreeCompany && companyMFee > 0) ? companyMFee : vtFee;
+                                   const totalWithApp = centerFee + appFee;
+                                   return (
+                                     <div className="bg-primary/5 rounded-lg p-2 space-y-1 mt-1">
+                                       <div className="flex items-center justify-between">
+                                         <span className="text-[10px] text-muted-foreground">Center Fee</span>
+                                         <span className="text-[10px] font-semibold text-foreground">{centerFee} MVR</span>
+                                       </div>
+                                       <div className="flex items-center justify-between">
+                                         <span className="text-[10px] text-muted-foreground">App Fee</span>
+                                         <span className="text-[10px] font-semibold text-foreground">{appFee} MVR</span>
+                                       </div>
+                                       {(v as any).app_fee_comment && (
+                                         <p className="text-[9px] text-amber-600 italic">Reason: {(v as any).app_fee_comment}</p>
+                                       )}
+                                       <div className="flex items-center justify-between border-t border-border pt-1">
+                                         <span className="text-[10px] font-bold text-foreground">Total (Center + App)</span>
+                                         <span className="text-xs font-bold text-primary">{totalWithApp} MVR</span>
+                                       </div>
+                                     </div>
+                                   );
+                                 })()}
                                  {/* Payment status */}
                                  {(() => {
                                    const status = centerPaymentStatuses[v.id];

@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ADD COLUMN app_fee_comment text DEFAULT NULL;

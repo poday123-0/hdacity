@@ -351,7 +351,7 @@ const AdminBilling = () => {
     const now = new Date();
     const currentCenterMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const [cvRes, cpRes, cmRes, walletsRes] = await Promise.all([
-      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, custom_center_fee, center_fee_note, make, model, color, is_active").not("center_code", "is", null),
+      supabase.from("vehicles").select("id, plate_number, center_code, driver_id, vehicle_type_id, pays_app_fee, center_fee_exempt, custom_center_fee, center_fee_note, make, model, color, is_active, app_fee_comment").not("center_code", "is", null),
       (() => {
         let q = supabase.from("center_payments").select("*, driver:driver_id(first_name, last_name, phone_number), vehicle:vehicle_id(plate_number, center_code)").order("created_at", { ascending: false });
         if (centerFilter !== "all") q = q.eq("status", centerFilter);
@@ -1711,6 +1711,24 @@ const AdminBilling = () => {
                           >
                             {cv.pays_app_fee ? "Yes" : "No"}
                           </button>
+                          {cv.pays_app_fee && (
+                            <div className="mt-1">
+                              <input
+                                type="text"
+                                placeholder="App fee reason..."
+                                defaultValue={(cv as any).app_fee_comment || ""}
+                                onBlur={async (e) => {
+                                  const val = e.target.value.trim();
+                                  if (val !== ((cv as any).app_fee_comment || "")) {
+                                    await supabase.from("vehicles").update({ app_fee_comment: val || null } as any).eq("id", cv.id);
+                                    toast({ title: "App fee comment saved" });
+                                    fetchCenterData();
+                                  }
+                                }}
+                                className="w-full text-[9px] px-1.5 py-0.5 rounded border border-border bg-background text-foreground"
+                              />
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           {monthPayment ? (
