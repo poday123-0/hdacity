@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame, Image, Globe, Settings, ChevronRight } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame, Image, Globe, Settings, ChevronRight, MapPin } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { invalidateBranding } from "@/hooks/use-branding";
 
