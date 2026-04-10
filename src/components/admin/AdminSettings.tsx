@@ -115,6 +115,8 @@ const AdminSettings = () => {
   const brandingInputRef = useRef<HTMLInputElement>(null);
   const [brandingUploadKey, setBrandingUploadKey] = useState("");
   const [clearingData, setClearingData] = useState<string | null>(null);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState("");
+  const [googleMapsMapId, setGoogleMapsMapId] = useState("");
   const [versionConfig, setVersionConfig] = useState({
     android_latest_version: "1.0.0",
     android_min_version: "1.0.0",
