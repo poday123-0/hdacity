@@ -178,6 +178,14 @@ const AdminSettings = () => {
       const wbv = map["web_bundle_version"];
       setOtaBundleVersion(typeof wbv === "object" && wbv.version ? wbv.version : typeof wbv === "string" ? wbv : "");
     }
+    if (map["google_maps_api_key"]) {
+      const gk = map["google_maps_api_key"];
+      setGoogleMapsApiKey(typeof gk === "object" && gk.key ? gk.key : typeof gk === "string" ? gk : "");
+    }
+    if (map["google_maps_map_id"]) {
+      const gm = map["google_maps_map_id"];
+      setGoogleMapsMapId(typeof gm === "object" && gm.id ? gm.id : typeof gm === "string" ? gm : "");
+    }
     setLoading(false);
   };
 
