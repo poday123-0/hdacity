@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame, Image, Globe, Settings, ChevronRight } from "lucide-react";
+import { Save, Upload, Play, Pause, Trash2, Star, Volume2, Building2, User, Download, Car, Users, Smartphone, Bell, Plus, X, Mail, Phone, MessageSquare, Wallet, ToggleLeft, Flame, Image, Globe, Settings, ChevronRight, MapPin } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { invalidateBranding } from "@/hooks/use-branding";
 
@@ -115,6 +115,8 @@ const AdminSettings = () => {
   const brandingInputRef = useRef<HTMLInputElement>(null);
   const [brandingUploadKey, setBrandingUploadKey] = useState("");
   const [clearingData, setClearingData] = useState<string | null>(null);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState("");
+  const [googleMapsMapId, setGoogleMapsMapId] = useState("");
   const [versionConfig, setVersionConfig] = useState({
     android_latest_version: "1.0.0",
     android_min_version: "1.0.0",
@@ -175,6 +177,14 @@ const AdminSettings = () => {
     if (map["web_bundle_version"]) {
       const wbv = map["web_bundle_version"];
       setOtaBundleVersion(typeof wbv === "object" && wbv.version ? wbv.version : typeof wbv === "string" ? wbv : "");
+    }
+    if (map["google_maps_api_key"]) {
+      const gk = map["google_maps_api_key"];
+      setGoogleMapsApiKey(typeof gk === "object" && gk.key ? gk.key : typeof gk === "string" ? gk : "");
+    }
+    if (map["google_maps_map_id"]) {
+      const gm = map["google_maps_map_id"];
+      setGoogleMapsMapId(typeof gm === "object" && gm.id ? gm.id : typeof gm === "string" ? gm : "");
     }
     setLoading(false);
   };
@@ -801,6 +811,55 @@ const AdminSettings = () => {
               <Upload className="w-3.5 h-3.5" /> {uploadingPassengerIcon ? "Uploading..." : "Upload Icon"}
             </button>
           </div>
+        </div>
+      </SectionCard>
+
+      {/* Google Maps API Key */}
+      <SectionCard title="Google Maps API Key" description="Manage your Google Maps API key for all map components" icon={Globe}>
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Enter your Google Maps API key here. This key is used for geocoding, places search, and map rendering when Google Maps is enabled. 
+            Changes take effect immediately — the app will clear its cached key.
+          </p>
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1.5">API Key</label>
+            <input
+              type="password"
+              value={googleMapsApiKey}
+              onChange={e => setGoogleMapsApiKey(e.target.value)}
+              placeholder="AIza..."
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1.5">Map ID (optional)</label>
+            <input
+              type="text"
+              value={googleMapsMapId}
+              onChange={e => setGoogleMapsMapId(e.target.value)}
+              placeholder="e.g. abc123def456"
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground font-mono"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">For custom styled maps. Leave empty to use default.</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!googleMapsApiKey.trim()) {
+                toast({ title: "Enter an API key", variant: "destructive" });
+                return;
+              }
+              await updateSetting("google_maps_api_key", { key: googleMapsApiKey.trim() });
+              if (googleMapsMapId.trim()) {
+                await updateSetting("google_maps_map_id", { id: googleMapsMapId.trim() });
+              }
+              // Clear cached maps key so apps pick up the new one
+              try { localStorage.removeItem("hda_maps_key_cache"); } catch {}
+              toast({ title: "Google Maps API key saved!", description: "All apps will use the new key on next load." });
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold active:scale-95 transition-transform hover:opacity-90"
+          >
+            <Save className="w-4 h-4" /> Save API Key
+          </button>
         </div>
       </SectionCard>
 

@@ -28,6 +28,49 @@ function compareVersions(a: string, b: string): number {
 
 const BUILD_VERSION = import.meta.env.VITE_APP_VERSION || "";
 
+function isNativePlatform(): boolean {
+  try {
+    // Check Capacitor bridge
+    if ((window as any).Capacitor?.isNativePlatform?.()) return true;
+    // Check if running inside a Capacitor WebView (even when loading remote URL)
+    if ((window as any).Capacitor?.getPlatform && (window as any).Capacitor.getPlatform() !== "web") return true;
+    // Check for Capacitor-injected properties
+    if ((window as any)._capacitor || (window as any).Capacitor) return true;
+    // Check user agent for native WebView indicators
+    const ua = navigator.userAgent;
+    if (ua.includes("CapacitorApp") || ua.includes("HdaApp")) return true;
+    // Check if standalone display mode (installed PWA or WebView)
+    if (window.matchMedia("(display-mode: standalone)").matches && /android|iphone|ipad/i.test(ua)) return true;
+    // Check localStorage flag set by native app
+    if (localStorage.getItem("native_app_platform")) return true;
+  } catch {}
+  return false;
+}
+
+function getPlatform(): "android" | "ios" | "web" {
+  // Check Capacitor bridge first
+  try {
+    const cap = (window as any).Capacitor;
+    if (cap?.getPlatform) {
+      const p = cap.getPlatform();
+      if (p === "android" || p === "ios") return p;
+    }
+  } catch {}
+
+  // Check localStorage (set by previous native detection)
+  const cached = localStorage.getItem("native_app_platform");
+  if (cached === "android" || cached === "ios") return cached;
+
+  // Detect from user agent
+  const ua = navigator.userAgent.toLowerCase();
+  if (isNativePlatform()) {
+    const platform = ua.includes("android") ? "android" : "ios";
+    localStorage.setItem("native_app_platform", platform);
+    return platform;
+  }
+  return "web";
+}
+
 async function getAppVersion(): Promise<string | null> {
   // 1. Try Capacitor App plugin first (most reliable)
   try {
@@ -62,24 +105,15 @@ async function getAppVersion(): Promise<string | null> {
     return BUILD_VERSION;
   }
 
+  // 5. If we know we're native but can't get version, use a very old default
+  // so the update prompt can still show
+  if (isNativePlatform()) {
+    console.log("[VersionCheck] Native detected but no version found, using 0.0.0");
+    return "0.0.0";
+  }
+
   console.log("[VersionCheck] No version detected");
   return null;
-}
-
-function isNativePlatform(): boolean {
-  try {
-    return !!(window as any).Capacitor?.isNativePlatform?.();
-  } catch {
-    return false;
-  }
-}
-
-function getPlatform(): "android" | "ios" | "web" {
-  const ua = navigator.userAgent.toLowerCase();
-  if (isNativePlatform()) {
-    return ua.includes("android") ? "android" : "ios";
-  }
-  return "web";
 }
 
 const AppVersionCheck = () => {
@@ -90,7 +124,7 @@ const AppVersionCheck = () => {
 
   const check = useCallback(async () => {
     const platform = getPlatform();
-    console.log("[VersionCheck] Platform:", platform);
+    console.log("[VersionCheck] Platform:", platform, "isNative:", isNativePlatform());
     if (platform === "web") return;
 
     const appVersion = await getAppVersion();
