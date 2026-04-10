@@ -814,6 +814,55 @@ const AdminSettings = () => {
         </div>
       </SectionCard>
 
+      {/* Google Maps API Key */}
+      <SectionCard title="Google Maps API Key" description="Manage your Google Maps API key for all map components" icon={Globe}>
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Enter your Google Maps API key here. This key is used for geocoding, places search, and map rendering when Google Maps is enabled. 
+            Changes take effect immediately — the app will clear its cached key.
+          </p>
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1.5">API Key</label>
+            <input
+              type="password"
+              value={googleMapsApiKey}
+              onChange={e => setGoogleMapsApiKey(e.target.value)}
+              placeholder="AIza..."
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1.5">Map ID (optional)</label>
+            <input
+              type="text"
+              value={googleMapsMapId}
+              onChange={e => setGoogleMapsMapId(e.target.value)}
+              placeholder="e.g. abc123def456"
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground font-mono"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">For custom styled maps. Leave empty to use default.</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!googleMapsApiKey.trim()) {
+                toast({ title: "Enter an API key", variant: "destructive" });
+                return;
+              }
+              await updateSetting("google_maps_api_key", { key: googleMapsApiKey.trim() });
+              if (googleMapsMapId.trim()) {
+                await updateSetting("google_maps_map_id", { id: googleMapsMapId.trim() });
+              }
+              // Clear cached maps key so apps pick up the new one
+              try { localStorage.removeItem("hda_maps_key_cache"); } catch {}
+              toast({ title: "Google Maps API key saved!", description: "All apps will use the new key on next load." });
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold active:scale-95 transition-transform hover:opacity-90"
+          >
+            <Save className="w-4 h-4" /> Save API Key
+          </button>
+        </div>
+      </SectionCard>
+
       {/* App Icons */}
       <SectionCard title="App Icons" description="Passenger & Driver home screen icons (512×512px PNG)" icon={Smartphone}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
