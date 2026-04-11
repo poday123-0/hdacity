@@ -117,6 +117,7 @@ const AdminSettings = () => {
   const [clearingData, setClearingData] = useState<string | null>(null);
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("");
   const [googleMapsMapId, setGoogleMapsMapId] = useState("");
+  const [mapProvider, setMapProvider] = useState<"leaflet" | "google">("leaflet");
   const [versionConfig, setVersionConfig] = useState({
     android_latest_version: "1.0.0",
     android_min_version: "1.0.0",
