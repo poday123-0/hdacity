@@ -80,7 +80,7 @@ import {
 import TripChat from "./TripChat";
 import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
-import RideRequestMap from "./RideRequestMap";
+import RideRequestMap from "./SmartRideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
 import AdBanner from "./AdBanner";
 import DriverLeaderboard from "./DriverLeaderboard";
