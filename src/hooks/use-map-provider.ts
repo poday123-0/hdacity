@@ -20,12 +20,13 @@ export const useMapProvider = () => {
   useEffect(() => {
     if (cachedProvider) { setProvider(cachedProvider); setLoading(false); return; }
 
-    supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "map_provider")
-      .maybeSingle()
-      .then(({ data }) => {
+    const load = async () => {
+      try {
+        const { data } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "map_provider")
+          .maybeSingle();
         const val = data?.value;
         const p: MapProvider =
           (typeof val === "string" && val === "google") ? "google" :
@@ -34,9 +35,10 @@ export const useMapProvider = () => {
         cachedProvider = p;
         try { localStorage.setItem(CACHE_KEY, p); } catch {}
         setProvider(p);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch {}
+      setLoading(false);
+    };
+    load();
   }, []);
 
   return { provider, loading };
