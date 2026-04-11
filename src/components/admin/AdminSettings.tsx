@@ -814,15 +814,41 @@ const AdminSettings = () => {
         </div>
       </SectionCard>
 
-      {/* Google Maps API Key */}
-      <SectionCard title="Google Maps API Key" description="Manage your Google Maps API key for all map components" icon={Globe}>
-        <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Enter your Google Maps API key here. This key is used for geocoding, places search, and map rendering when Google Maps is enabled. 
-            Changes take effect immediately — the app will clear its cached key.
-          </p>
+      {/* Map Provider & Google Maps API Key */}
+      <SectionCard title="Map Provider" description="Switch between free maps (OpenStreetMap) and Google Maps" icon={Globe}>
+        <div className="space-y-5">
+          {/* Provider Toggle */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Active Map Provider</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {mapProvider === "google" ? "Google Maps (paid — requires API key)" : "OpenStreetMap + OSRM (free)"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-semibold ${mapProvider === "leaflet" ? "text-primary" : "text-muted-foreground"}`}>Free</span>
+              <Switch
+                checked={mapProvider === "google"}
+                onCheckedChange={async (checked) => {
+                  const newProvider = checked ? "google" : "leaflet";
+                  if (checked && !googleMapsApiKey.trim()) {
+                    toast({ title: "Add a Google Maps API key first", variant: "destructive" });
+                    return;
+                  }
+                  setMapProvider(newProvider);
+                  await updateSetting("map_provider", { provider: newProvider });
+                  // Clear cached provider so all apps pick up the change
+                  try { localStorage.removeItem("hda_map_provider"); } catch {};
+                  toast({ title: `Map switched to ${checked ? "Google Maps" : "Free Maps (OpenStreetMap)"}`, description: "All apps will update on next load." });
+                }}
+              />
+              <span className={`text-xs font-semibold ${mapProvider === "google" ? "text-primary" : "text-muted-foreground"}`}>Google</span>
+            </div>
+          </div>
+
+          {/* Google Maps API Key */}
           <div>
-            <label className="text-xs font-semibold text-foreground block mb-1.5">API Key</label>
+            <label className="text-xs font-semibold text-foreground block mb-1.5">Google Maps API Key</label>
             <input
               type="password"
               value={googleMapsApiKey}
@@ -860,6 +886,20 @@ const AdminSettings = () => {
           >
             <Save className="w-4 h-4" /> Save API Key
           </button>
+
+          {/* Cost Info */}
+          {mapProvider === "google" && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">💰 Google Maps Pricing</p>
+              <ul className="text-[11px] text-muted-foreground space-y-0.5 list-disc list-inside">
+                <li>Map loads: ~$7 per 1,000 loads</li>
+                <li>Directions API: ~$5 per 1,000 requests</li>
+                <li>Geocoding: ~$5 per 1,000 requests</li>
+                <li>Google gives $200/month free credit</li>
+              </ul>
+              <p className="text-[10px] text-muted-foreground mt-1">Monitor costs in your <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google Cloud Console</a>.</p>
+            </div>
+          )}
         </div>
       </SectionCard>
 
