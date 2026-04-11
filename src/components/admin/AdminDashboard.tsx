@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX, BarChart3, Calendar, Activity, CalendarDays } from "lucide-react";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
-import MaldivesMap from "@/components/MaldivesMap";
+import MaldivesMap from "@/components/SmartMaldivesMap";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from "recharts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";

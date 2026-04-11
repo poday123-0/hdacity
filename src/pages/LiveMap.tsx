@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import MaldivesMap from "@/components/MaldivesMap";
+import MaldivesMap from "@/components/SmartMaldivesMap";
 import { useTheme } from "@/hooks/use-theme";
 import SystemLogo from "@/components/SystemLogo";
 import { Users, Navigation, Maximize2, Minimize2 } from "lucide-react";

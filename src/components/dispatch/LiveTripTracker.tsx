@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import MaldivesMap from "@/components/MaldivesMap";
+import MaldivesMap from "@/components/SmartMaldivesMap";
 import { Navigation } from "lucide-react";
 
 interface TripRoute {
