@@ -187,6 +187,11 @@ const AdminSettings = () => {
       const gm = map["google_maps_map_id"];
       setGoogleMapsMapId(typeof gm === "object" && gm.id ? gm.id : typeof gm === "string" ? gm : "");
     }
+    if (map["map_provider"]) {
+      const mp = map["map_provider"];
+      const prov = (typeof mp === "object" && mp.provider) ? mp.provider : (typeof mp === "string" ? mp : "leaflet");
+      setMapProvider(prov === "google" ? "google" : "leaflet");
+    }
     setLoading(false);
   };
 
