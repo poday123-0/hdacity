@@ -753,13 +753,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevMarkerPosRef.current = displayPos;
 
-    // Update marker icon based on state
-    if (!isNavigating) {
-      driverMarkerRef.current.setIcon(driverDotIcon());
-    } else {
-      // Use directional arrow during navigation
-      driverMarkerRef.current.setIcon(driverArrowIcon(heading));
-    }
+    // Always show directional arrow
+    driverMarkerRef.current.setIcon(driverArrowIcon(heading));
 
     // Rotate map to match driver heading during navigation
     if ((isNavigating || freeNavTarget) && followDriver && !userInteractingRef.current) {
