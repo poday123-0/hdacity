@@ -3216,24 +3216,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           </>
         )}
         <div className="w-5 h-px bg-border mx-auto" />
-        {/* Compass */}
-        <button
-          onClick={() => resetNorthRef.current?.()}
-          className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 hover:bg-surface"
-          title="Reset to North"
-        >
-          <div
-            style={{ transform: `rotate(${-mapHeading}deg)`, transition: "transform 0.3s ease-out" }}
-            className="relative w-6 h-6"
-          >
-            <svg viewBox="0 0 28 28" className="w-full h-full">
-              <polygon points="14,4 18,16 14,14 10,16" fill="hsl(var(--muted-foreground))" opacity="0.4" />
-              <polygon points="14,24 10,12 14,14 18,12" fill="hsl(var(--muted-foreground))" opacity="0.4" />
-              <polygon points="14,4 18,16 14,14 10,16" fill="#EF4444" />
-              <text x="14" y="3" textAnchor="middle" fontSize="5" fontWeight="bold" fill="#EF4444">N</text>
-            </svg>
-          </div>
-        </button>
         {userProfile?.id &&
         <>
             <div className="w-5 h-px bg-border mx-auto" />
