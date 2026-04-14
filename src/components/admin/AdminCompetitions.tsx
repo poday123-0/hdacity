@@ -252,6 +252,21 @@ const AdminCompetitions = () => {
     fetchAll();
   };
 
+  // Ray-casting point-in-polygon test
+  const pointInPolygon = (lat: number, lng: number, polygon: any[]): boolean => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat ?? polygon[i][0];
+      const yi = polygon[i].lng ?? polygon[i][1];
+      const xj = polygon[j].lat ?? polygon[j][0];
+      const yj = polygon[j].lng ?? polygon[j][1];
+      const intersect = ((yi > lng) !== (yj > lng)) &&
+        (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
   const handleRefreshLeaderboard = async (comp: Competition) => {
     setLoading(true);
     try {
@@ -263,10 +278,23 @@ const AdminCompetitions = () => {
         .in("phone_number", EXCLUDED_PHONES);
       const excludedIds = new Set((excludedProfiles || []).map(p => p.id));
 
-      // Count completed trips for each driver in the date range, optionally filtered by vehicle type
+      // If competition is scoped to a zone, fetch the polygon
+      let zonePolygon: any[] | null = null;
+      if (comp.service_location_id) {
+        const { data: sl } = await supabase
+          .from("service_locations")
+          .select("polygon")
+          .eq("id", comp.service_location_id)
+          .single();
+        if (sl?.polygon && Array.isArray(sl.polygon) && sl.polygon.length >= 3) {
+          zonePolygon = sl.polygon as any[];
+        }
+      }
+
+      // Count completed trips for each driver in the date range
       let query = supabase
         .from("trips")
-        .select("driver_id, vehicle_type_id")
+        .select("driver_id, vehicle_type_id, pickup_lat, pickup_lng")
         .eq("status", "completed")
         .gte("completed_at", comp.start_date)
         .lte("completed_at", comp.end_date)
@@ -280,10 +308,15 @@ const AdminCompetitions = () => {
       const { data: trips } = await query;
       if (!trips) { setLoading(false); return; }
 
-      // Count per driver (excluding center numbers)
+      // Count per driver (excluding center numbers and filtering by zone polygon)
       const counts = new Map<string, number>();
       trips.forEach((t: any) => {
         if (excludedIds.has(t.driver_id)) return;
+        // If zone polygon exists, only count trips with pickup inside the polygon
+        if (zonePolygon) {
+          if (t.pickup_lat == null || t.pickup_lng == null) return;
+          if (!pointInPolygon(Number(t.pickup_lat), Number(t.pickup_lng), zonePolygon)) return;
+        }
         counts.set(t.driver_id, (counts.get(t.driver_id) || 0) + 1);
       });
 
