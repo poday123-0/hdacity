@@ -89,6 +89,36 @@ const driverDotIcon = (color = "#4285F4") =>
     html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
   });
 
+// Car-shaped directional icon that rotates with driver heading
+const driverCarIcon = (heading: number, color = "#4285F4") =>
+  L.divIcon({
+    className: "",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;transform:rotate(${heading}deg);transition:transform 0.3s ease-out">
+      <svg viewBox="0 0 40 40" width="40" height="40">
+        <defs>
+          <filter id="carShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.4"/>
+          </filter>
+        </defs>
+        <g filter="url(#carShadow)">
+          <!-- Car body -->
+          <rect x="12" y="6" width="16" height="28" rx="6" ry="6" fill="${color}"/>
+          <!-- Windshield -->
+          <rect x="14" y="9" width="12" height="7" rx="3" ry="2" fill="white" opacity="0.85"/>
+          <!-- Rear window -->
+          <rect x="14" y="26" width="12" height="5" rx="2" ry="2" fill="white" opacity="0.5"/>
+          <!-- Direction arrow -->
+          <polygon points="20,4 16,10 24,10" fill="white" opacity="0.9"/>
+          <!-- Side mirrors -->
+          <rect x="9" y="14" width="3" height="4" rx="1" fill="${color}"/>
+          <rect x="28" y="14" width="3" height="4" rx="1" fill="${color}"/>
+        </g>
+      </svg>
+    </div>`,
+  });
+
 const driverArrowIcon = (heading: number, color = "#4285F4") =>
   L.divIcon({
     className: "",
@@ -433,7 +463,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       zoom: 16,
       zoomControl: false,
       attributionControl: false,
-    });
+      rotate: true,
+      touchRotate: true,
+      bearing: 0,
+    } as any);
 
     const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
     tileLayerRef.current = tileLayer;
