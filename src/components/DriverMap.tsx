@@ -318,7 +318,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     freeNavMarkerRef.current = marker;
 
     // Create polyline with zoom-responsive weight
-    const getFreeNavWeight = (zoom: number) => Math.max(3, Math.min(7, 7 - (zoom - 16) * 0.8));
+    const getFreeNavWeight = (zoom: number) => zoom >= 18 ? 4 : zoom >= 16 ? 5 : zoom >= 14 ? 4 : 3;
     const polyline = L.polyline([], {
       color: "#6366f1",
       weight: getFreeNavWeight(map.getZoom()),
