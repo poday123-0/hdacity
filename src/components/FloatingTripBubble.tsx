@@ -77,7 +77,7 @@ const FloatingTripBubble = ({
               animate={{ scale: pulse ? 1.15 : 1 }}
               transition={{ duration: 0.5 }}
             >
-              <SystemLogo size={28} />
+              <SystemLogo className="w-7 h-7 object-contain" />
             </motion.div>
           </div>
 
