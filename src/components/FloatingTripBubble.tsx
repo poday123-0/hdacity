@@ -27,7 +27,7 @@ const FloatingTripBubble = ({
   onDismiss,
 }: FloatingTripBubbleProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  const pulseRef = useRef<NodeJS.Timer | null>(null);
+  const pulseRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
