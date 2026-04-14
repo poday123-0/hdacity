@@ -6294,10 +6294,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                             toast({ title: "✅ Overlay permission already granted" });
                           } else {
                             await FloatingBubble.requestPermission();
-                            toast({ title: "Enable 'Display over other apps' for HDA" });
+                            toast({ title: "Find 'Display over other apps' and enable it for HDA App", description: "If you don't see a toggle, look under 'Special app access' or 'Appear on top'" });
                           }
-                        } catch {
-                          toast({ title: "Overlay not available on this platform" });
+                        } catch (e) {
+                          console.log("[FloatingBubble] Permission error:", e);
+                          toast({ title: "Could not open overlay settings", description: "Go to Settings → Apps → HDA App → 'Display over other apps' and enable it manually" });
                         }
                       }}
                       className="w-full flex items-center gap-2.5 bg-surface rounded-2xl p-3.5 active:scale-[0.97] transition-transform"
