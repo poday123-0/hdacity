@@ -1234,12 +1234,16 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [followDriver, followToggleRef, currentPos, pickupCoords, dropoffCoords]);
 
-  // Compass / heading — Leaflet doesn't support map rotation, so these are no-ops
+  // Compass / heading — reset map bearing to north
   useEffect(() => {
     if (resetNorthRef) {
       resetNorthRef.current = () => {
         setMapHeading(0);
         onMapHeadingChange?.(0);
+        const map = mapInstance.current;
+        if (map && typeof (map as any).setBearing === "function") {
+          (map as any).setBearing(0);
+        }
       };
     }
   }, [resetNorthRef, onMapHeadingChange]);
