@@ -35,17 +35,16 @@ function isNativePlatform(): boolean {
     // Check if running inside a Capacitor WebView (even when loading remote URL)
     const capPlatform = (window as any).Capacitor?.getPlatform?.();
     if (capPlatform && capPlatform !== "web") return true;
-    // Check user agent for native WebView indicators (custom UA set in native build)
+    // Check user agent for native WebView indicators
     const ua = navigator.userAgent;
     if (ua.includes("CapacitorApp") || ua.includes("HdaApp")) return true;
-    // Check localStorage flag set by native app (only trust if previously confirmed native)
+    // Android WebView detection: "wv" in UA or Android WebView markers
+    if (ua.includes("; wv)") || ua.includes("Version/") && ua.includes("Android")) return true;
+    // iOS WKWebView loaded inside native app (no Safari in UA but has AppleWebKit)
+    if (/iPhone|iPad/.test(ua) && /AppleWebKit/.test(ua) && !/Safari/.test(ua)) return true;
+    // Check localStorage flag set by native app
     const cached = localStorage.getItem("native_app_platform");
-    if (cached === "android" || cached === "ios") {
-      // Verify we're not just on a mobile browser by checking for native indicators
-      if (ua.includes("wv") || ua.includes("WebView") || ua.includes("CapacitorApp") || ua.includes("HdaApp")) return true;
-      // Clear stale flag if no native indicators found
-      localStorage.removeItem("native_app_platform");
-    }
+    if (cached === "android" || cached === "ios") return true;
   } catch {}
   return false;
 }
