@@ -2724,7 +2724,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const now = new Date().toISOString();
       const { data: activeComps } = await supabase
         .from("competitions")
-        .select("id, start_date, end_date")
+        .select("id, start_date, end_date, trip_source, vehicle_type_id")
         .eq("is_active", true)
         .eq("status", "active")
         .lte("start_date", now)
@@ -2733,15 +2733,36 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (!activeComps || activeComps.length === 0) return;
 
       for (const comp of activeComps) {
-        // Count driver's completed trips in this competition period
-        const { count } = await supabase
+        // Build trip query matching the full refresh logic
+        let tripQuery = supabase
           .from("trips")
           .select("id", { count: "exact", head: true })
           .eq("driver_id", driverId)
           .eq("status", "completed")
+          .not("completed_at", "is", null)
           .gte("completed_at", comp.start_date)
           .lte("completed_at", comp.end_date);
 
+        // Apply vehicle_type_id filter if set
+        if (comp.vehicle_type_id) {
+          tripQuery = tripQuery.eq("vehicle_type_id", comp.vehicle_type_id);
+        }
+
+        // Apply trip_source filter matching the edge function logic
+        const tripSource = (comp as any).trip_source || "all";
+        if (tripSource === "passenger_only") {
+          tripQuery = tripQuery.eq("dispatch_type", "passenger");
+        } else if (tripSource === "send_to_app") {
+          tripQuery = tripQuery.eq("dispatch_type", "dispatch_broadcast");
+        } else if (tripSource === "assign_only") {
+          tripQuery = tripQuery.eq("dispatch_type", "operator");
+        } else if (tripSource === "app_trips") {
+          tripQuery = tripQuery.in("dispatch_type", ["passenger", "dispatch_broadcast"]);
+        } else if (tripSource === "dispatch_all") {
+          tripQuery = tripQuery.in("dispatch_type", ["operator", "dispatch_broadcast"]);
+        }
+
+        const { count } = await tripQuery;
         const tripCount = count || 0;
 
         // Check if entry exists
@@ -2757,7 +2778,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             trip_count: tripCount,
             updated_at: now,
           } as any).eq("id", existing.id);
-        } else {
+        } else if (tripCount > 0) {
           await supabase.from("competition_entries").insert({
             competition_id: comp.id,
             driver_id: driverId,
