@@ -85,14 +85,42 @@ public class FloatingBubblePlugin extends Plugin {
 
     @PluginMethod
     public void requestPermission(PluginCall call) {
-        Context ctx = getContext();
-        if (ctx != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Intent intent = new Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:" + ctx.getPackageName())
-            );
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                // Must use Activity context — application context often fails
+                android.app.Activity activity = getActivity();
+                if (activity != null) {
+                    Intent intent = new Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + activity.getPackageName())
+                    );
+                    activity.startActivity(intent);
+                } else {
+                    // Fallback: open general app settings
+                    Context ctx = getContext();
+                    if (ctx != null) {
+                        Intent fallback = new Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + ctx.getPackageName())
+                        );
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        ctx.startActivity(fallback);
+                    }
+                }
+            } catch (Exception e) {
+                // Some OEMs block the overlay intent — open app info instead
+                try {
+                    Context ctx = getContext();
+                    if (ctx != null) {
+                        Intent fallback = new Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + ctx.getPackageName())
+                        );
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        ctx.startActivity(fallback);
+                    }
+                } catch (Exception ignored) {}
+            }
         }
         call.resolve();
     }
