@@ -169,11 +169,27 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
       attributionControl: false,
     });
 
-    
+    const removeLeafletAttribution = () => {
+      map.attributionControl?.setPrefix(false);
+      map.attributionControl?.remove();
+      const container = map.getContainer();
+      container.querySelectorAll(".leaflet-control-attribution").forEach((node) => node.remove());
+      container.querySelectorAll(".leaflet-bottom.leaflet-right").forEach((node) => {
+        if (!node.querySelector(".leaflet-control")) {
+          (node as HTMLElement).style.display = "none";
+        }
+      });
+    };
 
     const tileUrl = isDark ? DARK_TILES : LIGHT_TILES;
     const tileLayer = L.tileLayer(tileUrl, { attribution: "", maxZoom: 19 }).addTo(map);
     tileLayerRef.current = tileLayer;
+    removeLeafletAttribution();
+
+    const attributionObserver = new MutationObserver(() => {
+      removeLeafletAttribution();
+    });
+    attributionObserver.observe(map.getContainer(), { childList: true, subtree: true });
 
     // User marker
     const userMarker = L.marker([center.lat, center.lng], { icon: userDotIcon, zIndexOffset: 900 }).addTo(map);
@@ -187,6 +203,7 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     });
 
     return () => {
+      attributionObserver.disconnect();
       map.remove();
       mapInstance.current = null;
     };
