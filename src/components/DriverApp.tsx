@@ -1839,6 +1839,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setScreen("online");
       setCurrentTrip(null);
       setPassengerProfile(null);
+      clearQueuedTrip();
       return true;
     }
 
