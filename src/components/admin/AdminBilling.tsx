@@ -1543,8 +1543,11 @@ const AdminBilling = () => {
                       const mp = centerMonthPayments.find((cp: any) => cp.vehicle_id === cv.id);
                       if (centerPaymentStatusFilter === "pending") {
                         if (mp && mp.status === "approved") return false;
-                      } else if (centerPaymentStatusFilter === "approved") {
+                      } else if (centerPaymentStatusFilter === "approved" || centerPaymentStatusFilter === "approved_count") {
                         if (!mp || mp.status !== "approved") return false;
+                      } else if (centerPaymentStatusFilter === "unpaid") {
+                        if (cv.center_fee_exempt) return false;
+                        if (mp && mp.status === "approved") return false;
                       }
                     }
                     if (!centerSearch) return true;
