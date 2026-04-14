@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       // Build trip query filtered by competition start_date and end_date
       let tripQuery = supabase
         .from("trips")
-        .select("driver_id, pickup_lat, pickup_lng")
+        .select("driver_id, pickup_lat, pickup_lng, dispatch_type")
         .eq("status", "completed")
         .gte("completed_at", comp.start_date)
         .lte("completed_at", comp.end_date)
@@ -69,6 +69,14 @@ Deno.serve(async (req) => {
       // If competition has a vehicle_type_id filter, apply it
       if (comp.vehicle_type_id) {
         tripQuery = tripQuery.eq("vehicle_type_id", comp.vehicle_type_id);
+      }
+
+      // Filter by trip source
+      const tripSource = comp.trip_source || "all";
+      if (tripSource === "passenger_only") {
+        tripQuery = tripQuery.eq("dispatch_type", "passenger");
+      } else if (tripSource === "dispatch_only") {
+        tripQuery = tripQuery.in("dispatch_type", ["center", "operator"]);
       }
 
       const { data: trips } = await tripQuery;

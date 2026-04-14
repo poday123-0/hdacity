@@ -18,6 +18,7 @@ interface Competition {
   is_active: boolean;
   status: string;
   created_at: string;
+  trip_source?: string;
 }
 
 interface VehicleType {
@@ -87,6 +88,7 @@ const AdminCompetitions = () => {
     service_location_id: "",
     vehicle_type_id: "",
     rules_text: "",
+    trip_source: "all",
   });
 
   // Prize form
@@ -126,15 +128,20 @@ const AdminCompetitions = () => {
     ]);
     setPrizes((prizesRes.data as Prize[]) || []);
 
-    // Fetch driver names
+    // Fetch driver names and exclude center numbers
+    const EXCLUDED_PHONES = ["7320207"];
     const entryData = (entriesRes.data || []) as Entry[];
     if (entryData.length > 0) {
       const driverIds = entryData.map(e => e.driver_id);
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name").in("id", driverIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", driverIds);
+      const excludedIds = new Set((profiles || []).filter(p => EXCLUDED_PHONES.includes(p.phone_number)).map(p => p.id));
       const nameMap = new Map((profiles || []).map(p => [p.id, `${p.first_name} ${p.last_name}`]));
-      entryData.forEach(e => { e.driver_name = nameMap.get(e.driver_id) || "Unknown"; });
+      const filtered = entryData.filter(e => !excludedIds.has(e.driver_id));
+      filtered.forEach(e => { e.driver_name = nameMap.get(e.driver_id) || "Unknown"; });
+      setEntries(filtered);
+    } else {
+      setEntries(entryData);
     }
-    setEntries(entryData);
   };
 
   const toggleExpand = async (id: string) => {
@@ -147,7 +154,7 @@ const AdminCompetitions = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "", rules_text: "" });
+    setForm({ title: "", description: "", metric: "most_trips", period_type: "weekly", start_date: "", end_date: "", service_location_id: "", vehicle_type_id: "", rules_text: "", trip_source: "all" });
     setPrizeRows([
       { tier_rank: 1, tier_name: "Gold", prize_type: "wallet_credit", wallet_amount: 500, fee_free_months: 0, badge_label: "🥇 Champion", custom_description: "" },
       { tier_rank: 2, tier_name: "Silver", prize_type: "wallet_credit", wallet_amount: 300, fee_free_months: 0, badge_label: "🥈 Runner-up", custom_description: "" },
@@ -182,6 +189,7 @@ const AdminCompetitions = () => {
         service_location_id: form.service_location_id || null,
         vehicle_type_id: form.vehicle_type_id || null,
         rules_text: form.rules_text || "",
+        trip_source: form.trip_source || "all",
       };
 
       let compId = editingId;
@@ -227,6 +235,7 @@ const AdminCompetitions = () => {
       service_location_id: comp.service_location_id || "",
       vehicle_type_id: (comp as any).vehicle_type_id || "",
       rules_text: (comp as any).rules_text || "",
+      trip_source: (comp as any).trip_source || "all",
     });
     setEditingId(comp.id);
     // Load prizes
@@ -294,11 +303,19 @@ const AdminCompetitions = () => {
       // Count completed trips for each driver in the date range
       let query = supabase
         .from("trips")
-        .select("driver_id, vehicle_type_id, pickup_lat, pickup_lng")
+        .select("driver_id, vehicle_type_id, pickup_lat, pickup_lng, dispatch_type")
         .eq("status", "completed")
         .gte("completed_at", comp.start_date)
         .lte("completed_at", comp.end_date)
         .not("driver_id", "is", null);
+
+      // Filter by trip source
+      const tripSource = (comp as any).trip_source || "all";
+      if (tripSource === "passenger_only") {
+        query = query.eq("dispatch_type", "passenger");
+      } else if (tripSource === "dispatch_only") {
+        query = query.in("dispatch_type", ["center", "operator"]);
+      }
 
       // Filter by vehicle type if competition is scoped to one
       if (comp.vehicle_type_id) {
@@ -457,6 +474,14 @@ const AdminCompetitions = () => {
                 {vehicleTypes.map(vt => (
                   <option key={vt.id} value={vt.id}>{vt.name}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Trip Source</label>
+              <select value={form.trip_source} onChange={e => setForm(f => ({ ...f, trip_source: e.target.value }))} className={inputCls}>
+                <option value="all">All Trips (App + Dispatch)</option>
+                <option value="passenger_only">Passenger App Only</option>
+                <option value="dispatch_only">Dispatch Only</option>
               </select>
             </div>
             <div>
