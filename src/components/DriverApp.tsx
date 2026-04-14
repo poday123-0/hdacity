@@ -186,6 +186,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showEarnings, setShowEarnings] = useState(() => {
     try { return localStorage.getItem("hda_driver_show_earnings") !== "false"; } catch { return true; }
   });
+  const [floatingBubbleEnabled, setFloatingBubbleEnabled] = useState(() => {
+    try { return localStorage.getItem("hda_driver_floating_bubble") !== "false"; } catch { return true; }
+  });
   const [completionFare, setCompletionFare] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"cash" | "transfer" | "wallet">("cash");
   const [driverWalletBalance, setDriverWalletBalance] = useState(0);
@@ -2854,7 +2857,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Floating trip bubble — shows when a trip request exists but driver isn't on ride-request screen */}
-      {currentTrip && screen !== "ride-request" && currentTrip.id !== bubbleDismissedTripId && (screen === "online" || screen === "navigating" || screen === "offline") && (
+      {floatingBubbleEnabled && currentTrip && screen !== "ride-request" && currentTrip.id !== bubbleDismissedTripId && (screen === "online" || screen === "navigating" || screen === "offline") && (
         <FloatingTripBubble
           tripId={currentTrip.id}
           pickupAddress={currentTrip.pickup_address || ""}
@@ -6253,6 +6256,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                         <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${driverNavSettings.autoRefocusOnTurn ? "translate-x-[18px]" : "translate-x-0.5"}`} />
                       </button>
                     </div>
+                  </div>
+
+                  {/* Floating Trip Bubble */}
+                  <div className="bg-surface rounded-2xl p-3.5 flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <BellIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p style={{ fontSize: '13px' }} className="font-semibold text-foreground leading-tight">Trip Bubble Alert</p>
+                      <p style={{ fontSize: '10px' }} className="text-muted-foreground">Show floating bubble for new trips</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const next = !floatingBubbleEnabled;
+                        setFloatingBubbleEnabled(next);
+                        try { localStorage.setItem("hda_driver_floating_bubble", String(next)); } catch {}
+                      }}
+                      className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${floatingBubbleEnabled ? "bg-primary" : "bg-muted"}`}>
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${floatingBubbleEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                    </button>
                   </div>
 
                   {/* Suggest a Place */}
