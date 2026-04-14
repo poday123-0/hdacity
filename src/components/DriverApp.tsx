@@ -3190,25 +3190,30 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             <div className="w-5 h-px bg-border mx-auto" />
           </>
         }
-        {/* Search locations */}
-        <button
-          onClick={() => { setShowLocationSearch(true); setLocationSearchQuery(""); setLocationSearchResults([]); }}
-          className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
-          title="Search location"
-        >
-          <Search className="w-[18px] h-[18px]" />
-        </button>
-        <div className="w-5 h-px bg-border mx-auto" />
-        {screen === "navigating" && currentTrip ? (
-          <button
-            onClick={() => setShowExternalNavPopup(true)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
-            title="Open in external map"
-          >
-            <Navigation className="w-[18px] h-[18px]" />
-          </button>
-        ) : (
-          <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
+        {screen !== "navigating" && (
+          <>
+            {/* Search locations */}
+            <button
+              onClick={() => { setShowLocationSearch(true); setLocationSearchQuery(""); setLocationSearchResults([]); }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
+              title="Search location"
+            >
+              <Search className="w-[18px] h-[18px]" />
+            </button>
+            <div className="w-5 h-px bg-border mx-auto" />
+            <ThemeToggle className="!w-10 !h-10 !rounded-xl !shadow-none !bg-transparent hover:!bg-surface" />
+          </>
+        )}
+        {screen === "navigating" && currentTrip && (
+          <>
+            <button
+              onClick={() => setShowExternalNavPopup(true)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all duration-300 text-primary hover:bg-surface"
+              title="Open in external map"
+            >
+              <Navigation className="w-[18px] h-[18px]" />
+            </button>
+          </>
         )}
         <div className="w-5 h-px bg-border mx-auto" />
         {/* Compass */}
