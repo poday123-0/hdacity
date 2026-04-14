@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp, Camera } from "lucide-react";
 import { format } from "date-fns";
+import { compressImage } from "@/lib/image-compress";
 
 interface Competition {
   id: string;
@@ -47,6 +48,7 @@ interface Entry {
   prize_awarded: boolean;
   prize_id: string | null;
   driver_name?: string;
+  avatar_url?: string | null;
 }
 
 interface ServiceLocation {
@@ -76,6 +78,28 @@ const AdminCompetitions = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const avatarDriverIdRef = useRef<string | null>(null);
+
+  const handleAvatarUpload = async (file: File, driverId: string) => {
+    setUploadingAvatarId(driverId);
+    try {
+      const compressed = await compressImage(file, 512, 0.8);
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${driverId}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage.from("driver-documents").upload(path, compressed, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("driver-documents").getPublicUrl(path);
+      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from("profiles").update({ avatar_url: newUrl }).eq("id", driverId);
+      setEntries(prev => prev.map(e => e.driver_id === driverId ? { ...e, avatar_url: newUrl } : e));
+      toast({ title: "Photo updated!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+    setUploadingAvatarId(null);
+  };
 
   // Form state
   const [form, setForm] = useState({
@@ -133,11 +157,15 @@ const AdminCompetitions = () => {
     const entryData = (entriesRes.data || []) as Entry[];
     if (entryData.length > 0) {
       const driverIds = entryData.map(e => e.driver_id);
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", driverIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number, avatar_url").in("id", driverIds);
       const excludedIds = new Set((profiles || []).filter(p => EXCLUDED_PHONES.includes(p.phone_number)).map(p => p.id));
-      const nameMap = new Map((profiles || []).map(p => [p.id, `${p.first_name} ${p.last_name}`]));
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
       const filtered = entryData.filter(e => !excludedIds.has(e.driver_id));
-      filtered.forEach(e => { e.driver_name = nameMap.get(e.driver_id) || "Unknown"; });
+      filtered.forEach(e => {
+        const p = profileMap.get(e.driver_id);
+        e.driver_name = p ? `${p.first_name} ${p.last_name}` : "Unknown";
+        e.avatar_url = p?.avatar_url || null;
+      });
       setEntries(filtered);
     } else {
       setEntries(entryData);
@@ -674,18 +702,52 @@ const AdminCompetitions = () => {
                   {entries.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No entries yet. Click "Refresh Leaderboard" to calculate rankings.</p>
                   ) : (
-                    <div className="space-y-1">
-                      {entries.map((entry, idx) => (
-                        <div key={entry.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl ${idx < 3 ? "bg-primary/5" : "bg-surface"}`}>
-                          <span className={`text-sm font-bold w-8 text-center ${TIER_COLORS[idx + 1] || "text-muted-foreground"}`}>
-                            {TIER_ICONS[idx + 1] || `#${idx + 1}`}
-                          </span>
-                          <span className="flex-1 text-sm font-medium text-foreground">{entry.driver_name || entry.driver_id.slice(0, 8)}</span>
-                          <span className="text-sm font-bold text-primary">{entry.trip_count} trips</span>
-                          {entry.prize_awarded && <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-bold">Awarded</span>}
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file && avatarDriverIdRef.current) handleAvatarUpload(file, avatarDriverIdRef.current);
+                          e.target.value = "";
+                        }}
+                      />
+                      <div className="space-y-1">
+                        {entries.map((entry, idx) => (
+                          <div key={entry.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl ${idx < 3 ? "bg-primary/5" : "bg-surface"}`}>
+                            <span className={`text-sm font-bold w-8 text-center ${TIER_COLORS[idx + 1] || "text-muted-foreground"}`}>
+                              {TIER_ICONS[idx + 1] || `#${idx + 1}`}
+                            </span>
+                            <button
+                              onClick={() => {
+                                avatarDriverIdRef.current = entry.driver_id;
+                                avatarInputRef.current?.click();
+                              }}
+                              className="relative w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0 group"
+                              title="Click to change photo"
+                            >
+                              {uploadingAvatarId === entry.driver_id ? (
+                                <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                              ) : entry.avatar_url ? (
+                                <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[10px] font-bold text-muted-foreground">
+                                  {(entry.driver_name || "D").slice(0, 2).toUpperCase()}
+                                </span>
+                              )}
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                                <Camera className="w-3.5 h-3.5 text-white" />
+                              </div>
+                            </button>
+                            <span className="flex-1 text-sm font-medium text-foreground">{entry.driver_name || entry.driver_id.slice(0, 8)}</span>
+                            <span className="text-sm font-bold text-primary">{entry.trip_count} trips</span>
+                            {entry.prize_awarded && <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-bold">Awarded</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
