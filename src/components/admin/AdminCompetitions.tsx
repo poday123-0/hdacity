@@ -211,13 +211,19 @@ const AdminCompetitions = () => {
   };
 
   const handleEdit = async (comp: Competition) => {
+    // Convert stored UTC dates to Maldives time (UTC+5) for the datetime-local input
+    const toMaldivesLocal = (isoStr: string) => {
+      const d = new Date(isoStr);
+      const mvTime = new Date(d.getTime() + 5 * 60 * 60 * 1000);
+      return mvTime.toISOString().slice(0, 16);
+    };
     setForm({
       title: comp.title,
       description: comp.description,
       metric: comp.metric,
       period_type: comp.period_type,
-      start_date: comp.start_date.slice(0, 16),
-      end_date: comp.end_date.slice(0, 16),
+      start_date: toMaldivesLocal(comp.start_date),
+      end_date: toMaldivesLocal(comp.end_date),
       service_location_id: comp.service_location_id || "",
       vehicle_type_id: (comp as any).vehicle_type_id || "",
       rules_text: (comp as any).rules_text || "",
