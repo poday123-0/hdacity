@@ -50,7 +50,7 @@ const FloatingTripBubble = ({
         const { granted } = await FloatingBubble.checkPermission();
         if (!granted) {
           // Silently skip — user hasn't granted overlay permission
-          console.log("[FloatingBubble] Overlay permission not granted");
+          console.log("[FloatingBubble] Overlay permission not granted — falling back to in-app bubble");
           return;
         }
 
