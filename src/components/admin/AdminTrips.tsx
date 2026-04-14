@@ -161,7 +161,7 @@ const AdminTrips = () => {
 
       {/* Advanced filters */}
       {showFilters && (
-        <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Booking Type</label>
             <select
@@ -176,6 +176,19 @@ const AdminTrips = () => {
             </select>
           </div>
           <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Trip Source</label>
+            <select
+              value={dispatchFilter}
+              onChange={(e) => setDispatchFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Sources</option>
+              <option value="passenger">🧑 Customer App</option>
+              <option value="dispatch_broadcast">📡 Send to App</option>
+              <option value="operator">📋 Assign</option>
+            </select>
+          </div>
+          <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> From</label>
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
@@ -184,8 +197,8 @@ const AdminTrips = () => {
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
           {activeFilterCount > 0 && (
-            <div className="sm:col-span-3">
-              <button onClick={() => { setBookingFilter("all"); setDateFrom(""); setDateTo(""); }} className="text-xs text-primary font-semibold hover:underline">
+            <div className="sm:col-span-4">
+              <button onClick={() => { setBookingFilter("all"); setDispatchFilter("all"); setDateFrom(""); setDateTo(""); }} className="text-xs text-primary font-semibold hover:underline">
                 Clear all filters
               </button>
             </div>
