@@ -57,6 +57,7 @@ const AdminTrips = () => {
 
       if (filter !== "all") query = query.eq("status", filter);
       if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
+      if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
       if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
         const endDate = new Date(dateTo);
@@ -76,7 +77,7 @@ const AdminTrips = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dateFrom, dateTo]);
+  useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     const channel = supabase
@@ -84,7 +85,7 @@ const AdminTrips = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => fetchTrips())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [filter, bookingFilter, dateFrom, dateTo]);
+  }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
 
   const viewMessages = async (tripId: string) => {
     setSelectedTripId(tripId);
