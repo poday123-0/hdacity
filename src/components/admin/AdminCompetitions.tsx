@@ -675,7 +675,7 @@ const AdminCompetitions = () => {
                     <p className="text-sm text-muted-foreground py-4 text-center">No entries yet. Click "Refresh Leaderboard" to calculate rankings.</p>
                   ) : (
                     <div className="space-y-1">
-                      {entries.slice(0, 20).map((entry, idx) => (
+                      {entries.map((entry, idx) => (
                         <div key={entry.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl ${idx < 3 ? "bg-primary/5" : "bg-surface"}`}>
                           <span className={`text-sm font-bold w-8 text-center ${TIER_COLORS[idx + 1] || "text-muted-foreground"}`}>
                             {TIER_ICONS[idx + 1] || `#${idx + 1}`}
@@ -685,9 +685,6 @@ const AdminCompetitions = () => {
                           {entry.prize_awarded && <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-bold">Awarded</span>}
                         </div>
                       ))}
-                      {entries.length > 20 && (
-                        <p className="text-xs text-muted-foreground text-center py-2">+{entries.length - 20} more drivers</p>
-                      )}
                     </div>
                   )}
                 </div>
