@@ -21,6 +21,12 @@ const bookingTypeLabels: Record<string, string> = {
   hourly: "⏱ Hourly",
 };
 
+const dispatchTypeLabels: Record<string, { label: string; color: string }> = {
+  passenger: { label: "🧑 Customer", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
+  dispatch_broadcast: { label: "📡 Send to App", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
+  operator: { label: "📋 Assign", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" },
+};
+
 const AdminTrips = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +35,7 @@ const AdminTrips = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [bookingFilter, setBookingFilter] = useState("all");
+  const [dispatchFilter, setDispatchFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
