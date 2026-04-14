@@ -1427,6 +1427,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setScreen("navigating");
   };
 
+  // Also listen during navigating for chained trip queuing
+  useEffect(() => {
+    if (screen !== "navigating" || !userProfile?.id || !currentTrip) return;
+    let isActive = true;
+
+    const chainedChannel = supabase.
+    channel("driver-chained-trip-requests").
+    on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "trips"
+    }, async (payload) => {
+      if (!isActive) return;
+      const trip = payload.new as any;
+      if (trip.status === "requested" || trip.status === "scheduled") {
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
+        }
+      }
+    }).
+    subscribe();
+
+    return () => { isActive = false; supabase.removeChannel(chainedChannel); };
+  }, [screen, userProfile?.id, currentTrip?.id]);
+
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) return;
     let isActive = true;
