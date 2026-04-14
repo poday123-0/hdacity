@@ -359,7 +359,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
 
   return (
     <>
-      <div className="absolute -top-6 left-0 right-0 z-[700] capacitor-safe-top bg-gradient-to-b from-background/80 via-background/40 to-transparent">
+      <div className="absolute -top-6 left-0 right-0 z-[1100] capacitor-safe-top bg-gradient-to-b from-background/80 via-background/40 to-transparent">
         <div className="px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setShowProfile(true)}
@@ -400,7 +400,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[600] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[1200] flex items-end justify-center bg-foreground/50 backdrop-blur-sm"
             onClick={() => setShowProfile(false)}
           >
             <motion.div
