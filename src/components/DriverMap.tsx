@@ -317,13 +317,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }).addTo(map);
     freeNavMarkerRef.current = marker;
 
-    // Create polyline
+    // Create polyline with zoom-responsive weight
+    const getFreeNavWeight = (zoom: number) => Math.max(3, Math.min(7, 7 - (zoom - 16) * 0.8));
     const polyline = L.polyline([], {
       color: "#6366f1",
-      weight: 7,
+      weight: getFreeNavWeight(map.getZoom()),
       opacity: 0.85,
     }).addTo(map);
     freeNavPolylineRef.current = polyline;
+
+    const onZoomFreeNav = () => {
+      if (freeNavPolylineRef.current) {
+        freeNavPolylineRef.current.setStyle({ weight: getFreeNavWeight(map.getZoom()) });
+      }
+    };
+    map.on("zoomend", onZoomFreeNav);
 
     programmaticZoomRef.current = true; map.setZoom(18);
     setFollowDriver(true);
