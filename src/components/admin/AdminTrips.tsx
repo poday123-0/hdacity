@@ -21,6 +21,12 @@ const bookingTypeLabels: Record<string, string> = {
   hourly: "⏱ Hourly",
 };
 
+const dispatchTypeLabels: Record<string, { label: string; color: string }> = {
+  passenger: { label: "🧑 Customer", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
+  dispatch_broadcast: { label: "📡 Send to App", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
+  operator: { label: "📋 Assign", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" },
+};
+
 const AdminTrips = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +35,7 @@ const AdminTrips = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [bookingFilter, setBookingFilter] = useState("all");
+  const [dispatchFilter, setDispatchFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTripMessages, setSelectedTripMessages] = useState<any[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -50,6 +57,7 @@ const AdminTrips = () => {
 
       if (filter !== "all") query = query.eq("status", filter);
       if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
+      if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
       if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
         const endDate = new Date(dateTo);
@@ -69,7 +77,7 @@ const AdminTrips = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dateFrom, dateTo]);
+  useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     const channel = supabase
@@ -77,7 +85,7 @@ const AdminTrips = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => fetchTrips())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [filter, bookingFilter, dateFrom, dateTo]);
+  }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
 
   const viewMessages = async (tripId: string) => {
     setSelectedTripId(tripId);
@@ -101,7 +109,7 @@ const AdminTrips = () => {
     return passengerName.includes(q) || driverName.includes(q) || phone.includes(q) || (t.pickup_address || "").toLowerCase().includes(q) || (t.dropoff_address || "").toLowerCase().includes(q);
   });
 
-  const activeFilterCount = [bookingFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
+  const activeFilterCount = [bookingFilter !== "all", dispatchFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
 
   return (
     <div className="space-y-5">
@@ -153,7 +161,7 @@ const AdminTrips = () => {
 
       {/* Advanced filters */}
       {showFilters && (
-        <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Booking Type</label>
             <select
@@ -168,6 +176,19 @@ const AdminTrips = () => {
             </select>
           </div>
           <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Trip Source</label>
+            <select
+              value={dispatchFilter}
+              onChange={(e) => setDispatchFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Sources</option>
+              <option value="passenger">🧑 Customer App</option>
+              <option value="dispatch_broadcast">📡 Send to App</option>
+              <option value="operator">📋 Assign</option>
+            </select>
+          </div>
+          <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> From</label>
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
@@ -176,8 +197,8 @@ const AdminTrips = () => {
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
           {activeFilterCount > 0 && (
-            <div className="sm:col-span-3">
-              <button onClick={() => { setBookingFilter("all"); setDateFrom(""); setDateTo(""); }} className="text-xs text-primary font-semibold hover:underline">
+            <div className="sm:col-span-4">
+              <button onClick={() => { setBookingFilter("all"); setDispatchFilter("all"); setDateFrom(""); setDateTo(""); }} className="text-xs text-primary font-semibold hover:underline">
                 Clear all filters
               </button>
             </div>
@@ -233,9 +254,11 @@ const AdminTrips = () => {
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-muted-foreground whitespace-nowrap">
                         {bookingTypeLabels[t.booking_type] || t.booking_type || "—"}
                       </span>
-                      {t.dispatch_type === "operator" && (
-                        <span className="ml-1 text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
-                      )}
+                      <div className="mt-0.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${dispatchTypeLabels[t.dispatch_type]?.color || "bg-muted text-muted-foreground"}`}>
+                          {dispatchTypeLabels[t.dispatch_type]?.label || t.dispatch_type || "—"}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusOptions.find(s => s.value === t.status)?.color || "bg-muted text-muted-foreground"}`}>{t.status}</span>
@@ -348,9 +371,17 @@ const AdminTrips = () => {
                         <span>Customer: <span className="text-foreground font-medium">{selectedTrip.customer_phone}</span></span>
                       </div>
                     )}
-                    {selectedTrip.dispatch_type && selectedTrip.dispatch_type !== "passenger" && (
-                      <div className="flex items-center gap-1.5 text-accent-foreground">
-                        <span className="text-[10px] font-bold bg-accent px-1.5 py-0.5 rounded-full">Dispatched by operator</span>
+                    {selectedTrip.dispatch_type && (
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${dispatchTypeLabels[selectedTrip.dispatch_type]?.color || "bg-muted text-muted-foreground"}`}>
+                          Source: {dispatchTypeLabels[selectedTrip.dispatch_type]?.label || selectedTrip.dispatch_type}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTrip.payment_method && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <DollarSign className="w-3 h-3" />
+                        <span>Payment: <span className="text-foreground font-medium capitalize">{selectedTrip.payment_method}</span></span>
                       </div>
                     )}
                   </div>
