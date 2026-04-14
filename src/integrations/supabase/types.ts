@@ -304,6 +304,7 @@ export type Database = {
           start_date: string
           status: string
           title: string
+          trip_source: string
           updated_at: string
           vehicle_type_id: string | null
         }
@@ -321,6 +322,7 @@ export type Database = {
           start_date: string
           status?: string
           title: string
+          trip_source?: string
           updated_at?: string
           vehicle_type_id?: string | null
         }
@@ -338,6 +340,7 @@ export type Database = {
           start_date?: string
           status?: string
           title?: string
+          trip_source?: string
           updated_at?: string
           vehicle_type_id?: string | null
         }

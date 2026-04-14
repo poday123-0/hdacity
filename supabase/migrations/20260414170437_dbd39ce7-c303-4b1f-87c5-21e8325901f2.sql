@@ -1,0 +1,1 @@
+ALTER TABLE public.competitions ADD COLUMN IF NOT EXISTS trip_source text NOT NULL DEFAULT 'all';
