@@ -313,8 +313,14 @@ const AdminCompetitions = () => {
       const tripSource = (comp as any).trip_source || "all";
       if (tripSource === "passenger_only") {
         query = query.eq("dispatch_type", "passenger");
-      } else if (tripSource === "dispatch_only") {
-        query = query.in("dispatch_type", ["center", "operator"]);
+      } else if (tripSource === "send_to_app") {
+        query = query.eq("dispatch_type", "dispatch_broadcast");
+      } else if (tripSource === "assign_only") {
+        query = query.eq("dispatch_type", "operator");
+      } else if (tripSource === "app_trips") {
+        query = query.in("dispatch_type", ["passenger", "dispatch_broadcast"]);
+      } else if (tripSource === "dispatch_all") {
+        query = query.in("dispatch_type", ["operator", "dispatch_broadcast"]);
       }
 
       // Filter by vehicle type if competition is scoped to one
@@ -479,9 +485,12 @@ const AdminCompetitions = () => {
             <div>
               <label className="text-xs font-medium text-muted-foreground">Trip Source</label>
               <select value={form.trip_source} onChange={e => setForm(f => ({ ...f, trip_source: e.target.value }))} className={inputCls}>
-                <option value="all">All Trips (App + Dispatch)</option>
+                <option value="all">All Trips</option>
                 <option value="passenger_only">Passenger App Only</option>
-                <option value="dispatch_only">Dispatch Only</option>
+                <option value="app_trips">App Trips (Passenger + Send to App)</option>
+                <option value="send_to_app">Dispatch "Send to App" Only</option>
+                <option value="assign_only">Dispatch "Assign" Only</option>
+                <option value="dispatch_all">All Dispatch (Assign + Send to App)</option>
               </select>
             </div>
             <div>
