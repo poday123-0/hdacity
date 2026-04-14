@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet-rotate";
 import { fetchOsrmRoute, pickShortestOsrmRoute, type OsrmRoute, type OsrmStep } from "@/lib/osrm-routing";
 import { useRoadClosures } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
