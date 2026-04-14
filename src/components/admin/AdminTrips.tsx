@@ -109,7 +109,7 @@ const AdminTrips = () => {
     return passengerName.includes(q) || driverName.includes(q) || phone.includes(q) || (t.pickup_address || "").toLowerCase().includes(q) || (t.dropoff_address || "").toLowerCase().includes(q);
   });
 
-  const activeFilterCount = [bookingFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
+  const activeFilterCount = [bookingFilter !== "all", dispatchFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
 
   return (
     <div className="space-y-5">
