@@ -477,6 +477,14 @@ const AdminCompetitions = () => {
               </select>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground">Trip Source</label>
+              <select value={form.trip_source} onChange={e => setForm(f => ({ ...f, trip_source: e.target.value }))} className={inputCls}>
+                <option value="all">All Trips (App + Dispatch)</option>
+                <option value="passenger_only">Passenger App Only</option>
+                <option value="dispatch_only">Dispatch Only</option>
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground">Start Date *</label>
               <input type="datetime-local" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} className={inputCls} />
             </div>
