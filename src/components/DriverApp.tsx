@@ -698,6 +698,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
     // Stop silent audio heartbeat to save battery
     stopHeartbeat();
+    // Allow screen to sleep when offline
+    disableKeepAwake();
     // Mark driver as offline in DB (only if we own the session)
     if (userProfile?.id) {
       const { data } = await supabase
