@@ -702,12 +702,44 @@ const AdminCompetitions = () => {
                   {entries.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No entries yet. Click "Refresh Leaderboard" to calculate rankings.</p>
                   ) : (
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file && avatarDriverIdRef.current) handleAvatarUpload(file, avatarDriverIdRef.current);
+                        e.target.value = "";
+                      }}
+                    />
                     <div className="space-y-1">
                       {entries.map((entry, idx) => (
                         <div key={entry.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl ${idx < 3 ? "bg-primary/5" : "bg-surface"}`}>
                           <span className={`text-sm font-bold w-8 text-center ${TIER_COLORS[idx + 1] || "text-muted-foreground"}`}>
                             {TIER_ICONS[idx + 1] || `#${idx + 1}`}
                           </span>
+                          <button
+                            onClick={() => {
+                              avatarDriverIdRef.current = entry.driver_id;
+                              avatarInputRef.current?.click();
+                            }}
+                            className="relative w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0 group"
+                            title="Click to change photo"
+                          >
+                            {uploadingAvatarId === entry.driver_id ? (
+                              <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                            ) : entry.avatar_url ? (
+                              <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[10px] font-bold text-muted-foreground">
+                                {(entry.driver_name || "D").slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                              <Camera className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </button>
                           <span className="flex-1 text-sm font-medium text-foreground">{entry.driver_name || entry.driver_id.slice(0, 8)}</span>
                           <span className="text-sm font-bold text-primary">{entry.trip_count} trips</span>
                           {entry.prize_awarded && <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-bold">Awarded</span>}
