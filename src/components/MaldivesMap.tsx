@@ -170,14 +170,12 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     });
 
     const removeLeafletAttribution = () => {
-      map.attributionControl?.setPrefix(false);
-      map.attributionControl?.remove();
+      try { map.attributionControl?.setPrefix(false); } catch {}
+      try { map.attributionControl?.remove(); } catch {}
       const container = map.getContainer();
       container.querySelectorAll(".leaflet-control-attribution").forEach((node) => node.remove());
-      container.querySelectorAll(".leaflet-bottom.leaflet-right").forEach((node) => {
-        if (!node.querySelector(".leaflet-control")) {
-          (node as HTMLElement).style.display = "none";
-        }
+      container.querySelectorAll(".leaflet-bottom").forEach((node) => {
+        (node as HTMLElement).style.display = "none";
       });
     };
 
