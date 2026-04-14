@@ -941,7 +941,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Route polyline
     const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
-    const getRouteWeight = (zoom: number) => Math.max(3, Math.min(7, 7 - (zoom - 16) * 0.8));
+    const getRouteWeight = (zoom: number) => zoom >= 18 ? 4 : zoom >= 16 ? 5 : zoom >= 14 ? 4 : 3;
     const polyline = L.polyline([], {
       color: routeColor, weight: getRouteWeight(map.getZoom()), opacity: 0.85,
     }).addTo(map);
