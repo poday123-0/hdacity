@@ -4725,7 +4725,54 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         confirmedPaymentMethod={confirmedPaymentMethod}
         passengerProfile={passengerProfile}
         userProfile={userProfile}
-        onContinue={() => {
+        onContinue={async () => {
+          // If there's a queued chained trip, auto-promote it
+          if (queuedTrip) {
+            const qt = queuedTrip;
+            const qpp = queuedPassengerProfile;
+            const qts = queuedTripStops;
+            // Clear queued state
+            setQueuedTrip(null);
+            setQueuedPassengerProfile(null);
+            setQueuedTripStops([]);
+            queuedTripRef.current = null;
+
+            // Verify the queued trip is still available
+            const { data: freshQT } = await supabase.from("trips").select("status, driver_id").eq("id", qt.id).single();
+            if (freshQT && (freshQT.status === "requested" || freshQT.status === "scheduled") && !freshQT.driver_id) {
+              // Accept the queued trip
+              const acceptedNow = new Date().toISOString();
+              await supabase.from("trips").update({
+                status: "accepted",
+                driver_id: userProfile?.id || null,
+                accepted_at: acceptedNow,
+                vehicle_id: selectedVehicleId || null
+              }).eq("id", qt.id).in("status", ["requested", "scheduled"]);
+
+              // Verify acceptance
+              const { data: verifyQT } = await supabase.from("trips").select("driver_id").eq("id", qt.id).single();
+              if (verifyQT?.driver_id === userProfile?.id) {
+                await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                if (qt.passenger_id && userProfile) {
+                  notifyTripAccepted(qt.passenger_id, `${userProfile.first_name} ${userProfile.last_name}`, qt.id);
+                }
+                // Send tracking SMS
+                if (qt.dispatch_type === "dispatch_broadcast" || qt.dispatch_type === "passenger") {
+                  supabase.functions.invoke("send-tracking-sms", { body: { trip_id: qt.id } }).catch(console.warn);
+                }
+                fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
+                setCurrentTrip({ ...qt, status: "accepted", accepted_at: acceptedNow } as any);
+                setPassengerProfile(qpp);
+                setTripStops(qts);
+                setDriverTripPhase("heading_to_pickup");
+                setScreen("navigating");
+                toast({ title: "🔗 Next Trip Started!", description: `${qt.pickup_address} → ${qt.dropoff_address}` });
+                return;
+              }
+            }
+            // If queued trip was no longer available, fall through to normal continue
+            toast({ title: "Next trip unavailable", description: "The queued trip was taken or cancelled.", variant: "destructive" });
+          }
           setScreen("online");
           setCurrentTrip(null);
           setPassengerProfile(null);
