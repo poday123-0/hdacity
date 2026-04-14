@@ -2739,6 +2739,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <PullToRefreshIndicator pullDistance={driverPTR.pullDistance} refreshing={driverPTR.refreshing} progress={driverPTR.progress} />
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
+      {/* Floating trip bubble — shows when a trip request exists but driver isn't on ride-request screen */}
+      {currentTrip && screen !== "ride-request" && currentTrip.id !== bubbleDismissedTripId && (screen === "online" || screen === "navigating" || screen === "offline") && (
+        <FloatingTripBubble
+          tripId={currentTrip.id}
+          pickupAddress={currentTrip.pickup_address || ""}
+          dropoffAddress={currentTrip.dropoff_address || ""}
+          vehicleType={vehicleTypes.find(v => v.id === currentTrip.vehicle_type_id)?.name}
+          estimatedFare={currentTrip.estimated_fare}
+          onTap={() => {
+            setBubbleDismissedTripId(null);
+            setScreen("ride-request");
+          }}
+          onDismiss={() => setBubbleDismissedTripId(currentTrip.id)}
+        />
+      )}
+
       {/* Session conflict full-screen alert */}
       <AnimatePresence>
         {sessionKicked &&
