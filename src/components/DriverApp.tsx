@@ -78,7 +78,9 @@ import {
   Search } from
 "lucide-react";
 import TripChat from "./TripChat";
+import { enableKeepAwake, disableKeepAwake } from "@/lib/keep-awake";
 import SOSButton from "./SOSButton";
+import FloatingTripBubble from "./FloatingTripBubble";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./SmartRideRequestMap";
 import WatermelonMapOverlay from "./WatermelonMapOverlay";
@@ -421,6 +423,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
   }, [screen, onlineStorageKey]);
   const [vehicleBlockedUntil, setVehicleBlockedUntil] = useState<Date | null>(null);
+  const [bubbleDismissedTripId, setBubbleDismissedTripId] = useState<string | null>(null);
   const [blockCountdown, setBlockCountdown] = useState<string>("");
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const activeVehicleTypeIdRef = useRef<string | null>(null);
@@ -697,6 +700,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
     // Stop silent audio heartbeat to save battery
     stopHeartbeat();
+    // Allow screen to sleep when offline
+    disableKeepAwake();
     // Mark driver as offline in DB (only if we own the session)
     if (userProfile?.id) {
       const { data } = await supabase
@@ -827,6 +832,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const webMaxAge = Math.min(gpsMaxAge, 5000);
 
       if (isNativePlatform) {
+        // Keep screen awake while driver is online
+        enableKeepAwake();
         // Native: rely solely on background geolocation plugin — much more battery efficient
         // It uses the OS-level distance filter and doesn't keep GPS radio on constantly
         startBackgroundLocation(
@@ -839,7 +846,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           },
           { distanceFilter: MIN_MOVE_METERS }
         );
-        // Get one initial fix to show position immediately
+        // Get one initial fix to show position immediately — use HIGH accuracy for fast GPS lock
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -851,7 +858,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             () => {},
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 15000 }
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
           );
         }
       } else {
@@ -1602,11 +1609,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
 
     // Native Capacitor: listen for notification tap
+    // Try to set up listener regardless of isNativePlatform() since remote URL
+    // mode may not have the Capacitor bridge but PushNotifications might still work
     let nativeCleanup: (() => void) | null = null;
     const setupNativeListener = async () => {
       try {
-        const { Capacitor } = await import("@capacitor/core");
-        if (!Capacitor.isNativePlatform()) return;
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const listener = await PushNotifications.addListener("pushNotificationActionPerformed", async (action) => {
           console.log("Native notification tapped:", action);
@@ -1616,7 +1623,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           triggerCheck(tappedTripId);
         });
         nativeCleanup = () => listener.remove();
-      } catch {}
+      } catch {
+        // Not native or plugin not available — this is expected on web
+      }
     };
     setupNativeListener();
 
@@ -2729,6 +2738,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     <div ref={driverPTR.containerRef} className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
       <PullToRefreshIndicator pullDistance={driverPTR.pullDistance} refreshing={driverPTR.refreshing} progress={driverPTR.progress} />
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+      {/* Floating trip bubble — shows when a trip request exists but driver isn't on ride-request screen */}
+      {currentTrip && screen !== "ride-request" && currentTrip.id !== bubbleDismissedTripId && (screen === "online" || screen === "navigating" || screen === "offline") && (
+        <FloatingTripBubble
+          tripId={currentTrip.id}
+          pickupAddress={currentTrip.pickup_address || ""}
+          dropoffAddress={currentTrip.dropoff_address || ""}
+          vehicleType={vehicleTypes.find(v => v.id === currentTrip.vehicle_type_id)?.name}
+          estimatedFare={currentTrip.estimated_fare}
+          onTap={() => {
+            setBubbleDismissedTripId(null);
+            setScreen("ride-request");
+          }}
+          onDismiss={() => setBubbleDismissedTripId(currentTrip.id)}
+        />
+      )}
 
       {/* Session conflict full-screen alert */}
       <AnimatePresence>
