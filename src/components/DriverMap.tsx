@@ -916,10 +916,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Route polyline
     const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
+    const getRouteWeight = (zoom: number) => Math.max(3, Math.min(7, 7 - (zoom - 16) * 0.8));
     const polyline = L.polyline([], {
-      color: routeColor, weight: 7, opacity: 0.85,
+      color: routeColor, weight: getRouteWeight(map.getZoom()), opacity: 0.85,
     }).addTo(map);
     routePolylineRef.current = polyline;
+
+    // Adjust polyline weight on zoom
+    const onZoomPolyline = () => {
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setStyle({ weight: getRouteWeight(map.getZoom()) });
+      }
+    };
+    map.on("zoomend", onZoomPolyline);
 
     const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
       ? { interval: 8000, movement: 15 }
@@ -999,6 +1008,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
       routeFetchInFlightRef.current = false;
+      map.off("zoomend", onZoomPolyline);
     };
   }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, navSettings.rerouteAggressiveness]);
 
