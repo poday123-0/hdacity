@@ -106,7 +106,7 @@ const driverIcon = (iconUrl?: string | null) => {
 // Tile URLs
 const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
 
 const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapReady }: MaldivesMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -170,14 +170,12 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
     });
 
     const removeLeafletAttribution = () => {
-      map.attributionControl?.setPrefix(false);
-      map.attributionControl?.remove();
+      try { map.attributionControl?.setPrefix(false); } catch {}
+      try { map.attributionControl?.remove(); } catch {}
       const container = map.getContainer();
       container.querySelectorAll(".leaflet-control-attribution").forEach((node) => node.remove());
-      container.querySelectorAll(".leaflet-bottom.leaflet-right").forEach((node) => {
-        if (!node.querySelector(".leaflet-control")) {
-          (node as HTMLElement).style.display = "none";
-        }
+      container.querySelectorAll(".leaflet-bottom").forEach((node) => {
+        (node as HTMLElement).style.display = "none";
       });
     };
 
