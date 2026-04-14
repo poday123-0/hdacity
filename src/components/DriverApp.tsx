@@ -1158,8 +1158,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handlingTripRef = useRef<string | null>(null);
 
   const handleNewTrip = async (trip: TripRequest) => {
-    // Block new trips if driver already has an active (non-scheduled) trip
-    if (currentTrip) return;
+    // If driver already has an active trip, try to queue the new one (chained trip)
+    if (currentTrip) {
+      // Only allow queuing during navigating phase and only one queued trip
+      if (screenRef.current !== "navigating" || queuedTripRef.current) return;
+      // Check if new trip's pickup is near current trip's dropoff
+      if (currentTrip.dropoff_lat && currentTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
+        const distToDropoff = haversineKm(
+          Number(currentTrip.dropoff_lat), Number(currentTrip.dropoff_lng),
+          Number(trip.pickup_lat), Number(trip.pickup_lng)
+        );
+        console.log(`[CHAINED TRIP] Pickup distance from current dropoff: ${distToDropoff.toFixed(2)}km | Radius: ${tripRadiusRef.current}km`);
+        if (distToDropoff > tripRadiusRef.current) return;
+      } else {
+        return; // Can't verify proximity without coords
+      }
+      // Vehicle type must match
+      if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) return;
+      if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) return;
+
+      // Queue the trip
+      queuedTripRef.current = trip.id;
+      setQueuedTrip(trip);
+      try { navigator.vibrate?.([200, 100, 200]); } catch {}
+      toast({ title: "🔗 Next Trip Available!", description: `${trip.pickup_address} → ${trip.dropoff_address}` });
+      // Fetch passenger profile for queued trip
+      const [pRes, stopsRes] = await Promise.all([
+        trip.passenger_id ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single() : Promise.resolve({ data: null }),
+        supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
+      ]);
+      setQueuedPassengerProfile(pRes.data);
+      setQueuedTripStops(stopsRes.data as any[] || []);
+      return;
+    }
     // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
     if (handlingTripRef.current === trip.id) return;
     handlingTripRef.current = trip.id;
