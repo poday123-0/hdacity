@@ -75,8 +75,14 @@ Deno.serve(async (req) => {
       const tripSource = comp.trip_source || "all";
       if (tripSource === "passenger_only") {
         tripQuery = tripQuery.eq("dispatch_type", "passenger");
-      } else if (tripSource === "dispatch_only") {
-        tripQuery = tripQuery.in("dispatch_type", ["center", "operator"]);
+      } else if (tripSource === "send_to_app") {
+        tripQuery = tripQuery.eq("dispatch_type", "dispatch_broadcast");
+      } else if (tripSource === "assign_only") {
+        tripQuery = tripQuery.eq("dispatch_type", "operator");
+      } else if (tripSource === "app_trips") {
+        tripQuery = tripQuery.in("dispatch_type", ["passenger", "dispatch_broadcast"]);
+      } else if (tripSource === "dispatch_all") {
+        tripQuery = tripQuery.in("dispatch_type", ["operator", "dispatch_broadcast"]);
       }
 
       const { data: trips } = await tripQuery;
