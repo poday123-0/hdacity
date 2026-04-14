@@ -4355,6 +4355,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               </div>
             )}
 
+          </div>
 
           <AnimatePresence>
             {!navPanelMinimized &&
