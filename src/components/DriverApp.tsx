@@ -423,6 +423,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
   }, [screen, onlineStorageKey]);
   const [vehicleBlockedUntil, setVehicleBlockedUntil] = useState<Date | null>(null);
+  const [bubbleDismissedTripId, setBubbleDismissedTripId] = useState<string | null>(null);
   const [blockCountdown, setBlockCountdown] = useState<string>("");
   const eligibleVehicleTypeIdsRef = useRef<Set<string>>(new Set());
   const activeVehicleTypeIdRef = useRef<string | null>(null);
