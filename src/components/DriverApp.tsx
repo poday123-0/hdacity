@@ -78,6 +78,7 @@ import {
   Search } from
 "lucide-react";
 import TripChat from "./TripChat";
+import { enableKeepAwake, disableKeepAwake } from "@/lib/keep-awake";
 import SOSButton from "./SOSButton";
 import SlideToConfirm from "./SlideToConfirm";
 import RideRequestMap from "./SmartRideRequestMap";
