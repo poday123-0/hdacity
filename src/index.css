@@ -297,3 +297,7 @@
     width: 420px !important;
   }
 }
+
+.leaflet-control-attribution {
+  display: none !important;
+}
