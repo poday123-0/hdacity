@@ -371,9 +371,17 @@ const AdminTrips = () => {
                         <span>Customer: <span className="text-foreground font-medium">{selectedTrip.customer_phone}</span></span>
                       </div>
                     )}
-                    {selectedTrip.dispatch_type && selectedTrip.dispatch_type !== "passenger" && (
-                      <div className="flex items-center gap-1.5 text-accent-foreground">
-                        <span className="text-[10px] font-bold bg-accent px-1.5 py-0.5 rounded-full">Dispatched by operator</span>
+                    {selectedTrip.dispatch_type && (
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${dispatchTypeLabels[selectedTrip.dispatch_type]?.color || "bg-muted text-muted-foreground"}`}>
+                          Source: {dispatchTypeLabels[selectedTrip.dispatch_type]?.label || selectedTrip.dispatch_type}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTrip.payment_method && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <DollarSign className="w-3 h-3" />
+                        <span>Payment: <span className="text-foreground font-medium capitalize">{selectedTrip.payment_method}</span></span>
                       </div>
                     )}
                   </div>
