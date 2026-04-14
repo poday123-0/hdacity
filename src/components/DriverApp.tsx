@@ -3215,7 +3215,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             </button>
           </>
         )}
-        <div className="w-5 h-px bg-border mx-auto" />
         {userProfile?.id &&
         <>
             <div className="w-5 h-px bg-border mx-auto" />
