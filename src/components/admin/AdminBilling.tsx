@@ -16,6 +16,7 @@ const AdminBilling = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  const [billingStatFilter, setBillingStatFilter] = useState<"all" | "paying" | "free" | "pending">("all");
   const [loading, setLoading] = useState(true);
   const [freeUntilDriver, setFreeUntilDriver] = useState<string | null>(null);
   const [freeUntilDate, setFreeUntilDate] = useState("");
@@ -559,6 +560,14 @@ const AdminBilling = () => {
     if (filterVehicleType) {
       const driverVehicle = vehicles.find(v => v.driver_id === d.id);
       if (!driverVehicle || driverVehicle.vehicle_type_id !== filterVehicleType) return false;
+    }
+    // Stat card filter
+    if (billingStatFilter === "paying") {
+      const fee = getDriverFee(d.id);
+      if (fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return false;
+    } else if (billingStatFilter === "free") {
+      const fee = getDriverFee(d.id);
+      if (fee > 0 && !isCompanyFeeFree(d) && !isFreeUntilActive(d)) return false;
     }
     return true;
   });
