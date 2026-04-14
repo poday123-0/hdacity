@@ -163,6 +163,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  // Chained/queued trip — next trip queued while driver is on active trip
+  const [queuedTrip, setQueuedTrip] = useState<TripRequest | null>(null);
+  const [queuedPassengerProfile, setQueuedPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
+  const [queuedTripStops, setQueuedTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  const queuedTripRef = useRef<string | null>(null);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
   const getStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at") => {
     if (!tripId) return null;
