@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp, Camera } from "lucide-react";
 import { format } from "date-fns";
+import { compressImage } from "@/lib/image-compress";
 
 interface Competition {
   id: string;
@@ -47,6 +48,7 @@ interface Entry {
   prize_awarded: boolean;
   prize_id: string | null;
   driver_name?: string;
+  avatar_url?: string | null;
 }
 
 interface ServiceLocation {
@@ -133,11 +135,15 @@ const AdminCompetitions = () => {
     const entryData = (entriesRes.data || []) as Entry[];
     if (entryData.length > 0) {
       const driverIds = entryData.map(e => e.driver_id);
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", driverIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number, avatar_url").in("id", driverIds);
       const excludedIds = new Set((profiles || []).filter(p => EXCLUDED_PHONES.includes(p.phone_number)).map(p => p.id));
-      const nameMap = new Map((profiles || []).map(p => [p.id, `${p.first_name} ${p.last_name}`]));
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
       const filtered = entryData.filter(e => !excludedIds.has(e.driver_id));
-      filtered.forEach(e => { e.driver_name = nameMap.get(e.driver_id) || "Unknown"; });
+      filtered.forEach(e => {
+        const p = profileMap.get(e.driver_id);
+        e.driver_name = p ? `${p.first_name} ${p.last_name}` : "Unknown";
+        e.avatar_url = p?.avatar_url || null;
+      });
       setEntries(filtered);
     } else {
       setEntries(entryData);
