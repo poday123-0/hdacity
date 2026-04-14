@@ -86,9 +86,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Count per driver
+      // Count per driver (excluding center numbers)
       const counts = new Map<string, number>();
       filteredTrips.forEach((t: any) => {
+        if (excludedIds.has(t.driver_id)) return;
         counts.set(t.driver_id, (counts.get(t.driver_id) || 0) + 1);
       });
 
