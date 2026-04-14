@@ -353,10 +353,10 @@ function copyNativePluginFiles() {
   
   const nativeDir = path.join(__dirname, '..', 'android-native');
   
-  // Copy Kotlin files
+  // Copy Java files
   const filesToCopy = [
-    { src: 'FloatingBubblePlugin.kt', dest: path.join(pluginsDir, 'FloatingBubblePlugin.kt') },
-    { src: 'FloatingBubbleService.kt', dest: path.join(pluginsDir, 'FloatingBubbleService.kt') },
+    { src: 'FloatingBubblePlugin.java', dest: path.join(pluginsDir, 'FloatingBubblePlugin.java') },
+    { src: 'FloatingBubbleService.java', dest: path.join(pluginsDir, 'FloatingBubbleService.java') },
     { src: 'bubble_bg.xml', dest: path.join(drawableDir, 'bubble_bg.xml') },
   ];
   
