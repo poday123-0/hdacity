@@ -85,43 +85,46 @@ public class FloatingBubblePlugin extends Plugin {
 
     @PluginMethod
     public void requestPermission(PluginCall call) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                // Must use Activity context — application context often fails
-                android.app.Activity activity = getActivity();
-                if (activity != null) {
-                    Intent intent = new Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + activity.getPackageName())
-                    );
-                    activity.startActivity(intent);
-                } else {
-                    // Fallback: open general app settings
-                    Context ctx = getContext();
-                    if (ctx != null) {
-                        Intent fallback = new Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.parse("package:" + ctx.getPackageName())
-                        );
-                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        ctx.startActivity(fallback);
-                    }
-                }
-            } catch (Exception e) {
-                // Some OEMs block the overlay intent — open app info instead
-                try {
-                    Context ctx = getContext();
-                    if (ctx != null) {
-                        Intent fallback = new Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.parse("package:" + ctx.getPackageName())
-                        );
-                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        ctx.startActivity(fallback);
-                    }
-                } catch (Exception ignored) {}
-            }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            call.resolve();
+            return;
         }
+
+        android.app.Activity activity = getActivity();
+        Context ctx = getContext();
+
+        try {
+            if (activity != null) {
+                Intent genericIntent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                activity.startActivity(genericIntent);
+                call.resolve();
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (activity != null) {
+                Intent packageIntent = new Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + activity.getPackageName())
+                );
+                activity.startActivity(packageIntent);
+                call.resolve();
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (ctx != null) {
+                Intent appDetailsIntent = new Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + ctx.getPackageName())
+                );
+                appDetailsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(appDetailsIntent);
+            }
+        } catch (Exception ignored) {}
+
         call.resolve();
     }
 
