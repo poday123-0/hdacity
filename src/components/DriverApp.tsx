@@ -6278,6 +6278,41 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     </button>
                   </div>
 
+                  {/* Overlay Bubble Permission (Android only) */}
+                  {floatingBubbleEnabled && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { Capacitor } = await import("@capacitor/core");
+                          if (Capacitor.getPlatform() !== "android") {
+                            toast({ title: "Overlay bubbles are only available on Android" });
+                            return;
+                          }
+                          const { default: FloatingBubble } = await import("@/plugins/floating-bubble");
+                          const { granted } = await FloatingBubble.checkPermission();
+                          if (granted) {
+                            toast({ title: "✅ Overlay permission already granted" });
+                          } else {
+                            await FloatingBubble.requestPermission();
+                            toast({ title: "Enable 'Display over other apps' for HDA" });
+                          }
+                        } catch {
+                          toast({ title: "Overlay not available on this platform" });
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 bg-surface rounded-2xl p-3.5 active:scale-[0.97] transition-transform"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                        <Shield className="w-4 h-4 text-accent" />
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <p style={{ fontSize: '13px' }} className="font-semibold text-foreground leading-tight">Overlay Bubble Permission</p>
+                        <p style={{ fontSize: '10px' }} className="text-muted-foreground">Allow bubble over other apps (Android)</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </button>
+                  )}
+
                   {/* Suggest a Place */}
                   <button
                     onClick={() => { setShowProfile(false); setShowSuggestPlace(true); }}
