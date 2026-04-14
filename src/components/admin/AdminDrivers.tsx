@@ -27,7 +27,7 @@ const AdminDrivers = () => {
     company_id: "", monthly_fee: "", bank_id: "", bank_account_number: "", bank_account_name: "",
     license_front_url: "", license_back_url: "", id_card_front_url: "", id_card_back_url: "",
     taxi_permit_front_url: "", taxi_permit_back_url: "",
-    id_card_expiry: "", license_expiry: "",
+    id_card_expiry: "", license_expiry: "", avatar_url: "",
   });
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
@@ -300,6 +300,7 @@ const AdminDrivers = () => {
       id_card_front_url: d.id_card_front_url || "", id_card_back_url: d.id_card_back_url || "",
       taxi_permit_front_url: d.taxi_permit_front_url || "", taxi_permit_back_url: d.taxi_permit_back_url || "",
       id_card_expiry: d.id_card_expiry || "", license_expiry: d.license_expiry || "",
+      avatar_url: d.avatar_url || "",
     });
     setEditingId(d.id);
     // Fetch driver's added bank & favara accounts
@@ -345,6 +346,7 @@ const AdminDrivers = () => {
       id_card_front_url: editForm.id_card_front_url || null, id_card_back_url: editForm.id_card_back_url || null,
       taxi_permit_front_url: editForm.taxi_permit_front_url || null, taxi_permit_back_url: editForm.taxi_permit_back_url || null,
       id_card_expiry: editForm.id_card_expiry || null, license_expiry: editForm.license_expiry || null,
+      avatar_url: editForm.avatar_url || null,
     } as any).eq("id", editingId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: "Driver updated!" }); setEditingId(null); fetchAll(); }
@@ -1036,7 +1038,25 @@ const AdminDrivers = () => {
       {editingId && (
         <div id="admin-driver-edit-form" className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-foreground">Edit Driver</h3>
+            <div className="flex items-center gap-3">
+              <label className="relative cursor-pointer group">
+                {editForm.avatar_url ? (
+                  <img src={editForm.avatar_url} alt="Avatar" className="w-12 h-12 rounded-full object-cover border-2 border-border group-hover:border-primary transition-colors" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-dashed border-border group-hover:border-primary transition-colors">
+                    <Upload className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                  </div>
+                )}
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <Pencil className="w-2.5 h-2.5 text-primary-foreground" />
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadDoc("avatar_url", e.target.files[0])} disabled={uploading === "avatar_url"} />
+              </label>
+              <div>
+                <h3 className="font-bold text-foreground">Edit Driver</h3>
+                <p className="text-[10px] text-muted-foreground">{uploading === "avatar_url" ? "Uploading photo..." : "Click photo to change"}</p>
+              </div>
+            </div>
             <button onClick={() => setEditingId(null)} className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-2 gap-4">
