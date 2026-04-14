@@ -1197,9 +1197,13 @@ const AdminDrivers = () => {
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-bold text-primary">{d.first_name?.[0]}{d.last_name?.[0]}</span>
-                          </div>
+                          {d.avatar_url ? (
+                            <img src={d.avatar_url} alt={d.first_name} className="w-7 h-7 rounded-full object-cover shrink-0 cursor-pointer border border-border" onClick={() => setPreviewImg(d.avatar_url)} />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-[10px] font-bold text-primary">{d.first_name?.[0]}{d.last_name?.[0]}</span>
+                            </div>
+                          )}
                           <span className="text-sm font-semibold text-foreground truncate">{d.first_name} {d.last_name}</span>
                         </div>
                       </td>
