@@ -756,11 +756,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     // Update marker icon based on state
     if (!isNavigating) {
       driverMarkerRef.current.setIcon(driverDotIcon());
-    } else if (mapIconUrl) {
-      driverMarkerRef.current.setIcon(customImgIcon(mapIconUrl, 36));
     } else {
-      // Use car icon during navigation — heading is applied via CSS transform inside the icon
-      driverMarkerRef.current.setIcon(driverCarIcon(0));
+      // Use directional arrow during navigation
+      driverMarkerRef.current.setIcon(driverArrowIcon(heading));
     }
 
     // Rotate map to match driver heading during navigation
