@@ -745,7 +745,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     } else if (mapIconUrl) {
       driverMarkerRef.current.setIcon(customImgIcon(mapIconUrl, 36));
     } else {
-      driverMarkerRef.current.setIcon(driverArrowIcon(heading));
+      // Use car icon during navigation — heading is applied via CSS transform inside the icon
+      driverMarkerRef.current.setIcon(driverCarIcon(0));
+    }
+
+    // Rotate map to match driver heading during navigation
+    if ((isNavigating || freeNavTarget) && followDriver && !userInteractingRef.current) {
+      const map = mapInstance.current;
+      if (map && typeof (map as any).setBearing === "function") {
+        (map as any).setBearing(-heading);
+        setMapHeading(heading);
+        onMapHeadingChange?.(heading);
+      }
     }
 
     // Auto-follow — skip while user is actively interacting (zoom/pan)
