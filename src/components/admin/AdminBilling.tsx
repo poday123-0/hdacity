@@ -1294,11 +1294,17 @@ const AdminBilling = () => {
 
           {/* Center Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div
+              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "all" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+              onClick={() => setCenterPaymentStatusFilter("all")}
+            >
               <p className="text-xs text-muted-foreground">Center Vehicles</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">{centerVehicles.length}</p>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div
+              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "unpaid" ? "border-chart-4 ring-1 ring-chart-4" : "border-border hover:border-chart-4/50"}`}
+              onClick={() => setCenterPaymentStatusFilter(f => f === "unpaid" ? "all" : "unpaid")}
+            >
               <p className="text-xs text-muted-foreground">Expected Revenue</p>
               <p className="text-2xl font-bold text-foreground mt-0.5">
                 {centerVehicles.reduce((sum, cv) => {
@@ -1309,7 +1315,10 @@ const AdminBilling = () => {
                 }, 0).toLocaleString()} MVR
               </p>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div
+              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "approved" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+              onClick={() => setCenterPaymentStatusFilter(f => f === "approved" ? "all" : "approved")}
+            >
               <p className="text-xs text-muted-foreground">Received</p>
               <p className="text-2xl font-bold text-primary mt-0.5">
                 {centerMonthPayments.filter(cp => cp.status === "approved").reduce((sum, cp) => sum + (cp.amount || 0), 0).toLocaleString()} MVR
@@ -1323,8 +1332,8 @@ const AdminBilling = () => {
               <p className="text-2xl font-bold text-chart-4 mt-0.5">{centerMonthPayments.filter(cp => cp.status === "pending" || cp.status === "submitted").length}</p>
             </div>
             <div
-              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "approved" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
-              onClick={() => setCenterPaymentStatusFilter(f => f === "approved" ? "all" : "approved")}
+              className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${centerPaymentStatusFilter === "approved_count" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+              onClick={() => setCenterPaymentStatusFilter(f => f === "approved_count" ? "all" : "approved_count")}
             >
               <p className="text-xs text-muted-foreground">Approved</p>
               <p className="text-2xl font-bold text-primary mt-0.5">{centerMonthPayments.filter(cp => cp.status === "approved").length}</p>
