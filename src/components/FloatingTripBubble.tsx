@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Car, X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
+import SystemLogo from "./SystemLogo";
 
 interface FloatingTripBubbleProps {
   tripId: string | null;
@@ -33,7 +34,6 @@ const FloatingTripBubble = ({
   useEffect(() => {
     if (tripId) {
       setIsVisible(true);
-      // Pulse animation every 2s
       pulseRef.current = setInterval(() => setPulse(p => !p), 1000);
     } else {
       setIsVisible(false);
@@ -71,13 +71,13 @@ const FloatingTripBubble = ({
             className="absolute inset-0 bg-gradient-to-r from-primary to-primary/50 rounded-2xl"
           />
 
-          {/* Icon */}
-          <div className="relative w-11 h-11 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+          {/* App Logo */}
+          <div className="relative w-11 h-11 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
             <motion.div
               animate={{ scale: pulse ? 1.15 : 1 }}
               transition={{ duration: 0.5 }}
             >
-              <Car className="w-5 h-5 text-primary" />
+              <SystemLogo className="w-7 h-7 object-contain" />
             </motion.div>
           </div>
 
