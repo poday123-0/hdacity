@@ -164,13 +164,21 @@ const AdminCompetitions = () => {
     }
     setLoading(true);
     try {
+      // Append Maldives timezone (+05:00) to preserve the exact time admin selected
+      const startISO = form.start_date.includes("+") || form.start_date.includes("Z")
+        ? form.start_date
+        : `${form.start_date}:00+05:00`;
+      const endISO = form.end_date.includes("+") || form.end_date.includes("Z")
+        ? form.end_date
+        : `${form.end_date}:00+05:00`;
+
       const payload = {
         title: form.title,
         description: form.description,
         metric: form.metric,
         period_type: form.period_type,
-        start_date: new Date(form.start_date).toISOString(),
-        end_date: new Date(form.end_date).toISOString(),
+        start_date: startISO,
+        end_date: endISO,
         service_location_id: form.service_location_id || null,
         vehicle_type_id: form.vehicle_type_id || null,
         rules_text: form.rules_text || "",
