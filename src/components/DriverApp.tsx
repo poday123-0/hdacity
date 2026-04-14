@@ -163,6 +163,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  // Chained/queued trip — next trip queued while driver is on active trip
+  const [queuedTrip, setQueuedTrip] = useState<TripRequest | null>(null);
+  const [queuedPassengerProfile, setQueuedPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
+  const [queuedTripStops, setQueuedTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  const queuedTripRef = useRef<string | null>(null);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
   const getStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at") => {
     if (!tripId) return null;
@@ -685,7 +690,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   }, [userProfile?.id]);
 
   // Immediately stop all driver location tracking & mark offline
+  const clearQueuedTrip = useCallback(() => {
+    setQueuedTrip(null);
+    setQueuedPassengerProfile(null);
+    setQueuedTripStops([]);
+    queuedTripRef.current = null;
+  }, []);
+
   const goOfflineNow = useCallback(async () => {
+    clearQueuedTrip();
     // Clear GPS watcher
     if (locationWatchRef.current !== null) {
       navigator.geolocation.clearWatch(locationWatchRef.current);
@@ -1153,8 +1166,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handlingTripRef = useRef<string | null>(null);
 
   const handleNewTrip = async (trip: TripRequest) => {
-    // Block new trips if driver already has an active (non-scheduled) trip
-    if (currentTrip) return;
+    // If driver already has an active trip, try to queue the new one (chained trip)
+    if (currentTrip) {
+      // Only allow queuing during navigating phase and only one queued trip
+      if (screenRef.current !== "navigating" || queuedTripRef.current) return;
+      // Check if new trip's pickup is near current trip's dropoff
+      if (currentTrip.dropoff_lat && currentTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
+        const distToDropoff = haversineKm(
+          Number(currentTrip.dropoff_lat), Number(currentTrip.dropoff_lng),
+          Number(trip.pickup_lat), Number(trip.pickup_lng)
+        );
+        console.log(`[CHAINED TRIP] Pickup distance from current dropoff: ${distToDropoff.toFixed(2)}km | Radius: ${tripRadiusRef.current}km`);
+        if (distToDropoff > tripRadiusRef.current) return;
+      } else {
+        return; // Can't verify proximity without coords
+      }
+      // Vehicle type must match
+      if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) return;
+      if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) return;
+
+      // Queue the trip
+      queuedTripRef.current = trip.id;
+      setQueuedTrip(trip);
+      try { navigator.vibrate?.([200, 100, 200]); } catch {}
+      toast({ title: "🔗 Next Trip Available!", description: `${trip.pickup_address} → ${trip.dropoff_address}` });
+      // Fetch passenger profile for queued trip
+      const [pRes, stopsRes] = await Promise.all([
+        trip.passenger_id ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single() : Promise.resolve({ data: null }),
+        supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
+      ]);
+      setQueuedPassengerProfile(pRes.data);
+      setQueuedTripStops(stopsRes.data as any[] || []);
+      return;
+    }
     // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
     if (handlingTripRef.current === trip.id) return;
     handlingTripRef.current = trip.id;
@@ -1390,6 +1434,33 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Go directly to navigation — no accept/decline screen for dispatch-assigned trips
     setScreen("navigating");
   };
+
+  // Also listen during navigating for chained trip queuing
+  useEffect(() => {
+    if (screen !== "navigating" || !userProfile?.id || !currentTrip) return;
+    let isActive = true;
+
+    const chainedChannel = supabase.
+    channel("driver-chained-trip-requests").
+    on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "trips"
+    }, async (payload) => {
+      if (!isActive) return;
+      const trip = payload.new as any;
+      if (trip.status === "requested" || trip.status === "scheduled") {
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          if (trip.target_driver_id && trip.target_driver_id !== userProfile.id) return;
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip);
+        }
+      }
+    }).
+    subscribe();
+
+    return () => { isActive = false; supabase.removeChannel(chainedChannel); };
+  }, [screen, userProfile?.id, currentTrip?.id]);
 
   useEffect(() => {
     if (screen !== "online" || !userProfile?.id) return;
@@ -1768,6 +1839,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setScreen("online");
       setCurrentTrip(null);
       setPassengerProfile(null);
+      clearQueuedTrip();
       return true;
     }
 
@@ -1787,6 +1859,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setScreen("online");
       setCurrentTrip(null);
       setPassengerProfile(null);
+      clearQueuedTrip();
       setDriverTripPhase("heading_to_pickup");
       return true;
     }
@@ -4253,6 +4326,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 variant="badge"
               />
             </div>
+
+            {/* Queued/chained trip preview */}
+            {queuedTrip && (
+              <div className="px-4 pb-2">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-accent/30 border border-primary/30 rounded-xl p-2.5 flex items-center gap-2.5"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                    <Route className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-wide">Next Trip Queued</p>
+                    <p className="text-xs text-foreground truncate">{queuedTrip.pickup_address || "Pickup"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">→ {queuedTrip.dropoff_address || "Dropoff"}</p>
+                  </div>
+                  {queuedTrip.estimated_fare != null && queuedTrip.estimated_fare > 0 && (
+                    <div className="bg-primary/10 px-2 py-1 rounded-lg shrink-0">
+                      <p className="text-[11px] font-bold text-primary">{queuedTrip.estimated_fare} MVR</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (queuedTrip.id) declinedTripIdsRef.current.add(queuedTrip.id);
+                      setQueuedTrip(null);
+                      setQueuedPassengerProfile(null);
+                      setQueuedTripStops([]);
+                      queuedTripRef.current = null;
+                      toast({ title: "Next trip dismissed" });
+                    }}
+                    className="w-7 h-7 rounded-full bg-muted/50 flex items-center justify-center shrink-0 active:scale-90 transition-all"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </motion.div>
+              </div>
+            )}
+
           </div>
 
           <AnimatePresence>
@@ -4662,7 +4774,54 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         confirmedPaymentMethod={confirmedPaymentMethod}
         passengerProfile={passengerProfile}
         userProfile={userProfile}
-        onContinue={() => {
+        onContinue={async () => {
+          // If there's a queued chained trip, auto-promote it
+          if (queuedTrip) {
+            const qt = queuedTrip;
+            const qpp = queuedPassengerProfile;
+            const qts = queuedTripStops;
+            // Clear queued state
+            setQueuedTrip(null);
+            setQueuedPassengerProfile(null);
+            setQueuedTripStops([]);
+            queuedTripRef.current = null;
+
+            // Verify the queued trip is still available
+            const { data: freshQT } = await supabase.from("trips").select("status, driver_id").eq("id", qt.id).single();
+            if (freshQT && (freshQT.status === "requested" || freshQT.status === "scheduled") && !freshQT.driver_id) {
+              // Accept the queued trip
+              const acceptedNow = new Date().toISOString();
+              await supabase.from("trips").update({
+                status: "accepted",
+                driver_id: userProfile?.id || null,
+                accepted_at: acceptedNow,
+                vehicle_id: selectedVehicleId || null
+              }).eq("id", qt.id).in("status", ["requested", "scheduled"]);
+
+              // Verify acceptance
+              const { data: verifyQT } = await supabase.from("trips").select("driver_id").eq("id", qt.id).single();
+              if (verifyQT?.driver_id === userProfile?.id) {
+                await supabase.from("driver_locations").update({ is_on_trip: true, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile?.id);
+                if (qt.passenger_id && userProfile) {
+                  notifyTripAccepted(qt.passenger_id, `${userProfile.first_name} ${userProfile.last_name}`, qt.id);
+                }
+                // Send tracking SMS
+                if (qt.dispatch_type === "dispatch_broadcast" || qt.dispatch_type === "passenger") {
+                  supabase.functions.invoke("send-tracking-sms", { body: { trip_id: qt.id } }).catch(console.warn);
+                }
+                fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
+                setCurrentTrip({ ...qt, status: "accepted", accepted_at: acceptedNow } as any);
+                setPassengerProfile(qpp);
+                setTripStops(qts);
+                setDriverTripPhase("heading_to_pickup");
+                setScreen("navigating");
+                toast({ title: "🔗 Next Trip Started!", description: `${qt.pickup_address} → ${qt.dropoff_address}` });
+                return;
+              }
+            }
+            // If queued trip was no longer available, fall through to normal continue
+            toast({ title: "Next trip unavailable", description: "The queued trip was taken or cancelled.", variant: "destructive" });
+          }
           setScreen("online");
           setCurrentTrip(null);
           setPassengerProfile(null);
