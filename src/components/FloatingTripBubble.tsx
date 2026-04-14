@@ -46,7 +46,7 @@ const FloatingTripBubble = ({
 
   if (!isVisible || !tripId) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ y: -100, opacity: 0, scale: 0.8 }}
@@ -122,7 +122,8 @@ const FloatingTripBubble = ({
           </button>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
