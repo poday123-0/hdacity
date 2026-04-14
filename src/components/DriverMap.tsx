@@ -623,6 +623,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       }
     } else {
       programmaticZoomRef.current = true; map.setZoom(16);
+      // Reset map bearing when not navigating
+      if (typeof (map as any).setBearing === "function") {
+        (map as any).setBearing(0);
+      }
+      setMapHeading(0);
+      onMapHeadingChange?.(0);
     }
   }, [isNavigating]);
 
