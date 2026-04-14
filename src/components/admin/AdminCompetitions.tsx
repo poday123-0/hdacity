@@ -164,13 +164,21 @@ const AdminCompetitions = () => {
     }
     setLoading(true);
     try {
+      // Append Maldives timezone (+05:00) to preserve the exact time admin selected
+      const startISO = form.start_date.includes("+") || form.start_date.includes("Z")
+        ? form.start_date
+        : `${form.start_date}:00+05:00`;
+      const endISO = form.end_date.includes("+") || form.end_date.includes("Z")
+        ? form.end_date
+        : `${form.end_date}:00+05:00`;
+
       const payload = {
         title: form.title,
         description: form.description,
         metric: form.metric,
         period_type: form.period_type,
-        start_date: new Date(form.start_date).toISOString(),
-        end_date: new Date(form.end_date).toISOString(),
+        start_date: startISO,
+        end_date: endISO,
         service_location_id: form.service_location_id || null,
         vehicle_type_id: form.vehicle_type_id || null,
         rules_text: form.rules_text || "",
@@ -203,13 +211,19 @@ const AdminCompetitions = () => {
   };
 
   const handleEdit = async (comp: Competition) => {
+    // Convert stored UTC dates to Maldives time (UTC+5) for the datetime-local input
+    const toMaldivesLocal = (isoStr: string) => {
+      const d = new Date(isoStr);
+      const mvTime = new Date(d.getTime() + 5 * 60 * 60 * 1000);
+      return mvTime.toISOString().slice(0, 16);
+    };
     setForm({
       title: comp.title,
       description: comp.description,
       metric: comp.metric,
       period_type: comp.period_type,
-      start_date: comp.start_date.slice(0, 16),
-      end_date: comp.end_date.slice(0, 16),
+      start_date: toMaldivesLocal(comp.start_date),
+      end_date: toMaldivesLocal(comp.end_date),
       service_location_id: comp.service_location_id || "",
       vehicle_type_id: (comp as any).vehicle_type_id || "",
       rules_text: (comp as any).rules_text || "",
@@ -241,6 +255,14 @@ const AdminCompetitions = () => {
   const handleRefreshLeaderboard = async (comp: Competition) => {
     setLoading(true);
     try {
+      // Fetch excluded center phone numbers
+      const EXCLUDED_PHONES = ["7320207"];
+      const { data: excludedProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .in("phone_number", EXCLUDED_PHONES);
+      const excludedIds = new Set((excludedProfiles || []).map(p => p.id));
+
       // Count completed trips for each driver in the date range, optionally filtered by vehicle type
       let query = supabase
         .from("trips")
@@ -258,9 +280,10 @@ const AdminCompetitions = () => {
       const { data: trips } = await query;
       if (!trips) { setLoading(false); return; }
 
-      // Count per driver
+      // Count per driver (excluding center numbers)
       const counts = new Map<string, number>();
       trips.forEach((t: any) => {
+        if (excludedIds.has(t.driver_id)) return;
         counts.set(t.driver_id, (counts.get(t.driver_id) || 0) + 1);
       });
 

@@ -151,19 +151,31 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
 
     const entryData = (entriesRes.data || []) as Entry[];
 
-    // Fetch driver names
+    // Fetch driver names and filter out center numbers
+    const EXCLUDED_PHONES = ["7320207"];
     if (entryData.length > 0) {
       const driverIds = entryData.map(e => e.driver_id);
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").in("id", driverIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url, phone_number").in("id", driverIds);
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-      entryData.forEach(e => {
+      
+      // Mark excluded profiles
+      const excludedDriverIds = new Set<string>();
+      (profiles || []).forEach(p => {
+        if (EXCLUDED_PHONES.includes(p.phone_number)) excludedDriverIds.add(p.id);
+      });
+
+      // Filter out excluded and enrich names
+      const filteredEntries = entryData.filter(e => !excludedDriverIds.has(e.driver_id));
+      filteredEntries.forEach(e => {
         const p = profileMap.get(e.driver_id);
         e.driver_name = p ? `${p.first_name} ${p.last_name}` : "Driver";
         e.avatar_url = p?.avatar_url || null;
       });
-    }
 
-    setEntries(entryData);
+      setEntries(filteredEntries);
+    } else {
+      setEntries(entryData);
+    }
     setPrizes((prizesRes.data || []) as Prize[]);
 
     const myEntry = entryData.find(e => e.driver_id === driverId);

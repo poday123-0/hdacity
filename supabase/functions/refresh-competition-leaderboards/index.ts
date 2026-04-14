@@ -46,6 +46,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch excluded center phone numbers and get their profile IDs
+    const EXCLUDED_PHONES = ["7320207"];
+    const { data: excludedProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .in("phone_number", EXCLUDED_PHONES);
+    const excludedIds = new Set((excludedProfiles || []).map((p: any) => p.id));
+
     let totalRefreshed = 0;
 
     for (const comp of competitions) {
@@ -78,9 +86,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Count per driver
+      // Count per driver (excluding center numbers)
       const counts = new Map<string, number>();
       filteredTrips.forEach((t: any) => {
+        if (excludedIds.has(t.driver_id)) return;
         counts.set(t.driver_id, (counts.get(t.driver_id) || 0) + 1);
       });
 
