@@ -255,6 +255,14 @@ const AdminCompetitions = () => {
   const handleRefreshLeaderboard = async (comp: Competition) => {
     setLoading(true);
     try {
+      // Fetch excluded center phone numbers
+      const EXCLUDED_PHONES = ["7320207"];
+      const { data: excludedProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .in("phone_number", EXCLUDED_PHONES);
+      const excludedIds = new Set((excludedProfiles || []).map(p => p.id));
+
       // Count completed trips for each driver in the date range, optionally filtered by vehicle type
       let query = supabase
         .from("trips")
@@ -272,9 +280,10 @@ const AdminCompetitions = () => {
       const { data: trips } = await query;
       if (!trips) { setLoading(false); return; }
 
-      // Count per driver
+      // Count per driver (excluding center numbers)
       const counts = new Map<string, number>();
       trips.forEach((t: any) => {
+        if (excludedIds.has(t.driver_id)) return;
         counts.set(t.driver_id, (counts.get(t.driver_id) || 0) + 1);
       });
 
