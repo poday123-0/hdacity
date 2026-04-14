@@ -16,6 +16,7 @@ const AdminBilling = () => {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  const [billingStatFilter, setBillingStatFilter] = useState<"all" | "paying" | "free" | "pending">("all");
   const [loading, setLoading] = useState(true);
   const [freeUntilDriver, setFreeUntilDriver] = useState<string | null>(null);
   const [freeUntilDate, setFreeUntilDate] = useState("");
@@ -560,6 +561,14 @@ const AdminBilling = () => {
       const driverVehicle = vehicles.find(v => v.driver_id === d.id);
       if (!driverVehicle || driverVehicle.vehicle_type_id !== filterVehicleType) return false;
     }
+    // Stat card filter
+    if (billingStatFilter === "paying") {
+      const fee = getDriverFee(d.id);
+      if (fee === 0 || isCompanyFeeFree(d) || isFreeUntilActive(d)) return false;
+    } else if (billingStatFilter === "free") {
+      const fee = getDriverFee(d.id);
+      if (fee > 0 && !isCompanyFeeFree(d) && !isFreeUntilActive(d)) return false;
+    }
     return true;
   });
 
@@ -722,19 +731,31 @@ const AdminBilling = () => {
       {/* Stats */}
       {tab !== "center" && (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${billingStatFilter === "all" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+          onClick={() => setBillingStatFilter(f => f === "all" ? "all" : "all")}
+        >
           <p className="text-xs text-muted-foreground">Expected Revenue</p>
           <p className="text-2xl font-bold text-foreground mt-0.5">{totalMonthlyRevenue.toLocaleString()} MVR</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${billingStatFilter === "paying" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+          onClick={() => setBillingStatFilter(f => f === "paying" ? "all" : "paying")}
+        >
           <p className="text-xs text-muted-foreground">Paying Drivers</p>
           <p className="text-2xl font-bold text-foreground mt-0.5">{payingDriversCount}</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${billingStatFilter === "free" ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+          onClick={() => setBillingStatFilter(f => f === "free" ? "all" : "free")}
+        >
           <p className="text-xs text-muted-foreground">Free</p>
           <p className="text-2xl font-bold text-primary mt-0.5">{freeDriversCount}</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div
+          className={`bg-card border rounded-xl p-4 cursor-pointer transition-colors ${billingStatFilter === "pending" ? "border-chart-4 ring-1 ring-chart-4" : "border-border hover:border-chart-4/50"}`}
+          onClick={() => { setBillingStatFilter("all"); setTab("payments"); setPaymentFilter("submitted"); }}
+        >
           <p className="text-xs text-muted-foreground">Pending Approvals</p>
           <p className="text-2xl font-bold text-foreground mt-0.5">{pendingPayments}</p>
         </div>
