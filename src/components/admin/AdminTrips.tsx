@@ -254,9 +254,11 @@ const AdminTrips = () => {
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-muted-foreground whitespace-nowrap">
                         {bookingTypeLabels[t.booking_type] || t.booking_type || "—"}
                       </span>
-                      {t.dispatch_type === "operator" && (
-                        <span className="ml-1 text-[10px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded-full">Dispatch</span>
-                      )}
+                      <div className="mt-0.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${dispatchTypeLabels[t.dispatch_type]?.color || "bg-muted text-muted-foreground"}`}>
+                          {dispatchTypeLabels[t.dispatch_type]?.label || t.dispatch_type || "—"}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusOptions.find(s => s.value === t.status)?.color || "bg-muted text-muted-foreground"}`}>{t.status}</span>
