@@ -1612,9 +1612,10 @@ const Dispatch = () => {
                                     e.stopPropagation();
                                     supabase
                                       .from("trips")
-                                      .update({
+                                       .update({
                                         is_loss: false,
                                         status: "completed",
+                                        completed_at: new Date().toISOString(),
                                         cancel_reason: null,
                                         cancelled_at: null,
                                       })
@@ -1901,6 +1902,7 @@ const Dispatch = () => {
                                               .update({
                                                 is_loss: false,
                                                 status: "completed",
+                                                completed_at: new Date().toISOString(),
                                                 cancel_reason: null,
                                                 cancelled_at: null,
                                               })
