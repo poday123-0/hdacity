@@ -3,7 +3,7 @@
  * Android Native Setup Script
  * Automates ALL Gradle, Manifest, and MainActivity changes after `npx cap add android`
  * 
- * Usage: node scripts/setup-android.js
+ * Usage: node scripts/setup-android.cjs
  * Run AFTER: npx cap add android && npm run build && npx cap sync
  */
 const fs = require('fs');
@@ -140,6 +140,7 @@ function updateManifest() {
     'android.permission.RECEIVE_BOOT_COMPLETED',
     'android.permission.VIBRATE',
     'android.permission.WAKE_LOCK',
+    'android.permission.SYSTEM_ALERT_WINDOW',
   ];
 
   let added = 0;
@@ -163,9 +164,22 @@ function updateManifest() {
     logDone('Added Firebase default_notification_icon meta-data');
   }
 
+  // Add FloatingBubbleService inside <application>
+  if (!content.includes('FloatingBubbleService')) {
+    content = content.replace(
+      '</application>',
+      `\n        <service
+            android:name=".plugins.FloatingBubbleService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />\n    </application>`
+    );
+    added++;
+    logDone('Added FloatingBubbleService to manifest');
+  }
+
   fs.writeFileSync(manifestPath, content, 'utf8');
   if (added > 0) {
-    logDone(`Added ${added} permissions/meta-data entries`);
+    logDone(`Added ${added} permissions/meta-data/service entries`);
   } else {
     logSkip('All permissions and meta-data already present');
   }
@@ -201,9 +215,9 @@ function updateStringsXml() {
   logDone(`Set app name to "${CONFIG.appName}"`);
 }
 
-// ─── 6. Replace MainActivity.java with notification channels ──────
+// ─── 6. Replace MainActivity.java with notification channels + plugin ──
 function updateMainActivity() {
-  logStep('Updating MainActivity.java with notification channels');
+  logStep('Updating MainActivity.java with notification channels + FloatingBubble plugin');
   
   // Find the MainActivity.java file
   const javaBase = path.join(APP_DIR, 'src', 'main', 'java');
@@ -231,10 +245,14 @@ import android.os.Bundle;
 import android.view.View;
 import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
+import com.hdataxi.passenger.plugins.FloatingBubblePlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Register the FloatingBubble plugin before super.onCreate
+        registerPlugin(FloatingBubblePlugin.class);
+
         super.onCreate(savedInstanceState);
 
         // Enable edge-to-edge so env(safe-area-inset-bottom) works with 3-button nav
@@ -301,7 +319,7 @@ public class MainActivity extends BridgeActivity {
 `;
 
   fs.writeFileSync(activityPath, mainActivityContent, 'utf8');
-  logDone('Wrote MainActivity.java with 3 notification channels');
+  logDone('Wrote MainActivity.java with notification channels + FloatingBubble plugin');
 }
 
 // ─── 7. Check for google-services.json ────────────────────────────
@@ -312,6 +330,44 @@ function checkFirebaseConfig() {
     logDone('google-services.json found');
   } else {
     logWarn('google-services.json NOT found — copy it to android/app/ for push notifications');
+  }
+}
+
+// ─── 8. Copy native plugin files ──────────────────────────────────
+function copyNativePluginFiles() {
+  logStep('Copying FloatingBubble native plugin files');
+  
+  const javaBase = path.join(APP_DIR, 'src', 'main', 'java');
+  const packagePath = CONFIG.appId.replace(/\./g, path.sep);
+  const pluginsDir = path.join(javaBase, packagePath, 'plugins');
+  const drawableDir = path.join(APP_DIR, 'src', 'main', 'res', 'drawable');
+  
+  // Create directories
+  if (!fs.existsSync(pluginsDir)) {
+    fs.mkdirSync(pluginsDir, { recursive: true });
+    logDone(`Created plugins directory: ${pluginsDir}`);
+  }
+  if (!fs.existsSync(drawableDir)) {
+    fs.mkdirSync(drawableDir, { recursive: true });
+  }
+  
+  const nativeDir = path.join(__dirname, '..', 'android-native');
+  
+  // Copy Kotlin files
+  const filesToCopy = [
+    { src: 'FloatingBubblePlugin.kt', dest: path.join(pluginsDir, 'FloatingBubblePlugin.kt') },
+    { src: 'FloatingBubbleService.kt', dest: path.join(pluginsDir, 'FloatingBubbleService.kt') },
+    { src: 'bubble_bg.xml', dest: path.join(drawableDir, 'bubble_bg.xml') },
+  ];
+  
+  for (const file of filesToCopy) {
+    const srcPath = path.join(nativeDir, file.src);
+    if (fs.existsSync(srcPath)) {
+      fs.copyFileSync(srcPath, file.dest);
+      logDone(`Copied ${file.src}`);
+    } else {
+      logWarn(`Source file not found: ${srcPath}`);
+    }
   }
 }
 
@@ -347,6 +403,7 @@ updateProjectBuildGradle();
 updateManifest();
 updateStringsXml();
 updateMainActivity();
+copyNativePluginFiles();
 checkFirebaseConfig();
 
 console.log('\n' + '═'.repeat(50));
@@ -356,3 +413,6 @@ console.log('   1. Copy google-services.json → android/app/ (if not done)');
 console.log('   2. Add app icons via Android Studio → Image Asset tool');
 console.log('   3. (Optional) Add signing config for release builds');
 console.log('   4. Run: npx cap sync && npx cap run android');
+console.log('\n📱 Floating Bubble:');
+console.log('   • Users must enable "Display over other apps" in Android Settings');
+console.log('   • The bubble shows when a trip request arrives while app is minimized');

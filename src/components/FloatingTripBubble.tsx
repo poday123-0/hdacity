@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, X } from "lucide-react";
 import SystemLogo from "./SystemLogo";
+import { Capacitor } from "@capacitor/core";
 
 interface FloatingTripBubbleProps {
   tripId: string | null;
@@ -16,8 +17,8 @@ interface FloatingTripBubbleProps {
 
 /**
  * Floating in-app bubble that appears at the top of the screen when a trip
- * request comes in. Tapping it navigates to the trip request screen.
- * Works on all platforms (native + web).
+ * request comes in.  On native Android it also shows a system-level overlay
+ * (chat-head style) so the driver sees it even while using other apps.
  */
 const FloatingTripBubble = ({
   tripId,
@@ -32,10 +33,81 @@ const FloatingTripBubble = ({
   const pulseRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [pulse, setPulse] = useState(false);
 
+  // ── Native floating bubble (Android overlay) ──────────────────
+  useEffect(() => {
+    if (!tripId) return;
+    if (Capacitor.getPlatform() !== "android") return;
+
+    let cleanup = false;
+
+    (async () => {
+      try {
+        const { default: FloatingBubble } = await import(
+          "@/plugins/floating-bubble"
+        );
+
+        // Check overlay permission
+        const { granted } = await FloatingBubble.checkPermission();
+        if (!granted) {
+          // Silently skip — user hasn't granted overlay permission
+          console.log("[FloatingBubble] Overlay permission not granted");
+          return;
+        }
+
+        if (cleanup) return;
+
+        await FloatingBubble.show({
+          tripId,
+          pickupAddress,
+          dropoffAddress,
+          vehicleType: vehicleType || "",
+          estimatedFare: estimatedFare ?? 0,
+        });
+
+        // Listen for tap from native side
+        const tapListener = await FloatingBubble.addListener(
+          "bubbleTapped",
+          () => {
+            onTap();
+          }
+        );
+        const dismissListener = await FloatingBubble.addListener(
+          "bubbleDismissed",
+          () => {
+            onDismiss();
+          }
+        );
+
+        // Cleanup listeners on unmount
+        return () => {
+          tapListener.remove();
+          dismissListener.remove();
+        };
+      } catch (e) {
+        // Plugin not available (web or missing native code) — fall through to in-app bubble
+        console.log("[FloatingBubble] Native plugin not available:", e);
+      }
+    })();
+
+    return () => {
+      cleanup = true;
+      // Try to hide native bubble on cleanup
+      (async () => {
+        try {
+          const { default: FloatingBubble } = await import(
+            "@/plugins/floating-bubble"
+          );
+          await FloatingBubble.hide();
+        } catch {}
+      })();
+    };
+  }, [tripId]);
+
+  // ── In-app bubble (web + fallback) ────────────────────────────
   useEffect(() => {
     if (tripId) {
       setIsVisible(true);
-      pulseRef.current = setInterval(() => setPulse(p => !p), 1000);
+      pulseRef.current = setInterval(() => setPulse((p) => !p), 1000);
     } else {
       setIsVisible(false);
     }
@@ -57,10 +129,10 @@ const FloatingTripBubble = ({
         style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))" }}
       >
         <motion.div
-          animate={{ 
-            boxShadow: pulse 
-              ? "0 0 20px hsl(var(--primary) / 0.6), 0 4px 20px hsl(var(--primary) / 0.3)" 
-              : "0 0 10px hsl(var(--primary) / 0.3), 0 4px 12px rgba(0,0,0,0.15)"
+          animate={{
+            boxShadow: pulse
+              ? "0 0 20px hsl(var(--primary) / 0.6), 0 4px 20px hsl(var(--primary) / 0.3)"
+              : "0 0 10px hsl(var(--primary) / 0.3), 0 4px 12px rgba(0,0,0,0.15)",
           }}
           transition={{ duration: 0.5 }}
           onClick={onTap}
@@ -106,7 +178,9 @@ const FloatingTripBubble = ({
           {/* Fare badge */}
           {estimatedFare != null && estimatedFare > 0 && (
             <div className="relative bg-primary/15 px-2.5 py-1.5 rounded-xl shrink-0">
-              <p className="text-xs font-bold text-primary">{estimatedFare} MVR</p>
+              <p className="text-xs font-bold text-primary">
+                {estimatedFare} MVR
+              </p>
             </div>
           )}
 
