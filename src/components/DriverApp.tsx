@@ -690,7 +690,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   }, [userProfile?.id]);
 
   // Immediately stop all driver location tracking & mark offline
+  const clearQueuedTrip = useCallback(() => {
+    setQueuedTrip(null);
+    setQueuedPassengerProfile(null);
+    setQueuedTripStops([]);
+    queuedTripRef.current = null;
+  }, []);
+
   const goOfflineNow = useCallback(async () => {
+    clearQueuedTrip();
     // Clear GPS watcher
     if (locationWatchRef.current !== null) {
       navigator.geolocation.clearWatch(locationWatchRef.current);
