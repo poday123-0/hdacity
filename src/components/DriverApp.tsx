@@ -1859,6 +1859,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       setScreen("online");
       setCurrentTrip(null);
       setPassengerProfile(null);
+      clearQueuedTrip();
       setDriverTripPhase("heading_to_pickup");
       return true;
     }
