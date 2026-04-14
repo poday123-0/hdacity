@@ -830,6 +830,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const webMaxAge = Math.min(gpsMaxAge, 5000);
 
       if (isNativePlatform) {
+        // Keep screen awake while driver is online
+        enableKeepAwake();
         // Native: rely solely on background geolocation plugin — much more battery efficient
         // It uses the OS-level distance filter and doesn't keep GPS radio on constantly
         startBackgroundLocation(
@@ -842,7 +844,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           },
           { distanceFilter: MIN_MOVE_METERS }
         );
-        // Get one initial fix to show position immediately
+        // Get one initial fix to show position immediately — use HIGH accuracy for fast GPS lock
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -854,7 +856,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               upsertLocation(pos.coords.latitude, pos.coords.longitude, false, (h != null && !isNaN(h)) ? h : null);
             },
             () => {},
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 15000 }
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
           );
         }
       } else {
