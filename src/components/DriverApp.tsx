@@ -1169,13 +1169,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
 
-    // Skip trips outside driver's radius (fail-open if no GPS)
-    if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
-      const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
-      console.log(`[RADIUS CHECK] Driver pos: ${lastPosRef.current.lat.toFixed(4)}, ${lastPosRef.current.lng.toFixed(4)} | Pickup: ${trip.pickup_lat}, ${trip.pickup_lng} | Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
-      if (dist > tripRadiusRef.current) return;
-    } else {
-      console.log(`[RADIUS CHECK] No GPS or no pickup coords — fail-open, allowing trip through`);
+    // Skip trips outside driver's radius — use cached GPS if live GPS unavailable
+    if (trip.pickup_lat && trip.pickup_lng) {
+      let driverPos = lastPosRef.current;
+      if (!driverPos) {
+        try {
+          const cachedLat = localStorage.getItem("hda_driver_last_lat");
+          const cachedLng = localStorage.getItem("hda_driver_last_lng");
+          if (cachedLat && cachedLng) driverPos = { lat: parseFloat(cachedLat), lng: parseFloat(cachedLng) };
+        } catch {}
+      }
+      if (driverPos) {
+        const dist = haversineKm(driverPos.lat, driverPos.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
+        console.log(`[RADIUS CHECK] Driver pos: ${driverPos.lat.toFixed(4)}, ${driverPos.lng.toFixed(4)} | Pickup: ${trip.pickup_lat}, ${trip.pickup_lng} | Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
+        if (dist > tripRadiusRef.current) return;
+      } else {
+        console.log(`[RADIUS CHECK] No GPS and no cached position — fail-open, allowing trip through`);
+      }
     }
 
     // === SHOW UI IMMEDIATELY for fastest response ===
@@ -1328,11 +1338,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Scheduled rides must only be started manually from the scheduled banner
     if (trip.booking_type === "scheduled") return;
 
-    // Skip trips outside driver's radius (fail-open if no GPS)
-    if (lastPosRef.current && trip.pickup_lat && trip.pickup_lng) {
-      const dist = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
-      console.log(`[RADIUS CHECK - DISPATCH] Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
-      if (dist > tripRadiusRef.current) return;
+    // Skip trips outside driver's radius — use cached GPS if live GPS unavailable
+    if (trip.pickup_lat && trip.pickup_lng) {
+      let driverPos = lastPosRef.current;
+      if (!driverPos) {
+        try {
+          const cachedLat = localStorage.getItem("hda_driver_last_lat");
+          const cachedLng = localStorage.getItem("hda_driver_last_lng");
+          if (cachedLat && cachedLng) driverPos = { lat: parseFloat(cachedLat), lng: parseFloat(cachedLng) };
+        } catch {}
+      }
+      if (driverPos) {
+        const dist = haversineKm(driverPos.lat, driverPos.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
+        console.log(`[RADIUS CHECK - DISPATCH] Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
+        if (dist > tripRadiusRef.current) return;
+      }
     }
 
     // Vibrate to alert driver
