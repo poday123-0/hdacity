@@ -4316,7 +4316,45 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 variant="badge"
               />
             </div>
-          </div>
+
+            {/* Queued/chained trip preview */}
+            {queuedTrip && (
+              <div className="px-4 pb-2">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-accent/30 border border-primary/30 rounded-xl p-2.5 flex items-center gap-2.5"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                    <Route className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-wide">Next Trip Queued</p>
+                    <p className="text-xs text-foreground truncate">{queuedTrip.pickup_address || "Pickup"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">→ {queuedTrip.dropoff_address || "Dropoff"}</p>
+                  </div>
+                  {queuedTrip.estimated_fare != null && queuedTrip.estimated_fare > 0 && (
+                    <div className="bg-primary/10 px-2 py-1 rounded-lg shrink-0">
+                      <p className="text-[11px] font-bold text-primary">{queuedTrip.estimated_fare} MVR</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (queuedTrip.id) declinedTripIdsRef.current.add(queuedTrip.id);
+                      setQueuedTrip(null);
+                      setQueuedPassengerProfile(null);
+                      setQueuedTripStops([]);
+                      queuedTripRef.current = null;
+                      toast({ title: "Next trip dismissed" });
+                    }}
+                    className="w-7 h-7 rounded-full bg-muted/50 flex items-center justify-center shrink-0 active:scale-90 transition-all"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </motion.div>
+              </div>
+            )}
+
 
           <AnimatePresence>
             {!navPanelMinimized &&
