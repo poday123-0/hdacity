@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet-rotate";
 import { fetchOsrmRoute, pickShortestOsrmRoute, type OsrmRoute, type OsrmStep } from "@/lib/osrm-routing";
 import { useRoadClosures } from "@/hooks/use-road-closures";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,36 @@ const driverDotIcon = (color = "#4285F4") =>
     iconSize: [22, 22],
     iconAnchor: [11, 11],
     html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
+  });
+
+// Car-shaped directional icon that rotates with driver heading
+const driverCarIcon = (heading: number, color = "#4285F4") =>
+  L.divIcon({
+    className: "",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;transform:rotate(${heading}deg);transition:transform 0.3s ease-out">
+      <svg viewBox="0 0 40 40" width="40" height="40">
+        <defs>
+          <filter id="carShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.4"/>
+          </filter>
+        </defs>
+        <g filter="url(#carShadow)">
+          <!-- Car body -->
+          <rect x="12" y="6" width="16" height="28" rx="6" ry="6" fill="${color}"/>
+          <!-- Windshield -->
+          <rect x="14" y="9" width="12" height="7" rx="3" ry="2" fill="white" opacity="0.85"/>
+          <!-- Rear window -->
+          <rect x="14" y="26" width="12" height="5" rx="2" ry="2" fill="white" opacity="0.5"/>
+          <!-- Direction arrow -->
+          <polygon points="20,4 16,10 24,10" fill="white" opacity="0.9"/>
+          <!-- Side mirrors -->
+          <rect x="9" y="14" width="3" height="4" rx="1" fill="${color}"/>
+          <rect x="28" y="14" width="3" height="4" rx="1" fill="${color}"/>
+        </g>
+      </svg>
+    </div>`,
   });
 
 const driverArrowIcon = (heading: number, color = "#4285F4") =>
@@ -286,13 +317,21 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }).addTo(map);
     freeNavMarkerRef.current = marker;
 
-    // Create polyline
+    // Create polyline with zoom-responsive weight
+    const getFreeNavWeight = (zoom: number) => Math.max(3, Math.min(7, 7 - (zoom - 16) * 0.8));
     const polyline = L.polyline([], {
       color: "#6366f1",
-      weight: 7,
+      weight: getFreeNavWeight(map.getZoom()),
       opacity: 0.85,
     }).addTo(map);
     freeNavPolylineRef.current = polyline;
+
+    const onZoomFreeNav = () => {
+      if (freeNavPolylineRef.current) {
+        freeNavPolylineRef.current.setStyle({ weight: getFreeNavWeight(map.getZoom()) });
+      }
+    };
+    map.on("zoomend", onZoomFreeNav);
 
     programmaticZoomRef.current = true; map.setZoom(18);
     setFollowDriver(true);
@@ -432,7 +471,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       zoom: 16,
       zoomControl: false,
       attributionControl: false,
-    });
+      rotate: true,
+      touchRotate: true,
+      bearing: 0,
+    } as any);
 
     const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { maxZoom: 19 }).addTo(map);
     tileLayerRef.current = tileLayer;
@@ -581,6 +623,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       }
     } else {
       programmaticZoomRef.current = true; map.setZoom(16);
+      // Reset map bearing when not navigating
+      if (typeof (map as any).setBearing === "function") {
+        (map as any).setBearing(0);
+      }
+      setMapHeading(0);
+      onMapHeadingChange?.(0);
     }
   }, [isNavigating]);
 
@@ -711,7 +759,18 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     } else if (mapIconUrl) {
       driverMarkerRef.current.setIcon(customImgIcon(mapIconUrl, 36));
     } else {
-      driverMarkerRef.current.setIcon(driverArrowIcon(heading));
+      // Use car icon during navigation — heading is applied via CSS transform inside the icon
+      driverMarkerRef.current.setIcon(driverCarIcon(0));
+    }
+
+    // Rotate map to match driver heading during navigation
+    if ((isNavigating || freeNavTarget) && followDriver && !userInteractingRef.current) {
+      const map = mapInstance.current;
+      if (map && typeof (map as any).setBearing === "function") {
+        (map as any).setBearing(-heading);
+        setMapHeading(heading);
+        onMapHeadingChange?.(heading);
+      }
     }
 
     // Auto-follow — skip while user is actively interacting (zoom/pan)
@@ -882,10 +941,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Route polyline
     const routeColor = tripPhase === "in_progress" ? "#4285F4" : "#22c55e";
+    const getRouteWeight = (zoom: number) => Math.max(3, Math.min(7, 7 - (zoom - 16) * 0.8));
     const polyline = L.polyline([], {
-      color: routeColor, weight: 7, opacity: 0.85,
+      color: routeColor, weight: getRouteWeight(map.getZoom()), opacity: 0.85,
     }).addTo(map);
     routePolylineRef.current = polyline;
+
+    // Adjust polyline weight on zoom
+    const onZoomPolyline = () => {
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setStyle({ weight: getRouteWeight(map.getZoom()) });
+      }
+    };
+    map.on("zoomend", onZoomPolyline);
 
     const rerouteConfig = navSettings.rerouteAggressiveness === "aggressive"
       ? { interval: 8000, movement: 15 }
@@ -965,6 +1033,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     return () => {
       if (routeRefreshRef.current) { clearInterval(routeRefreshRef.current); routeRefreshRef.current = null; }
       routeFetchInFlightRef.current = false;
+      map.off("zoomend", onZoomPolyline);
     };
   }, [isNavigating, pickupCoords?.[0], pickupCoords?.[1], dropoffCoords?.[0], dropoffCoords?.[1], tripPhase, navSettings.rerouteAggressiveness]);
 
@@ -1179,12 +1248,16 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [followDriver, followToggleRef, currentPos, pickupCoords, dropoffCoords]);
 
-  // Compass / heading — Leaflet doesn't support map rotation, so these are no-ops
+  // Compass / heading — reset map bearing to north
   useEffect(() => {
     if (resetNorthRef) {
       resetNorthRef.current = () => {
         setMapHeading(0);
         onMapHeadingChange?.(0);
+        const map = mapInstance.current;
+        if (map && typeof (map as any).setBearing === "function") {
+          (map as any).setBearing(0);
+        }
       };
     }
   }, [resetNorthRef, onMapHeadingChange]);
