@@ -46,6 +46,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch excluded center phone numbers and get their profile IDs
+    const EXCLUDED_PHONES = ["7320207"];
+    const { data: excludedProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .in("phone_number", EXCLUDED_PHONES);
+    const excludedIds = new Set((excludedProfiles || []).map((p: any) => p.id));
+
     let totalRefreshed = 0;
 
     for (const comp of competitions) {
