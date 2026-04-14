@@ -1607,11 +1607,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
 
     // Native Capacitor: listen for notification tap
+    // Try to set up listener regardless of isNativePlatform() since remote URL
+    // mode may not have the Capacitor bridge but PushNotifications might still work
     let nativeCleanup: (() => void) | null = null;
     const setupNativeListener = async () => {
       try {
-        const { Capacitor } = await import("@capacitor/core");
-        if (!Capacitor.isNativePlatform()) return;
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const listener = await PushNotifications.addListener("pushNotificationActionPerformed", async (action) => {
           console.log("Native notification tapped:", action);
@@ -1621,7 +1621,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           triggerCheck(tappedTripId);
         });
         nativeCleanup = () => listener.remove();
-      } catch {}
+      } catch {
+        // Not native or plugin not available — this is expected on web
+      }
     };
     setupNativeListener();
 
