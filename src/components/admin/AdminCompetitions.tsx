@@ -78,6 +78,28 @@ const AdminCompetitions = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const avatarDriverIdRef = useRef<string | null>(null);
+
+  const handleAvatarUpload = async (file: File, driverId: string) => {
+    setUploadingAvatarId(driverId);
+    try {
+      const compressed = await compressImage(file, 512, 0.8);
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${driverId}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage.from("driver-documents").upload(path, compressed, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("driver-documents").getPublicUrl(path);
+      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from("profiles").update({ avatar_url: newUrl }).eq("id", driverId);
+      setEntries(prev => prev.map(e => e.driver_id === driverId ? { ...e, avatar_url: newUrl } : e));
+      toast({ title: "Photo updated!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+    setUploadingAvatarId(null);
+  };
 
   // Form state
   const [form, setForm] = useState({
