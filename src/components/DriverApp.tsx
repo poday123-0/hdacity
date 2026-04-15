@@ -161,6 +161,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [unreadDriverMessages, setUnreadDriverMessages] = useState(0);
   const showDriverChatRef = useRef(false);
   const [currentTrip, setCurrentTrip] = useState<TripRequest | null>(null);
+  const currentTripRef = useRef<TripRequest | null>(null);
+  useEffect(() => { currentTripRef.current = currentTrip; }, [currentTrip]);
   const [passengerProfile, setPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [tripStops, setTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
   // Chained/queued trip — next trip queued while driver is on active trip
@@ -1169,10 +1171,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handlingTripRef = useRef<string | null>(null);
 
   const handleNewTrip = async (trip: TripRequest) => {
-    // If driver already has an active trip, try to queue the new one (chained trip)
-    if (currentTrip) {
-      // Only allow queuing during navigating phase and only one queued trip
-      if (screenRef.current !== "navigating" || queuedTripRef.current) return;
+    // Block ALL trip requests when driver is not idle (on online/offline screen)
+    const currentScreen = screenRef.current;
+    if (currentScreen !== "online" && currentScreen !== "offline") {
+      // Only allow chained/queued trips during navigating phase
+      if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) return;
       // Check if new trip's pickup is near current trip's dropoff
       if (currentTrip.dropoff_lat && currentTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
         const distToDropoff = haversineKm(
