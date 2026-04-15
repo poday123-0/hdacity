@@ -199,7 +199,7 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
       }
     }, 1000);
     return () => { if (attemptTimerRef.current) clearInterval(attemptTimerRef.current); };
-  }, [isAutoMode, tripId, timeoutSeconds, cancelTripNoDriver, isScheduled]);
+  }, [isAutoMode, tripId, timeoutSeconds, passengerSearchTimeout, cancelTripNoDriver, isScheduled]);
 
 
   // Vibrate when no driver found (no sound for passengers)
