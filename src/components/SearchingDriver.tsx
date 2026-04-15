@@ -55,11 +55,12 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
   useEffect(() => {
     const fetchSettings = async () => {
       const { data } = await supabase.from("system_settings").select("key, value").in("key", [
-        "call_center_number", "driver_accept_timeout_seconds", "dispatch_mode", "max_auto_drivers", "max_search_radius_km"
+        "call_center_number", "driver_accept_timeout_seconds", "passenger_search_timeout_seconds", "dispatch_mode", "max_auto_drivers", "max_search_radius_km"
       ]);
       data?.forEach((s: any) => {
         if (s.key === "call_center_number") setCallCenterNumber(typeof s.value === "string" ? s.value : String(s.value || ""));
-        if (s.key === "driver_accept_timeout_seconds") setTimeoutSeconds(typeof s.value === "number" ? s.value : parseInt(s.value) || 60);
+        if (s.key === "driver_accept_timeout_seconds") setTimeoutSeconds(typeof s.value === "number" ? s.value : parseInt(s.value) || 20);
+        if (s.key === "passenger_search_timeout_seconds") setPassengerSearchTimeout(typeof s.value === "number" ? s.value : parseInt(s.value) || 90);
         if (s.key === "dispatch_mode") setDispatchMode(typeof s.value === "string" ? s.value : "broadcast");
         if (s.key === "max_auto_drivers") setMaxAutoDrivers(typeof s.value === "number" ? s.value : parseInt(s.value) || 0);
         if (s.key === "max_search_radius_km") setMaxSearchRadius(typeof s.value === "number" ? s.value : parseInt(s.value) || 50);
