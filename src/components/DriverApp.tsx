@@ -1389,8 +1389,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Scheduled rides must only be started manually from the scheduled banner
     if (trip.booking_type === "scheduled") return;
 
-    // Skip trips outside driver's radius — use cached GPS if live GPS unavailable
-    if (trip.pickup_lat && trip.pickup_lng) {
+    // Skip radius check for operator-dispatched trips (center code assign) — dispatch explicitly chose this driver
+    const isOperatorAssigned = trip.dispatch_type === "operator";
+    if (!isOperatorAssigned && trip.pickup_lat && trip.pickup_lng) {
       let driverPos = lastPosRef.current;
       if (!driverPos) {
         try {
