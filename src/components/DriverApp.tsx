@@ -2857,7 +2857,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Floating trip bubble — shows when a trip request exists but driver isn't on ride-request screen or navigating (already on a trip) */}
-      {floatingBubbleEnabled && currentTrip && screen !== "ride-request" && currentTrip.id !== bubbleDismissedTripId && (screen === "online" || screen === "offline") && currentTrip.status === "requested" && (
+      {floatingBubbleEnabled && currentTrip && screen !== "ride-request" && currentTrip.id !== bubbleDismissedTripId && (screen === "online" || screen === "offline") && (
         <FloatingTripBubble
           tripId={currentTrip.id}
           pickupAddress={currentTrip.pickup_address || ""}
