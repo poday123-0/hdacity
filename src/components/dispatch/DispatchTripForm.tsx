@@ -1799,7 +1799,7 @@ const DispatchTripForm = ({
                     passenger_count: passengerCount,
                     luggage_count: luggageCount,
                     customer_name: "Dispatch",
-                    customer_phone: customerPhone.trim(),
+                    customer_phone: customerPhone.trim() || "3352020",
                     created_by: dispatcherProfile?.id || null,
                     dispatch_type: "operator",
                     vehicle_type_id: selectedVehicleType || null,
