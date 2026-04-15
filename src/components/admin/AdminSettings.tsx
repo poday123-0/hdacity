@@ -467,6 +467,7 @@ const AdminSettings = () => {
             {renderSettingField('Surge Multiplier', 'surge_multiplier', 'number')}
             {renderSettingField('Max Search Radius (km)', 'max_search_radius_km', 'number')}
             {renderSettingField('Driver Accept Timeout (sec)', 'driver_accept_timeout_seconds', 'number')}
+            {renderSettingField('Passenger Search Timeout (sec)', 'passenger_search_timeout_seconds', 'number', '90')}
             {renderSettingField("Dispatch Broadcast Timeout (sec)", "dispatch_broadcast_timeout_seconds", "number", "60")}
             {renderSettingField('Max Drivers to Try (0 = unlimited)', 'max_auto_drivers', 'number')}
             {renderSettingField('Default Driver Trip Radius (km)', 'default_trip_radius_km', 'number')}
