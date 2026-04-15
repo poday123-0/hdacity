@@ -12,7 +12,9 @@ import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -39,6 +41,9 @@ public class FloatingBubbleService extends Service {
     private View bubbleView;
     private View expandedView;
     private String currentTripId = "";
+    private Handler mainHandler;
+    private Runnable expandedDismissRunnable;
+    private boolean isDestroyed = false;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -49,17 +54,25 @@ public class FloatingBubbleService extends Service {
     public void onCreate() {
         super.onCreate();
         windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        mainHandler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || intent.getAction() == null) {
+            stopSelf();
             return START_NOT_STICKY;
         }
 
         if (ACTION_SHOW.equals(intent.getAction())) {
-            startForeground(NOTIFICATION_ID, buildForegroundNotification());
+            try {
+                startForeground(NOTIFICATION_ID, buildForegroundNotification());
+            } catch (Exception e) {
+                // Foreground service start failed — stop gracefully
+                stopSelf();
+                return START_NOT_STICKY;
+            }
 
             currentTripId = intent.getStringExtra("tripId");
             if (currentTripId == null) currentTripId = "";
@@ -76,10 +89,7 @@ public class FloatingBubbleService extends Service {
                 fare
             );
         } else if (ACTION_HIDE.equals(intent.getAction())) {
-            removeExpanded();
-            removeBubble();
-            stopForeground(true);
-            stopSelf();
+            cleanupAndStop();
         }
 
         return START_NOT_STICKY;
@@ -87,12 +97,29 @@ public class FloatingBubbleService extends Service {
 
     @Override
     public void onDestroy() {
+        isDestroyed = true;
+        if (mainHandler != null && expandedDismissRunnable != null) {
+            mainHandler.removeCallbacks(expandedDismissRunnable);
+        }
         removeExpanded();
         removeBubble();
         super.onDestroy();
     }
 
+    private void cleanupAndStop() {
+        if (mainHandler != null && expandedDismissRunnable != null) {
+            mainHandler.removeCallbacks(expandedDismissRunnable);
+        }
+        removeExpanded();
+        removeBubble();
+        try {
+            stopForeground(true);
+        } catch (Exception ignored) {}
+        stopSelf();
+    }
+
     private void showBubble() {
+        if (isDestroyed) return;
         removeBubble();
 
         int size = dpToPx(56);
@@ -142,8 +169,10 @@ public class FloatingBubbleService extends Service {
                         }
                         params.x = initialX + dx;
                         params.y = initialY + dy;
-                        if (bubbleView != null && windowManager != null) {
-                            windowManager.updateViewLayout(bubbleView, params);
+                        if (bubbleView != null && bubbleView.isAttachedToWindow() && windowManager != null) {
+                            try {
+                                windowManager.updateViewLayout(bubbleView, params);
+                            } catch (Exception ignored) {}
                         }
                         return true;
                     case MotionEvent.ACTION_UP:
@@ -169,11 +198,13 @@ public class FloatingBubbleService extends Service {
                 .setDuration(300)
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            bubbleView = null;
         }
     }
 
     private void showExpandedCard(String pickup, String dropoff, String vehicleType, double fare) {
+        if (isDestroyed) return;
         removeExpanded();
 
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
@@ -204,10 +235,21 @@ public class FloatingBubbleService extends Service {
                 .setDuration(350)
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            expandedView = null;
+            return;
         }
 
-        expandedView.postDelayed(this::removeExpanded, 8000);
+        // Cancel any previous dismiss runnable
+        if (expandedDismissRunnable != null) {
+            mainHandler.removeCallbacks(expandedDismissRunnable);
+        }
+        expandedDismissRunnable = () -> {
+            if (!isDestroyed) {
+                removeExpanded();
+            }
+        };
+        mainHandler.postDelayed(expandedDismissRunnable, 8000);
     }
 
     private View buildExpandedLayout(String pickup, String dropoff, String vehicleType, double fare) {
@@ -319,27 +361,30 @@ public class FloatingBubbleService extends Service {
     }
 
     private void openApp() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.putExtra("tripId", currentTripId);
-        intent.setAction("BUBBLE_TAP");
-        startActivity(intent);
+        try {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent.putExtra("tripId", currentTripId);
+            intent.setAction("BUBBLE_TAP");
+            startActivity(intent);
+        } catch (Exception ignored) {}
 
         FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
         if (plugin != null) {
-            plugin.notifyBubbleTapped(currentTripId);
+            try {
+                plugin.notifyBubbleTapped(currentTripId);
+            } catch (Exception ignored) {}
         }
 
-        removeExpanded();
-        removeBubble();
-        stopForeground(true);
-        stopSelf();
+        cleanupAndStop();
     }
 
     private void removeBubble() {
         if (bubbleView != null && windowManager != null) {
             try {
-                windowManager.removeView(bubbleView);
+                if (bubbleView.isAttachedToWindow()) {
+                    windowManager.removeView(bubbleView);
+                }
             } catch (Exception ignored) {
             }
         }
@@ -349,7 +394,9 @@ public class FloatingBubbleService extends Service {
     private void removeExpanded() {
         if (expandedView != null && windowManager != null) {
             try {
-                windowManager.removeView(expandedView);
+                if (expandedView.isAttachedToWindow()) {
+                    windowManager.removeView(expandedView);
+                }
             } catch (Exception ignored) {
             }
         }
