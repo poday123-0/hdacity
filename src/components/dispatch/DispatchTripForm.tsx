@@ -822,7 +822,7 @@ const DispatchTripForm = ({
         passenger_count: passengerCount,
         luggage_count: luggageCount,
         customer_name: customerName,
-        customer_phone: customerPhone.trim(),
+        customer_phone: customerPhone.trim() || "3352020",
         created_by: dispatcherProfile?.id || null,
         dispatch_type: isBroadcast ? "dispatch_broadcast" : "operator",
         vehicle_type_id: selectedVehicleType || null,
