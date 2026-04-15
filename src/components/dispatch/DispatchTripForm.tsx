@@ -1116,7 +1116,7 @@ const DispatchTripForm = ({
                   onKeyDown={e => {
                     if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
                   }}
-                  placeholder="Phone"
+                  placeholder="3352020"
                   className="w-full pl-9 pr-1.5 py-1 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary h-6"
                 />
               </div>
