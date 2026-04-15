@@ -822,7 +822,7 @@ const DispatchTripForm = ({
         passenger_count: passengerCount,
         luggage_count: luggageCount,
         customer_name: customerName,
-        customer_phone: customerPhone.trim(),
+        customer_phone: customerPhone.trim() || "3352020",
         created_by: dispatcherProfile?.id || null,
         dispatch_type: isBroadcast ? "dispatch_broadcast" : "operator",
         vehicle_type_id: selectedVehicleType || null,
@@ -1116,7 +1116,7 @@ const DispatchTripForm = ({
                   onKeyDown={e => {
                     if (e.key === "Enter") { e.preventDefault(); centerCodeInputRef.current?.focus(); }
                   }}
-                  placeholder="Phone"
+                  placeholder="3352020"
                   className="w-full pl-9 pr-1.5 py-1 bg-surface border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary h-6"
                 />
               </div>
@@ -1799,7 +1799,7 @@ const DispatchTripForm = ({
                     passenger_count: passengerCount,
                     luggage_count: luggageCount,
                     customer_name: "Dispatch",
-                    customer_phone: customerPhone.trim(),
+                    customer_phone: customerPhone.trim() || "3352020",
                     created_by: dispatcherProfile?.id || null,
                     dispatch_type: "operator",
                     vehicle_type_id: selectedVehicleType || null,
