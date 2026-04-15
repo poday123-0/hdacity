@@ -22,7 +22,8 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
   const [showNoDriver, setShowNoDriver] = useState(false);
   const [callCenterNumber, setCallCenterNumber] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [timeoutSeconds, setTimeoutSeconds] = useState(90);
+  const [timeoutSeconds, setTimeoutSeconds] = useState(20);
+  const [passengerSearchTimeout, setPassengerSearchTimeout] = useState(90);
   const [dispatchMode, setDispatchMode] = useState<string>("broadcast");
   const [maxAutoDrivers, setMaxAutoDrivers] = useState(0);
   const [maxSearchRadius, setMaxSearchRadius] = useState(50);
