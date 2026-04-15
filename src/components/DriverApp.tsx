@@ -1176,10 +1176,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (currentScreen !== "online" && currentScreen !== "offline") {
       // Only allow chained/queued trips during navigating phase
       if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) return;
+      const activeTrip = currentTripRef.current!;
       // Check if new trip's pickup is near current trip's dropoff
-      if (currentTrip.dropoff_lat && currentTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
+      if (activeTrip.dropoff_lat && activeTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
         const distToDropoff = haversineKm(
-          Number(currentTrip.dropoff_lat), Number(currentTrip.dropoff_lng),
+          Number(activeTrip.dropoff_lat), Number(activeTrip.dropoff_lng),
           Number(trip.pickup_lat), Number(trip.pickup_lng)
         );
         console.log(`[CHAINED TRIP] Pickup distance from current dropoff: ${distToDropoff.toFixed(2)}km | Radius: ${tripRadiusRef.current}km`);
