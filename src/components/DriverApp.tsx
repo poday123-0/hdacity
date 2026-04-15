@@ -4408,10 +4408,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   {/* Quick actions row */}
                   <div className="flex items-center gap-2">
                     {/* Call */}
-                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : ""}`} className="flex-[2] bg-sos/10 border border-sos/20 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                    <a href={`tel:${currentTrip.customer_phone ? `+960${currentTrip.customer_phone}` : passengerProfile?.phone_number ? `+${passengerProfile.country_code || "960"}${passengerProfile.phone_number}` : "+9603352020"}`} className="flex-[2] bg-sos/10 border border-sos/20 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                       <Phone className="w-3.5 h-3.5 text-sos shrink-0" />
                       <span className="text-[11px] font-bold text-sos">
-                        {currentTrip.customer_phone || passengerProfile?.phone_number || "Call"}
+                        {currentTrip.customer_phone || passengerProfile?.phone_number || "3352020"}
                       </span>
                     </a>
                     {/* Chat */}
