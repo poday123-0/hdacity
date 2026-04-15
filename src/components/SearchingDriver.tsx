@@ -169,10 +169,12 @@ const SearchingDriver = ({ onCancel, onRetry, pickupName = "Pickup", dropoffName
   useEffect(() => {
     if (isScheduled) return; // Scheduled rides don't timeout
     if (!isAutoMode || !tripId) {
+      // Broadcast mode — use passenger search timeout
+      const broadcastTimeout = passengerSearchTimeout;
       const interval = setInterval(() => {
         setElapsedSeconds(prev => {
           const next = prev + 1;
-          if (next >= timeoutSeconds) { setShowNoDriver(true); void cancelTripNoDriver(); }
+          if (next >= broadcastTimeout) { setShowNoDriver(true); void cancelTripNoDriver(); }
           return next;
         });
       }, 1000);
