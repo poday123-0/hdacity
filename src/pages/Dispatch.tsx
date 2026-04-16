@@ -834,7 +834,7 @@ const Dispatch = () => {
       .channel("dispatch-driver-locations")
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
         if (driverDebounce) clearTimeout(driverDebounce);
-        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 3_000);
+        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 2_000);
       })
       .subscribe();
     return () => {
