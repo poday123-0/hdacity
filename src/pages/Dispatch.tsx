@@ -581,7 +581,7 @@ const Dispatch = () => {
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 60_000); // refresh every 60s instead of 30s
+    const interval = window.setInterval(refresh, 30_000); // refresh every 30s
 
     // Realtime: debounced auto-refresh center code index when trips change
     let ccDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -681,7 +681,7 @@ const Dispatch = () => {
   const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedRefreshTrips = useCallback((immediate?: boolean) => {
     if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
-    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 300 : 1_500);
+    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 100 : 500);
   }, []);
 
   useEffect(() => {
@@ -834,7 +834,7 @@ const Dispatch = () => {
       .channel("dispatch-driver-locations")
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
         if (driverDebounce) clearTimeout(driverDebounce);
-        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 3_000);
+        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 2_000);
       })
       .subscribe();
     return () => {
@@ -919,7 +919,7 @@ const Dispatch = () => {
     if (!isAuthed) return;
     const interval = setInterval(() => {
       refreshTrips();
-    }, 15_000);
+    }, 8_000);
     return () => clearInterval(interval);
   }, [isAuthed]);
 
