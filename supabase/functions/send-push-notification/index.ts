@@ -302,8 +302,9 @@ Deno.serve(async (req) => {
       filteredTokens.map(async (t: any) => {
         const type = data?.type || "default";
         const isTripRequest = type === "trip_requested";
+        const isTripAssigned = type === "trip_assigned";
         const isSOS = type === "sos_alert";
-        const isUrgent = isTripRequest || isSOS;
+        const isUrgent = isTripRequest || isSOS || isTripAssigned;
 
         // Resolve sound category and URL based on recipient's user type
         const soundCategory = getSoundCategory(type, t.user_type || "passenger");
