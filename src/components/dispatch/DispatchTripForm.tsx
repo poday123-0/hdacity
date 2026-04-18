@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
-import { notifyTripRequested } from "@/lib/push-notifications";
+import { notifyTripRequested, notifyTripAssigned } from "@/lib/push-notifications";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -896,7 +896,7 @@ const DispatchTripForm = ({
 
       // Fire notifications non-blocking for speed
       if (isAssigned && assignedDriverId) {
-        notifyTripRequested([assignedDriverId], trip.id, tripPayload.pickup_address, selectedVehicleType || undefined).catch(console.warn);
+        notifyTripAssigned(assignedDriverId, trip.id, tripPayload.pickup_address).catch(console.warn);
       } else if (pickup) {
         // Pre-fetched in parallel above — use cached results for zero delay
         const tripId = trip.id;
