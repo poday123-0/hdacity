@@ -149,7 +149,7 @@ self.addEventListener("notificationclick", (event) => {
   const type = data.type || "";
   let targetUrl = "/";
 
-  if (type === "trip_requested" || type === "trip_accepted") {
+  if (type === "trip_requested" || type === "trip_accepted" || type === "trip_assigned") {
     targetUrl = "/driver";
   } else if (type === "sos_alert") {
     targetUrl = "/admin";
