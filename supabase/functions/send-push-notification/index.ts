@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
             // This ensures only the SW's onBackgroundMessage handler fires,
             // preventing duplicate notifications (browser auto-display + SW display).
             // The SW will show the notification AND play the custom admin sound.
-            fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
+            fcm_options: { link: (isTripRequest || isTripAssigned) ? "/driver" : isSOS ? "/admin" : "/" },
           },
         };
 
