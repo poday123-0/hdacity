@@ -53,6 +53,7 @@ self.addEventListener("message", (event) => {
 // Vibration patterns per notification type
 const VIBRATE_PATTERNS = {
   trip_requested: [300, 100, 300, 100, 300, 100, 300, 100, 300],
+  trip_assigned: [300, 100, 300, 100, 300],
   trip_accepted: [200, 100, 200],
   trip_started: [200, 100, 200],
   trip_completed: [100, 50, 100, 50, 200],
@@ -74,6 +75,7 @@ messaging.onBackgroundMessage((payload) => {
 
   const vibratePattern = VIBRATE_PATTERNS[type] || VIBRATE_PATTERNS.default;
   const isTripRequest = type === "trip_requested";
+  const isTripAssigned = type === "trip_assigned";
   const isSOS = type === "sos_alert";
 
   const notificationOptions = {
@@ -84,9 +86,9 @@ messaging.onBackgroundMessage((payload) => {
     data: { ...(payload.data || {}), sound_url: soundUrl, sound_category: soundCategory },
     silent: false,
     vibrate: vibratePattern,
-    requireInteraction: isTripRequest || isSOS,
+    requireInteraction: isTripRequest || isSOS || isTripAssigned,
     renotify: true,
-    actions: isTripRequest
+    actions: (isTripRequest || isTripAssigned)
       ? [{ action: "open", title: "Open App" }]
       : [],
   };
