@@ -76,6 +76,10 @@ function getSoundCategory(notificationType: string, recipientUserType: string): 
   switch (notificationType) {
     case "trip_requested":
       return "trip_request";
+    case "trip_assigned":
+      // Direct dispatch assignment — use the gentler "trip accepted" sound for the driver,
+      // not the loud looping trip-request sound.
+      return "driver_trip_accepted";
     case "trip_accepted":
       return isDriver ? "driver_trip_accepted" : "passenger_accepted";
     case "driver_arrived":
