@@ -128,7 +128,7 @@ messaging.onBackgroundMessage((payload) => {
       }
 
       // Auto-focus for important events
-      const autoFocusTypes = ["trip_requested", "sos_alert", "trip_accepted", "driver_arrived", "trip_started", "trip_completed", "trip_cancelled"];
+      const autoFocusTypes = ["trip_requested", "trip_assigned", "sos_alert", "trip_accepted", "driver_arrived", "trip_started", "trip_completed", "trip_cancelled"];
       if (autoFocusTypes.includes(type) && "focus" in client) {
         client.focus().catch(() => {});
         client.postMessage({
