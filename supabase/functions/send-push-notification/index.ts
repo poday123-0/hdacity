@@ -76,6 +76,10 @@ function getSoundCategory(notificationType: string, recipientUserType: string): 
   switch (notificationType) {
     case "trip_requested":
       return "trip_request";
+    case "trip_assigned":
+      // Direct dispatch assignment — use the gentler "trip accepted" sound for the driver,
+      // not the loud looping trip-request sound.
+      return "driver_trip_accepted";
     case "trip_accepted":
       return isDriver ? "driver_trip_accepted" : "passenger_accepted";
     case "driver_arrived":
@@ -298,8 +302,9 @@ Deno.serve(async (req) => {
       filteredTokens.map(async (t: any) => {
         const type = data?.type || "default";
         const isTripRequest = type === "trip_requested";
+        const isTripAssigned = type === "trip_assigned";
         const isSOS = type === "sos_alert";
-        const isUrgent = isTripRequest || isSOS;
+        const isUrgent = isTripRequest || isSOS || isTripAssigned;
 
         // Resolve sound category and URL based on recipient's user type
         const soundCategory = getSoundCategory(type, t.user_type || "passenger");
@@ -352,11 +357,19 @@ Deno.serve(async (req) => {
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
               sound: nativeBackgroundSound || undefined,
-              default_sound: !isTripRequest,
-              channel_id: isTripRequest ? "trip_requests_v2" : isSOS ? "sos_alerts_v2" : "general_v2",
+              default_sound: !isTripRequest && !isTripAssigned,
+              channel_id: isTripRequest
+                ? "trip_requests_v2"
+                : isTripAssigned
+                ? "trip_assigned_v2"
+                : isSOS
+                ? "sos_alerts_v2"
+                : "general_v2",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               vibrate_timings: isTripRequest
                 ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
+                : isTripAssigned
+                ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
                 : ["0.2s", "0.1s", "0.2s"],
               default_vibrate_timings: false,
             },
@@ -386,7 +399,7 @@ Deno.serve(async (req) => {
             // This ensures only the SW's onBackgroundMessage handler fires,
             // preventing duplicate notifications (browser auto-display + SW display).
             // The SW will show the notification AND play the custom admin sound.
-            fcm_options: { link: isTripRequest ? "/driver" : isSOS ? "/admin" : "/" },
+            fcm_options: { link: (isTripRequest || isTripAssigned) ? "/driver" : isSOS ? "/admin" : "/" },
           },
         };
 

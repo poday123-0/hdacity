@@ -279,20 +279,23 @@ const AdminTrips = () => {
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
-                              // Re-broadcast to all online drivers
-                              const { data: onlineDrivers } = await supabase
+                              // Re-broadcast to all eligible online drivers (filtered by vehicle type)
+                              let dlQuery = supabase
                                 .from("driver_locations")
                                 .select("driver_id")
-                                .eq("is_online", true);
+                                .eq("is_online", true)
+                                .eq("is_on_trip", false);
+                              if (t.vehicle_type_id) dlQuery = dlQuery.eq("vehicle_type_id", t.vehicle_type_id);
+                              const { data: onlineDrivers } = await dlQuery;
                               if (onlineDrivers && onlineDrivers.length > 0) {
                                 const driverIds = onlineDrivers.map((d: any) => d.driver_id);
-                                await notifyTripRequested(driverIds, t.id, t.pickup_address);
+                                await notifyTripRequested(driverIds, t.id, t.pickup_address, t.vehicle_type_id || undefined);
                                 // Also change status to requested so drivers see it as a normal trip
                                 await supabase.from("trips").update({ status: "requested" }).eq("id", t.id);
-                                toast({ title: "Sent to drivers", description: `Notified ${driverIds.length} online driver(s)` });
+                                toast({ title: "Sent to drivers", description: `Notified ${driverIds.length} eligible driver(s)` });
                                 fetchTrips();
                               } else {
-                                toast({ title: "No drivers online", description: "No drivers are currently online to receive this trip.", variant: "destructive" });
+                                toast({ title: "No eligible drivers online", description: "No drivers of the requested vehicle type are currently online.", variant: "destructive" });
                               }
                             }}
                             className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"

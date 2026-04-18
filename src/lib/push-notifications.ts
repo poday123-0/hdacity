@@ -103,6 +103,18 @@ export const notifyTripRequested = async (driverIds: string[], tripId: string, p
   );
 };
 
+/** Notify a single driver that a dispatcher has DIRECTLY assigned a trip to them.
+ *  Uses a different type than `trip_requested` so the receiver shows it as
+ *  "Dispatch Trip Assigned" — not as a regular "New Ride Request" popup. */
+export const notifyTripAssigned = async (driverId: string, tripId: string, pickupAddress: string) => {
+  await sendPushNotification(
+    [driverId],
+    "📋 Dispatch Trip Assigned",
+    `Pickup: ${pickupAddress}`,
+    { trip_id: tripId, type: "trip_assigned" }
+  );
+};
+
 /** Notify passenger that a driver accepted */
 export const notifyTripAccepted = async (passengerId: string, driverName: string, tripId: string) => {
   await sendPushNotification(
