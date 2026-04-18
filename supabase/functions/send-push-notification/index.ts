@@ -357,11 +357,19 @@ Deno.serve(async (req) => {
             ttl: isUrgent ? "0s" : "86400s",
             notification: {
               sound: nativeBackgroundSound || undefined,
-              default_sound: !isTripRequest,
-              channel_id: isTripRequest ? "trip_requests_v2" : isSOS ? "sos_alerts_v2" : "general_v2",
+              default_sound: !isTripRequest && !isTripAssigned,
+              channel_id: isTripRequest
+                ? "trip_requests_v2"
+                : isTripAssigned
+                ? "trip_assigned_v2"
+                : isSOS
+                ? "sos_alerts_v2"
+                : "general_v2",
               notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               vibrate_timings: isTripRequest
                 ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
+                : isTripAssigned
+                ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
                 : ["0.2s", "0.1s", "0.2s"],
               default_vibrate_timings: false,
             },
