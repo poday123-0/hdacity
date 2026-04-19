@@ -290,8 +290,16 @@ const AdminNamedLocations = () => {
   };
 
   const openEdit = (loc: any) => {
-    setForm({ name: loc.name || "", address: loc.address || "", description: loc.description || "", lat: String(loc.lat), lng: String(loc.lng) });
-    setEditingId(loc.id); setShowForm(true);
+    // Close form first so the map effect re-runs cleanly with the new pin
+    setShowForm(false);
+    if (markerRef.current) { markerRef.current.remove(); markerRef.current = null; }
+    setTimeout(() => {
+      setForm({ name: loc.name || "", address: loc.address || "", description: loc.description || "", lat: String(loc.lat), lng: String(loc.lng) });
+      setEditingId(loc.id);
+      setShowForm(true);
+      // Scroll into view after the form mounts
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    }, 30);
   };
 
   const handleSubmit = async () => {
