@@ -549,40 +549,73 @@ const AdminNamedLocations = () => {
         </div>
       )}
 
-      {/* Pending approvals */}
-      {pendingCount > 0 && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-surface/50 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-yellow-600" />
-            <p className="text-sm font-bold text-foreground">Pending Suggestions</p>
-            <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2 py-0.5 rounded-full">{pendingCount}</span>
-          </div>
-          <div className="divide-y divide-border">
-            {locations.filter(l => l.status === "pending").map(loc => (
-              <div key={loc.id} className="px-4 py-3 flex items-center gap-4">
-                <MapPin className="w-4 h-4 text-yellow-500 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">{loc.name}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {loc.address} · Suggested by {loc.profiles ? `${loc.profiles.first_name} ${loc.profiles.last_name}` : "Unknown"} ({loc.suggested_by_type})
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => openEdit(loc)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-surface text-foreground border border-border hover:bg-muted">
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                  <button onClick={() => approveLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-600 text-white hover:bg-green-700">
-                    <Check className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => rejectLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
-                    <XCircle className="w-3.5 h-3.5" /> Reject
-                  </button>
-                </div>
+      {/* Pending approvals (collapsible) */}
+      {pendingCount > 0 && (() => {
+        // Build duplicate name index across ALL locations (case-insensitive, trimmed)
+        const nameCounts = new Map<string, number>();
+        locations.forEach(l => {
+          const k = (l.name || "").trim().toLowerCase();
+          if (k) nameCounts.set(k, (nameCounts.get(k) || 0) + 1);
+        });
+        const pending = locations.filter(l => l.status === "pending");
+        const duplicateCount = pending.filter(l => (nameCounts.get((l.name || "").trim().toLowerCase()) || 0) > 1).length;
+        return (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setPendingCollapsed(c => !c)}
+              className="w-full px-4 py-3 border-b border-border bg-surface/50 flex items-center gap-2 hover:bg-surface transition-colors"
+            >
+              <Clock className="w-4 h-4 text-yellow-600" />
+              <p className="text-sm font-bold text-foreground">Pending Suggestions</p>
+              <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2 py-0.5 rounded-full">{pendingCount}</span>
+              {duplicateCount > 0 && (
+                <span className="text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> {duplicateCount} duplicate{duplicateCount > 1 ? "s" : ""}
+                </span>
+              )}
+              <span className="ml-auto text-muted-foreground">
+                {pendingCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </span>
+            </button>
+            {!pendingCollapsed && (
+              <div className="divide-y divide-border">
+                {pending.map(loc => {
+                  const isDup = (nameCounts.get((loc.name || "").trim().toLowerCase()) || 0) > 1;
+                  return (
+                    <div key={loc.id} className={`px-4 py-3 flex items-center gap-4 ${isDup ? "bg-orange-50/50 dark:bg-orange-500/5" : ""}`}>
+                      <MapPin className={`w-4 h-4 shrink-0 ${isDup ? "text-orange-500" : "text-yellow-500"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate flex items-center gap-2">
+                          {loc.name}
+                          {isDup && (
+                            <span className="text-[9px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                              <AlertTriangle className="w-2.5 h-2.5" /> DUPLICATE
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {loc.address} · Suggested by {loc.profiles ? `${loc.profiles.first_name} ${loc.profiles.last_name}` : "Unknown"} ({loc.suggested_by_type})
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => openEdit(loc)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-surface text-foreground border border-border hover:bg-muted">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => approveLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-600 text-white hover:bg-green-700">
+                          <Check className="w-3.5 h-3.5" /> Approve
+                        </button>
+                        <button onClick={() => rejectLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Search and filters */}
       <div className="bg-card border border-border rounded-2xl p-3 space-y-3">
