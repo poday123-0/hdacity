@@ -329,52 +329,88 @@ const AdminNamedLocations = () => {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-foreground">Named Locations</h2>
-          <p className="text-sm text-muted-foreground">{filtered.length} of {locations.length} locations{pendingCount > 0 && ` · ${pendingCount} pending approval`}</p>
+          <h2 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
+            <MapPin className="w-6 h-6 text-primary" />
+            Named Locations
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {filtered.length} of {locations.length} locations
+            {pendingCount > 0 && <> · <span className="text-yellow-600 dark:text-yellow-400 font-semibold">{pendingCount} pending</span></>}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          {locations.length > 0 && !batchMode && !showForm && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-                  <Trash2 className="w-4 h-4" /> Delete All
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete All Locations?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete all {locations.length} named locations. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
-                    const { error } = await supabase.from("named_locations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-                    else { toast({ title: "All locations deleted" }); fetchLocations(); }
-                  }}>Delete All</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <button onClick={importFromOSM} disabled={osmImporting} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
-            <Globe className="w-4 h-4" />
-            {osmImporting ? "Importing..." : "Import from OSM (Free)"}
-          </button>
-          <button onClick={() => { if (batchMode) closeBatchMode(); else { resetForm(); setBatchMode(true); } }} className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-            {batchMode ? <X className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
-            {batchMode ? "Cancel Batch" : "Batch Add"}
-          </button>
-          {!batchMode && (
-            <button onClick={() => showForm ? resetForm() : setShowForm(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold">
-              {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {showForm ? "Cancel" : "Add Location"}
+
+        {/* Primary actions */}
+        {!batchMode && !showForm && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 active:scale-[0.97] transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Location
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => { resetForm(); setBatchMode(true); }}
+              className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-secondary/80 active:scale-[0.97] transition-all"
+              title="Drop multiple pins at once"
+            >
+              <Layers className="w-4 h-4" /> Batch Add
+            </button>
+
+            {/* Overflow menu */}
+            <div className="relative group">
+              <button className="p-2.5 rounded-xl bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="More actions">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/></svg>
+              </button>
+              <div className="absolute right-0 top-full mt-1 hidden group-hover:block z-20 w-56 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                <button
+                  onClick={importFromOSM}
+                  disabled={osmImporting}
+                  className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-muted flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Globe className="w-4 h-4 text-emerald-600" />
+                  {osmImporting ? "Importing…" : "Import from OSM (Free)"}
+                </button>
+                {locations.length > 0 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="w-full text-left px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2 border-t border-border">
+                        <Trash2 className="w-4 h-4" /> Delete All Locations
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete All Locations?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete all {locations.length} named locations. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+                          const { error } = await supabase.from("named_locations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                          if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+                          else { toast({ title: "All locations deleted" }); fetchLocations(); }
+                        }}>Delete All</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(batchMode || showForm) && (
+          <button
+            onClick={() => { batchMode ? closeBatchMode() : resetForm(); }}
+            className="flex items-center gap-2 bg-muted text-foreground px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-muted/70"
+          >
+            <X className="w-4 h-4" /> Close
+          </button>
+        )}
       </div>
 
       {/* Batch mode */}
