@@ -43,14 +43,21 @@ const AdminDutyHours = () => {
 
     const now = new Date();
     if (dateFilter === "today") {
+      // Start of today (local midnight)
       const start = new Date(now);
       start.setHours(0, 0, 0, 0);
       query = query.gte("clock_in", start.toISOString());
     } else if (dateFilter === "week") {
-      const start = new Date(now.getTime() - 7 * 86400000);
+      // Start of current ISO week (Monday 00:00 local)
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      const day = start.getDay(); // 0 (Sun) – 6 (Sat)
+      const diffToMonday = day === 0 ? 6 : day - 1;
+      start.setDate(start.getDate() - diffToMonday);
       query = query.gte("clock_in", start.toISOString());
     } else if (dateFilter === "month") {
-      const start = new Date(now.getTime() - 30 * 86400000);
+      // Start of current calendar month (1st 00:00 local)
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
       query = query.gte("clock_in", start.toISOString());
     }
 

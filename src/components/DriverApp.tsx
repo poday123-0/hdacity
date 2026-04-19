@@ -1407,11 +1407,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     }
 
-    // Vibrate to alert driver
+    // Vibrate to alert driver (strong pattern for dispatch assignment)
     try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
 
-    // Play accepted sound (not looping request sound)
-    fetchSoundUrl("driver_sound_accepted").then(u => playSound(u));
+    // Play the driver's "trip accepted" sound from notification_sounds table.
+    // (The legacy "driver_sound_accepted" key in system_settings doesn't exist —
+    // sounds live in the notification_sounds table by category.)
+    supabase
+      .from("notification_sounds")
+      .select("file_url")
+      .eq("category", "driver_trip_accepted")
+      .eq("is_default", true)
+      .eq("is_active", true)
+      .single()
+      .then(({ data }) => {
+        if (data?.file_url) playSound(data.file_url);
+        else playFallbackBeep(880, 0.25);
+      });
 
     // Fetch passenger profile and trip stops
     const [pProfileRes, stopsRes] = await Promise.all([
@@ -1746,6 +1758,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (detail?.type === "trip_requested") {
         const pushTripId = detail?.trip_id;
         console.log("FCM foreground trip_requested received — direct fetch trip:", pushTripId);
+        triggerCheck(pushTripId);
+      } else if (detail?.type === "trip_assigned") {
+        const pushTripId = detail?.trip_id;
+        console.log("FCM foreground trip_assigned received — direct fetch trip:", pushTripId);
         triggerCheck(pushTripId);
       }
     };
