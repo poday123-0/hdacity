@@ -100,9 +100,11 @@ const AdminNamedLocations = () => {
     });
   }, [locations]);
 
-  // Init main map
+  // Init main map (re-init each time the form opens so it always renders fresh)
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
+    if (!showForm || !mapRef.current) return;
+    if (mapInstance.current) return;
+
     const map = L.map(mapRef.current, {
       center: [MALE_CENTER.lat, MALE_CENTER.lng],
       zoom: 14,
@@ -111,7 +113,40 @@ const AdminNamedLocations = () => {
     });
     L.tileLayer(getTileUrl(), { maxZoom: 19 }).addTo(map);
     mapInstance.current = map;
-  }, [showForm]);
+
+    // Force size recalculation after the panel mounts so tiles paint instantly
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      // If editing, jump straight to the existing pin
+      const lat = parseFloat(form.lat);
+      const lng = parseFloat(form.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        map.setView([lat, lng], 17);
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+          html: `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>`,
+        });
+        markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
+        markerRef.current.on("dragend", () => {
+          const pos = markerRef.current!.getLatLng();
+          setForm(prev => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), address: "" }));
+          autoFetchAddress(pos.lat, pos.lng);
+        });
+      }
+    });
+
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+      markerRef.current = null;
+      locationMarkersRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, editingId]);
 
   useEffect(() => { renderMarkers(); }, [locations, renderMarkers]);
 
