@@ -640,9 +640,32 @@ const AdminNamedLocations = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                <div className="inline-flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  Loading locations…
+                </div>
+              </td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No locations found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-16 text-center">
+                <MapPin className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-base font-semibold text-foreground mb-1">
+                  {locations.length === 0 ? "No locations yet" : "No locations match your filters"}
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {locations.length === 0
+                    ? "Add your first named location to help passengers and drivers find places quickly."
+                    : "Try clearing the search or changing the status filter."}
+                </p>
+                {locations.length === 0 && (
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold"
+                  >
+                    <Plus className="w-4 h-4" /> Add First Location
+                  </button>
+                )}
+              </td></tr>
             ) : (() => {
               // Group locations by group_name
               const grouped: Record<string, typeof filtered> = {};
