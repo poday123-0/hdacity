@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 import { notifyTripRequested, notifyTripAssigned } from "@/lib/push-notifications";
+import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -911,20 +912,28 @@ const DispatchTripForm = ({
           toast({ title: "No online drivers", description: "Trip cancelled — no drivers available", variant: "destructive" });
           onTripCreated();
         } else {
-          const nearbyDrivers = broadcastDriversCache
+          // Filter by each driver's personal trip_radius_km (replaces hardcoded 2km)
+          const eligibleIds = await filterDriversByPersonalRadius(
+            broadcastDriversCache as any[],
+            pickup.lat,
+            pickup.lng
+          );
+          // Sort by distance and cap to 10 nearest, preserving radius filter
+          const eligibleSet = new Set(eligibleIds);
+          const nearbyDrivers = (broadcastDriversCache as any[])
+            .filter((d: any) => eligibleSet.has(d.driver_id))
             .map((d: any) => ({ ...d, dist: haversineKm(pickup.lat, pickup.lng, d.lat, d.lng) }))
-            .filter((d: any) => d.dist <= 2)
             .sort((a: any, b: any) => a.dist - b.dist)
             .slice(0, 10);
 
           if (nearbyDrivers.length === 0) {
-            // No drivers within range — immediately cancel
+            // No drivers within their personal radius — immediately cancel
             await supabase.from("trips").update({
               status: "cancelled",
               cancelled_at: new Date().toISOString(),
               cancel_reason: "No drivers available in area",
             }).eq("id", tripId);
-            toast({ title: "No drivers within 2km", description: "Trip cancelled — no nearby drivers", variant: "destructive" });
+            toast({ title: "No drivers in range", description: "Trip cancelled — no drivers within their set radius", variant: "destructive" });
             onTripCreated();
           } else {
             // Send push notification immediately — no awaits needed

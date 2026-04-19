@@ -24,6 +24,7 @@ import RideFeedback from "@/components/RideFeedback";
 import DriverApp from "@/components/DriverApp";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyTripRequested, notifyTripCancelled } from "@/lib/push-notifications";
+import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import { toast } from "@/hooks/use-toast";
 import { fetchSoundUrls, playSound } from "@/lib/sound-utils";
 import SOSButton from "@/components/SOSButton";
@@ -788,17 +789,19 @@ const Index = () => {
 
       // For scheduled rides, send push notification immediately to online drivers, then show confirmation
       if (bookingType === "scheduled") {
-        // Notify only eligible online drivers
+        // Notify only eligible online drivers (matching vehicle type AND within their personal radius)
         try {
           const { data: locData } = await supabase
             .from("driver_locations")
-            .select("driver_id, vehicle_type_id")
+            .select("driver_id, lat, lng, vehicle_type_id")
             .eq("is_online", true)
             .eq("vehicle_type_id", selectedVehicleType.id);
           const eligible = locData || [];
           if (eligible.length > 0) {
-            const driverIds = eligible.map((d: any) => d.driver_id);
-            await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
+            const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
+            if (driverIds.length > 0) {
+              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
+            }
           }
         } catch (pushErr) {
           console.warn("Push notification failed:", pushErr);
@@ -820,19 +823,21 @@ const Index = () => {
 
       setPassengerScreen("searching");
 
-      // Send push notification to online drivers
+      // Send push notification ONLY to drivers matching vehicle type AND within their personal radius
       if (data.status === "requested") {
         try {
           const { data: locData } = await supabase
             .from("driver_locations")
-            .select("driver_id, vehicle_type_id")
+            .select("driver_id, lat, lng, vehicle_type_id")
             .eq("is_online", true)
             .eq("is_on_trip", false)
             .eq("vehicle_type_id", selectedVehicleType.id);
           const eligible = locData || [];
           if (eligible.length > 0) {
-            const driverIds = eligible.map((d: any) => d.driver_id);
-            await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
+            const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
+            if (driverIds.length > 0) {
+              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
+            }
           }
         } catch (pushErr) {
           console.warn("Push notification failed:", pushErr);
