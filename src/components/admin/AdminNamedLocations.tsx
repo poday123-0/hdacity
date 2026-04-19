@@ -540,23 +540,41 @@ const AdminNamedLocations = () => {
       )}
 
       {/* Search and filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search locations..." className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+      <div className="bg-card border border-border rounded-2xl p-3 space-y-3">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, address, or group…"
+            className="w-full pl-12 pr-4 py-3 bg-surface border border-border rounded-xl text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
         </div>
-        <div className="flex gap-1.5">
-          {(["all", "approved", "pending", "rejected"] as const).map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}>
-              {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {(["all", "approved", "pending", "rejected"] as const).map(s => {
+            const count = s === "all" ? locations.length : locations.filter(l => l.status === s).length;
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${statusFilter === s ? "bg-primary text-primary-foreground shadow-sm" : "bg-surface text-muted-foreground border border-border hover:text-foreground"}`}
+              >
+                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusFilter === s ? "bg-primary-foreground/20" : "bg-muted/60"}`}>{count}</span>
+              </button>
+            );
+          })}
+          <div className="flex-1 min-w-[8px]" />
+          <select
+            value={groupFilter}
+            onChange={e => setGroupFilter(e.target.value)}
+            className="px-3 py-2 bg-surface border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="all">All Groups</option>
+            <option value="__none__">Ungrouped</option>
+            {groups.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
         </div>
-        <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-          <option value="all">All Groups</option>
-          <option value="__none__">Ungrouped</option>
-          {groups.map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
       </div>
 
       {/* Bulk group assignment */}
