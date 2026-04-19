@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag, ChevronRight, ChevronDown, Download, Globe } from "lucide-react";
+import { Plus, X, Pencil, Trash2, MapPin, Search, Check, XCircle, Clock, Layers, FolderOpen, Tag, ChevronRight, ChevronDown, ChevronUp, Download, Globe, AlertTriangle } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
@@ -34,12 +34,14 @@ const AdminNamedLocations = () => {
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [bulkGroupName, setBulkGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pendingCollapsed, setPendingCollapsed] = useState(false);
   const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const locationMarkersRef = useRef<any[]>([]);
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Batch mode state
   const [batchMode, setBatchMode] = useState(false);
@@ -98,9 +100,11 @@ const AdminNamedLocations = () => {
     });
   }, [locations]);
 
-  // Init main map
+  // Init main map (re-init each time the form opens so it always renders fresh)
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
+    if (!showForm || !mapRef.current) return;
+    if (mapInstance.current) return;
+
     const map = L.map(mapRef.current, {
       center: [MALE_CENTER.lat, MALE_CENTER.lng],
       zoom: 14,
@@ -109,7 +113,40 @@ const AdminNamedLocations = () => {
     });
     L.tileLayer(getTileUrl(), { maxZoom: 19 }).addTo(map);
     mapInstance.current = map;
-  }, [showForm]);
+
+    // Force size recalculation after the panel mounts so tiles paint instantly
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      // If editing, jump straight to the existing pin
+      const lat = parseFloat(form.lat);
+      const lng = parseFloat(form.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        map.setView([lat, lng], 17);
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+          html: `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>`,
+        });
+        markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
+        markerRef.current.on("dragend", () => {
+          const pos = markerRef.current!.getLatLng();
+          setForm(prev => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), address: "" }));
+          autoFetchAddress(pos.lat, pos.lng);
+        });
+      }
+    });
+
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+      markerRef.current = null;
+      locationMarkersRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, editingId]);
 
   useEffect(() => { renderMarkers(); }, [locations, renderMarkers]);
 
@@ -253,8 +290,16 @@ const AdminNamedLocations = () => {
   };
 
   const openEdit = (loc: any) => {
-    setForm({ name: loc.name || "", address: loc.address || "", description: loc.description || "", lat: String(loc.lat), lng: String(loc.lng) });
-    setEditingId(loc.id); setShowForm(true);
+    // Close form first so the map effect re-runs cleanly with the new pin
+    setShowForm(false);
+    if (markerRef.current) { markerRef.current.remove(); markerRef.current = null; }
+    setTimeout(() => {
+      setForm({ name: loc.name || "", address: loc.address || "", description: loc.description || "", lat: String(loc.lat), lng: String(loc.lng) });
+      setEditingId(loc.id);
+      setShowForm(true);
+      // Scroll into view after the form mounts
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    }, 30);
   };
 
   const handleSubmit = async () => {
@@ -470,7 +515,7 @@ const AdminNamedLocations = () => {
 
       {/* Single add form */}
       {showForm && !batchMode && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div ref={formRef} className="bg-card border border-border rounded-xl p-5 space-y-4 scroll-mt-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Location" : "New Named Location"}</h3>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
             <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
@@ -504,40 +549,73 @@ const AdminNamedLocations = () => {
         </div>
       )}
 
-      {/* Pending approvals */}
-      {pendingCount > 0 && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-surface/50 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-yellow-600" />
-            <p className="text-sm font-bold text-foreground">Pending Suggestions</p>
-            <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2 py-0.5 rounded-full">{pendingCount}</span>
-          </div>
-          <div className="divide-y divide-border">
-            {locations.filter(l => l.status === "pending").map(loc => (
-              <div key={loc.id} className="px-4 py-3 flex items-center gap-4">
-                <MapPin className="w-4 h-4 text-yellow-500 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">{loc.name}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {loc.address} · Suggested by {loc.profiles ? `${loc.profiles.first_name} ${loc.profiles.last_name}` : "Unknown"} ({loc.suggested_by_type})
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => openEdit(loc)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-surface text-foreground border border-border hover:bg-muted">
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                  <button onClick={() => approveLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-600 text-white hover:bg-green-700">
-                    <Check className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => rejectLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
-                    <XCircle className="w-3.5 h-3.5" /> Reject
-                  </button>
-                </div>
+      {/* Pending approvals (collapsible) */}
+      {pendingCount > 0 && (() => {
+        // Build duplicate name index across ALL locations (case-insensitive, trimmed)
+        const nameCounts = new Map<string, number>();
+        locations.forEach(l => {
+          const k = (l.name || "").trim().toLowerCase();
+          if (k) nameCounts.set(k, (nameCounts.get(k) || 0) + 1);
+        });
+        const pending = locations.filter(l => l.status === "pending");
+        const duplicateCount = pending.filter(l => (nameCounts.get((l.name || "").trim().toLowerCase()) || 0) > 1).length;
+        return (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setPendingCollapsed(c => !c)}
+              className="w-full px-4 py-3 border-b border-border bg-surface/50 flex items-center gap-2 hover:bg-surface transition-colors"
+            >
+              <Clock className="w-4 h-4 text-yellow-600" />
+              <p className="text-sm font-bold text-foreground">Pending Suggestions</p>
+              <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400 px-2 py-0.5 rounded-full">{pendingCount}</span>
+              {duplicateCount > 0 && (
+                <span className="text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> {duplicateCount} duplicate{duplicateCount > 1 ? "s" : ""}
+                </span>
+              )}
+              <span className="ml-auto text-muted-foreground">
+                {pendingCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </span>
+            </button>
+            {!pendingCollapsed && (
+              <div className="divide-y divide-border">
+                {pending.map(loc => {
+                  const isDup = (nameCounts.get((loc.name || "").trim().toLowerCase()) || 0) > 1;
+                  return (
+                    <div key={loc.id} className={`px-4 py-3 flex items-center gap-4 ${isDup ? "bg-orange-50/50 dark:bg-orange-500/5" : ""}`}>
+                      <MapPin className={`w-4 h-4 shrink-0 ${isDup ? "text-orange-500" : "text-yellow-500"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate flex items-center gap-2">
+                          {loc.name}
+                          {isDup && (
+                            <span className="text-[9px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                              <AlertTriangle className="w-2.5 h-2.5" /> DUPLICATE
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {loc.address} · Suggested by {loc.profiles ? `${loc.profiles.first_name} ${loc.profiles.last_name}` : "Unknown"} ({loc.suggested_by_type})
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => openEdit(loc)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-surface text-foreground border border-border hover:bg-muted">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => approveLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-600 text-white hover:bg-green-700">
+                          <Check className="w-3.5 h-3.5" /> Approve
+                        </button>
+                        <button onClick={() => rejectLocation(loc.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Search and filters */}
       <div className="bg-card border border-border rounded-2xl p-3 space-y-3">
