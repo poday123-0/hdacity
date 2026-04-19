@@ -1759,6 +1759,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const pushTripId = detail?.trip_id;
         console.log("FCM foreground trip_requested received — direct fetch trip:", pushTripId);
         triggerCheck(pushTripId);
+      } else if (detail?.type === "trip_assigned") {
+        const pushTripId = detail?.trip_id;
+        console.log("FCM foreground trip_assigned received — direct fetch trip:", pushTripId);
+        triggerCheck(pushTripId);
       }
     };
     window.addEventListener("fcm-foreground-trip", onFcmForegroundTrip);
