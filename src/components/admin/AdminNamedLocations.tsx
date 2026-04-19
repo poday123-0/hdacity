@@ -515,7 +515,7 @@ const AdminNamedLocations = () => {
 
       {/* Single add form */}
       {showForm && !batchMode && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div ref={formRef} className="bg-card border border-border rounded-xl p-5 space-y-4 scroll-mt-4">
           <h3 className="font-semibold text-foreground">{editingId ? "Edit Location" : "New Named Location"}</h3>
           <div className="rounded-xl overflow-hidden border border-border" style={{ height: 350 }}>
             <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
