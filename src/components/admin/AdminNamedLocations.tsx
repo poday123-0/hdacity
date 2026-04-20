@@ -35,6 +35,13 @@ const AdminNamedLocations = () => {
   const [bulkGroupName, setBulkGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingCollapsed, setPendingCollapsed] = useState(false);
+  // Google Places search (auto-fill name + lat/lng + address)
+  const [placesQuery, setPlacesQuery] = useState("");
+  const [placesResults, setPlacesResults] = useState<any[]>([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [placesOpen, setPlacesOpen] = useState(false);
+  const placesDebounce = useRef<ReturnType<typeof setTimeout>>();
+  const mapsKeyRef = useRef<string | null>(null);
   const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
   const mapRef = useRef<HTMLDivElement>(null);
