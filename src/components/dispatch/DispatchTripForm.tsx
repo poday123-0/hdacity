@@ -816,29 +816,12 @@ const DispatchTripForm = ({
 
     setSubmitting(true);
     try {
-      // Check if assigned vehicle is blocked
-      if (assignedEntry) {
-        const { data: veh } = await supabase
-          .from("vehicles")
-          .select("blocked_until")
-          .eq("center_code", assignedEntry.code)
-          .limit(1)
-          .maybeSingle();
-        if (veh?.blocked_until && new Date(veh.blocked_until as string) > new Date()) {
-          const remaining = Math.ceil((new Date(veh.blocked_until as string).getTime() - Date.now()) / 60000);
-          toast({ title: "Vehicle blocked", description: `${assignedEntry.code} is blocked for ${remaining} more minutes`, variant: "destructive" });
-          setSubmitting(false);
-          return;
-        }
-      }
       const customerName = "Dispatch";
-
-      // Pre-fetch broadcast data in parallel with trip insert for zero-delay notifications
-      let broadcastDriversCache: any[] | null = null;
-      let broadcastTimeoutMsCache = 60_000;
-
+      const isAssigned = !!assignedDriverId;
       const isBroadcast = dispatchMethod === "broadcast";
 
+      // Build the trip payload up-front so the offline branch can queue it
+      // without doing ANY network round-trips first.
       const tripPayload: any = {
         pickup_address: pickup.address,
         pickup_lat: pickup.lat,
@@ -862,13 +845,37 @@ const DispatchTripForm = ({
         booking_notes: (centerCodeResults.length > 0 && !isBroadcast) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")}` : null,
       };
 
-      // If offline, queue the trip instead of submitting
+      // OFFLINE: queue immediately, do not attempt any supabase calls.
+      // Without this guard the "blocked vehicle" pre-check below would hang
+      // forever on a dead connection and leave the Assign button spinning.
       if (!isOnline && onOfflineQueue) {
         onOfflineQueue(tripPayload);
         clearForm();
         onTripCreated();
+        setSubmitting(false);
         return;
       }
+
+      // Check if assigned vehicle is blocked (online only)
+      if (assignedEntry) {
+        const { data: veh } = await supabase
+          .from("vehicles")
+          .select("blocked_until")
+          .eq("center_code", assignedEntry.code)
+          .limit(1)
+          .maybeSingle();
+        if (veh?.blocked_until && new Date(veh.blocked_until as string) > new Date()) {
+          const remaining = Math.ceil((new Date(veh.blocked_until as string).getTime() - Date.now()) / 60000);
+          toast({ title: "Vehicle blocked", description: `${assignedEntry.code} is blocked for ${remaining} more minutes`, variant: "destructive" });
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // Pre-fetch broadcast data in parallel with trip insert for zero-delay notifications
+      let broadcastDriversCache: any[] | null = null;
+      let broadcastTimeoutMsCache = 60_000;
+
 
       // Fire trip insert + broadcast pre-fetch in parallel
       const tripInsertPromise = supabase.from("trips").insert(tripPayload).select("*").single();
