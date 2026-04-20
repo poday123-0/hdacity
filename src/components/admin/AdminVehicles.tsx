@@ -765,6 +765,17 @@ const AdminVehicles = () => {
             )}
           </tbody>
         </table>
+        {!loading && filtered.length > visibleVehicles.length && (
+          <div className="border-t border-border px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Showing {visibleVehicles.length} of {filtered.length} vehicles</p>
+            <button
+              onClick={() => setVisibleVehicleCount((prev) => prev + VEHICLES_PAGE_SIZE)}
+              className="px-4 py-2 rounded-xl bg-surface text-foreground text-xs font-semibold hover:bg-muted transition-colors"
+            >
+              Load more vehicles
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
