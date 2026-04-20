@@ -316,7 +316,12 @@ const AdminTrips = () => {
                               const { data: onlineDrivers } = await dlQuery;
                               if (onlineDrivers && onlineDrivers.length > 0) {
                                 const driverIds = onlineDrivers.map((d: any) => d.driver_id);
-                                await notifyTripRequested(driverIds, t.id, t.pickup_address, t.vehicle_type_id || undefined, t.estimated_fare ?? null);
+                                let vtName: string | null = null;
+                                if (t.vehicle_type_id) {
+                                  const { data: vtRow } = await supabase.from("vehicle_types").select("name").eq("id", t.vehicle_type_id).maybeSingle();
+                                  vtName = (vtRow as any)?.name || null;
+                                }
+                                await notifyTripRequested(driverIds, t.id, t.pickup_address, t.vehicle_type_id || undefined, t.estimated_fare ?? null, vtName);
                                 // Also change status to requested so drivers see it as a normal trip
                                 await supabase.from("trips").update({ status: "requested" }).eq("id", t.id);
                                 toast({ title: "Sent to drivers", description: `Notified ${driverIds.length} eligible driver(s)` });

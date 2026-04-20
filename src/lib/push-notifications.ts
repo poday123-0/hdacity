@@ -106,11 +106,12 @@ export const notifyTripRequested = async (
   pickupAddress: string,
   vehicleTypeId?: string,
   estimatedFare?: number | null,
+  vehicleTypeName?: string | null,
 ) => {
   const fareNum = typeof estimatedFare === "number" && !isNaN(estimatedFare) ? estimatedFare : null;
-  const body = fareNum != null && fareNum > 0
-    ? `Fare: ${Math.round(fareNum)} MVR`
-    : "Tap to view";
+  const farePart = fareNum != null && fareNum > 0 ? `Fare: ${Math.round(fareNum)} MVR` : "Tap to view";
+  const namePart = vehicleTypeName && vehicleTypeName.trim() ? `${vehicleTypeName.trim()} · ` : "";
+  const body = `${namePart}${farePart}`;
   await sendPushNotification(
     driverIds,
     "New Ride Request",
@@ -119,6 +120,7 @@ export const notifyTripRequested = async (
       trip_id: tripId,
       type: "trip_requested",
       ...(vehicleTypeId ? { vehicle_type_id: vehicleTypeId } : {}),
+      ...(vehicleTypeName ? { vehicle_type_name: vehicleTypeName } : {}),
       ...(fareNum != null ? { estimated_fare: String(fareNum) } : {}),
     }
   );
