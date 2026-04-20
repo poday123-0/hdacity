@@ -4023,53 +4023,116 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 20 }} className="absolute inset-0 z-[9990] flex items-end sm:items-center justify-center bg-foreground/50 backdrop-blur-sm ride-request-overlay">
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:mx-6 sm:max-w-sm overflow-hidden max-h-[90dvh] flex flex-col">
             {/* Header with countdown */}
-            <div className="bg-gradient-to-b from-primary to-primary/90 px-5 py-5 text-center relative overflow-hidden">
+            {(() => {
+              const isScheduledHdr = currentTrip.booking_type === "scheduled";
+              const isHourlyHdr = currentTrip.booking_type === "hourly";
+              const headerBg = isScheduledHdr
+                ? "bg-gradient-to-br from-violet-600 via-fuchsia-600 to-amber-500"
+                : "bg-gradient-to-b from-primary to-primary/90";
+              return (
+            <div className={`${headerBg} px-5 py-5 text-center relative overflow-hidden`}>
               {/* Decorative circles */}
-              <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-primary-foreground/5" />
-              <div className="absolute -bottom-4 -right-8 w-32 h-32 rounded-full bg-primary-foreground/5" />
-              
+              <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/5" />
+              <div className="absolute -bottom-4 -right-8 w-32 h-32 rounded-full bg-white/5" />
+
+              {/* Animated SCHEDULED ribbon */}
+              {isScheduledHdr && (
+                <motion.div
+                  initial={{ x: -120, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 18 }}
+                  className="absolute top-3 left-3 inline-flex items-center gap-1 bg-amber-300 text-amber-950 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow-lg"
+                >
+                  <motion.span
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1.4, repeat: Infinity }}
+                  >📅</motion.span>
+                  Pre-Booked
+                </motion.div>
+              )}
+
               {/* Countdown timer - top right */}
-              <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center border border-primary-foreground/20">
-                <span className={`text-base font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-primary-foreground"}`}>
+              <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                <span className={`text-base font-bold ${rideRequestCountdown <= 5 ? "text-red-300 animate-pulse" : "text-white"}`}>
                   {rideRequestCountdown}
                 </span>
               </div>
 
-              <p className="text-primary-foreground/70 text-[11px] font-medium uppercase tracking-wider">
-                {currentTrip.booking_type === "scheduled" ? "📅 Scheduled ride" : currentTrip.booking_type === "hourly" ? "⏱ Hourly booking" : "New ride request"}{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
+              <p className={`text-white/80 text-[11px] font-medium uppercase tracking-wider ${isScheduledHdr ? "mt-6" : ""}`}>
+                {isScheduledHdr ? "Scheduled ride • Guaranteed" : isHourlyHdr ? "⏱ Hourly booking" : "New ride request"}{tripStops.length > 0 ? ` • ${tripStops.length} stop${tripStops.length > 1 ? "s" : ""}` : ""}
               </p>
-              
-              <p className="text-3xl font-extrabold text-primary-foreground mt-1.5 tracking-tight">
-                {(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} <span className="text-lg font-semibold text-primary-foreground/80">MVR{currentTrip.booking_type === "hourly" ? "/hr" : ""}</span>
+
+              <p className="text-3xl font-extrabold text-white mt-1.5 tracking-tight drop-shadow">
+                {(currentTrip.estimated_fare ?? 0) + ((currentTrip as any).passenger_bonus || 0)} <span className="text-lg font-semibold text-white/80">MVR{isHourlyHdr ? "/hr" : ""}</span>
               </p>
 
               {(currentTrip as any).passenger_bonus > 0 && (
-                <div className="mt-2 inline-flex items-center gap-2 bg-primary-foreground/15 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary-foreground/10">
-                  <span className="text-primary-foreground/80 text-[11px] font-medium">Base {currentTrip.estimated_fare}</span>
-                  <div className="w-px h-3 bg-primary-foreground/30" />
+                <div className="mt-2 inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/10">
+                  <span className="text-white/80 text-[11px] font-medium">Base {currentTrip.estimated_fare}</span>
+                  <div className="w-px h-3 bg-white/30" />
                   <span className="text-amber-300 text-[11px] font-bold">🔥 +{(currentTrip as any).passenger_bonus} boost</span>
                 </div>
               )}
 
+              {/* Big scheduled time card */}
+              {isScheduledHdr && currentTrip.scheduled_at && (() => {
+                const dt = new Date(currentTrip.scheduled_at);
+                const mins = Math.round((dt.getTime() - Date.now()) / 60000);
+                const countdownText = mins <= 0
+                  ? "Now"
+                  : mins < 60
+                  ? `in ${mins} min`
+                  : mins < 1440
+                  ? `in ${Math.floor(mins / 60)}h ${mins % 60}m`
+                  : `in ${Math.floor(mins / 1440)}d`;
+                return (
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="mt-3 mx-auto inline-flex items-stretch gap-3 bg-white/95 text-slate-900 rounded-2xl pl-3 pr-4 py-2.5 shadow-xl border border-white/40"
+                  >
+                    <div className="flex flex-col items-center justify-center px-2 border-r border-slate-300">
+                      <span className="text-[9px] font-bold text-fuchsia-600 uppercase leading-none">
+                        {dt.toLocaleString([], { month: "short" })}
+                      </span>
+                      <span className="text-2xl font-extrabold leading-none mt-0.5">
+                        {dt.getDate()}
+                      </span>
+                      <span className="text-[9px] font-semibold text-slate-500 leading-none mt-0.5">
+                        {dt.toLocaleString([], { weekday: "short" })}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start justify-center text-left">
+                      <span className="text-lg font-extrabold leading-none">
+                        {dt.toLocaleString([], { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                      <span className="text-[10px] font-bold text-fuchsia-600 leading-tight mt-0.5">
+                        {countdownText}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
               <div className="flex items-center justify-center gap-3 mt-2">
                 {currentTrip.distance_km && (
-                  <span className="text-primary-foreground/60 text-xs font-medium">📍 ~{currentTrip.distance_km} km</span>
-                )}
-                {currentTrip.booking_type === "scheduled" && currentTrip.scheduled_at && (
-                  <span className="text-primary-foreground/60 text-xs font-medium">🕐 {new Date(currentTrip.scheduled_at).toLocaleString()}</span>
+                  <span className="text-white/70 text-xs font-medium">📍 ~{currentTrip.distance_km} km</span>
                 )}
               </div>
 
               {/* Progress bar */}
-              <div className="mt-3 h-1 bg-primary-foreground/15 rounded-full overflow-hidden">
+              <div className="mt-3 h-1 bg-white/15 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-primary-foreground/50 rounded-full"
+                  className="h-full bg-white/50 rounded-full"
                   initial={{ width: "100%" }}
                   animate={{ width: "0%" }}
                   transition={{ duration: acceptTimeoutSeconds, ease: "linear" }}
                 />
               </div>
             </div>
+              );
+            })()}
 
             {/* Mini map preview */}
             <div className="h-40 sm:h-56 w-full shrink-0">
