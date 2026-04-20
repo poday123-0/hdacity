@@ -403,6 +403,49 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     return () => { map.off("click", handleClick); };
   }, [drawMode]);
 
+  // Redraw mode for editing existing closure geometry
+  useEffect(() => {
+    if (!editRedrawing || !mapInstance.current) return;
+    const map = mapInstance.current;
+
+    // Clear any temp markers/line from previous draw
+    drawTempMarkersRef.current.forEach(m => map.removeLayer(m));
+    drawTempMarkersRef.current = [];
+    if (drawTempLineRef.current) { map.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+    setEditClosureCoords([]);
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      const pos = { lat: e.latlng.lat, lng: e.latlng.lng };
+      const icon = L.divIcon({
+        className: "",
+        iconSize: editClosureType === "point" ? [20, 20] : [12, 12],
+        iconAnchor: editClosureType === "point" ? [10, 10] : [6, 6],
+        html: `<div style="width:${editClosureType === "point" ? 20 : 12}px;height:${editClosureType === "point" ? 20 : 12}px;border-radius:50%;background:#3b82f6;opacity:0.9;border:2px solid white"></div>`,
+      });
+      const m = L.marker([pos.lat, pos.lng], { icon }).addTo(map);
+      drawTempMarkersRef.current.push(m);
+
+      setEditClosureCoords((prev) => {
+        const updated = editClosureType === "point" ? [pos] : [...prev, pos];
+        if (editClosureType === "point") {
+          // Remove all but the last marker for point mode
+          drawTempMarkersRef.current.slice(0, -1).forEach(mm => map.removeLayer(mm));
+          drawTempMarkersRef.current = drawTempMarkersRef.current.slice(-1);
+        } else if (updated.length > 1) {
+          if (drawTempLineRef.current) map.removeLayer(drawTempLineRef.current);
+          drawTempLineRef.current = L.polyline(
+            updated.map(p => [p.lat, p.lng] as [number, number]),
+            { color: "#3b82f6", weight: 5, opacity: 0.8, dashArray: "10 6" }
+          ).addTo(map);
+        }
+        return updated;
+      });
+    };
+
+    map.on("click", handleClick);
+    return () => { map.off("click", handleClick); };
+  }, [editRedrawing, editClosureType]);
+
   // Render closures on map
   useEffect(() => {
     if (!mapInstance.current) return;
