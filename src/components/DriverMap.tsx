@@ -222,6 +222,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
   const userInteractingRef = useRef(false);
+  const isNavigatingRef = useRef(false);
+  useEffect(() => { isNavigatingRef.current = isNavigating; }, [isNavigating]);
   const [userPannedAway, setUserPannedAway] = useState(false);
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -498,13 +500,17 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     };
     const scheduleResume = () => {
       if (programmaticZoomRef.current) { programmaticZoomRef.current = false; return; }
-      if (userInteractingRef.current) {
+      // Only auto-resume during active turn-by-turn navigation; otherwise let
+      // the driver explore the map freely and use the manual recenter button.
+      // This prevents the map from snapping back while the driver is zooming
+      // or panning to inspect the area around them.
+      if (userInteractingRef.current && isNavigatingRef.current) {
         if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
         autoResumeTimeout = setTimeout(() => {
           setFollowDriver(true);
           userInteractingRef.current = false;
           setUserPannedAway(false);
-        }, 8000);
+        }, 15000);
       }
     };
     map.on("dragstart", pauseAutoFollow);
