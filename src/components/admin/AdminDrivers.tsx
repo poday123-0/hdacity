@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff } from "lucide-react";
@@ -10,6 +10,7 @@ const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", yea
 type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review" | "Rejected";
 
 const AdminDrivers = () => {
+  const DRIVERS_PAGE_SIZE = 150;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -57,6 +58,7 @@ const AdminDrivers = () => {
   const [bulkCenterStart, setBulkCenterStart] = useState("");
   const [bulkVehicleSearch, setBulkVehicleSearch] = useState("");
   const [bulkVehicleSelected, setBulkVehicleSelected] = useState<Set<string>>(new Set());
+  const [visibleDriverCount, setVisibleDriverCount] = useState(DRIVERS_PAGE_SIZE);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -191,13 +193,19 @@ const AdminDrivers = () => {
     return true;
   });
 
+  const visibleDrivers = useMemo(() => filteredDrivers.slice(0, visibleDriverCount), [filteredDrivers, visibleDriverCount]);
+
+  useEffect(() => {
+    setVisibleDriverCount(DRIVERS_PAGE_SIZE);
+  }, [search, statusFilter, companyFilter, vehicleStatusFilter, docFilter]);
+
   // Bulk actions
   const toggleSelect = (id: string) => {
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
   const toggleSelectAll = () => {
-    if (selected.size === filteredDrivers.length) setSelected(new Set());
-    else setSelected(new Set(filteredDrivers.map(d => d.id)));
+    if (selected.size === visibleDrivers.length) setSelected(new Set());
+    else setSelected(new Set(visibleDrivers.map(d => d.id)));
   };
   const sendDriverStatusSms = async (phone: string, countryCode: string, newStatus: string, name: string) => {
     try {
@@ -1179,7 +1187,7 @@ const AdminDrivers = () => {
             <tr className="border-b border-border bg-surface/80 backdrop-blur-sm">
               <th className="px-3 py-3 w-10">
                 <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
-                  {selected.size === filteredDrivers.length && filteredDrivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                  {selected.size === visibleDrivers.length && visibleDrivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                 </button>
               </th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[160px]">Driver</th>
@@ -1199,7 +1207,7 @@ const AdminDrivers = () => {
             ) : filteredDrivers.length === 0 ? (
               <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
             ) : (
-              filteredDrivers.map((d) => {
+              visibleDrivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
                 const permitCount = [d.taxi_permit_front_url, d.taxi_permit_back_url].filter(Boolean).length;
                 const companyName = companies.find((c) => c.id === d.company_id)?.name || d.company_name || "—";
@@ -1598,6 +1606,17 @@ const AdminDrivers = () => {
           </tbody>
         </table>
       </div>
+        {!loading && filteredDrivers.length > visibleDrivers.length && (
+          <div className="border-t border-border px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Showing {visibleDrivers.length} of {filteredDrivers.length} drivers</p>
+            <button
+              onClick={() => setVisibleDriverCount((prev) => prev + DRIVERS_PAGE_SIZE)}
+              className="px-4 py-2 rounded-xl bg-surface text-foreground text-xs font-semibold hover:bg-muted transition-colors"
+            >
+              Load more drivers
+            </button>
+          </div>
+        )}
     </div>
   );
 };
