@@ -569,8 +569,9 @@ const Dispatch = () => {
       }
     };
 
-    refresh();
-    const interval = window.setInterval(refresh, 30_000); // refresh every 30s
+    // Defer the first refresh slightly so cached data paints first
+    const initialT = setTimeout(() => { refresh(); }, cached ? 300 : 0);
+    const interval = window.setInterval(refresh, 90_000); // realtime keeps it fresh; poll every 90s as safety net
 
     // Realtime: debounced auto-refresh center code index when trips change
     let ccDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -583,6 +584,7 @@ const Dispatch = () => {
       .subscribe();
 
     return () => {
+      clearTimeout(initialT);
       window.clearInterval(interval);
       if (ccDebounce) clearTimeout(ccDebounce);
       supabase.removeChannel(ccChannel);
