@@ -399,12 +399,17 @@ const DispatchGoogleMap = () => {
         const driverInfo = c.reported_by_type === "driver" && c.reporter_name
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
+        const safeNotes = (c.notes || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
         const popupHtml = `
-          <div style="font-size:12px;padding:4px;max-width:220px">
+          <div style="font-size:12px;padding:4px;max-width:240px">
             ${driverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${safeNotes}','${c.expires_at || ""}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#3b82f6;color:white;border:0;cursor:pointer">✏️ Edit</button>
+              <button onclick="if(confirm('Delete this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#ef4444;color:white;border:0;cursor:pointer">🗑 Delete</button>
+            </div>
           </div>`;
         marker.bindPopup(popupHtml);
         closureLayersRef.current.push(marker);
@@ -427,12 +432,17 @@ const DispatchGoogleMap = () => {
         const lineDriverInfo = c.reported_by_type === "driver" && c.reporter_name
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
+        const safeLineNotes = (c.notes || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
         const popupHtml = `
-          <div style="font-size:12px;padding:4px;max-width:220px">
+          <div style="font-size:12px;padding:4px;max-width:240px">
             ${lineDriverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${safeLineNotes}','${c.expires_at || ""}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#3b82f6;color:white;border:0;cursor:pointer">✏️ Edit</button>
+              <button onclick="if(confirm('Delete this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#ef4444;color:white;border:0;cursor:pointer">🗑 Delete</button>
+            </div>
           </div>`;
         infoMarker.bindPopup(popupHtml);
 
@@ -546,7 +556,7 @@ const DispatchGoogleMap = () => {
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Search bar */}
-      <div className="absolute top-3 left-3 right-3 sm:left-auto sm:right-4 sm:w-80 z-[1000]">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[min(20rem,calc(100%-1.5rem))] z-[1000]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
