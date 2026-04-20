@@ -937,7 +937,8 @@ const DispatchTripForm = ({
             onTripCreated();
           } else {
             // Send push notification immediately — no awaits needed
-            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address, selectedVehicleType || undefined, estimatedFare).catch(console.warn);
+            const selectedVtName = vehicleTypes.find(v => v.id === selectedVehicleType)?.name || null;
+            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address, selectedVehicleType || undefined, estimatedFare, selectedVtName).catch(console.warn);
             toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
             // Auto-cancel after configurable timeout
