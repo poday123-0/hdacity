@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
+import { readCache as readDispatchCache, writeCache as writeDispatchCache, isCacheFresh as isDispatchCacheFresh } from "@/lib/dispatch-cache";
 import { notifyTripRequested, notifyTripAssigned } from "@/lib/push-notifications";
 import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import { toast } from "@/hooks/use-toast";
@@ -77,10 +78,20 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// Local cache for locations data shared across form instances
-let _locationsCache: { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[]; recentBookings: any[] } | null = null;
+// Local cache for locations data shared across form instances (in-memory, fast path)
+type LocationsCache = { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[]; recentBookings: any[] };
+let _locationsCache: LocationsCache | null = null;
 let _locationsCacheTs = 0;
-const LOC_CACHE_TTL = 30_000; // 30 sec
+const LOC_CACHE_TTL = 30_000; // 30 sec in-memory; localStorage layer extends to 2 min
+
+// Hydrate in-memory cache from localStorage on module load so first paint is instant
+try {
+  const persisted = readDispatchCache<LocationsCache>("form_locations");
+  if (persisted) {
+    _locationsCache = persisted;
+    _locationsCacheTs = isDispatchCacheFresh("form_locations") ? Date.now() : 0;
+  }
+} catch {}
 
 // Nominatim result cache
 const _placesCache = new Map<string, { results: any[]; ts: number }>();
