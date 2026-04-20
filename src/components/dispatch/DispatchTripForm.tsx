@@ -817,7 +817,6 @@ const DispatchTripForm = ({
     setSubmitting(true);
     try {
       const customerName = "Dispatch";
-      const isAssigned = !!assignedDriverId;
       const isBroadcast = dispatchMethod === "broadcast";
 
       // Build the trip payload up-front so the offline branch can queue it
