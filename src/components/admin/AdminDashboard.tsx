@@ -96,7 +96,8 @@ const AdminDashboard = () => {
       });
     };
     fetchStats();
-    const interval = setInterval(fetchStats, 10000);
+    // Refresh every 60s — realtime channel below already pushes immediate updates on trip changes
+    const interval = setInterval(fetchStats, 60000);
 
     // Realtime subscription so auto-completed / dispatch trips update instantly
     const channel = supabase
@@ -160,22 +161,20 @@ const AdminDashboard = () => {
       setAnalyticsLoading(true);
       const { start, days } = getAnalyticsDateRange();
 
-      // Fetch all trips (handle 1000-row limit by paginating)
-      let allTrips: any[] = [];
-      let from = 0;
+      // Fetch trips in parallel pages instead of sequential — much faster on large ranges.
+      // Cap at 5000 rows; analytics on more than that isn't useful for a glance dashboard.
       const batchSize = 1000;
-      while (true) {
-        const { data } = await supabase
+      const maxPages = 5;
+      const pagePromises = Array.from({ length: maxPages }, (_, i) =>
+        supabase
           .from("trips")
           .select("created_at, status, actual_fare, pickup_address, completed_at")
           .gte("created_at", start.toISOString())
           .order("created_at", { ascending: true })
-          .range(from, from + batchSize - 1);
-        if (!data || data.length === 0) break;
-        allTrips = allTrips.concat(data);
-        if (data.length < batchSize) break;
-        from += batchSize;
-      }
+          .range(i * batchSize, (i + 1) * batchSize - 1)
+      );
+      const pageResults = await Promise.all(pagePromises);
+      const allTrips = pageResults.flatMap((r) => r.data || []);
 
       if (allTrips.length === 0) {
         setHourlyData([]);
@@ -296,7 +295,7 @@ const AdminDashboard = () => {
       }
     };
     fetchLocations();
-    const interval = setInterval(fetchLocations, 5000);
+    const interval = setInterval(fetchLocations, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -322,7 +321,7 @@ const AdminDashboard = () => {
       }
     };
     fetchTrips();
-    const interval = setInterval(fetchTrips, 5000);
+    const interval = setInterval(fetchTrips, 15000);
     return () => clearInterval(interval);
   }, []);
 
