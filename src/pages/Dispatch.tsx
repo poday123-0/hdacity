@@ -441,8 +441,9 @@ const Dispatch = () => {
     if (cached) setCenterCodeIndex(cached);
 
     const refresh = async () => {
-      // Skip network entirely when offline — cached index keeps working
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      // Don't gate on navigator.onLine — this runs from realtime listeners (only
+      // fire while connection is alive) AND polling fallback. Queries no-op when
+      // truly offline, while cached index keeps the UI usable.
 
       try {
         const { data: vehicles } = await supabase
@@ -950,8 +951,10 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
-    // Skip network when offline — cached data already populated
-    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+    // NOTE: do NOT bail on navigator.onLine here — this is called from realtime
+    // listeners (which only fire when the connection is alive) and from manual
+    // user actions. The earlier offline guard was preventing live table refreshes
+    // whenever navigator.onLine briefly reported false (a common PWA quirk).
     const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
