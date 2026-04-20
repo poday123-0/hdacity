@@ -222,6 +222,8 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const routeRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
   const userInteractingRef = useRef(false);
+  const isNavigatingRef = useRef(false);
+  useEffect(() => { isNavigatingRef.current = isNavigating; }, [isNavigating]);
   const [userPannedAway, setUserPannedAway] = useState(false);
   const [followDriver, setFollowDriver] = useState(true);
   const interactTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
