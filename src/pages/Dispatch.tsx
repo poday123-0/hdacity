@@ -997,6 +997,9 @@ const Dispatch = () => {
     setRecentTrips(todayTrips);
     setAppRequestTrips(appReq || []);
     setLostTrips(lost || []);
+    writeCache("recent_trips", todayTrips);
+    writeCache("app_request_trips", appReq || []);
+    writeCache("lost_trips", lost || []);
   };
 
   // Fetch all bookings for the All Bookings dialog (supports all date ranges)
