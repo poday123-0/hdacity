@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllNamedLocations } from "@/lib/fetch-all-locations";
 import { notifyTripRequested, notifyTripAssigned } from "@/lib/push-notifications";
-// driver-radius-filter is no longer awaited inline — broadcast fires
-// immediately to the 10 geographically-nearest drivers for zero latency.
+import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
