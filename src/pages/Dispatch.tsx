@@ -231,12 +231,12 @@ const Dispatch = () => {
   const [loginError, setLoginError] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Shared state for forms
-  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
-  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
-  const [recentTrips, setRecentTrips] = useState<any[]>([]);
-  const [appRequestTrips, setAppRequestTrips] = useState<any[]>([]);
-  const [lostTrips, setLostTrips] = useState<any[]>([]);
+  // Shared state for forms — hydrate from localStorage cache for instant load
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>(() => readCache<any[]>("vehicle_types") || []);
+  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>(() => readCache<OnlineDriver[]>("online_drivers") || []);
+  const [recentTrips, setRecentTrips] = useState<any[]>(() => readCache<any[]>("recent_trips") || []);
+  const [appRequestTrips, setAppRequestTrips] = useState<any[]>(() => readCache<any[]>("app_request_trips") || []);
+  const [lostTrips, setLostTrips] = useState<any[]>(() => readCache<any[]>("lost_trips") || []);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
