@@ -148,11 +148,11 @@ const DispatchTripForm = ({
   const [tripVehicle, setTripVehicle] = useState<any>(null);
 
   // Fare calculation state
-  const [fareZones, setFareZones] = useState<any[]>([]);
-  const [surcharges, setSurcharges] = useState<any[]>([]);
-  const [serviceLocations, setServiceLocations] = useState<any[]>([]);
-  const [namedLocations, setNamedLocations] = useState<any[]>([]);
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [fareZones, setFareZones] = useState<any[]>(() => _locationsCache?.fareZones || []);
+  const [surcharges, setSurcharges] = useState<any[]>(() => _locationsCache?.surcharges || []);
+  const [serviceLocations, setServiceLocations] = useState<any[]>(() => _locationsCache?.serviceLocations || []);
+  const [namedLocations, setNamedLocations] = useState<any[]>(() => _locationsCache?.namedLocations || []);
+  const [recentBookings, setRecentBookings] = useState<any[]>(() => _locationsCache?.recentBookings || []);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [segmentDistances, setSegmentDistances] = useState<number[]>([]);
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
@@ -208,18 +208,9 @@ const DispatchTripForm = ({
     return () => { supabase.removeChannel(channel); };
   }, [centerCodeResults.map(r => r.vehicle_id).join(','), formIndex]);
 
-  // Load fare data with shared cache
+  // Load fare data with shared cache (instant from localStorage, refresh in background)
   useEffect(() => {
-    const load = async () => {
-      const now = Date.now();
-      if (_locationsCache && now - _locationsCacheTs < LOC_CACHE_TTL) {
-        setFareZones(_locationsCache.fareZones);
-        setSurcharges(_locationsCache.surcharges);
-        setServiceLocations(_locationsCache.serviceLocations);
-        setNamedLocations(_locationsCache.namedLocations);
-        setRecentBookings(_locationsCache.recentBookings);
-        return;
-      }
+    const fetchAndStore = async () => {
       const [fzRes, scRes, slRes, nlData, rbRes] = await Promise.all([
         supabase.from("fare_zones").select("*").eq("is_active", true),
         supabase.from("fare_surcharges").select("*").eq("is_active", true),
@@ -246,7 +237,7 @@ const DispatchTripForm = ({
         const bi = slOrder.indexOf(b.name);
         return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
       });
-      const cache = {
+      const cache: LocationsCache = {
         fareZones: fzRes.data || [],
         surcharges: scRes.data || [],
         serviceLocations: sortedSl,
@@ -255,13 +246,25 @@ const DispatchTripForm = ({
       };
       _locationsCache = cache;
       _locationsCacheTs = Date.now();
+      try { writeDispatchCache("form_locations", cache); } catch {}
       setFareZones(cache.fareZones);
       setSurcharges(cache.surcharges);
       setServiceLocations(cache.serviceLocations);
       setNamedLocations(cache.namedLocations);
       setRecentBookings(cache.recentBookings);
     };
-    load();
+
+    const now = Date.now();
+    // Fast path: in-memory cache fresh — nothing to do
+    if (_locationsCache && now - _locationsCacheTs < LOC_CACHE_TTL) return;
+
+    // If localStorage cache is fresh (within 2 min), defer the network refresh
+    // so the UI stays snappy. Otherwise fetch immediately.
+    if (_locationsCache && isDispatchCacheFresh("form_locations")) {
+      const t = setTimeout(() => { fetchAndStore().catch(() => {}); }, 150);
+      return () => clearTimeout(t);
+    }
+    fetchAndStore().catch(() => {});
   }, []);
 
   // Default vehicle type to "Car"
