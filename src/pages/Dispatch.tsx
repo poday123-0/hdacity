@@ -647,7 +647,7 @@ const Dispatch = () => {
           )
           .eq("dispatch_type", "operator")
           .eq("is_loss", true)
-          .gte("created_at", todayISO)
+          .gte("created_at", getDaysAgoISO(14))
           .order("created_at", { ascending: false })
           .limit(200),
       ]);
@@ -655,14 +655,11 @@ const Dispatch = () => {
       const trips = tripsRes.data || [];
       const appReqs = appReqRes.data || [];
       const losses = lostRes.data || [];
-      setVehicleTypes(vts);
-      setRecentTrips(trips);
-      setAppRequestTrips(appReqs);
-      setLostTrips(losses);
-      writeCache("vehicle_types", vts);
-      writeCache("recent_trips", trips);
-      writeCache("app_request_trips", appReqs);
-      writeCache("lost_trips", losses);
+      // Write each cache as soon as data arrives so partial failures still cache successful pieces
+      if (vtRes.data) { setVehicleTypes(vts); writeCache("vehicle_types", vts); }
+      if (tripsRes.data) { setRecentTrips(trips); writeCache("recent_trips", trips); }
+      if (appReqRes.data) { setAppRequestTrips(appReqs); writeCache("app_request_trips", appReqs); }
+      if (lostRes.data) { setLostTrips(losses); writeCache("lost_trips", losses); }
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
         first_name: (d.profiles as any)?.first_name || "",
@@ -673,9 +670,11 @@ const Dispatch = () => {
         lat: d.lat,
         lng: d.lng,
       }));
-      setOnlineDrivers(drivers);
-      writeCache("online_drivers", drivers);
-      cacheDrivers(drivers);
+      if (driversRes.data) {
+        setOnlineDrivers(drivers);
+        writeCache("online_drivers", drivers);
+        cacheDrivers(drivers);
+      }
     };
 
     // Skip the network entirely when offline — cached state already hydrated
