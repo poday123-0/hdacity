@@ -239,6 +239,8 @@ const Dispatch = () => {
   // Cached snapshots survive going offline so the dispatcher always sees the
   // last-known Loss/Today/App Ride lists instead of an empty screen.
   const TABLE_CACHE_KEY = "hda_dispatch_tables_cache_v1";
+  const VEHICLE_TYPES_CACHE_KEY = "hda_dispatch_vehicle_types_v1";
+  const ONLINE_DRIVERS_CACHE_KEY = "hda_dispatch_online_drivers_v1";
   const loadCachedTables = (): { recent: any[]; appReq: any[]; lost: any[] } => {
     try {
       const raw = localStorage.getItem(TABLE_CACHE_KEY);
@@ -246,9 +248,23 @@ const Dispatch = () => {
     } catch {}
     return { recent: [], appReq: [], lost: [] };
   };
+  const loadCachedVehicleTypes = (): any[] => {
+    try {
+      const raw = localStorage.getItem(VEHICLE_TYPES_CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  };
+  const loadCachedOnlineDrivers = (): OnlineDriver[] => {
+    try {
+      const raw = localStorage.getItem(ONLINE_DRIVERS_CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  };
   const cachedTables = loadCachedTables();
-  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
-  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>(loadCachedVehicleTypes());
+  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>(loadCachedOnlineDrivers());
   const [recentTrips, setRecentTrips] = useState<any[]>(cachedTables.recent);
   const [appRequestTrips, setAppRequestTrips] = useState<any[]>(cachedTables.appReq);
   const [lostTrips, setLostTrips] = useState<any[]>(cachedTables.lost);
@@ -694,7 +710,11 @@ const Dispatch = () => {
             .order("created_at", { ascending: false })
             .limit(200),
         ]);
-        setVehicleTypes(vtRes.data || []);
+        const vts = vtRes.data || [];
+        if (vts.length > 0) {
+          setVehicleTypes(vts);
+          try { localStorage.setItem(VEHICLE_TYPES_CACHE_KEY, JSON.stringify(vts)); } catch {}
+        }
         const recent = tripsRes.data || [];
         const appReq = appReqRes.data || [];
         const lost = lostRes.data || [];
@@ -718,6 +738,7 @@ const Dispatch = () => {
           lng: d.lng,
         }));
         setOnlineDrivers(drivers);
+        try { localStorage.setItem(ONLINE_DRIVERS_CACHE_KEY, JSON.stringify(drivers)); } catch {}
         cacheDrivers(drivers);
       } catch (err) {
         console.warn("Initial dispatch load failed, keeping cache:", err);
