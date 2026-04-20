@@ -1958,6 +1958,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   useEffect(() => {
     if (!currentTrip?.id || (screen !== "navigating" && screen !== "ride-request")) return;
 
+    let stopped = false;
+
     // Realtime subscription
     const channel = supabase.
     channel(`driver-trip-monitor-${currentTrip.id}`).
@@ -1971,15 +1973,26 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
-    // Polling fallback every 60s in case realtime misses the event (reduced from 30s)
+    // Immediate check (in case the trip was already accepted by another driver
+    // before our subscription was established — common race on ride-request screen)
+    (async () => {
+      const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
+      if (!stopped && data) await handleTripCancelledOrTaken(data);
+    })();
+
+    // Fast polling fallback (5s) on ride-request screen so the popup dismisses
+    // and the trip sound stops within seconds when another driver accepts.
+    // Slower (30s) once the driver is navigating their own accepted trip.
+    const pollMs = screen === "ride-request" ? 5000 : 30000;
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
         await handleTripCancelledOrTaken(data);
       }
-    }, 60000);
+    }, pollMs);
 
     return () => {
+      stopped = true;
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
