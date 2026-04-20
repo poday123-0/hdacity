@@ -559,7 +559,7 @@ const Dispatch = () => {
         });
 
         setCenterCodeIndex(index);
-        saveToCache(index);
+        writeCache("center_code_index", index);
       } catch {
         // keep any cached data
       }
