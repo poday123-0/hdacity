@@ -5,7 +5,12 @@
 // always fresh so the dispatcher can keep working without internet.
 
 const PREFIX = "hda_dispatch_cache_v1:";
-const DEFAULT_TTL_MS = 2 * 60 * 1000; // 2 minutes when online
+// 10 minutes online: cached data is shown instantly and a background refresh
+// runs whenever it's older than this. Realtime channels keep critical data
+// (trips, drivers, center codes) fresh in between, so a longer TTL doesn't
+// cause stale UI but dramatically reduces blocking network waits on tab/route
+// changes.
+const DEFAULT_TTL_MS = 10 * 60 * 1000;
 
 export type DispatchCacheKey =
   | "recent_trips"

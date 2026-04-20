@@ -499,7 +499,7 @@ const Dispatch = () => {
                 .in("vehicle_id", vehicleIds)
                 .eq("dispatch_type", "operator")
                 .order("created_at", { ascending: false })
-                .limit(2000)
+                .limit(800)
             : Promise.resolve({ data: [] as any[] }),
         ]);
 
@@ -569,8 +569,9 @@ const Dispatch = () => {
       }
     };
 
-    refresh();
-    const interval = window.setInterval(refresh, 30_000); // refresh every 30s
+    // Defer the first refresh slightly so cached data paints first
+    const initialT = setTimeout(() => { refresh(); }, cached ? 300 : 0);
+    const interval = window.setInterval(refresh, 90_000); // realtime keeps it fresh; poll every 90s as safety net
 
     // Realtime: debounced auto-refresh center code index when trips change
     let ccDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -583,6 +584,7 @@ const Dispatch = () => {
       .subscribe();
 
     return () => {
+      clearTimeout(initialT);
       window.clearInterval(interval);
       if (ccDebounce) clearTimeout(ccDebounce);
       supabase.removeChannel(ccChannel);
@@ -686,7 +688,8 @@ const Dispatch = () => {
     // Skip the network entirely when offline — cached state already hydrated
     if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
-    // If cache is fresh, defer the heavy load so the UI paints instantly with cached data first.
+    // Always defer the heavy load by a tick so the UI paints with cached data first.
+    // If the cache is fresh, push the refresh out further so panel/tab switches stay snappy.
     const allFresh =
       isCacheFresh("recent_trips") &&
       isCacheFresh("app_request_trips") &&
@@ -694,12 +697,9 @@ const Dispatch = () => {
       isCacheFresh("online_drivers") &&
       isCacheFresh("vehicle_types");
 
-    if (allFresh) {
-      // Background refresh — UI already shows cached data
-      const t = setTimeout(load, 100);
-      return () => clearTimeout(t);
-    }
-    load();
+    const delay = allFresh ? 400 : 0;
+    const t = setTimeout(() => { load().catch(() => {}); }, delay);
+    return () => clearTimeout(t);
   }, [isAuthed, isOnline]);
 
   // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
