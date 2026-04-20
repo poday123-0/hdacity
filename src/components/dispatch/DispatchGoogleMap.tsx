@@ -570,8 +570,8 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full" />
 
-      {/* Search bar */}
-      <div className="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-[1000]">
+      {/* Search bar — top-right so it clears Leaflet's zoom buttons (top-left) */}
+      <div className="absolute top-3 left-16 right-3 sm:left-auto sm:right-4 sm:w-80 z-[1000]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
@@ -632,8 +632,8 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
         )}
       </div>
 
-      {/* Road closure toolbar */}
-      <div className="absolute top-3 right-3 sm:right-4 z-[1000] flex flex-col gap-2">
+      {/* Road closure toolbar — pushed below the search bar on the right */}
+      <div className="absolute top-16 right-3 sm:top-20 sm:right-4 z-[1000] flex flex-col gap-2">
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-1.5 flex flex-col gap-1">
           <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             Road Closures
