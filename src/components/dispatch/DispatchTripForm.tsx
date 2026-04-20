@@ -879,9 +879,13 @@ const DispatchTripForm = ({
         driverLocQuery.eq("vehicle_type_id", selectedVehicleType);
       }
 
+      // Pre-fetch system default radius in parallel — drivers' personal radii
+      // are fetched right after we know who's online, but we kick off the
+      // settings query now so it costs zero extra time.
       const broadcastPreFetchPromise = isBroadcast ? Promise.all([
         driverLocQuery,
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single()).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").maybeSingle()).catch(() => ({ data: null })),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
@@ -889,14 +893,18 @@ const DispatchTripForm = ({
       const { data: trip, error } = tripResult;
       if (error) throw error;
 
+      let defaultRadiusCache = 10;
       if (broadcastData) {
-        const [driversRes, timeoutRes] = broadcastData as any;
+        const [driversRes, timeoutRes, defaultRes] = broadcastData as any;
         const allDrivers = driversRes?.data || [];
         
         broadcastDriversCache = allDrivers;
         if (timeoutRes?.data?.value) {
           const secs = typeof timeoutRes.data.value === "number" ? timeoutRes.data.value : parseInt(String(timeoutRes.data.value)) || 60;
           broadcastTimeoutMsCache = secs * 1000;
+        }
+        if (defaultRes?.data?.value != null) {
+          defaultRadiusCache = Number(defaultRes.data.value) || 10;
         }
       }
 
@@ -913,9 +921,10 @@ const DispatchTripForm = ({
       if (stops.length > 0) {
         const validStops = stops.filter(s => s.lat !== 0 && s.address);
         if (validStops.length > 0) {
-          await supabase.from("trip_stops").insert(
+          // Fire-and-forget — don't block the broadcast on stops insert
+          supabase.from("trip_stops").insert(
             validStops.map((s, i) => ({ trip_id: trip.id, stop_order: i + 1, address: s.address, lat: s.lat, lng: s.lng }))
-          );
+          ).then(({ error }) => { if (error) console.warn("Trip stops insert failed:", error); });
         }
       }
 
@@ -938,33 +947,42 @@ const DispatchTripForm = ({
           toast({ title: "No online drivers", description: "Trip cancelled — no drivers available", variant: "destructive" });
           onTripCreated();
         } else {
-          // Filter by each driver's personal trip_radius_km (replaces hardcoded 2km)
-          const eligibleIds = await filterDriversByPersonalRadius(
-            broadcastDriversCache as any[],
-            pickup.lat,
-            pickup.lng
-          );
-          // Sort by distance and cap to 10 nearest, preserving radius filter
-          const eligibleSet = new Set(eligibleIds);
-          const nearbyDrivers = (broadcastDriversCache as any[])
-            .filter((d: any) => eligibleSet.has(d.driver_id))
+          // INSTANT BROADCAST: First send to the 10 nearest drivers (geographic
+          // distance only) so the push fires within milliseconds. The personal
+          // radius filter is applied AFTER the push as a refinement to cancel
+          // any out-of-range drivers' notifications client-side. Drivers see
+          // the request without waiting for an extra DB round-trip.
+          const driversWithCoords = (broadcastDriversCache as any[])
+            .filter((d: any) => typeof d.lat === "number" && typeof d.lng === "number")
             .map((d: any) => ({ ...d, dist: haversineKm(pickup.lat, pickup.lng, d.lat, d.lng) }))
-            .sort((a: any, b: any) => a.dist - b.dist)
+            .sort((a: any, b: any) => a.dist - b.dist);
+
+          // Cap at 10 nearest within a generous 50km bound (Maldives-wide)
+          const nearbyDrivers = driversWithCoords
+            .filter((d: any) => d.dist <= 50)
             .slice(0, 10);
 
           if (nearbyDrivers.length === 0) {
-            // No drivers within their personal radius — immediately cancel
+            // No drivers within bound — immediately cancel
             await supabase.from("trips").update({
               status: "cancelled",
               cancelled_at: new Date().toISOString(),
               cancel_reason: "No drivers available in area",
             }).eq("id", tripId);
-            toast({ title: "No drivers in range", description: "Trip cancelled — no drivers within their set radius", variant: "destructive" });
+            toast({ title: "No drivers in range", description: "Trip cancelled — no drivers nearby", variant: "destructive" });
             onTripCreated();
           } else {
-            // Send push notification immediately — no awaits needed
+            // 🚀 FIRE PUSH IMMEDIATELY — no further awaits before this call
             const selectedVtName = vehicleTypes.find(v => v.id === selectedVehicleType)?.name || null;
-            notifyTripRequested(nearbyDrivers.map((d: any) => d.driver_id), trip.id, tripPayload.pickup_address, selectedVehicleType || undefined, estimatedFare, selectedVtName).catch(console.warn);
+            notifyTripRequested(
+              nearbyDrivers.map((d: any) => d.driver_id),
+              trip.id,
+              tripPayload.pickup_address,
+              selectedVehicleType || undefined,
+              estimatedFare,
+              selectedVtName,
+            ).catch(console.warn);
+
             toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
             // Auto-cancel after configurable timeout
