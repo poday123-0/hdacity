@@ -936,6 +936,8 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
+    // Skip network when offline — cached data already populated
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
