@@ -51,6 +51,7 @@ import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
 import AdminVehicles from "@/components/admin/AdminVehicles";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
+import BroadcastCountdown from "@/components/dispatch/BroadcastCountdown";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
 import DispatchGoogleMap from "@/components/dispatch/DispatchGoogleMap";
@@ -243,6 +244,8 @@ const Dispatch = () => {
   const [showAllLoss, setShowAllLoss] = useState(false);
   const [lossSearch, setLossSearch] = useState("");
   const [appInlineSearch, setAppInlineSearch] = useState("");
+  const [broadcastTimeoutSec, setBroadcastTimeoutSec] = useState(60);
+  const [passengerTimeoutSec, setPassengerTimeoutSec] = useState(60);
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
@@ -611,6 +614,22 @@ const Dispatch = () => {
     return todayStartUTC.toISOString();
   };
 
+  // Load timeout settings for the broadcast countdown
+  useEffect(() => {
+    if (!isAuthed) return;
+    (async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("key, value")
+        .in("key", ["dispatch_broadcast_timeout_seconds", "passenger_search_timeout_seconds"]);
+      data?.forEach((s: any) => {
+        const v = typeof s.value === "number" ? s.value : parseInt(s.value) || 60;
+        if (s.key === "dispatch_broadcast_timeout_seconds") setBroadcastTimeoutSec(v);
+        if (s.key === "passenger_search_timeout_seconds") setPassengerTimeoutSec(v);
+      });
+    })();
+  }, [isAuthed]);
+
   // Load vehicle types, drivers, recent trips
   useEffect(() => {
     if (!isAuthed) return;
@@ -642,10 +661,10 @@ const Dispatch = () => {
         supabase
           .from("trips")
           .select(tripSelect)
-          .eq("dispatch_type", "dispatch_broadcast")
-.in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
-           .order("updated_at", { ascending: false })
-           .limit(300),
+          .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+          .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+          .order("updated_at", { ascending: false })
+          .limit(300),
         supabase
           .from("trips")
           .select(
@@ -788,7 +807,7 @@ const Dispatch = () => {
               if (prev.some((t: any) => t.id === newTrip.id)) return prev;
               return [newTrip, ...prev];
             });
-          } else if (newTrip.dispatch_type === "dispatch_broadcast") {
+          } else if (newTrip.dispatch_type === "dispatch_broadcast" || newTrip.dispatch_type === "passenger") {
             setAppRequestTrips((prev) => {
               if (prev.some((t: any) => t.id === newTrip.id)) return prev;
               return [newTrip, ...prev];
@@ -955,7 +974,7 @@ const Dispatch = () => {
       supabase
         .from("trips")
         .select(tripSelect)
-        .eq("dispatch_type", "dispatch_broadcast")
+        .in("dispatch_type", ["dispatch_broadcast", "passenger"])
         .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
         .order("updated_at", { ascending: false })
         .limit(300),
@@ -2122,6 +2141,25 @@ const Dispatch = () => {
                               >
                                 {statusLabel}
                               </span>
+                              {/* Source badge: passenger app vs dispatch broadcast */}
+                              <span
+                                className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase whitespace-nowrap shrink-0 ${
+                                  t.dispatch_type === "passenger"
+                                    ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                                    : "bg-orange-500/15 text-orange-600 dark:text-orange-400"
+                                }`}
+                                title={t.dispatch_type === "passenger" ? "From passenger app" : "Sent by dispatch"}
+                              >
+                                {t.dispatch_type === "passenger" ? "App" : "Disp"}
+                              </span>
+                              {/* Live countdown for searching trips */}
+                              {t.status === "requested" && !t.accepted_at && (
+                                <BroadcastCountdown
+                                  startedAt={t.created_at}
+                                  timeoutSeconds={t.dispatch_type === "passenger" ? passengerTimeoutSec : broadcastTimeoutSec}
+                                  className="w-[58px]"
+                                />
+                              )}
                               <span className="text-foreground truncate flex-1 font-medium">
                                 {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span>{" "}
                                 {(t.dropoff_address || "").split(",")[0]}
