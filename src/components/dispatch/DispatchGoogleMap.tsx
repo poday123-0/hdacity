@@ -482,17 +482,22 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     });
   }, [closures]);
 
-  // Global remove/edit handlers
+  // Global remove/edit handlers + popup-button delegation
   useEffect(() => {
     (window as any).__removeClosure__ = async (id: string) => {
       await removeClosure(id);
       toast({ title: "Closure removed" });
     };
-    (window as any).__editClosure__ = (id: string, severity: string, notes: string, expiresAt: string) => {
+    (window as any).__editClosure__ = (id: string) => {
+      const c = (window as any).__closureRegistry__?.[id] as RoadClosure | undefined;
+      if (!c) return;
       setEditingClosureId(id);
-      setEditClosureSeverity(severity);
-      setEditClosureNotes(notes);
-      setEditClosureExpiry(expiresAt);
+      setEditClosureSeverity(c.severity || "closed");
+      setEditClosureNotes(c.notes || "");
+      setEditClosureExpiry(c.expires_at || "");
+      setEditClosureType((c.closure_type as "point" | "line") || "point");
+      setEditClosureCoords(Array.isArray(c.coordinates) ? c.coordinates : []);
+      setEditRedrawing(false);
     };
     (window as any).__approveClosure__ = async (id: string) => {
       await approveClosure(id);
@@ -502,11 +507,34 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
       await rejectClosure(id);
       toast({ title: "Report rejected" });
     };
+
+    // Delegate clicks for popup Edit/Delete buttons (more reliable than inline onclick)
+    const handlePopupClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const editBtn = target.closest("[data-closure-edit]") as HTMLElement | null;
+      const delBtn = target.closest("[data-closure-delete]") as HTMLElement | null;
+      if (editBtn) {
+        e.preventDefault(); e.stopPropagation();
+        const id = editBtn.getAttribute("data-closure-edit")!;
+        (window as any).__editClosure__(id);
+        mapInstance.current?.closePopup();
+      } else if (delBtn) {
+        e.preventDefault(); e.stopPropagation();
+        const id = delBtn.getAttribute("data-closure-delete")!;
+        if (window.confirm("Remove this closure?")) {
+          (window as any).__removeClosure__(id);
+          mapInstance.current?.closePopup();
+        }
+      }
+    };
+    document.addEventListener("click", handlePopupClick, true);
+
     return () => {
       delete (window as any).__removeClosure__;
       delete (window as any).__editClosure__;
       delete (window as any).__approveClosure__;
       delete (window as any).__rejectClosure__;
+      document.removeEventListener("click", handlePopupClick, true);
     };
   }, [removeClosure, approveClosure, rejectClosure]);
 
