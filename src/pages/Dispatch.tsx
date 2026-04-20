@@ -642,10 +642,10 @@ const Dispatch = () => {
         supabase
           .from("trips")
           .select(tripSelect)
-          .eq("dispatch_type", "dispatch_broadcast")
-.in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
-           .order("updated_at", { ascending: false })
-           .limit(300),
+          .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+          .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+          .order("updated_at", { ascending: false })
+          .limit(300),
         supabase
           .from("trips")
           .select(
@@ -788,7 +788,7 @@ const Dispatch = () => {
               if (prev.some((t: any) => t.id === newTrip.id)) return prev;
               return [newTrip, ...prev];
             });
-          } else if (newTrip.dispatch_type === "dispatch_broadcast") {
+          } else if (newTrip.dispatch_type === "dispatch_broadcast" || newTrip.dispatch_type === "passenger") {
             setAppRequestTrips((prev) => {
               if (prev.some((t: any) => t.id === newTrip.id)) return prev;
               return [newTrip, ...prev];
@@ -955,7 +955,7 @@ const Dispatch = () => {
       supabase
         .from("trips")
         .select(tripSelect)
-        .eq("dispatch_type", "dispatch_broadcast")
+        .in("dispatch_type", ["dispatch_broadcast", "passenger"])
         .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
         .order("updated_at", { ascending: false })
         .limit(300),
