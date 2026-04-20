@@ -768,6 +768,12 @@ const AdminVehicles = () => {
           </tbody>
         </table>
       </div>
+
+      <HdaDispatchVehiclesModal
+        open={showHdaDispatchModal}
+        onClose={() => setShowHdaDispatchModal(false)}
+        onUpdated={fetchAll}
+      />
     </div>
   );
 };
