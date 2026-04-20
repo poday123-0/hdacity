@@ -408,6 +408,18 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     closureLayersRef.current.forEach(l => map.removeLayer(l));
     closureLayersRef.current = [];
 
+    const escAttr = (s: string) => (s || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const buildActions = (c: RoadClosure) => {
+      const sevAttr = escAttr(c.severity);
+      const notesAttr = escAttr(c.notes || "");
+      const expAttr = escAttr(c.expires_at || "");
+      return `
+        <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid #eee">
+          <button onclick="window.__editClosure__('${c.id}','${sevAttr}','${notesAttr}','${expAttr}')" style="flex:1;padding:5px 8px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
+          <button onclick="if(confirm('Remove this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
+        </div>`;
+    };
+
     closures.forEach((c) => {
       const coords = c.coordinates;
       const sev = SEVERITY_OPTIONS.find((s) => s.value === c.severity) || SEVERITY_OPTIONS[0];
@@ -425,11 +437,12 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
         const popupHtml = `
-          <div style="font-size:12px;padding:4px;max-width:220px">
+          <div style="font-size:12px;padding:4px;max-width:240px">
             ${driverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
+            ${buildActions(c)}
           </div>`;
         marker.bindPopup(popupHtml);
         closureLayersRef.current.push(marker);
@@ -453,11 +466,12 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
           ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
           : "";
         const popupHtml = `
-          <div style="font-size:12px;padding:4px;max-width:220px">
+          <div style="font-size:12px;padding:4px;max-width:240px">
             ${lineDriverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
             ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
+            ${buildActions(c)}
           </div>`;
         infoMarker.bindPopup(popupHtml);
 
