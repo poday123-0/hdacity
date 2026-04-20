@@ -61,6 +61,36 @@ public class FloatingBubblePlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Show an idle/persistent bubble (no trip card) — Messenger chat-head style.
+     * Stays visible while the app is minimized so the driver always sees the
+     * app is active. Tap to return to the app.
+     */
+    @PluginMethod
+    public void showIdle(PluginCall call) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            call.reject("No context");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(ctx)) {
+            call.reject("OVERLAY_PERMISSION_REQUIRED");
+            return;
+        }
+
+        Intent intent = new Intent(ctx, FloatingBubbleService.class);
+        intent.setAction(FloatingBubbleService.ACTION_SHOW_IDLE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ctx.startForegroundService(intent);
+        } else {
+            ctx.startService(intent);
+        }
+
+        call.resolve();
+    }
+
     @PluginMethod
     public void hide(PluginCall call) {
         Context ctx = getContext();

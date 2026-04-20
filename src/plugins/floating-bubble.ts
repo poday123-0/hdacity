@@ -10,6 +10,12 @@ export interface FloatingBubblePlugin {
     estimatedFare?: number;
   }): Promise<void>;
 
+  /**
+   * Show an idle/persistent bubble (just the app logo) — Messenger chat-head style.
+   * Visible while the app is minimized so the driver always sees the app is active.
+   */
+  showIdle(): Promise<void>;
+
   /** Hide/dismiss the floating bubble */
   hide(): Promise<void>;
 
