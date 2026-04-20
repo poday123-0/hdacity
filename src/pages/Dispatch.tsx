@@ -2849,6 +2849,28 @@ const Dispatch = () => {
                                 Clear Loss
                               </button>
                             )}
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!confirm("Delete this booking permanently?")) return;
+                                const { error } = await supabase.from("trips").delete().eq("id", t.id);
+                                if (error) {
+                                  toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+                                  return;
+                                }
+                                if (t.driver_id) {
+                                  await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", t.driver_id);
+                                }
+                                setRecentTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
+                                setAllBookingsTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
+                                setLostTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
+                                setAppRequestTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
+                                toast({ title: "Booking deleted" });
+                              }}
+                              className="text-[9px] font-bold text-destructive px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors ml-auto"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                       )}
