@@ -183,12 +183,21 @@ const MapPicker = ({ onConfirm, onCancel, initialLat, initialLng, keepOpenOnNear
     mapInstance.current = map;
     setMapReady(true);
 
-    map.on("movestart", () => setIsPanning(true));
+    // Pin "lift" animation only on drag/pan, NOT on pinch-zoom — zooming
+    // around a target should feel stable, not bouncy.
+    map.on("dragstart", () => setIsPanning(true));
+    map.on("dragend", () => setIsPanning(false));
 
     map.on("moveend", () => {
       const c = map.getCenter();
-      setCenter({ lat: c.lat, lng: c.lng });
-      setIsPanning(false);
+      setCenter(prev => {
+        // Skip update if center barely changed (e.g. pure zoom around same
+        // point). Avoids re-running reverse-geocode + nearby fetch on zoom.
+        const dLat = Math.abs(prev.lat - c.lat);
+        const dLng = Math.abs(prev.lng - c.lng);
+        if (dLat < 0.00002 && dLng < 0.00002) return prev;
+        return { lat: c.lat, lng: c.lng };
+      });
     });
 
     // Theme observer
