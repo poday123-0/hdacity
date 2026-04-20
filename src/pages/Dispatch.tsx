@@ -1315,6 +1315,7 @@ const Dispatch = () => {
             HDA <span className="text-primary">DISPATCH</span>
           </h1>
           <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? "bg-green-500" : "bg-destructive animate-pulse"}`} title={isOnline ? "Online" : "Offline"} />
+          <NetworkSpeedIndicator online={isOnline} />
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {dutyElapsed && (
