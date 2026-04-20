@@ -97,13 +97,30 @@ export const sendTopicNotification = async (
  * the correct sound category per recipient (driver vs passenger).
  */
 
-/** Notify driver(s) of a new ride request */
-export const notifyTripRequested = async (driverIds: string[], tripId: string, pickupAddress: string, vehicleTypeId?: string) => {
+/** Notify driver(s) of a new ride request.
+ *  `pickupAddress` is kept in the data payload (legacy) but the visible
+ *  notification body now shows the fare amount instead. */
+export const notifyTripRequested = async (
+  driverIds: string[],
+  tripId: string,
+  pickupAddress: string,
+  vehicleTypeId?: string,
+  estimatedFare?: number | null,
+) => {
+  const fareNum = typeof estimatedFare === "number" && !isNaN(estimatedFare) ? estimatedFare : null;
+  const body = fareNum != null && fareNum > 0
+    ? `Fare: ${Math.round(fareNum)} MVR`
+    : "Tap to view";
   await sendPushNotification(
     driverIds,
-    "🚗 New Ride Request!",
-    `Pickup: ${pickupAddress}`,
-    { trip_id: tripId, type: "trip_requested", ...(vehicleTypeId ? { vehicle_type_id: vehicleTypeId } : {}) }
+    "New Ride Request",
+    body,
+    {
+      trip_id: tripId,
+      type: "trip_requested",
+      ...(vehicleTypeId ? { vehicle_type_id: vehicleTypeId } : {}),
+      ...(fareNum != null ? { estimated_fare: String(fareNum) } : {}),
+    }
   );
 };
 

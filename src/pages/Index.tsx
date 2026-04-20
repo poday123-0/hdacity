@@ -800,7 +800,7 @@ const Index = () => {
           if (eligible.length > 0) {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {
-              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
+              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus);
             }
           }
         } catch (pushErr) {
@@ -836,7 +836,7 @@ const Index = () => {
           if (eligible.length > 0) {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {
-              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id);
+              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus);
             }
           }
         } catch (pushErr) {
@@ -1006,7 +1006,20 @@ const Index = () => {
     setPassengerScreen("home");
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    // Stop receiving push notifications and trip broadcasts:
+    // 1) Mark driver offline so the edge function filters them out
+    // 2) Deactivate this user's device tokens so FCM won't deliver pushes
+    try {
+      if (userProfile?.id) {
+        await Promise.allSettled([
+          supabase.from("driver_locations").update({ is_online: false, is_on_trip: false }).eq("driver_id", userProfile.id),
+          supabase.from("device_tokens").update({ is_active: false }).eq("user_id", userProfile.id),
+        ]);
+      }
+    } catch (e) {
+      console.warn("Logout cleanup failed:", e);
+    }
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(MODE_KEY);
     // Also remove old driver session key
@@ -1020,7 +1033,7 @@ const Index = () => {
     setCurrentTripId(null);
     setPickup(null);
     setDropoff(null);
-  }, []);
+  }, [userProfile?.id]);
 
   // Profile existence check removed — users should only logout manually
 
