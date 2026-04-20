@@ -649,64 +649,79 @@ const Dispatch = () => {
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
+      // Offline: keep showing whatever we already cached on screen.
+      if (!navigator.onLine) return;
       const todayISO = getMaldivesTodayISO();
       const tripSelect =
         "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
-      const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
-        supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
-        supabase
-          .from("driver_locations")
-          .select(
-            `
-            driver_id, lat, lng,
-            profiles:driver_id (first_name, last_name, phone_number),
-            vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
-          `,
-          )
-          .eq("is_online", true)
-          .eq("is_on_trip", false),
-        supabase
-          .from("trips")
-          .select(tripSelect)
-          .eq("dispatch_type", "operator")
+      try {
+        const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
+          supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
+          supabase
+            .from("driver_locations")
+            .select(
+              `
+              driver_id, lat, lng,
+              profiles:driver_id (first_name, last_name, phone_number),
+              vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
+            `,
+            )
+            .eq("is_online", true)
+            .eq("is_on_trip", false),
+          supabase
+            .from("trips")
+            .select(tripSelect)
+            .eq("dispatch_type", "operator")
 .in("status", ["requested", "accepted", "arrived", "started", "completed"])
-           .gte("created_at", todayISO)
-           .order("created_at", { ascending: false })
-          .limit(200),
-        supabase
-          .from("trips")
-          .select(tripSelect)
-          .in("dispatch_type", ["dispatch_broadcast", "passenger"])
-          .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
-          .order("updated_at", { ascending: false })
-          .limit(300),
-        supabase
-          .from("trips")
-          .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)",
-          )
-          .eq("dispatch_type", "operator")
-          .eq("is_loss", true)
-          .gte("created_at", todayISO)
-          .order("created_at", { ascending: false })
-          .limit(200),
-      ]);
-      setVehicleTypes(vtRes.data || []);
-      setRecentTrips(tripsRes.data || []);
-      setAppRequestTrips(appReqRes.data || []);
-      setLostTrips(lostRes.data || []);
-      const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
-        driver_id: d.driver_id,
-        first_name: (d.profiles as any)?.first_name || "",
-        last_name: (d.profiles as any)?.last_name || "",
-        phone_number: (d.profiles as any)?.phone_number || "",
-        vehicle_name: (d.vehicles as any)?.vehicle_types?.name || "Unknown",
-        plate_number: (d.vehicles as any)?.plate_number || "",
-        lat: d.lat,
-        lng: d.lng,
-      }));
-      setOnlineDrivers(drivers);
-      cacheDrivers(drivers);
+             .gte("created_at", todayISO)
+             .order("created_at", { ascending: false })
+            .limit(200),
+          supabase
+            .from("trips")
+            .select(tripSelect)
+            .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+            .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+            .order("updated_at", { ascending: false })
+            .limit(300),
+          supabase
+            .from("trips")
+            .select(
+              "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)",
+            )
+            .eq("dispatch_type", "operator")
+            .eq("is_loss", true)
+            .gte("created_at", todayISO)
+            .order("created_at", { ascending: false })
+            .limit(200),
+        ]);
+        setVehicleTypes(vtRes.data || []);
+        const recent = tripsRes.data || [];
+        const appReq = appReqRes.data || [];
+        const lost = lostRes.data || [];
+        setRecentTrips(recent);
+        setAppRequestTrips(appReq);
+        setLostTrips(lost);
+        try {
+          localStorage.setItem(
+            "hda_dispatch_tables_cache_v1",
+            JSON.stringify({ recent, appReq, lost, ts: Date.now() }),
+          );
+        } catch {}
+        const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
+          driver_id: d.driver_id,
+          first_name: (d.profiles as any)?.first_name || "",
+          last_name: (d.profiles as any)?.last_name || "",
+          phone_number: (d.profiles as any)?.phone_number || "",
+          vehicle_name: (d.vehicles as any)?.vehicles_types?.name || (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+          plate_number: (d.vehicles as any)?.plate_number || "",
+          lat: d.lat,
+          lng: d.lng,
+        }));
+        setOnlineDrivers(drivers);
+        cacheDrivers(drivers);
+      } catch (err) {
+        console.warn("Initial dispatch load failed, keeping cache:", err);
+      }
     };
     load();
   }, [isAuthed]);
