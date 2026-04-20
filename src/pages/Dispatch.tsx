@@ -988,7 +988,7 @@ const Dispatch = () => {
         )
         .eq("dispatch_type", "operator")
         .eq("is_loss", true)
-        .gte("created_at", todayISO)
+        .gte("created_at", getDaysAgoISO(14))
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
