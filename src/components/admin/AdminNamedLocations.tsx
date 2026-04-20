@@ -536,11 +536,43 @@ const AdminNamedLocations = () => {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Latitude</label>
-              <input value={form.lat} readOnly className="w-full mt-1 px-3 py-2 bg-muted border border-border rounded-xl text-sm text-muted-foreground" />
+              <input
+                value={form.lat}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm(prev => ({ ...prev, lat: v }));
+                  const lat = parseFloat(v);
+                  const lng = parseFloat(form.lng);
+                  if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && mapInstance.current) {
+                    if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
+                    mapInstance.current.setView([lat, lng], mapInstance.current.getZoom() || 16);
+                    autoFetchAddress(lat, lng);
+                  }
+                }}
+                placeholder="e.g. 4.1755"
+                inputMode="decimal"
+                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Longitude</label>
-              <input value={form.lng} readOnly className="w-full mt-1 px-3 py-2 bg-muted border border-border rounded-xl text-sm text-muted-foreground" />
+              <input
+                value={form.lng}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm(prev => ({ ...prev, lng: v }));
+                  const lat = parseFloat(form.lat);
+                  const lng = parseFloat(v);
+                  if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && mapInstance.current) {
+                    if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
+                    mapInstance.current.setView([lat, lng], mapInstance.current.getZoom() || 16);
+                    autoFetchAddress(lat, lng);
+                  }
+                }}
+                placeholder="e.g. 73.5093"
+                inputMode="decimal"
+                className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
           </div>
           <button onClick={handleSubmit} className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold">
