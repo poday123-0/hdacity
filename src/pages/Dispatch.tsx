@@ -851,6 +851,7 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      writeCache("online_drivers", drivers);
       cacheDrivers(drivers);
     };
     let driverDebounce: ReturnType<typeof setTimeout> | null = null;
