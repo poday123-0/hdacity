@@ -40,7 +40,7 @@ const DAY_OPTIONS = [
   { value: "sun", label: "Sun" },
 ];
 
-const DispatchGoogleMap = () => {
+const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -87,7 +87,7 @@ const DispatchGoogleMap = () => {
     const isDark = document.documentElement.classList.contains("dark");
 
     const map = L.map(mapRef.current, {
-      center: [4.2105, 73.5400],
+      center: [4.2105, 73.54],
       zoom: 16,
       zoomControl: true,
       attributionControl: false,
@@ -98,18 +98,54 @@ const DispatchGoogleMap = () => {
     tileLayerRef.current = tileLayer;
     mapInstance.current = map;
 
+    const refreshMapSize = () => {
+      if (!mapRef.current || !mapInstance.current) return;
+      const { width, height } = mapRef.current.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        window.requestAnimationFrame(() => {
+          mapInstance.current?.invalidateSize(false);
+        });
+      }
+    };
+
     const observer = new MutationObserver(() => {
       const dark = document.documentElement.classList.contains("dark");
       if (tileLayerRef.current) tileLayerRef.current.setUrl(dark ? DARK_TILES : LIGHT_TILES);
+      refreshMapSize();
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
+    const resizeObserver = new ResizeObserver(() => refreshMapSize());
+    resizeObserver.observe(mapRef.current);
+    window.addEventListener("resize", refreshMapSize);
+
+    refreshMapSize();
+    window.setTimeout(refreshMapSize, 120);
+    window.setTimeout(refreshMapSize, 320);
+
     return () => {
       observer.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", refreshMapSize);
       map.remove();
       mapInstance.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isActive || !mapRef.current || !mapInstance.current) return;
+
+    const refreshWhenVisible = () => {
+      const { width, height } = mapRef.current!.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        mapInstance.current?.invalidateSize(false);
+      }
+    };
+
+    window.requestAnimationFrame(refreshWhenVisible);
+    window.setTimeout(refreshWhenVisible, 120);
+    window.setTimeout(refreshWhenVisible, 320);
+  }, [isActive]);
 
   // Named location labels on dispatch map
   const namedLabelsRef = useRef<L.Marker[]>([]);
