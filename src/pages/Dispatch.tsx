@@ -614,6 +614,22 @@ const Dispatch = () => {
     return todayStartUTC.toISOString();
   };
 
+  // Load timeout settings for the broadcast countdown
+  useEffect(() => {
+    if (!isAuthed) return;
+    (async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("key, value")
+        .in("key", ["dispatch_broadcast_timeout_seconds", "passenger_search_timeout_seconds"]);
+      data?.forEach((s: any) => {
+        const v = typeof s.value === "number" ? s.value : parseInt(s.value) || 60;
+        if (s.key === "dispatch_broadcast_timeout_seconds") setBroadcastTimeoutSec(v);
+        if (s.key === "passenger_search_timeout_seconds") setPassengerTimeoutSec(v);
+      });
+    })();
+  }, [isAuthed]);
+
   // Load vehicle types, drivers, recent trips
   useEffect(() => {
     if (!isAuthed) return;
