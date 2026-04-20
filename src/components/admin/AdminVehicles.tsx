@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer, Warehouse } from "lucide-react";
 import * as XLSX from "xlsx";
 import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
+import HdaDispatchVehiclesModal from "./HdaDispatchVehiclesModal";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
 type VehicleForm = typeof emptyForm;
