@@ -69,6 +69,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { readCache, writeCache, isCacheFresh } from "@/lib/dispatch-cache";
 
 // 5-minute countdown timer for operator-assigned trips, then 30-min auto-complete countdown
 function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
@@ -230,12 +231,12 @@ const Dispatch = () => {
   const [loginError, setLoginError] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Shared state for forms
-  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
-  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
-  const [recentTrips, setRecentTrips] = useState<any[]>([]);
-  const [appRequestTrips, setAppRequestTrips] = useState<any[]>([]);
-  const [lostTrips, setLostTrips] = useState<any[]>([]);
+  // Shared state for forms — hydrate from localStorage cache for instant load
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>(() => readCache<any[]>("vehicle_types") || []);
+  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>(() => readCache<OnlineDriver[]>("online_drivers") || []);
+  const [recentTrips, setRecentTrips] = useState<any[]>(() => readCache<any[]>("recent_trips") || []);
+  const [appRequestTrips, setAppRequestTrips] = useState<any[]>(() => readCache<any[]>("app_request_trips") || []);
+  const [lostTrips, setLostTrips] = useState<any[]>(() => readCache<any[]>("lost_trips") || []);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -657,10 +658,18 @@ const Dispatch = () => {
           .order("created_at", { ascending: false })
           .limit(200),
       ]);
-      setVehicleTypes(vtRes.data || []);
-      setRecentTrips(tripsRes.data || []);
-      setAppRequestTrips(appReqRes.data || []);
-      setLostTrips(lostRes.data || []);
+      const vts = vtRes.data || [];
+      const trips = tripsRes.data || [];
+      const appReqs = appReqRes.data || [];
+      const losses = lostRes.data || [];
+      setVehicleTypes(vts);
+      setRecentTrips(trips);
+      setAppRequestTrips(appReqs);
+      setLostTrips(losses);
+      writeCache("vehicle_types", vts);
+      writeCache("recent_trips", trips);
+      writeCache("app_request_trips", appReqs);
+      writeCache("lost_trips", losses);
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
         first_name: (d.profiles as any)?.first_name || "",
@@ -672,8 +681,23 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      writeCache("online_drivers", drivers);
       cacheDrivers(drivers);
     };
+
+    // If cache is fresh, defer the heavy load so the UI paints instantly with cached data first.
+    const allFresh =
+      isCacheFresh("recent_trips") &&
+      isCacheFresh("app_request_trips") &&
+      isCacheFresh("lost_trips") &&
+      isCacheFresh("online_drivers") &&
+      isCacheFresh("vehicle_types");
+
+    if (allFresh) {
+      // Background refresh — UI already shows cached data
+      const t = setTimeout(load, 100);
+      return () => clearTimeout(t);
+    }
     load();
   }, [isAuthed]);
 
@@ -827,6 +851,7 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      writeCache("online_drivers", drivers);
       cacheDrivers(drivers);
     };
     let driverDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -973,6 +998,9 @@ const Dispatch = () => {
     setRecentTrips(todayTrips);
     setAppRequestTrips(appReq || []);
     setLostTrips(lost || []);
+    writeCache("recent_trips", todayTrips);
+    writeCache("app_request_trips", appReq || []);
+    writeCache("lost_trips", lost || []);
   };
 
   // Fetch all bookings for the All Bookings dialog (supports all date ranges)
