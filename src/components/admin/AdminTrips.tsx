@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { notifyTripRequested } from "@/lib/push-notifications";
@@ -79,13 +79,25 @@ const AdminTrips = () => {
 
   useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
 
+  // Keep latest fetchTrips reachable from a stable realtime subscription
+  const fetchTripsRef = useRef(fetchTrips);
+  fetchTripsRef.current = fetchTrips;
+
   useEffect(() => {
+    // Debounce rapid bursts of trip updates so the UI stays responsive
+    let debounceId: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
-      .channel("admin-trips")
-      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => fetchTrips())
+      .channel("admin-trips-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
+        if (debounceId) clearTimeout(debounceId);
+        debounceId = setTimeout(() => fetchTripsRef.current(), 400);
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
+    return () => {
+      if (debounceId) clearTimeout(debounceId);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const viewMessages = async (tripId: string) => {
     setSelectedTripId(tripId);
