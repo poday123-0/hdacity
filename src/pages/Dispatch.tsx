@@ -261,6 +261,7 @@ const Dispatch = () => {
   const [lostItems, setLostItems] = useState<any[]>([]);
   const [roadAlert, setRoadAlert] = useState<{ reporter: string; type: string; notes: string; id: string } | null>(null);
   const roadAlertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showQueuePanel, setShowQueuePanel] = useState(false);
 
   // Preloaded center-code index for instant lookups (refreshed in background)
   const [centerCodeIndex, setCenterCodeIndex] = useState<Record<string, any>>({});
@@ -430,34 +431,18 @@ const Dispatch = () => {
     setLoading(false);
   }, []);
 
-  // Build a local index of center_code -> vehicle/driver info so Enter lookup is instant
+  // Build a local index of center_code -> vehicle/driver info so Enter lookup is instant.
+  // Uses shared dispatch-cache so it stays available indefinitely while offline.
   useEffect(() => {
     if (!isAuthed) return;
 
-    const CACHE_KEY = "hda_center_code_index_v2";
-    const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
-
-    const loadFromCache = () => {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed?.ts || Date.now() - parsed.ts > CACHE_TTL_MS) return null;
-        return parsed.index || null;
-      } catch {
-        return null;
-      }
-    };
-
-    const saveToCache = (index: Record<string, any>) => {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), index }));
-      } catch {}
-    };
+    // Hydrate immediately from offline-aware cache
+    const cached = readCache<Record<string, any>>("center_code_index");
+    if (cached) setCenterCodeIndex(cached);
 
     const refresh = async () => {
-      const cached = loadFromCache();
-      if (cached) setCenterCodeIndex(cached);
+      // Skip network entirely when offline — cached index keeps working
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
       try {
         const { data: vehicles } = await supabase
@@ -575,7 +560,7 @@ const Dispatch = () => {
         });
 
         setCenterCodeIndex(index);
-        saveToCache(index);
+        writeCache("center_code_index", index);
       } catch {
         // keep any cached data
       }
@@ -685,6 +670,9 @@ const Dispatch = () => {
       cacheDrivers(drivers);
     };
 
+    // Skip the network entirely when offline — cached state already hydrated
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+
     // If cache is fresh, defer the heavy load so the UI paints instantly with cached data first.
     const allFresh =
       isCacheFresh("recent_trips") &&
@@ -699,7 +687,7 @@ const Dispatch = () => {
       return () => clearTimeout(t);
     }
     load();
-  }, [isAuthed]);
+  }, [isAuthed, isOnline]);
 
   // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
   const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -949,6 +937,8 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
+    // Skip network when offline — cached data already populated
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
@@ -1376,16 +1366,21 @@ const Dispatch = () => {
 
       {/* Offline banner */}
       {!isOnline && (
-        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between gap-2 shrink-0 animate-pulse">
+        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
-            <WifiOff className="w-4 h-4" />
+            <WifiOff className="w-4 h-4 animate-pulse" />
             <span className="text-sm font-bold">You are offline</span>
-            <span className="text-xs opacity-80">— Trips will be queued and auto-sent when connection returns</span>
+            <span className="text-xs opacity-80 hidden sm:inline">
+              — Using cached drivers, locations & trips. New trips will be queued and auto-sent when back online.
+            </span>
           </div>
           {queuedTrips.length > 0 && (
-            <span className="text-xs font-mono bg-destructive-foreground/20 px-2 py-0.5 rounded">
-              {queuedTrips.length} queued
-            </span>
+            <button
+              onClick={() => setShowQueuePanel((v) => !v)}
+              className="text-xs font-bold bg-destructive-foreground/20 hover:bg-destructive-foreground/30 px-2 py-0.5 rounded transition-colors"
+            >
+              {queuedTrips.length} queued {showQueuePanel ? "▴" : "▾"}
+            </button>
           )}
         </div>
       )}
@@ -1395,7 +1390,15 @@ const Dispatch = () => {
         <div className="bg-warning/15 border-b border-warning/30 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <Upload className="w-4 h-4 text-warning" />
-            <span className="text-sm font-medium text-warning">{queuedTrips.length} queued trip(s) pending sync</span>
+            <span className="text-sm font-medium text-warning">
+              {queuedTrips.length} queued trip(s) pending sync
+            </span>
+            <button
+              onClick={() => setShowQueuePanel((v) => !v)}
+              className="text-[10px] underline text-warning/80 hover:text-warning"
+            >
+              {showQueuePanel ? "Hide" : "View queue"}
+            </button>
           </div>
           <button
             onClick={syncQueue}
@@ -1404,6 +1407,52 @@ const Dispatch = () => {
           >
             {isSyncing ? "Syncing..." : "Sync Now"}
           </button>
+        </div>
+      )}
+
+      {/* Expandable queue panel */}
+      {showQueuePanel && queuedTrips.length > 0 && (
+        <div className="bg-card border-b border-border shrink-0 max-h-64 overflow-y-auto">
+          <div className="px-4 py-2 border-b border-border flex items-center justify-between sticky top-0 bg-card">
+            <span className="text-xs font-bold text-foreground">Queued Trips ({queuedTrips.length})</span>
+            <div className="flex gap-2">
+              <button
+                onClick={syncQueue}
+                disabled={isSyncing || !isOnline}
+                className="text-[10px] font-bold px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40"
+              >
+                {isSyncing ? "Syncing..." : "Sync All"}
+              </button>
+              <button
+                onClick={() => setShowQueuePanel(false)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          {queuedTrips.map((q) => (
+            <div key={q.id} className="px-4 py-2 border-b border-border/50 flex items-center justify-between gap-2 text-[11px]">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-foreground truncate">
+                  {q.payload.customer_name || "—"} • {q.payload.customer_phone || "—"}
+                </div>
+                <div className="text-muted-foreground truncate">
+                  {q.payload.pickup_address || "—"} → {q.payload.dropoff_address || "—"}
+                </div>
+                <div className="text-[9px] text-muted-foreground/70">
+                  Queued {new Date(q.queuedAt).toLocaleTimeString()}
+                </div>
+              </div>
+              <button
+                onClick={() => removeFromQueue(q.id)}
+                className="text-destructive hover:bg-destructive/10 p-1 rounded shrink-0"
+                title="Remove from queue"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

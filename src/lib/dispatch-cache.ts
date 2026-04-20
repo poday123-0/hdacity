@@ -1,8 +1,11 @@
 // Lightweight localStorage cache for dispatch data so the dashboard
 // opens instantly with stale data, then refreshes in the background.
+//
+// Offline-aware: while the device is offline, cached data is treated as
+// always fresh so the dispatcher can keep working without internet.
 
 const PREFIX = "hda_dispatch_cache_v1:";
-const DEFAULT_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const DEFAULT_TTL_MS = 2 * 60 * 1000; // 2 minutes when online
 
 export type DispatchCacheKey =
   | "recent_trips"
@@ -10,11 +13,20 @@ export type DispatchCacheKey =
   | "lost_trips"
   | "online_drivers"
   | "vehicle_types"
-  | "form_locations";
+  | "form_locations"
+  | "center_code_index";
 
 interface CacheEntry<T> {
   ts: number;
   data: T;
+}
+
+function isOffline(): boolean {
+  try {
+    return typeof navigator !== "undefined" && navigator.onLine === false;
+  } catch {
+    return false;
+  }
 }
 
 export function readCache<T>(key: DispatchCacheKey): T | null {
@@ -31,6 +43,14 @@ export function readCache<T>(key: DispatchCacheKey): T | null {
 }
 
 export function isCacheFresh(key: DispatchCacheKey, ttlMs = DEFAULT_TTL_MS): boolean {
+  // While offline, treat any existing cache as fresh so dispatch keeps working.
+  if (isOffline()) {
+    try {
+      return localStorage.getItem(PREFIX + key) !== null;
+    } catch {
+      return false;
+    }
+  }
   try {
     const raw = localStorage.getItem(PREFIX + key);
     if (!raw) return false;
