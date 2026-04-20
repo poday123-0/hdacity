@@ -597,14 +597,6 @@ const Dispatch = () => {
     return todayStartUTC.toISOString();
   };
 
-  // ISO for N days ago (used for Loss history so dispatchers see latest losses, not just today)
-  const getDaysAgoISO = (days: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  };
-
   // Load vehicle types, drivers, recent trips
   useEffect(() => {
     if (!isAuthed) return;
@@ -647,7 +639,7 @@ const Dispatch = () => {
           )
           .eq("dispatch_type", "operator")
           .eq("is_loss", true)
-          .gte("created_at", getDaysAgoISO(14))
+          .gte("created_at", todayISO)
           .order("created_at", { ascending: false })
           .limit(200),
       ]);
@@ -655,11 +647,14 @@ const Dispatch = () => {
       const trips = tripsRes.data || [];
       const appReqs = appReqRes.data || [];
       const losses = lostRes.data || [];
-      // Write each cache as soon as data arrives so partial failures still cache successful pieces
-      if (vtRes.data) { setVehicleTypes(vts); writeCache("vehicle_types", vts); }
-      if (tripsRes.data) { setRecentTrips(trips); writeCache("recent_trips", trips); }
-      if (appReqRes.data) { setAppRequestTrips(appReqs); writeCache("app_request_trips", appReqs); }
-      if (lostRes.data) { setLostTrips(losses); writeCache("lost_trips", losses); }
+      setVehicleTypes(vts);
+      setRecentTrips(trips);
+      setAppRequestTrips(appReqs);
+      setLostTrips(losses);
+      writeCache("vehicle_types", vts);
+      writeCache("recent_trips", trips);
+      writeCache("app_request_trips", appReqs);
+      writeCache("lost_trips", losses);
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
         first_name: (d.profiles as any)?.first_name || "",
@@ -670,11 +665,9 @@ const Dispatch = () => {
         lat: d.lat,
         lng: d.lng,
       }));
-      if (driversRes.data) {
-        setOnlineDrivers(drivers);
-        writeCache("online_drivers", drivers);
-        cacheDrivers(drivers);
-      }
+      setOnlineDrivers(drivers);
+      writeCache("online_drivers", drivers);
+      cacheDrivers(drivers);
     };
 
     // Skip the network entirely when offline — cached state already hydrated
@@ -988,7 +981,7 @@ const Dispatch = () => {
         )
         .eq("dispatch_type", "operator")
         .eq("is_loss", true)
-        .gte("created_at", getDaysAgoISO(14))
+        .gte("created_at", todayISO)
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
@@ -2477,7 +2470,7 @@ const Dispatch = () => {
             <AdminDutyHours />
           </div>
         )}
-        <div className={`w-full h-full min-h-[calc(100dvh-5rem)] ${activeTab === "hdc_map" ? "" : "hidden"}`}>
+        <div className={`w-full h-full ${activeTab === "hdc_map" ? "" : "hidden"}`}>
           <iframe
             src="https://hulhumale.maps.arcgis.com/apps/webappviewer/index.html?id=18781129603f429799a7f94292d2f67f"
             className="w-full h-full border-0"
@@ -2485,8 +2478,8 @@ const Dispatch = () => {
             allow="geolocation"
           />
         </div>
-        <div className={`w-full h-full min-h-[calc(100dvh-5rem)] ${activeTab === "google_map" ? "" : "hidden"}`}>
-          <DispatchGoogleMap isActive={activeTab === "google_map"} />
+        <div className={`w-full h-full ${activeTab === "google_map" ? "" : "hidden"}`}>
+          <DispatchGoogleMap />
         </div>
       </div>
 
@@ -2849,28 +2842,6 @@ const Dispatch = () => {
                                 Clear Loss
                               </button>
                             )}
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (!confirm("Delete this booking permanently?")) return;
-                                const { error } = await supabase.from("trips").delete().eq("id", t.id);
-                                if (error) {
-                                  toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-                                  return;
-                                }
-                                if (t.driver_id) {
-                                  await supabase.from("driver_locations").update({ is_on_trip: false }).eq("driver_id", t.driver_id);
-                                }
-                                setRecentTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
-                                setAllBookingsTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
-                                setLostTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
-                                setAppRequestTrips((prev) => prev.filter((tr: any) => tr.id !== t.id));
-                                toast({ title: "Booking deleted" });
-                              }}
-                              className="text-[9px] font-bold text-destructive px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 transition-colors ml-auto"
-                            >
-                              Delete
-                            </button>
                           </div>
                         </div>
                       )}
