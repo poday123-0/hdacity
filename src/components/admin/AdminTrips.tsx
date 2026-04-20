@@ -43,12 +43,22 @@ const AdminTrips = () => {
 
   const fetchTrips = async () => {
     setLoading(true);
+    // Default to the last 30 days when the user hasn't picked a date range.
+    // Loading the entire trips table on every mount/realtime tick was the cause
+    // of the slow loading.
+    const hasDateRange = !!dateFrom || !!dateTo;
+    const defaultFrom = new Date();
+    defaultFrom.setDate(defaultFrom.getDate() - 30);
+
     let allTrips: any[] = [];
     const pageSize = 1000;
+    // Cap unbounded pagination: only paginate when the user explicitly set a date range.
+    const maxPages = hasDateRange ? 50 : 1;
     let from = 0;
     let hasMore = true;
+    let page = 0;
 
-    while (hasMore) {
+    while (hasMore && page < maxPages) {
       let query = supabase
         .from("trips")
         .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
@@ -58,7 +68,11 @@ const AdminTrips = () => {
       if (filter !== "all") query = query.eq("status", filter);
       if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
       if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
-      if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
+      if (dateFrom) {
+        query = query.gte("created_at", new Date(dateFrom).toISOString());
+      } else if (!hasDateRange) {
+        query = query.gte("created_at", defaultFrom.toISOString());
+      }
       if (dateTo) {
         const endDate = new Date(dateTo);
         endDate.setHours(23, 59, 59, 999);
@@ -68,6 +82,7 @@ const AdminTrips = () => {
       if (data && data.length > 0) {
         allTrips = allTrips.concat(data);
         from += pageSize;
+        page += 1;
         if (data.length < pageSize) hasMore = false;
       } else {
         hasMore = false;
