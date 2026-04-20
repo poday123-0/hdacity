@@ -441,8 +441,9 @@ const Dispatch = () => {
     if (cached) setCenterCodeIndex(cached);
 
     const refresh = async () => {
-      // Skip network entirely when offline — cached index keeps working
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      // Don't gate on navigator.onLine — this runs from realtime listeners (only
+      // fire while connection is alive) AND polling fallback. Queries no-op when
+      // truly offline, while cached index keeps the UI usable.
 
       try {
         const { data: vehicles } = await supabase
