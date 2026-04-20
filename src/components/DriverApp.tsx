@@ -4762,32 +4762,54 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               }
               setCompletionFare(actualFare || 0);
               const tripPaymentMethod = (currentTrip as any).payment_method || "cash";
-              if (tripPaymentMethod === "wallet") {
-                // Wallet payment: auto-process
-                const acceptedAt = (currentTrip as any).accepted_at;
-                const calcDuration = acceptedAt ? Math.round((Date.now() - new Date(acceptedAt).getTime()) / 60000) : null;
-                await supabase.from("trips").update({
-                  status: "completed",
-                  completed_at: now,
-                  actual_fare: actualFare,
-                  duration_minutes: calcDuration,
-                  payment_confirmed_method: "wallet",
-                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
-                } as any).eq("id", currentTrip.id);
-                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-                // Skip wallet operations for dispatch trips
-                const isDispatchTrip = currentTrip.dispatch_type === "operator";
-                if (!isDispatchTrip) {
-                  // Deduct from passenger wallet, credit driver wallet
-                  const passengerId = currentTrip.passenger_id;
-                  if (passengerId && actualFare) {
-                    // Deduct passenger
-                    const { data: pWallet } = await supabase.from("wallets").select("id, balance").eq("user_id", passengerId).maybeSingle();
+              const isWallet = tripPaymentMethod === "wallet";
+              const tripPM = isWallet ? "wallet" : tripPaymentMethod;
+              const acceptedAt = (currentTrip as any).accepted_at;
+              const calcDuration = acceptedAt ? Math.round((Date.now() - new Date(acceptedAt).getTime()) / 60000) : null;
+
+              // Snapshot needed values before resetting state
+              const tripIdSnap = currentTrip.id;
+              const passengerIdSnap = currentTrip.passenger_id;
+              const isDispatchTrip = currentTrip.dispatch_type === "operator";
+              const isHourly = currentTrip.booking_type === "hourly";
+
+              // CRITICAL: complete the trip in DB and free the driver immediately.
+              // Run the two essential updates in parallel so the slide-to-complete
+              // never appears stuck if a downstream call (wallet/cashback) is slow.
+              try {
+                await Promise.all([
+                  supabase.from("trips").update({
+                    status: "completed",
+                    completed_at: now,
+                    actual_fare: actualFare,
+                    duration_minutes: calcDuration,
+                    payment_confirmed_method: tripPM,
+                    hourly_ended_at: isHourly ? now : null,
+                  } as any).eq("id", tripIdSnap),
+                  supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id),
+                ]);
+              } catch (err) {
+                console.error("Trip completion failed:", err);
+                toast({ title: "Couldn't complete trip", description: "Please try again.", variant: "destructive" });
+                return;
+              }
+
+              // Transition UI immediately — driver should never feel stuck.
+              setConfirmedPaymentMethod(tripPM);
+              setDriverTripPhase("heading_to_pickup");
+              setScreen("complete");
+              supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_completed").eq("is_default", true).eq("is_active", true).single().then(({ data: s }) => { if (s?.file_url) playSound(s.file_url); });
+
+              // Fire-and-forget: wallet ops, cashback, notifications, leaderboard.
+              // None of these should block the driver from moving on.
+              (async () => {
+                try {
+                  if (isWallet && !isDispatchTrip && passengerIdSnap && actualFare) {
+                    const { data: pWallet } = await supabase.from("wallets").select("id, balance").eq("user_id", passengerIdSnap).maybeSingle();
                     if (pWallet) {
                       await supabase.from("wallets").update({ balance: Math.max(0, Number(pWallet.balance) - actualFare), updated_at: now } as any).eq("id", pWallet.id);
-                      await supabase.from("wallet_transactions").insert({ wallet_id: pWallet.id, user_id: passengerId, amount: actualFare, type: "debit", reason: "Trip fare", trip_id: currentTrip.id } as any);
+                      await supabase.from("wallet_transactions").insert({ wallet_id: pWallet.id, user_id: passengerIdSnap, amount: actualFare, type: "debit", reason: "Trip fare", trip_id: tripIdSnap } as any);
                     }
-                    // Credit driver
                     let dWallet = (await supabase.from("wallets").select("id, balance").eq("user_id", userProfile.id).maybeSingle()).data;
                     if (!dWallet) {
                       const { data: newW } = await supabase.from("wallets").insert({ user_id: userProfile.id, balance: 0 } as any).select().single();
@@ -4795,42 +4817,20 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     }
                     if (dWallet) {
                       await supabase.from("wallets").update({ balance: Number(dWallet.balance) + actualFare, updated_at: now } as any).eq("id", dWallet.id);
-                      await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: actualFare, type: "credit", reason: "Trip earning", trip_id: currentTrip.id } as any);
+                      await supabase.from("wallet_transactions").insert({ wallet_id: dWallet.id, user_id: userProfile.id, amount: actualFare, type: "credit", reason: "Trip earning", trip_id: tripIdSnap } as any);
                     }
                   }
-                  await applyTripCashback(currentTrip.id, actualFare || 0, currentTrip.passenger_id);
+                  if (!isDispatchTrip) {
+                    await applyTripCashback(tripIdSnap, actualFare || 0, passengerIdSnap);
+                  }
+                  if (passengerIdSnap) {
+                    notifyTripCompleted(passengerIdSnap, String(actualFare || 0), tripIdSnap);
+                  }
+                  updateCompetitionEntries(userProfile.id);
+                } catch (bgErr) {
+                  console.error("Post-completion background tasks failed:", bgErr);
                 }
-                // Notify passenger trip completed
-                if (currentTrip.passenger_id) {
-                  notifyTripCompleted(currentTrip.passenger_id, String(actualFare || 0), currentTrip.id);
-                }
-                setConfirmedPaymentMethod("wallet");
-                setDriverTripPhase("heading_to_pickup");
-                supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_completed").eq("is_default", true).eq("is_active", true).single().then(({ data: s }) => { if (s?.file_url) playSound(s.file_url); });
-                updateCompetitionEntries(userProfile.id);
-                setScreen("complete");
-              } else {
-                // Auto-complete with passenger's selected payment method (no driver confirmation needed)
-                const tripPM = (currentTrip as any).payment_method || "cash";
-                const acceptedAt2 = (currentTrip as any).accepted_at;
-                const calcDuration2 = acceptedAt2 ? Math.round((Date.now() - new Date(acceptedAt2).getTime()) / 60000) : null;
-                await supabase.from("trips").update({
-                  status: "completed", completed_at: now, actual_fare: actualFare,
-                  duration_minutes: calcDuration2,
-                  payment_confirmed_method: tripPM,
-                  hourly_ended_at: currentTrip.booking_type === "hourly" ? now : null
-                } as any).eq("id", currentTrip.id);
-                await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
-                if (currentTrip.dispatch_type !== "operator") {
-                  await applyTripCashback(currentTrip.id, actualFare, currentTrip.passenger_id);
-                }
-                if (currentTrip.passenger_id) notifyTripCompleted(currentTrip.passenger_id, String(actualFare), currentTrip.id);
-                setConfirmedPaymentMethod(tripPM);
-                setDriverTripPhase("heading_to_pickup");
-                supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_completed").eq("is_default", true).eq("is_active", true).single().then(({ data: s }) => { if (s?.file_url) playSound(s.file_url); });
-                updateCompetitionEntries(userProfile.id);
-                setScreen("complete");
-              }
+              })();
             }} />
 
           }
