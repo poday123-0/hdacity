@@ -71,7 +71,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-// 5-minute countdown timer for operator-assigned trips, then 30-min auto-complete countdown
+// 5-minute countdown timer for operator-assigned trips, then 15-min auto-complete countdown.
+// Note: this only renders while status === "accepted" — when the driver taps
+// "I have arrived" the trip moves to arrived/in_progress and this timer is
+// automatically replaced, so arrival naturally overrides the countdown.
 function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
   const [remaining, setRemaining] = useState("");
   const [phase, setPhase] = useState<"countdown" | "autocomplete" | "done">("countdown");
@@ -79,15 +82,15 @@ function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
     const update = () => {
       const elapsed = Date.now() - new Date(acceptedAt).getTime();
       const fiveMin = 5 * 60 * 1000;
-      const thirtyMin = 30 * 60 * 1000;
+      const fifteenMin = 15 * 60 * 1000;
       if (elapsed < fiveMin) {
         const left = Math.max(0, 5 * 60 - Math.floor(elapsed / 1000));
         const m = Math.floor(left / 60);
         const s = left % 60;
         setRemaining(`${m}:${s.toString().padStart(2, "0")}`);
         setPhase("countdown");
-      } else if (elapsed < thirtyMin) {
-        const left = Math.max(0, 30 * 60 - Math.floor(elapsed / 1000));
+      } else if (elapsed < fifteenMin) {
+        const left = Math.max(0, 15 * 60 - Math.floor(elapsed / 1000));
         const m = Math.floor(left / 60);
         const s = left % 60;
         setRemaining(`${m}:${s.toString().padStart(2, "0")}`);
