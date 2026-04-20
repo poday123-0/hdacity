@@ -147,7 +147,7 @@ const LiveTripTracker = ({ tripId }: Props) => {
         tripRoutes={tripRoute ? [tripRoute] : []}
       />
       {tripRoute && (
-        <div className="absolute bottom-3 left-3 right-3 bg-card/95 backdrop-blur-md border border-border rounded-2xl p-4 shadow-xl space-y-3">
+        <div className="absolute bottom-3 left-3 right-3 z-[1000] bg-card/95 backdrop-blur-md border border-border rounded-2xl p-4 shadow-xl space-y-3 pointer-events-auto">
           {tripRoute.driverName && (
             <div className="flex items-center justify-between gap-2 pb-2 border-b border-border">
               <p className="text-sm font-bold text-foreground flex items-center gap-2">
