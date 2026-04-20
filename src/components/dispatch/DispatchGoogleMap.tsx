@@ -104,8 +104,19 @@ const DispatchGoogleMap = () => {
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
+    // Fix: when the map container is initially hidden (parent uses `hidden` class),
+    // Leaflet initializes with 0×0 size and tiles never load. Re-invalidate the map
+    // size whenever the container becomes visible / resized.
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstance.current && mapRef.current && mapRef.current.offsetWidth > 0) {
+        mapInstance.current.invalidateSize();
+      }
+    });
+    resizeObserver.observe(mapRef.current);
+
     return () => {
       observer.disconnect();
+      resizeObserver.disconnect();
       map.remove();
       mapInstance.current = null;
     };
