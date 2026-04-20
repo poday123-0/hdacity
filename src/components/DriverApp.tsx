@@ -1853,6 +1853,70 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return () => clearInterval(interval);
   }, [screen, userProfile?.id]);
 
+  // ── Always-on Android idle bubble (Messenger chat-head style) ──────
+  // Show a persistent app-logo bubble whenever the driver is Online,
+  // hide when foregrounded so it doesn't overlay the app itself.
+  useEffect(() => {
+    const isAndroid = (window as any).Capacitor?.getPlatform?.() === "android";
+    if (!isAndroid || !floatingBubbleEnabled) return;
+    const isWorking = screen === "online" || screen === "navigating" || screen === "ride-request";
+    if (!isWorking) return;
+
+    let appStateListener: { remove: () => void } | null = null;
+    let unmounted = false;
+
+    (async () => {
+      try {
+        const [{ default: FloatingBubble }, { App }] = await Promise.all([
+          import("@/plugins/floating-bubble"),
+          import("@capacitor/app"),
+        ]);
+        const { granted } = await FloatingBubble.checkPermission();
+        if (!granted || unmounted) return;
+
+        const showIfBackground = async (active: boolean) => {
+          try {
+            if (active) {
+              // App in foreground — hide idle bubble (trip bubble is managed
+              // separately by FloatingTripBubble component).
+              if (!currentTripRef.current) await FloatingBubble.hide();
+            } else {
+              // App backgrounded — show idle logo bubble (only if no trip,
+              // since trip bubble takes over for incoming requests).
+              if (!currentTripRef.current) await FloatingBubble.showIdle();
+            }
+          } catch {}
+        };
+
+        appStateListener = await App.addListener("appStateChange", ({ isActive }) => {
+          showIfBackground(isActive);
+        });
+
+        // If we're already backgrounded right now, show it immediately.
+        try {
+          const state = await App.getState();
+          showIfBackground(state.isActive);
+        } catch {}
+      } catch (e) {
+        console.log("[IdleBubble] not available:", e);
+      }
+    })();
+
+    return () => {
+      unmounted = true;
+      if (appStateListener) appStateListener.remove();
+      // Hide idle bubble when leaving working state.
+      if (!currentTripRef.current) {
+        (async () => {
+          try {
+            const { default: FloatingBubble } = await import("@/plugins/floating-bubble");
+            await FloatingBubble.hide();
+          } catch {}
+        })();
+      }
+    };
+  }, [screen, floatingBubbleEnabled]);
+
 
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Trip accepted by ANOTHER driver while we're on ride-request screen
