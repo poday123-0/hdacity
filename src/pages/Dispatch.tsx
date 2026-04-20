@@ -669,6 +669,9 @@ const Dispatch = () => {
       cacheDrivers(drivers);
     };
 
+    // Skip the network entirely when offline — cached state already hydrated
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+
     // If cache is fresh, defer the heavy load so the UI paints instantly with cached data first.
     const allFresh =
       isCacheFresh("recent_trips") &&
@@ -683,7 +686,7 @@ const Dispatch = () => {
       return () => clearTimeout(t);
     }
     load();
-  }, [isAuthed]);
+  }, [isAuthed, isOnline]);
 
   // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
   const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
