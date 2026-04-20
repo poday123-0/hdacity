@@ -147,19 +147,52 @@ const LiveTripTracker = ({ tripId }: Props) => {
         tripRoutes={tripRoute ? [tripRoute] : []}
       />
       {tripRoute && (
-        <div className="absolute bottom-3 left-3 right-3 bg-card/95 backdrop-blur border border-border rounded-xl p-3 space-y-1.5">
+        <div className="absolute bottom-3 left-3 right-3 bg-card/95 backdrop-blur-md border border-border rounded-2xl p-4 shadow-xl space-y-3">
           {tripRoute.driverName && (
-            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <Navigation className="w-3 h-3 text-primary" /> {tripRoute.driverName}
-            </p>
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-border">
+              <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                <span className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Navigation className="w-3.5 h-3.5 text-primary" />
+                </span>
+                {tripRoute.driverName}
+              </p>
+              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                tripRoute.status === "in_progress" || tripRoute.status === "started"
+                  ? "bg-success/15 text-success"
+                  : tripRoute.status === "accepted"
+                    ? "bg-primary/15 text-primary"
+                    : "bg-accent text-foreground"
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                {tripRoute.status === "in_progress" || tripRoute.status === "started"
+                  ? "On Trip"
+                  : tripRoute.status === "accepted"
+                    ? "On the way"
+                    : tripRoute.status}
+              </span>
+            </div>
           )}
-          <p className="text-[10px] text-muted-foreground truncate">📍 {tripRoute.pickupAddress}</p>
-          <p className="text-[10px] text-muted-foreground truncate">📌 {tripRoute.dropoffAddress}</p>
-          <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full ${
-            tripRoute.status === "in_progress" || tripRoute.status === "started" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"
-          }`}>
-            {tripRoute.status === "in_progress" || tripRoute.status === "started" ? "Trip in progress" : tripRoute.status === "accepted" ? "Driver on the way" : tripRoute.status}
-          </span>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Pickup</p>
+                <p className="text-xs font-medium text-foreground break-words leading-snug">{tripRoute.pickupAddress}</p>
+              </div>
+            </div>
+            <div className="ml-2.5 w-px h-2 bg-border" />
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <span className="w-2 h-2 rounded-sm bg-destructive" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Dropoff</p>
+                <p className="text-xs font-medium text-foreground break-words leading-snug">{tripRoute.dropoffAddress}</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
