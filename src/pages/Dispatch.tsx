@@ -466,14 +466,17 @@ const Dispatch = () => {
           }
         });
 
-        // Use Maldives timezone (UTC+5) for "today"
-        const now = new Date();
-        const maldivesOffset = 5 * 60;
-        const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
-        const todayStart = new Date(maldivesNow);
-        todayStart.setHours(0, 0, 0, 0);
-        const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
-        const todayISO = todayStartUTC.toISOString();
+        // Use Maldives timezone (UTC+5) for "today" — compute boundary using UTC math
+        // so browser local timezone never shifts the start-of-day.
+        const MALDIVES_OFFSET_MS = 5 * 60 * 60 * 1000;
+        const nowMaldives = new Date(Date.now() + MALDIVES_OFFSET_MS);
+        const mvMidnightUTC = Date.UTC(
+          nowMaldives.getUTCFullYear(),
+          nowMaldives.getUTCMonth(),
+          nowMaldives.getUTCDate(),
+          0, 0, 0, 0,
+        );
+        const todayISO = new Date(mvMidnightUTC - MALDIVES_OFFSET_MS).toISOString();
 
         const [profilesRes, todayTripsRes, completedTripsRes] = await Promise.all([
           driverIds.length
@@ -586,15 +589,18 @@ const Dispatch = () => {
     };
   }, [isAuthed]);
 
-  // Helper: get Maldives (UTC+5) start-of-day as ISO string
+  // Helper: get Maldives (UTC+5) start-of-day as ISO string.
+  // Uses UTC math so the boundary is correct regardless of browser local timezone.
   const getMaldivesTodayISO = () => {
-    const now = new Date();
-    const maldivesOffset = 5 * 60;
-    const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
-    const todayStart = new Date(maldivesNow);
-    todayStart.setHours(0, 0, 0, 0);
-    const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
-    return todayStartUTC.toISOString();
+    const MALDIVES_OFFSET_MS = 5 * 60 * 60 * 1000;
+    const nowMaldives = new Date(Date.now() + MALDIVES_OFFSET_MS);
+    const mvMidnightUTC = Date.UTC(
+      nowMaldives.getUTCFullYear(),
+      nowMaldives.getUTCMonth(),
+      nowMaldives.getUTCDate(),
+      0, 0, 0, 0,
+    );
+    return new Date(mvMidnightUTC - MALDIVES_OFFSET_MS).toISOString();
   };
 
   // ISO for N days ago (used for Loss history so dispatchers see latest losses, not just today)
