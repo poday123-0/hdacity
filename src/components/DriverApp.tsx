@@ -1982,8 +1982,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     // Fast polling fallback (5s) on ride-request screen so the popup dismisses
     // and the trip sound stops within seconds when another driver accepts.
-    // Slower (30s) once the driver is navigating their own accepted trip.
-    const pollMs = screen === "ride-request" ? 5000 : 30000;
+    // Also fast (5s) while navigating so dispatch cancellations reach the
+    // driver instantly even if the realtime channel briefly drops.
+    const pollMs = 5000;
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
