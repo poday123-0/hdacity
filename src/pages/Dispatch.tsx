@@ -430,34 +430,18 @@ const Dispatch = () => {
     setLoading(false);
   }, []);
 
-  // Build a local index of center_code -> vehicle/driver info so Enter lookup is instant
+  // Build a local index of center_code -> vehicle/driver info so Enter lookup is instant.
+  // Uses shared dispatch-cache so it stays available indefinitely while offline.
   useEffect(() => {
     if (!isAuthed) return;
 
-    const CACHE_KEY = "hda_center_code_index_v2";
-    const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
-
-    const loadFromCache = () => {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed?.ts || Date.now() - parsed.ts > CACHE_TTL_MS) return null;
-        return parsed.index || null;
-      } catch {
-        return null;
-      }
-    };
-
-    const saveToCache = (index: Record<string, any>) => {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), index }));
-      } catch {}
-    };
+    // Hydrate immediately from offline-aware cache
+    const cached = readCache<Record<string, any>>("center_code_index");
+    if (cached) setCenterCodeIndex(cached);
 
     const refresh = async () => {
-      const cached = loadFromCache();
-      if (cached) setCenterCodeIndex(cached);
+      // Skip network entirely when offline — cached index keeps working
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
       try {
         const { data: vehicles } = await supabase
