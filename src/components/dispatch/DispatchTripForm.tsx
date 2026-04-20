@@ -82,17 +82,14 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 type LocationsCache = { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[]; recentBookings: any[] };
 let _locationsCache: LocationsCache | null = null;
 let _locationsCacheTs = 0;
-let _locationsRefreshInFlight: Promise<void> | null = null;
-const LOC_CACHE_TTL = 5 * 60_000; // 5 min in-memory; localStorage layer extends further
+const LOC_CACHE_TTL = 30_000; // 30 sec in-memory; localStorage layer extends to 2 min
 
-// Hydrate in-memory cache from localStorage on module load so first paint is instant.
-// Treat the persisted copy as fresh enough to skip the immediate refetch — a background
-// refresh still runs if the dispatch-cache layer considers it stale.
+// Hydrate in-memory cache from localStorage on module load so first paint is instant
 try {
   const persisted = readDispatchCache<LocationsCache>("form_locations");
   if (persisted) {
     _locationsCache = persisted;
-    _locationsCacheTs = Date.now();
+    _locationsCacheTs = isDispatchCacheFresh("form_locations") ? Date.now() : 0;
   }
 } catch {}
 
@@ -213,7 +210,43 @@ const DispatchTripForm = ({
 
   // Load fare data with shared cache (instant from localStorage, refresh in background)
   useEffect(() => {
-    const applyCache = (cache: LocationsCache) => {
+    const fetchAndStore = async () => {
+      const [fzRes, scRes, slRes, nlData, rbRes] = await Promise.all([
+        supabase.from("fare_zones").select("*").eq("is_active", true),
+        supabase.from("fare_surcharges").select("*").eq("is_active", true),
+        supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true).order("name"),
+        fetchAllNamedLocations("id, name, address, description, group_name, lat, lng, road_name, suggested_by_type"),
+        supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
+      ]);
+      // Deduplicate recent booking addresses
+      const seen = new Set<string>();
+      const bookingLocs: any[] = [];
+      for (const t of rbRes.data || []) {
+        if (t.pickup_address && t.pickup_lat && t.pickup_lng) {
+          const key = t.pickup_address.trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.pickup_address, lat: t.pickup_lat, lng: t.pickup_lng }); }
+        }
+        if (t.dropoff_address && t.dropoff_lat && t.dropoff_lng) {
+          const key = t.dropoff_address.trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
+        }
+      }
+      const slOrder = ["P1", "P2", "MLE", "VIA", "Sterminal"];
+      const sortedSl = [...(slRes.data || [])].sort((a, b) => {
+        const ai = slOrder.indexOf(a.name);
+        const bi = slOrder.indexOf(b.name);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+      const cache: LocationsCache = {
+        fareZones: fzRes.data || [],
+        surcharges: scRes.data || [],
+        serviceLocations: sortedSl,
+        namedLocations: nlData,
+        recentBookings: bookingLocs,
+      };
+      _locationsCache = cache;
+      _locationsCacheTs = Date.now();
+      try { writeDispatchCache("form_locations", cache); } catch {}
       setFareZones(cache.fareZones);
       setSurcharges(cache.surcharges);
       setServiceLocations(cache.serviceLocations);
@@ -221,82 +254,17 @@ const DispatchTripForm = ({
       setRecentBookings(cache.recentBookings);
     };
 
-    const fetchAndStore = async () => {
-      // Dedupe concurrent refreshes across all form instances
-      if (_locationsRefreshInFlight) return _locationsRefreshInFlight;
-      _locationsRefreshInFlight = (async () => {
-        const slOrder = ["P1", "P2", "MLE", "VIA", "Sterminal"];
-        // Fetch the lighter datasets first and apply incrementally so the form
-        // becomes interactive immediately. Named locations (which can paginate
-        // through thousands of rows) is fired in parallel but never blocks the UI.
-        const fastQueries = Promise.all([
-          supabase.from("fare_zones").select("*").eq("is_active", true),
-          supabase.from("fare_surcharges").select("*").eq("is_active", true),
-          supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true).order("name"),
-          supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
-        ]);
-        const namedLocationsPromise = fetchAllNamedLocations(
-          "id, name, address, description, group_name, lat, lng, road_name, suggested_by_type"
-        ).catch(() => _locationsCache?.namedLocations || []);
-
-        const [fzRes, scRes, slRes, rbRes] = await fastQueries;
-
-        const seen = new Set<string>();
-        const bookingLocs: any[] = [];
-        for (const t of rbRes.data || []) {
-          if (t.pickup_address && t.pickup_lat && t.pickup_lng) {
-            const key = t.pickup_address.trim().toLowerCase();
-            if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.pickup_address, lat: t.pickup_lat, lng: t.pickup_lng }); }
-          }
-          if (t.dropoff_address && t.dropoff_lat && t.dropoff_lng) {
-            const key = t.dropoff_address.trim().toLowerCase();
-            if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
-          }
-        }
-        const sortedSl = [...(slRes.data || [])].sort((a, b) => {
-          const ai = slOrder.indexOf(a.name);
-          const bi = slOrder.indexOf(b.name);
-          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-        });
-
-        // Apply the fast portion immediately — keep existing namedLocations from cache
-        const partial: LocationsCache = {
-          fareZones: fzRes.data || [],
-          surcharges: scRes.data || [],
-          serviceLocations: sortedSl,
-          namedLocations: _locationsCache?.namedLocations || [],
-          recentBookings: bookingLocs,
-        };
-        _locationsCache = partial;
-        _locationsCacheTs = Date.now();
-        applyCache(partial);
-
-        // Then merge in named locations once they finish (does not block first paint)
-        const nlData = await namedLocationsPromise;
-        const full: LocationsCache = { ...partial, namedLocations: nlData };
-        _locationsCache = full;
-        _locationsCacheTs = Date.now();
-        try { writeDispatchCache("form_locations", full); } catch {}
-        setNamedLocations(full.namedLocations);
-      })();
-      try { await _locationsRefreshInFlight; } finally { _locationsRefreshInFlight = null; }
-    };
-
-    // Always paint cached data instantly if any exists
-    if (_locationsCache) applyCache(_locationsCache);
-
     const now = Date.now();
     // Fast path: in-memory cache fresh — nothing to do
     if (_locationsCache && now - _locationsCacheTs < LOC_CACHE_TTL) return;
 
-    // If localStorage cache is fresh, defer the network refresh so UI stays snappy
+    // If localStorage cache is fresh (within 2 min), defer the network refresh
+    // so the UI stays snappy. Otherwise fetch immediately.
     if (_locationsCache && isDispatchCacheFresh("form_locations")) {
-      const t = setTimeout(() => { fetchAndStore().catch(() => {}); }, 200);
+      const t = setTimeout(() => { fetchAndStore().catch(() => {}); }, 150);
       return () => clearTimeout(t);
     }
-    // No fresh cache — still defer slightly so first paint isn't blocked
-    const t = setTimeout(() => { fetchAndStore().catch(() => {}); }, 0);
-    return () => clearTimeout(t);
+    fetchAndStore().catch(() => {});
   }, []);
 
   // Default vehicle type to "Car"

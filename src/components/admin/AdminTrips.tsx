@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { notifyTripRequested } from "@/lib/push-notifications";
@@ -28,12 +28,8 @@ const dispatchTypeLabels: Record<string, { label: string; color: string }> = {
 };
 
 const AdminTrips = () => {
-  const PAGE_SIZE = 200;
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -45,39 +41,43 @@ const AdminTrips = () => {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [lostItems, setLostItems] = useState<any[]>([]);
 
-  const fetchTrips = useCallback(async (pageIndex = 0, append = false) => {
-    if (append) setLoadingMore(true);
-    else setLoading(true);
+  const fetchTrips = async () => {
+    setLoading(true);
+    let allTrips: any[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
 
-    let query = supabase
-      .from("trips")
-      .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
-      .order("created_at", { ascending: false })
-      .range(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE - 1);
+    while (hasMore) {
+      let query = supabase
+        .from("trips")
+        .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
+        .order("created_at", { ascending: false })
+        .range(from, from + pageSize - 1);
 
-    if (filter !== "all") query = query.eq("status", filter);
-    if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
-    if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
-    if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
-    if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      query = query.lte("created_at", endDate.toISOString());
+      if (filter !== "all") query = query.eq("status", filter);
+      if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
+      if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
+      if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", endDate.toISOString());
+      }
+      const { data } = await query;
+      if (data && data.length > 0) {
+        allTrips = allTrips.concat(data);
+        from += pageSize;
+        if (data.length < pageSize) hasMore = false;
+      } else {
+        hasMore = false;
+      }
     }
+    setTrips(allTrips);
+    setLoading(false);
+  };
 
-    const { data } = await query;
-    const nextTrips = data || [];
-    setTrips((prev) => (append ? [...prev, ...nextTrips] : nextTrips));
-    setHasMore(nextTrips.length === PAGE_SIZE);
-    if (append) setLoadingMore(false);
-    else setLoading(false);
-    return nextTrips.length;
-  }, [PAGE_SIZE, bookingFilter, dateFrom, dateTo, dispatchFilter, filter]);
-
-  useEffect(() => {
-    setPage(0);
-    fetchTrips(0, false);
-  }, [fetchTrips]);
+  useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
 
   // Keep latest fetchTrips reachable from a stable realtime subscription
   const fetchTripsRef = useRef(fetchTrips);
@@ -327,21 +327,6 @@ const AdminTrips = () => {
             </tbody>
           </table>
         </div>
-        {!loading && hasMore && (
-          <div className="border-t border-border px-4 py-3 flex justify-center">
-            <button
-              onClick={async () => {
-                const nextPage = page + 1;
-                const loaded = await fetchTrips(nextPage, true);
-                if (loaded > 0) setPage(nextPage);
-              }}
-              disabled={loadingMore}
-              className="px-4 py-2 rounded-xl bg-surface text-foreground text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50"
-            >
-              {loadingMore ? "Loading more..." : "Load more trips"}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Trip detail modal */}

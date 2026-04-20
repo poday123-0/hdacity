@@ -441,9 +441,8 @@ const Dispatch = () => {
     if (cached) setCenterCodeIndex(cached);
 
     const refresh = async () => {
-      // Don't gate on navigator.onLine — this runs from realtime listeners (only
-      // fire while connection is alive) AND polling fallback. Queries no-op when
-      // truly offline, while cached index keeps the UI usable.
+      // Skip network entirely when offline — cached index keeps working
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
       try {
         const { data: vehicles } = await supabase
@@ -467,17 +466,14 @@ const Dispatch = () => {
           }
         });
 
-        // Use Maldives timezone (UTC+5) for "today" — compute boundary using UTC math
-        // so browser local timezone never shifts the start-of-day.
-        const MALDIVES_OFFSET_MS = 5 * 60 * 60 * 1000;
-        const nowMaldives = new Date(Date.now() + MALDIVES_OFFSET_MS);
-        const mvMidnightUTC = Date.UTC(
-          nowMaldives.getUTCFullYear(),
-          nowMaldives.getUTCMonth(),
-          nowMaldives.getUTCDate(),
-          0, 0, 0, 0,
-        );
-        const todayISO = new Date(mvMidnightUTC - MALDIVES_OFFSET_MS).toISOString();
+        // Use Maldives timezone (UTC+5) for "today"
+        const now = new Date();
+        const maldivesOffset = 5 * 60;
+        const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
+        const todayStart = new Date(maldivesNow);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
+        const todayISO = todayStartUTC.toISOString();
 
         const [profilesRes, todayTripsRes, completedTripsRes] = await Promise.all([
           driverIds.length
@@ -500,7 +496,7 @@ const Dispatch = () => {
                 .in("vehicle_id", vehicleIds)
                 .eq("dispatch_type", "operator")
                 .order("created_at", { ascending: false })
-                .limit(800)
+                .limit(2000)
             : Promise.resolve({ data: [] as any[] }),
         ]);
 
@@ -570,9 +566,8 @@ const Dispatch = () => {
       }
     };
 
-    // Defer the first refresh slightly so cached data paints first
-    const initialT = setTimeout(() => { refresh(); }, cached ? 300 : 0);
-    const interval = window.setInterval(refresh, 90_000); // realtime keeps it fresh; poll every 90s as safety net
+    refresh();
+    const interval = window.setInterval(refresh, 30_000); // refresh every 30s
 
     // Realtime: debounced auto-refresh center code index when trips change
     let ccDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -585,25 +580,21 @@ const Dispatch = () => {
       .subscribe();
 
     return () => {
-      clearTimeout(initialT);
       window.clearInterval(interval);
       if (ccDebounce) clearTimeout(ccDebounce);
       supabase.removeChannel(ccChannel);
     };
   }, [isAuthed]);
 
-  // Helper: get Maldives (UTC+5) start-of-day as ISO string.
-  // Uses UTC math so the boundary is correct regardless of browser local timezone.
+  // Helper: get Maldives (UTC+5) start-of-day as ISO string
   const getMaldivesTodayISO = () => {
-    const MALDIVES_OFFSET_MS = 5 * 60 * 60 * 1000;
-    const nowMaldives = new Date(Date.now() + MALDIVES_OFFSET_MS);
-    const mvMidnightUTC = Date.UTC(
-      nowMaldives.getUTCFullYear(),
-      nowMaldives.getUTCMonth(),
-      nowMaldives.getUTCDate(),
-      0, 0, 0, 0,
-    );
-    return new Date(mvMidnightUTC - MALDIVES_OFFSET_MS).toISOString();
+    const now = new Date();
+    const maldivesOffset = 5 * 60;
+    const maldivesNow = new Date(now.getTime() + (maldivesOffset + now.getTimezoneOffset()) * 60000);
+    const todayStart = new Date(maldivesNow);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
+    return todayStartUTC.toISOString();
   };
 
   // ISO for N days ago (used for Loss history so dispatchers see latest losses, not just today)
@@ -689,8 +680,7 @@ const Dispatch = () => {
     // Skip the network entirely when offline — cached state already hydrated
     if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
-    // Always defer the heavy load by a tick so the UI paints with cached data first.
-    // If the cache is fresh, push the refresh out further so panel/tab switches stay snappy.
+    // If cache is fresh, defer the heavy load so the UI paints instantly with cached data first.
     const allFresh =
       isCacheFresh("recent_trips") &&
       isCacheFresh("app_request_trips") &&
@@ -698,9 +688,12 @@ const Dispatch = () => {
       isCacheFresh("online_drivers") &&
       isCacheFresh("vehicle_types");
 
-    const delay = allFresh ? 400 : 0;
-    const t = setTimeout(() => { load().catch(() => {}); }, delay);
-    return () => clearTimeout(t);
+    if (allFresh) {
+      // Background refresh — UI already shows cached data
+      const t = setTimeout(load, 100);
+      return () => clearTimeout(t);
+    }
+    load();
   }, [isAuthed, isOnline]);
 
   // Realtime: auto-refresh trips table on any change — debounced to avoid cascading refetches
@@ -951,10 +944,8 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
-    // NOTE: do NOT bail on navigator.onLine here — this is called from realtime
-    // listeners (which only fire when the connection is alive) and from manual
-    // user actions. The earlier offline guard was preventing live table refreshes
-    // whenever navigator.onLine briefly reported false (a common PWA quirk).
+    // Skip network when offline — cached data already populated
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
