@@ -33,6 +33,7 @@ import com.hdataxi.passenger.R;
 
 public class FloatingBubbleService extends Service {
     public static final String ACTION_SHOW = "SHOW_BUBBLE";
+    public static final String ACTION_SHOW_IDLE = "SHOW_BUBBLE_IDLE";
     public static final String ACTION_HIDE = "HIDE_BUBBLE";
     private static final String CHANNEL_ID = "floating_bubble_channel";
     private static final int NOTIFICATION_ID = 9999;
