@@ -82,14 +82,17 @@ const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 type LocationsCache = { serviceLocations: any[]; namedLocations: any[]; fareZones: any[]; surcharges: any[]; recentBookings: any[] };
 let _locationsCache: LocationsCache | null = null;
 let _locationsCacheTs = 0;
-const LOC_CACHE_TTL = 30_000; // 30 sec in-memory; localStorage layer extends to 2 min
+let _locationsRefreshInFlight: Promise<void> | null = null;
+const LOC_CACHE_TTL = 5 * 60_000; // 5 min in-memory; localStorage layer extends further
 
-// Hydrate in-memory cache from localStorage on module load so first paint is instant
+// Hydrate in-memory cache from localStorage on module load so first paint is instant.
+// Treat the persisted copy as fresh enough to skip the immediate refetch — a background
+// refresh still runs if the dispatch-cache layer considers it stale.
 try {
   const persisted = readDispatchCache<LocationsCache>("form_locations");
   if (persisted) {
     _locationsCache = persisted;
-    _locationsCacheTs = isDispatchCacheFresh("form_locations") ? Date.now() : 0;
+    _locationsCacheTs = Date.now();
   }
 } catch {}
 
