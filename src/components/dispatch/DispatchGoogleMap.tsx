@@ -74,6 +74,9 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
   const [editClosureNotes, setEditClosureNotes] = useState("");
   const [editClosureSeverity, setEditClosureSeverity] = useState("closed");
   const [editClosureExpiry, setEditClosureExpiry] = useState("");
+  const [editClosureType, setEditClosureType] = useState<"point" | "line">("point");
+  const [editClosureCoords, setEditClosureCoords] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [editRedrawing, setEditRedrawing] = useState(false);
 
   // Refs for map objects
   const closureLayersRef = useRef<L.Layer[]>([]);
