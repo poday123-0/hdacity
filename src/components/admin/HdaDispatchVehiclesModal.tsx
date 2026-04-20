@@ -5,7 +5,7 @@ import { X, Search, Loader2, Car, UserPlus, Save, Phone, MessageSquare, Send, Pe
 
 const HDA_DISPATCH_PHONE = "7320207";
 const STORAGE_KEY = "hda_dispatch_vehicle_contacts_v1";
-const DEFAULT_SMS = "Reminder: Please install the HDA Taxi Driver app to receive trips. Download: https://app.hda.taxi";
+const DEFAULT_SMS = "Reminder: Please install the HDA Taxi Driver app to receive trips. Download: https://hda.taxi";
 
 type Vehicle = {
   id: string;
