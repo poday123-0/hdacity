@@ -2141,6 +2141,25 @@ const Dispatch = () => {
                               >
                                 {statusLabel}
                               </span>
+                              {/* Source badge: passenger app vs dispatch broadcast */}
+                              <span
+                                className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase whitespace-nowrap shrink-0 ${
+                                  t.dispatch_type === "passenger"
+                                    ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                                    : "bg-orange-500/15 text-orange-600 dark:text-orange-400"
+                                }`}
+                                title={t.dispatch_type === "passenger" ? "From passenger app" : "Sent by dispatch"}
+                              >
+                                {t.dispatch_type === "passenger" ? "App" : "Disp"}
+                              </span>
+                              {/* Live countdown for searching trips */}
+                              {t.status === "requested" && !t.accepted_at && (
+                                <BroadcastCountdown
+                                  startedAt={t.created_at}
+                                  timeoutSeconds={t.dispatch_type === "passenger" ? passengerTimeoutSec : broadcastTimeoutSec}
+                                  className="w-[58px]"
+                                />
+                              )}
                               <span className="text-foreground truncate flex-1 font-medium">
                                 {(t.pickup_address || "").split(",")[0]} <span className="text-orange-500">→</span>{" "}
                                 {(t.dropoff_address || "").split(",")[0]}
