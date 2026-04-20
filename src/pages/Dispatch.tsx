@@ -658,10 +658,18 @@ const Dispatch = () => {
           .order("created_at", { ascending: false })
           .limit(200),
       ]);
-      setVehicleTypes(vtRes.data || []);
-      setRecentTrips(tripsRes.data || []);
-      setAppRequestTrips(appReqRes.data || []);
-      setLostTrips(lostRes.data || []);
+      const vts = vtRes.data || [];
+      const trips = tripsRes.data || [];
+      const appReqs = appReqRes.data || [];
+      const losses = lostRes.data || [];
+      setVehicleTypes(vts);
+      setRecentTrips(trips);
+      setAppRequestTrips(appReqs);
+      setLostTrips(losses);
+      writeCache("vehicle_types", vts);
+      writeCache("recent_trips", trips);
+      writeCache("app_request_trips", appReqs);
+      writeCache("lost_trips", losses);
       const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
         driver_id: d.driver_id,
         first_name: (d.profiles as any)?.first_name || "",
@@ -673,8 +681,23 @@ const Dispatch = () => {
         lng: d.lng,
       }));
       setOnlineDrivers(drivers);
+      writeCache("online_drivers", drivers);
       cacheDrivers(drivers);
     };
+
+    // If cache is fresh, defer the heavy load so the UI paints instantly with cached data first.
+    const allFresh =
+      isCacheFresh("recent_trips") &&
+      isCacheFresh("app_request_trips") &&
+      isCacheFresh("lost_trips") &&
+      isCacheFresh("online_drivers") &&
+      isCacheFresh("vehicle_types");
+
+    if (allFresh) {
+      // Background refresh — UI already shows cached data
+      const t = setTimeout(load, 100);
+      return () => clearTimeout(t);
+    }
     load();
   }, [isAuthed]);
 
