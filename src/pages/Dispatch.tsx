@@ -236,11 +236,22 @@ const Dispatch = () => {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Shared state for forms
+  // Cached snapshots survive going offline so the dispatcher always sees the
+  // last-known Loss/Today/App Ride lists instead of an empty screen.
+  const TABLE_CACHE_KEY = "hda_dispatch_tables_cache_v1";
+  const loadCachedTables = (): { recent: any[]; appReq: any[]; lost: any[] } => {
+    try {
+      const raw = localStorage.getItem(TABLE_CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { recent: [], appReq: [], lost: [] };
+  };
+  const cachedTables = loadCachedTables();
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
-  const [recentTrips, setRecentTrips] = useState<any[]>([]);
-  const [appRequestTrips, setAppRequestTrips] = useState<any[]>([]);
-  const [lostTrips, setLostTrips] = useState<any[]>([]);
+  const [recentTrips, setRecentTrips] = useState<any[]>(cachedTables.recent);
+  const [appRequestTrips, setAppRequestTrips] = useState<any[]>(cachedTables.appReq);
+  const [lostTrips, setLostTrips] = useState<any[]>(cachedTables.lost);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
