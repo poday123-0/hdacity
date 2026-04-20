@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer, Warehouse } from "lucide-react";
 import * as XLSX from "xlsx";
 import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
+import HdaDispatchVehiclesModal from "./HdaDispatchVehiclesModal";
 
 const emptyForm = { plate_number: "", make: "", model: "", color: "", year: "", driver_id: "", vehicle_type_id: "", registration_url: "", insurance_url: "", image_url: "", center_code: "" };
 type VehicleForm = typeof emptyForm;
@@ -48,6 +49,7 @@ const AdminVehicles = () => {
   const [bulkCompanyId, setBulkCompanyId] = useState("");
   const [bulkCenterCodeStart, setBulkCenterCodeStart] = useState("");
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [showHdaDispatchModal, setShowHdaDispatchModal] = useState(false);
 
   const handleDocUpload = async (file: File, target: string) => {
     setUploading(target);
@@ -577,6 +579,14 @@ const AdminVehicles = () => {
             <option value="">All Companies</option>
             {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          <button
+            onClick={() => setShowHdaDispatchModal(true)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-semibold hover:bg-primary/20 transition-colors border border-primary/20"
+            title="Show vehicles parked under HDA DISPATCH (7320207)"
+          >
+            <Warehouse className="w-3.5 h-3.5" />
+            HDA Dispatch Pool
+          </button>
         </div>
       </div>
 
@@ -758,6 +768,12 @@ const AdminVehicles = () => {
           </tbody>
         </table>
       </div>
+
+      <HdaDispatchVehiclesModal
+        open={showHdaDispatchModal}
+        onClose={() => setShowHdaDispatchModal(false)}
+        onUpdated={fetchAll}
+      />
     </div>
   );
 };
