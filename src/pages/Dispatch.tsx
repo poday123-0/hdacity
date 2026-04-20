@@ -597,6 +597,14 @@ const Dispatch = () => {
     return todayStartUTC.toISOString();
   };
 
+  // ISO for N days ago (used for Loss history so dispatchers see latest losses, not just today)
+  const getDaysAgoISO = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  };
+
   // Load vehicle types, drivers, recent trips
   useEffect(() => {
     if (!isAuthed) return;
