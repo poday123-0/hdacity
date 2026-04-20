@@ -197,7 +197,7 @@ const DispatchTripForm = ({
     return () => { supabase.removeChannel(channel); };
   }, [centerCodeResults.map(r => r.vehicle_id).join(','), formIndex]);
 
-  // Load fare data with shared cache
+  // Load fare data with shared cache — render service-area buttons ASAP
   useEffect(() => {
     const load = async () => {
       const now = Date.now();
@@ -209,46 +209,72 @@ const DispatchTripForm = ({
         setRecentBookings(_locationsCache.recentBookings);
         return;
       }
-      const [fzRes, scRes, slRes, nlData, rbRes] = await Promise.all([
-        supabase.from("fare_zones").select("*").eq("is_active", true),
-        supabase.from("fare_surcharges").select("*").eq("is_active", true),
-        supabase.from("service_locations").select("id, name, lat, lng, polygon").eq("is_active", true).order("name"),
-        fetchAllNamedLocations("id, name, address, description, group_name, lat, lng, road_name, suggested_by_type"),
-        supabase.from("trips").select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng").not("pickup_lat", "is", null).not("pickup_lng", "is", null).order("created_at", { ascending: false }).limit(200),
-      ]);
-      // Deduplicate recent booking addresses
-      const seen = new Set<string>();
-      const bookingLocs: any[] = [];
-      for (const t of rbRes.data || []) {
-        if (t.pickup_address && t.pickup_lat && t.pickup_lng) {
-          const key = t.pickup_address.trim().toLowerCase();
-          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.pickup_address, lat: t.pickup_lat, lng: t.pickup_lng }); }
-        }
-        if (t.dropoff_address && t.dropoff_lat && t.dropoff_lng) {
-          const key = t.dropoff_address.trim().toLowerCase();
-          if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
-        }
-      }
+
       const slOrder = ["P1", "P2", "MLE", "VIA", "Sterminal"];
-      const sortedSl = [...(slRes.data || [])].sort((a, b) => {
+      const sortSl = (rows: any[]) => [...rows].sort((a, b) => {
         const ai = slOrder.indexOf(a.name);
         const bi = slOrder.indexOf(b.name);
         return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
       });
-      const cache = {
-        fareZones: fzRes.data || [],
-        surcharges: scRes.data || [],
-        serviceLocations: sortedSl,
-        namedLocations: nlData,
-        recentBookings: bookingLocs,
-      };
-      _locationsCache = cache;
-      _locationsCacheTs = Date.now();
-      setFareZones(cache.fareZones);
-      setSurcharges(cache.surcharges);
-      setServiceLocations(cache.serviceLocations);
-      setNamedLocations(cache.namedLocations);
-      setRecentBookings(cache.recentBookings);
+
+      // Fire all queries in parallel but apply each result independently
+      // so the UI (especially the To* buttons) updates the moment its data is ready.
+      const slPromise = supabase
+        .from("service_locations")
+        .select("id, name, lat, lng, polygon")
+        .eq("is_active", true)
+        .order("name")
+        .then(res => {
+          const sorted = sortSl(res.data || []);
+          setServiceLocations(sorted);
+          return sorted;
+        });
+
+      const fzPromise = supabase.from("fare_zones").select("*").eq("is_active", true)
+        .then(res => { setFareZones(res.data || []); return res.data || []; });
+
+      const scPromise = supabase.from("fare_surcharges").select("*").eq("is_active", true)
+        .then(res => { setSurcharges(res.data || []); return res.data || []; });
+
+      const rbPromise = supabase
+        .from("trips")
+        .select("pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng")
+        .not("pickup_lat", "is", null).not("pickup_lng", "is", null)
+        .order("created_at", { ascending: false }).limit(200)
+        .then(res => {
+          const seen = new Set<string>();
+          const bookingLocs: any[] = [];
+          for (const t of res.data || []) {
+            if (t.pickup_address && t.pickup_lat && t.pickup_lng) {
+              const key = t.pickup_address.trim().toLowerCase();
+              if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.pickup_address, lat: t.pickup_lat, lng: t.pickup_lng }); }
+            }
+            if (t.dropoff_address && t.dropoff_lat && t.dropoff_lng) {
+              const key = t.dropoff_address.trim().toLowerCase();
+              if (!seen.has(key)) { seen.add(key); bookingLocs.push({ name: t.dropoff_address, lat: t.dropoff_lat, lng: t.dropoff_lng }); }
+            }
+          }
+          setRecentBookings(bookingLocs);
+          return bookingLocs;
+        });
+
+      const nlPromise = fetchAllNamedLocations(
+        "id, name, address, description, group_name, lat, lng, road_name, suggested_by_type"
+      ).then(data => { setNamedLocations(data); return data; });
+
+      // Cache once everything resolves (so we don't block the UI)
+      Promise.all([slPromise, fzPromise, scPromise, rbPromise, nlPromise])
+        .then(([sl, fz, sc, rb, nl]) => {
+          _locationsCache = {
+            fareZones: fz,
+            surcharges: sc,
+            serviceLocations: sl,
+            namedLocations: nl,
+            recentBookings: rb,
+          };
+          _locationsCacheTs = Date.now();
+        })
+        .catch(() => {});
     };
     load();
   }, []);
