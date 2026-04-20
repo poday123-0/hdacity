@@ -2477,7 +2477,7 @@ const Dispatch = () => {
             <AdminDutyHours />
           </div>
         )}
-        <div className={`w-full h-full ${activeTab === "hdc_map" ? "" : "hidden"}`}>
+        <div className={`w-full h-full min-h-[calc(100dvh-5rem)] ${activeTab === "hdc_map" ? "" : "hidden"}`}>
           <iframe
             src="https://hulhumale.maps.arcgis.com/apps/webappviewer/index.html?id=18781129603f429799a7f94292d2f67f"
             className="w-full h-full border-0"
@@ -2485,7 +2485,7 @@ const Dispatch = () => {
             allow="geolocation"
           />
         </div>
-        <div className={`w-full h-full ${activeTab === "google_map" ? "" : "hidden"}`}>
+        <div className={`w-full h-full min-h-[calc(100dvh-5rem)] ${activeTab === "google_map" ? "" : "hidden"}`}>
           <DispatchGoogleMap isActive={activeTab === "google_map"} />
         </div>
       </div>

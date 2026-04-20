@@ -132,6 +132,21 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isActive || !mapRef.current || !mapInstance.current) return;
+
+    const refreshWhenVisible = () => {
+      const { width, height } = mapRef.current!.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        mapInstance.current?.invalidateSize(false);
+      }
+    };
+
+    window.requestAnimationFrame(refreshWhenVisible);
+    window.setTimeout(refreshWhenVisible, 120);
+    window.setTimeout(refreshWhenVisible, 320);
+  }, [isActive]);
+
   // Named location labels on dispatch map
   const namedLabelsRef = useRef<L.Marker[]>([]);
   const namedLocCacheRef = useRef<any[]>([]);
