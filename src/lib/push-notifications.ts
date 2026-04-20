@@ -12,11 +12,15 @@ export const registerDeviceToken = async (
 ) => {
   const now = new Date().toISOString();
 
-  // Ensure the same device token is active for only one account at a time
+  // Allow the same device token to be active for multiple accounts of
+  // DIFFERENT user types (e.g. a passenger and a driver sharing one phone).
+  // Only deactivate rows where the SAME user_type re-registered on a
+  // different account — that is the true "device handoff" case.
   await supabase
     .from("device_tokens")
     .update({ is_active: false, updated_at: now })
     .eq("token", token)
+    .eq("user_type", userType)
     .neq("user_id", userId);
 
   const { error } = await supabase
