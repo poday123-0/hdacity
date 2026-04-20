@@ -46,6 +46,7 @@ import {
   Upload,
 } from "lucide-react";
 import SystemLogo from "@/components/SystemLogo";
+import NetworkSpeedIndicator from "@/components/NetworkSpeedIndicator";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
