@@ -70,7 +70,6 @@ public class FloatingBubbleService extends Service {
             try {
                 startForeground(NOTIFICATION_ID, buildForegroundNotification());
             } catch (Exception e) {
-                // Foreground service start failed — stop gracefully
                 stopSelf();
                 return START_NOT_STICKY;
             }
@@ -89,6 +88,20 @@ public class FloatingBubbleService extends Service {
                 vehicleType != null ? vehicleType : "",
                 fare
             );
+        } else if (ACTION_SHOW_IDLE.equals(intent.getAction())) {
+            // Idle/persistent bubble — just the logo, no expanded card
+            try {
+                startForeground(NOTIFICATION_ID, buildForegroundNotification());
+            } catch (Exception e) {
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+            currentTripId = "";
+            // If a card is already showing (e.g. from a previous trip), keep it.
+            // Otherwise just show the bubble logo.
+            if (bubbleView == null) {
+                showBubble();
+            }
         } else if (ACTION_HIDE.equals(intent.getAction())) {
             cleanupAndStop();
         }
