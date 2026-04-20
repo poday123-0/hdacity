@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { X, Search, Loader2, Car, UserPlus, Save, Phone } from "lucide-react";
+import { X, Search, Loader2, Car, UserPlus, Save, Phone, MessageSquare, Send, Pencil, Check } from "lucide-react";
 
 const HDA_DISPATCH_PHONE = "7320207";
+const STORAGE_KEY = "hda_dispatch_vehicle_contacts_v1";
+const DEFAULT_SMS = "Reminder: Please install the HDA Taxi Driver app to receive trips. Download: https://app.hda.taxi";
 
 type Vehicle = {
   id: string;
@@ -27,6 +29,14 @@ interface Props {
   onUpdated?: () => void;
 }
 
+// Local persistence for per-vehicle contact phone numbers
+const loadContacts = (): Record<string, string> => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch { return {}; }
+};
+const saveContacts = (c: Record<string, string>) => {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); } catch {}
+};
+
 const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -37,6 +47,14 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
   const [reassignFor, setReassignFor] = useState<string | null>(null);
   const [reassignSearch, setReassignSearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  const [contacts, setContacts] = useState<Record<string, string>>({});
+  const [editingContact, setEditingContact] = useState<string | null>(null);
+  const [contactDraft, setContactDraft] = useState("");
+  const [sendingSmsId, setSendingSmsId] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState(DEFAULT_SMS);
+  const [bulkSending, setBulkSending] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -72,9 +90,11 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
   useEffect(() => {
     if (open) {
       loadData();
+      setContacts(loadContacts());
       setSearch("");
       setTypeFilter("");
       setReassignFor(null);
+      setBulkOpen(false);
     }
   }, [open]);
 
@@ -83,6 +103,26 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
     vehicles.forEach(v => v.vehicle_types?.name && set.add(v.vehicle_types.name));
     return Array.from(set).sort();
   }, [vehicles]);
+
+  // Type breakdown stats with contact counts
+  const typeStats = useMemo(() => {
+    const map = new Map<string, { total: number; withContact: number }>();
+    vehicles.forEach(v => {
+      const name = v.vehicle_types?.name || "Unknown";
+      const entry = map.get(name) || { total: 0, withContact: 0 };
+      entry.total += 1;
+      if (contacts[v.id]?.trim()) entry.withContact += 1;
+      map.set(name, entry);
+    });
+    return Array.from(map.entries())
+      .map(([name, s]) => ({ name, ...s }))
+      .sort((a, b) => b.total - a.total);
+  }, [vehicles, contacts]);
+
+  const totalWithContact = useMemo(
+    () => vehicles.filter(v => contacts[v.id]?.trim()).length,
+    [vehicles, contacts]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -93,10 +133,11 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
       return (
         v.plate_number?.toLowerCase().includes(q) ||
         v.center_code?.toLowerCase().includes(q) ||
-        v.color?.toLowerCase().includes(q)
+        v.color?.toLowerCase().includes(q) ||
+        contacts[v.id]?.toLowerCase().includes(q)
       );
     });
-  }, [vehicles, search, typeFilter]);
+  }, [vehicles, search, typeFilter, contacts]);
 
   const filteredDrivers = useMemo(() => {
     const q = reassignSearch.trim().toLowerCase();
@@ -128,6 +169,84 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
     onUpdated?.();
   };
 
+  const startEditContact = (vehicleId: string) => {
+    setEditingContact(vehicleId);
+    setContactDraft(contacts[vehicleId] || "");
+  };
+
+  const saveContact = (vehicleId: string) => {
+    const cleaned = contactDraft.replace(/\D/g, "");
+    const next = { ...contacts };
+    if (cleaned) next[vehicleId] = cleaned;
+    else delete next[vehicleId];
+    setContacts(next);
+    saveContacts(next);
+    setEditingContact(null);
+    setContactDraft("");
+  };
+
+  const normalizePhone = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    return digits.startsWith("960") ? digits : `960${digits}`;
+  };
+
+  const sendSingleSms = async (vehicleId: string) => {
+    const phone = contacts[vehicleId];
+    if (!phone) return;
+    const full = normalizePhone(phone);
+    if (full.length < 7) {
+      toast({ title: "Invalid phone", variant: "destructive" });
+      return;
+    }
+    setSendingSmsId(vehicleId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: DEFAULT_SMS, target_type: "custom", phone_numbers: [full] },
+      });
+      if (error) throw error;
+      if (data?.sent > 0) {
+        toast({ title: "SMS sent ✅", description: `Reminder delivered to ${phone}` });
+      } else {
+        toast({ title: "SMS failed", description: data?.error || "No messages sent", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    }
+    setSendingSmsId(null);
+  };
+
+  const sendBulkSms = async () => {
+    const phones = Array.from(new Set(
+      Object.values(contacts).map(normalizePhone).filter(p => p.length >= 7)
+    ));
+    if (phones.length === 0) {
+      toast({ title: "No contacts saved", description: "Add contact numbers first", variant: "destructive" });
+      return;
+    }
+    if (!bulkMessage.trim()) {
+      toast({ title: "Message is required", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm(`Send SMS to ${phones.length} contact${phones.length === 1 ? "" : "s"}?`)) return;
+
+    setBulkSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: bulkMessage.trim(), target_type: "custom", phone_numbers: phones },
+      });
+      if (error) throw error;
+      toast({
+        title: `Bulk SMS: ${data?.sent || 0} of ${data?.total || phones.length} sent`,
+        description: data?.failed > 0 ? `${data.failed} failed` : undefined,
+      });
+      setBulkOpen(false);
+    } catch (err: any) {
+      toast({ title: "Bulk SMS failed", description: err.message, variant: "destructive" });
+    }
+    setBulkSending(false);
+  };
+
   if (!open) return null;
 
   return (
@@ -142,7 +261,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
               <span className="text-xs font-medium text-muted-foreground">({HDA_DISPATCH_PHONE})</span>
             </h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              {loading ? "Loading…" : `${filtered.length} of ${vehicles.length} vehicle${vehicles.length === 1 ? "" : "s"} parked under HDA DISPATCH`}
+              {loading ? "Loading…" : `${filtered.length} of ${vehicles.length} vehicles · ${totalWithContact} with contact`}
             </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-surface text-muted-foreground hover:text-foreground flex items-center justify-center">
@@ -150,7 +269,30 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Type breakdown stats */}
+        {!loading && typeStats.length > 0 && (
+          <div className="px-5 py-3 border-b border-border shrink-0 bg-surface/30">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {typeStats.map(s => (
+                <button
+                  key={s.name}
+                  onClick={() => setTypeFilter(typeFilter === s.name ? "" : s.name)}
+                  className={`text-left rounded-xl px-3 py-2 border transition-all ${
+                    typeFilter === s.name
+                      ? "bg-primary/10 border-primary"
+                      : "bg-card border-border hover:bg-surface"
+                  }`}
+                >
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider truncate">{s.name}</div>
+                  <div className="text-lg font-extrabold text-foreground leading-tight">{s.total}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{s.withContact} contact{s.withContact === 1 ? "" : "s"}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Filters + Bulk SMS */}
         <div className="px-5 py-3 border-b border-border space-y-2 shrink-0">
           <div className="flex gap-2 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
@@ -158,7 +300,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Plate, code, color…"
+                placeholder="Plate, code, color, contact…"
                 className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -170,7 +312,44 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
               <option value="">All Types</option>
               {types.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+            <button
+              onClick={() => setBulkOpen(o => !o)}
+              disabled={totalWithContact === 0}
+              className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-40 transition-all"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Bulk SMS ({totalWithContact})
+            </button>
           </div>
+
+          {bulkOpen && (
+            <div className="bg-surface/70 border border-primary/20 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                  Bulk reminder to {totalWithContact} saved contact{totalWithContact === 1 ? "" : "s"}
+                </p>
+              </div>
+              <textarea
+                value={bulkMessage}
+                onChange={(e) => setBulkMessage(e.target.value)}
+                rows={3}
+                maxLength={320}
+                className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground">{bulkMessage.length}/320 chars</span>
+                <button
+                  onClick={sendBulkSms}
+                  disabled={bulkSending}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50"
+                >
+                  {bulkSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  Send to {totalWithContact}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* List */}
@@ -188,6 +367,8 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
             <ul className="divide-y divide-border">
               {filtered.map((v) => {
                 const isReassigning = reassignFor === v.id;
+                const isEditingC = editingContact === v.id;
+                const contact = contacts[v.id];
                 return (
                   <li key={v.id} className="py-2.5 px-2 hover:bg-surface/50 rounded-lg transition-colors">
                     <div className="flex items-center gap-3 flex-wrap">
@@ -200,14 +381,77 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                           <span>{v.vehicle_types?.name || "Unknown type"}</span>
                           {v.color && <span>· {v.color}</span>}
                         </div>
+
+                        {/* Contact row */}
+                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          {isEditingC ? (
+                            <>
+                              <input
+                                autoFocus
+                                value={contactDraft}
+                                onChange={(e) => setContactDraft(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && saveContact(v.id)}
+                                placeholder="7XXXXXX"
+                                className="px-2 py-1 bg-card border border-primary rounded text-[11px] w-28 focus:outline-none"
+                              />
+                              <button
+                                onClick={() => saveContact(v.id)}
+                                className="w-6 h-6 rounded bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => { setEditingContact(null); setContactDraft(""); }}
+                                className="w-6 h-6 rounded bg-surface text-muted-foreground flex items-center justify-center hover:bg-muted"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </>
+                          ) : contact ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-surface px-2 py-0.5 rounded">
+                                <Phone className="w-2.5 h-2.5 text-primary" /> {contact}
+                              </span>
+                              <button
+                                onClick={() => startEditContact(v.id)}
+                                className="text-[10px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
+                              >
+                                <Pencil className="w-2.5 h-2.5" /> Edit
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => startEditContact(v.id)}
+                              className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                            >
+                              <Phone className="w-2.5 h-2.5" /> Add contact
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <button
-                        onClick={() => { setReassignFor(isReassigning ? null : v.id); setReassignSearch(""); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-semibold hover:bg-primary/20 transition-colors"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        {isReassigning ? "Cancel" : "Reassign"}
-                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        {contact && !isEditingC && (
+                          <button
+                            onClick={() => sendSingleSms(v.id)}
+                            disabled={sendingSmsId === v.id}
+                            title="Send install reminder SMS"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-accent text-accent-foreground rounded-lg text-[11px] font-semibold hover:opacity-90 disabled:opacity-50 transition-all"
+                          >
+                            {sendingSmsId === v.id
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <MessageSquare className="w-3 h-3" />}
+                            SMS
+                          </button>
+                        )}
+                        <button
+                          onClick={() => { setReassignFor(isReassigning ? null : v.id); setReassignSearch(""); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-semibold hover:bg-primary/20 transition-colors"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          {isReassigning ? "Cancel" : "Reassign"}
+                        </button>
+                      </div>
                     </div>
 
                     {isReassigning && (
