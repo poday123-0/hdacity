@@ -1886,6 +1886,14 @@ const DispatchTripForm = ({
                     booking_notes: (centerCodeResults.length > 0) ? `Center: ${centerCodeResults.map(r => r.code).join(", ")} — No Vehicle` : "No Vehicle",
                     is_loss: false,
                   };
+                  // OFFLINE: queue immediately
+                  if (!isOnline && onOfflineQueue) {
+                    onOfflineQueue(tripPayload);
+                    clearForm();
+                    onTripCreated();
+                    setSubmitting(false);
+                    return;
+                  }
                   const { error } = await supabase.from("trips").insert(tripPayload);
                   if (error) throw error;
                   toast({ title: "Recorded as No Vehicle", description: "Booking saved" });
