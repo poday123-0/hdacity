@@ -69,6 +69,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { readCache, writeCache, isCacheFresh } from "@/lib/dispatch-cache";
 
 // 5-minute countdown timer for operator-assigned trips, then 30-min auto-complete countdown
 function DispatchTimer({ acceptedAt }: { acceptedAt: string }) {
