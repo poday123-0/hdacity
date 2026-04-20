@@ -259,6 +259,84 @@ const AdminNamedLocations = () => {
     } catch {}
   }, []);
 
+  // Fetch & cache Google Maps API key for Places search
+  const ensureMapsKey = useCallback(async (): Promise<string | null> => {
+    if (mapsKeyRef.current) return mapsKeyRef.current;
+    try {
+      const { data } = await supabase.functions.invoke("get-maps-key");
+      if (data?.key) { mapsKeyRef.current = data.key; return data.key; }
+    } catch {}
+    return null;
+  }, []);
+
+  const searchGooglePlaces = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 2) { setPlacesResults([]); return; }
+    setPlacesLoading(true);
+    try {
+      const key = await ensureMapsKey();
+      if (!key) {
+        toast({ title: "Google Maps key missing", variant: "destructive" });
+        setPlacesLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("google-places-search", {
+        body: { query: q.trim(), key },
+      });
+      if (error) throw error;
+      setPlacesResults(Array.isArray(data?.results) ? data.results.slice(0, 8) : []);
+      setPlacesOpen(true);
+    } catch (err: any) {
+      toast({ title: "Search failed", description: err.message, variant: "destructive" });
+    }
+    setPlacesLoading(false);
+  }, [ensureMapsKey]);
+
+  const onPlacesQueryChange = (val: string) => {
+    setPlacesQuery(val);
+    if (placesDebounce.current) clearTimeout(placesDebounce.current);
+    placesDebounce.current = setTimeout(() => searchGooglePlaces(val), 350);
+  };
+
+  const pickGooglePlace = (place: any) => {
+    const lat = place?.geometry?.location?.lat;
+    const lng = place?.geometry?.location?.lng;
+    if (typeof lat !== "number" || typeof lng !== "number") return;
+    const name = place.name || "";
+    const address = place.formatted_address || place.vicinity || "";
+    setForm(prev => ({
+      ...prev,
+      name: prev.name || name,
+      address: address || prev.address,
+      lat: lat.toFixed(6),
+      lng: lng.toFixed(6),
+    }));
+    setPlacesOpen(false);
+    setPlacesQuery("");
+    setPlacesResults([]);
+    // Move map + marker
+    if (mapInstance.current) {
+      mapInstance.current.setView([lat, lng], 17);
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+          html: `<div style="background:#ef4444;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>`,
+        });
+        markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(mapInstance.current!);
+        markerRef.current.on("dragend", () => {
+          const pos = markerRef.current!.getLatLng();
+          setForm(prev => ({ ...prev, lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), address: "" }));
+          autoFetchAddress(pos.lat, pos.lng);
+        });
+      }
+    }
+  };
+
   // Single add form map click listener
   useEffect(() => {
     if (!mapInstance.current || !showForm) return;
