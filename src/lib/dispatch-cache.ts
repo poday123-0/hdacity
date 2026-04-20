@@ -9,7 +9,8 @@ export type DispatchCacheKey =
   | "app_request_trips"
   | "lost_trips"
   | "online_drivers"
-  | "vehicle_types";
+  | "vehicle_types"
+  | "form_locations";
 
 interface CacheEntry<T> {
   ts: number;
