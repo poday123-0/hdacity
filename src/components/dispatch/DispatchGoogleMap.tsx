@@ -408,17 +408,15 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     closureLayersRef.current.forEach(l => map.removeLayer(l));
     closureLayersRef.current = [];
 
-    const escAttr = (s: string) => (s || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    const buildActions = (c: RoadClosure) => {
-      const sevAttr = escAttr(c.severity);
-      const notesAttr = escAttr(c.notes || "");
-      const expAttr = escAttr(c.expires_at || "");
-      return `
-        <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid #eee">
-          <button onclick="window.__editClosure__('${c.id}','${sevAttr}','${notesAttr}','${expAttr}')" style="flex:1;padding:5px 8px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
-          <button onclick="if(confirm('Remove this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
-        </div>`;
-    };
+    // Register closures for safe popup-button access (avoids string-escape bugs in inline onclick)
+    (window as any).__closureRegistry__ = (window as any).__closureRegistry__ || {};
+    closures.forEach((c) => { (window as any).__closureRegistry__[c.id] = c; });
+
+    const buildActions = (c: RoadClosure) => `
+      <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid #eee">
+        <button data-closure-edit="${c.id}" style="flex:1;padding:5px 8px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
+        <button data-closure-delete="${c.id}" style="flex:1;padding:5px 8px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
+      </div>`;
 
     closures.forEach((c) => {
       const coords = c.coordinates;
