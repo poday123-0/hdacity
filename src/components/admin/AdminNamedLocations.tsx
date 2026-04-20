@@ -7,7 +7,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 
-const MALE_CENTER = { lat: 4.1755, lng: 73.5093 };
+const MALE_CENTER = { lat: 4.2105, lng: 73.5410 }; // Hulhumalé
 const emptyForm = { name: "", address: "", description: "", lat: "", lng: "" };
 
 type BatchPin = {
