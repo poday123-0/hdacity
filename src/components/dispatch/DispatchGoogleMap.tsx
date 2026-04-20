@@ -74,6 +74,9 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
   const [editClosureNotes, setEditClosureNotes] = useState("");
   const [editClosureSeverity, setEditClosureSeverity] = useState("closed");
   const [editClosureExpiry, setEditClosureExpiry] = useState("");
+  const [editClosureType, setEditClosureType] = useState<"point" | "line">("point");
+  const [editClosureCoords, setEditClosureCoords] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [editRedrawing, setEditRedrawing] = useState(false);
 
   // Refs for map objects
   const closureLayersRef = useRef<L.Layer[]>([]);
@@ -400,6 +403,49 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     return () => { map.off("click", handleClick); };
   }, [drawMode]);
 
+  // Redraw mode for editing existing closure geometry
+  useEffect(() => {
+    if (!editRedrawing || !mapInstance.current) return;
+    const map = mapInstance.current;
+
+    // Clear any temp markers/line from previous draw
+    drawTempMarkersRef.current.forEach(m => map.removeLayer(m));
+    drawTempMarkersRef.current = [];
+    if (drawTempLineRef.current) { map.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+    setEditClosureCoords([]);
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      const pos = { lat: e.latlng.lat, lng: e.latlng.lng };
+      const icon = L.divIcon({
+        className: "",
+        iconSize: editClosureType === "point" ? [20, 20] : [12, 12],
+        iconAnchor: editClosureType === "point" ? [10, 10] : [6, 6],
+        html: `<div style="width:${editClosureType === "point" ? 20 : 12}px;height:${editClosureType === "point" ? 20 : 12}px;border-radius:50%;background:#3b82f6;opacity:0.9;border:2px solid white"></div>`,
+      });
+      const m = L.marker([pos.lat, pos.lng], { icon }).addTo(map);
+      drawTempMarkersRef.current.push(m);
+
+      setEditClosureCoords((prev) => {
+        const updated = editClosureType === "point" ? [pos] : [...prev, pos];
+        if (editClosureType === "point") {
+          // Remove all but the last marker for point mode
+          drawTempMarkersRef.current.slice(0, -1).forEach(mm => map.removeLayer(mm));
+          drawTempMarkersRef.current = drawTempMarkersRef.current.slice(-1);
+        } else if (updated.length > 1) {
+          if (drawTempLineRef.current) map.removeLayer(drawTempLineRef.current);
+          drawTempLineRef.current = L.polyline(
+            updated.map(p => [p.lat, p.lng] as [number, number]),
+            { color: "#3b82f6", weight: 5, opacity: 0.8, dashArray: "10 6" }
+          ).addTo(map);
+        }
+        return updated;
+      });
+    };
+
+    map.on("click", handleClick);
+    return () => { map.off("click", handleClick); };
+  }, [editRedrawing, editClosureType]);
+
   // Render closures on map
   useEffect(() => {
     if (!mapInstance.current) return;
@@ -408,17 +454,15 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     closureLayersRef.current.forEach(l => map.removeLayer(l));
     closureLayersRef.current = [];
 
-    const escAttr = (s: string) => (s || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    const buildActions = (c: RoadClosure) => {
-      const sevAttr = escAttr(c.severity);
-      const notesAttr = escAttr(c.notes || "");
-      const expAttr = escAttr(c.expires_at || "");
-      return `
-        <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid #eee">
-          <button onclick="window.__editClosure__('${c.id}','${sevAttr}','${notesAttr}','${expAttr}')" style="flex:1;padding:5px 8px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
-          <button onclick="if(confirm('Remove this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
-        </div>`;
-    };
+    // Register closures for safe popup-button access (avoids string-escape bugs in inline onclick)
+    (window as any).__closureRegistry__ = (window as any).__closureRegistry__ || {};
+    closures.forEach((c) => { (window as any).__closureRegistry__[c.id] = c; });
+
+    const buildActions = (c: RoadClosure) => `
+      <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid #eee">
+        <button data-closure-edit="${c.id}" style="flex:1;padding:5px 8px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">✏️ Edit</button>
+        <button data-closure-delete="${c.id}" style="flex:1;padding:5px 8px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 Delete</button>
+      </div>`;
 
     closures.forEach((c) => {
       const coords = c.coordinates;
@@ -481,17 +525,22 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
     });
   }, [closures]);
 
-  // Global remove/edit handlers
+  // Global remove/edit handlers + popup-button delegation
   useEffect(() => {
     (window as any).__removeClosure__ = async (id: string) => {
       await removeClosure(id);
       toast({ title: "Closure removed" });
     };
-    (window as any).__editClosure__ = (id: string, severity: string, notes: string, expiresAt: string) => {
+    (window as any).__editClosure__ = (id: string) => {
+      const c = (window as any).__closureRegistry__?.[id] as RoadClosure | undefined;
+      if (!c) return;
       setEditingClosureId(id);
-      setEditClosureSeverity(severity);
-      setEditClosureNotes(notes);
-      setEditClosureExpiry(expiresAt);
+      setEditClosureSeverity(c.severity || "closed");
+      setEditClosureNotes(c.notes || "");
+      setEditClosureExpiry(c.expires_at || "");
+      setEditClosureType((c.closure_type as "point" | "line") || "point");
+      setEditClosureCoords(Array.isArray(c.coordinates) ? c.coordinates : []);
+      setEditRedrawing(false);
     };
     (window as any).__approveClosure__ = async (id: string) => {
       await approveClosure(id);
@@ -501,11 +550,34 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
       await rejectClosure(id);
       toast({ title: "Report rejected" });
     };
+
+    // Delegate clicks for popup Edit/Delete buttons (more reliable than inline onclick)
+    const handlePopupClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const editBtn = target.closest("[data-closure-edit]") as HTMLElement | null;
+      const delBtn = target.closest("[data-closure-delete]") as HTMLElement | null;
+      if (editBtn) {
+        e.preventDefault(); e.stopPropagation();
+        const id = editBtn.getAttribute("data-closure-edit")!;
+        (window as any).__editClosure__(id);
+        mapInstance.current?.closePopup();
+      } else if (delBtn) {
+        e.preventDefault(); e.stopPropagation();
+        const id = delBtn.getAttribute("data-closure-delete")!;
+        if (window.confirm("Remove this closure?")) {
+          (window as any).__removeClosure__(id);
+          mapInstance.current?.closePopup();
+        }
+      }
+    };
+    document.addEventListener("click", handlePopupClick, true);
+
     return () => {
       delete (window as any).__removeClosure__;
       delete (window as any).__editClosure__;
       delete (window as any).__approveClosure__;
       delete (window as any).__rejectClosure__;
+      document.removeEventListener("click", handlePopupClick, true);
     };
   }, [removeClosure, approveClosure, rejectClosure]);
 
@@ -912,7 +984,7 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
       )}
 
       {/* Edit closure modal */}
-      {editingClosureId && (
+      {editingClosureId && !editRedrawing && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-background border border-border rounded-2xl shadow-2xl w-96 max-w-[92vw]">
             <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-border">
@@ -978,24 +1050,63 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
                   ))}
                 </select>
               </div>
+
+              {/* Geometry / Redraw section */}
+              <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground capitalize">{editClosureType} closure</p>
+                    <p className="text-[10px] text-muted-foreground">{editClosureCoords.length} point{editClosureCoords.length === 1 ? "" : "s"} on map</p>
+                  </div>
+                  <button
+                    onClick={() => setEditRedrawing(true)}
+                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+                  >
+                    ✏️ Redraw on map
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2 px-5 pb-5 pt-2 border-t border-border">
               <button
-                onClick={() => setEditingClosureId(null)}
+                onClick={() => {
+                  setEditingClosureId(null);
+                  setEditRedrawing(false);
+                  if (mapInstance.current) {
+                    drawTempMarkersRef.current.forEach(m => mapInstance.current!.removeLayer(m));
+                    drawTempMarkersRef.current = [];
+                    if (drawTempLineRef.current) { mapInstance.current.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+                  }
+                }}
                 className="flex-1 py-2.5 text-xs rounded-xl border border-border text-muted-foreground hover:bg-accent font-medium transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={async () => {
+                  if (editClosureType === "line" && editClosureCoords.length < 2) {
+                    toast({ title: "Line closure needs at least 2 points", variant: "destructive" });
+                    return;
+                  }
+                  if (editClosureType === "point" && editClosureCoords.length < 1) {
+                    toast({ title: "Point closure needs a location", variant: "destructive" });
+                    return;
+                  }
                   try {
                     await updateClosure(editingClosureId, {
                       severity: editClosureSeverity,
                       notes: editClosureNotes,
                       expires_at: editClosureExpiry || null,
+                      closure_type: editClosureType,
+                      coordinates: editClosureCoords,
                     });
                     toast({ title: "Closure updated" });
+                    if (mapInstance.current) {
+                      drawTempMarkersRef.current.forEach(m => mapInstance.current!.removeLayer(m));
+                      drawTempMarkersRef.current = [];
+                      if (drawTempLineRef.current) { mapInstance.current.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+                    }
                     setEditingClosureId(null);
                   } catch {
                     toast({ title: "Failed to update", variant: "destructive" });
@@ -1009,6 +1120,43 @@ const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
           </div>
         </div>
       )}
+
+      {/* Edit redraw indicator */}
+      {editingClosureId && editRedrawing && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+          <div className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-2">
+            <Pencil className="w-3.5 h-3.5" />
+            {editClosureType === "point"
+              ? "Tap map to set new location"
+              : `Drawing line (${editClosureCoords.length} pts) — tap to add points`}
+          </div>
+          {(editClosureType === "point" ? editClosureCoords.length >= 1 : editClosureCoords.length >= 2) && (
+            <button
+              onClick={() => setEditRedrawing(false)}
+              className="bg-primary-foreground text-primary px-3 py-2 rounded-xl text-xs font-semibold shadow-lg"
+            >
+              Done
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setEditRedrawing(false);
+              // Restore original coords from registry
+              const c = (window as any).__closureRegistry__?.[editingClosureId!] as RoadClosure | undefined;
+              if (c) setEditClosureCoords(Array.isArray(c.coordinates) ? c.coordinates : []);
+              if (mapInstance.current) {
+                drawTempMarkersRef.current.forEach(m => mapInstance.current!.removeLayer(m));
+                drawTempMarkersRef.current = [];
+                if (drawTempLineRef.current) { mapInstance.current.removeLayer(drawTempLineRef.current); drawTempLineRef.current = null; }
+              }
+            }}
+            className="bg-muted text-muted-foreground px-3 py-2 rounded-xl text-xs font-semibold shadow-lg"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
     </div>
   );
 };
