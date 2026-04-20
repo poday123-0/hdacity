@@ -236,11 +236,22 @@ const Dispatch = () => {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Shared state for forms
+  // Cached snapshots survive going offline so the dispatcher always sees the
+  // last-known Loss/Today/App Ride lists instead of an empty screen.
+  const TABLE_CACHE_KEY = "hda_dispatch_tables_cache_v1";
+  const loadCachedTables = (): { recent: any[]; appReq: any[]; lost: any[] } => {
+    try {
+      const raw = localStorage.getItem(TABLE_CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { recent: [], appReq: [], lost: [] };
+  };
+  const cachedTables = loadCachedTables();
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
-  const [recentTrips, setRecentTrips] = useState<any[]>([]);
-  const [appRequestTrips, setAppRequestTrips] = useState<any[]>([]);
-  const [lostTrips, setLostTrips] = useState<any[]>([]);
+  const [recentTrips, setRecentTrips] = useState<any[]>(cachedTables.recent);
+  const [appRequestTrips, setAppRequestTrips] = useState<any[]>(cachedTables.appReq);
+  const [lostTrips, setLostTrips] = useState<any[]>(cachedTables.lost);
   const [markingLoss, setMarkingLoss] = useState<string | null>(null);
   const [bookingSearch, setBookingSearch] = useState("");
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -638,64 +649,79 @@ const Dispatch = () => {
   useEffect(() => {
     if (!isAuthed) return;
     const load = async () => {
+      // Offline: keep showing whatever we already cached on screen.
+      if (!navigator.onLine) return;
       const todayISO = getMaldivesTodayISO();
       const tripSelect =
         "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
-      const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
-        supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
-        supabase
-          .from("driver_locations")
-          .select(
-            `
-            driver_id, lat, lng,
-            profiles:driver_id (first_name, last_name, phone_number),
-            vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
-          `,
-          )
-          .eq("is_online", true)
-          .eq("is_on_trip", false),
-        supabase
-          .from("trips")
-          .select(tripSelect)
-          .eq("dispatch_type", "operator")
+      try {
+        const [vtRes, driversRes, tripsRes, appReqRes, lostRes] = await Promise.all([
+          supabase.from("vehicle_types").select("*").eq("is_active", true).order("sort_order"),
+          supabase
+            .from("driver_locations")
+            .select(
+              `
+              driver_id, lat, lng,
+              profiles:driver_id (first_name, last_name, phone_number),
+              vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
+            `,
+            )
+            .eq("is_online", true)
+            .eq("is_on_trip", false),
+          supabase
+            .from("trips")
+            .select(tripSelect)
+            .eq("dispatch_type", "operator")
 .in("status", ["requested", "accepted", "arrived", "started", "completed"])
-           .gte("created_at", todayISO)
-           .order("created_at", { ascending: false })
-          .limit(200),
-        supabase
-          .from("trips")
-          .select(tripSelect)
-          .in("dispatch_type", ["dispatch_broadcast", "passenger"])
-          .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
-          .order("updated_at", { ascending: false })
-          .limit(300),
-        supabase
-          .from("trips")
-          .select(
-            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)",
-          )
-          .eq("dispatch_type", "operator")
-          .eq("is_loss", true)
-          .gte("created_at", todayISO)
-          .order("created_at", { ascending: false })
-          .limit(200),
-      ]);
-      setVehicleTypes(vtRes.data || []);
-      setRecentTrips(tripsRes.data || []);
-      setAppRequestTrips(appReqRes.data || []);
-      setLostTrips(lostRes.data || []);
-      const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
-        driver_id: d.driver_id,
-        first_name: (d.profiles as any)?.first_name || "",
-        last_name: (d.profiles as any)?.last_name || "",
-        phone_number: (d.profiles as any)?.phone_number || "",
-        vehicle_name: (d.vehicles as any)?.vehicle_types?.name || "Unknown",
-        plate_number: (d.vehicles as any)?.plate_number || "",
-        lat: d.lat,
-        lng: d.lng,
-      }));
-      setOnlineDrivers(drivers);
-      cacheDrivers(drivers);
+             .gte("created_at", todayISO)
+             .order("created_at", { ascending: false })
+            .limit(200),
+          supabase
+            .from("trips")
+            .select(tripSelect)
+            .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+            .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+            .order("updated_at", { ascending: false })
+            .limit(300),
+          supabase
+            .from("trips")
+            .select(
+              "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)",
+            )
+            .eq("dispatch_type", "operator")
+            .eq("is_loss", true)
+            .gte("created_at", todayISO)
+            .order("created_at", { ascending: false })
+            .limit(200),
+        ]);
+        setVehicleTypes(vtRes.data || []);
+        const recent = tripsRes.data || [];
+        const appReq = appReqRes.data || [];
+        const lost = lostRes.data || [];
+        setRecentTrips(recent);
+        setAppRequestTrips(appReq);
+        setLostTrips(lost);
+        try {
+          localStorage.setItem(
+            "hda_dispatch_tables_cache_v1",
+            JSON.stringify({ recent, appReq, lost, ts: Date.now() }),
+          );
+        } catch {}
+        const drivers: OnlineDriver[] = (driversRes.data || []).map((d: any) => ({
+          driver_id: d.driver_id,
+          first_name: (d.profiles as any)?.first_name || "",
+          last_name: (d.profiles as any)?.last_name || "",
+          phone_number: (d.profiles as any)?.phone_number || "",
+          vehicle_name: (d.vehicles as any)?.vehicles_types?.name || (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+          plate_number: (d.vehicles as any)?.plate_number || "",
+          lat: d.lat,
+          lng: d.lng,
+        }));
+        setOnlineDrivers(drivers);
+        cacheDrivers(drivers);
+      } catch (err) {
+        console.warn("Initial dispatch load failed, keeping cache:", err);
+      }
     };
     load();
   }, [isAuthed]);
@@ -947,6 +973,9 @@ const Dispatch = () => {
   }, [isAuthed]);
 
   const refreshTrips = async () => {
+    // Skip the network round-trip when offline — we keep showing the last
+    // cached tables instead of blanking the dispatcher's screen.
+    if (!navigator.onLine) return;
     const todayISO = getMaldivesTodayISO();
     const tripSelect =
       "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
@@ -973,29 +1002,44 @@ const Dispatch = () => {
       return all;
     };
 
-    const [todayTrips, { data: appReq }, { data: lost }] = await Promise.all([
-      fetchAllToday(),
-      supabase
-        .from("trips")
-        .select(tripSelect)
-        .in("dispatch_type", ["dispatch_broadcast", "passenger"])
-        .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
-        .order("updated_at", { ascending: false })
-        .limit(300),
-      supabase
-        .from("trips")
-        .select(
-          "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)",
-        )
-        .eq("dispatch_type", "operator")
-        .eq("is_loss", true)
-        .gte("created_at", todayISO)
-        .order("created_at", { ascending: false })
-        .limit(200),
-    ]);
-    setRecentTrips(todayTrips);
-    setAppRequestTrips(appReq || []);
-    setLostTrips(lost || []);
+    try {
+      const [todayTrips, appReqRes, lostRes] = await Promise.all([
+        fetchAllToday(),
+        supabase
+          .from("trips")
+          .select(tripSelect)
+          .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+          .in("status", ["requested", "accepted", "arrived", "started", "in_progress", "completed", "cancelled"])
+          .order("updated_at", { ascending: false })
+          .limit(300),
+        supabase
+          .from("trips")
+          .select(
+            "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, cancel_reason, driver_id, booking_notes, driver:profiles!trips_driver_id_fkey(first_name, last_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)",
+          )
+          .eq("dispatch_type", "operator")
+          .eq("is_loss", true)
+          .gte("created_at", todayISO)
+          .order("created_at", { ascending: false })
+          .limit(200),
+      ]);
+      const recent = todayTrips || [];
+      const appReq = appReqRes.data || [];
+      const lost = lostRes.data || [];
+      setRecentTrips(recent);
+      setAppRequestTrips(appReq);
+      setLostTrips(lost);
+      // Persist a snapshot for offline fallback
+      try {
+        localStorage.setItem(
+          "hda_dispatch_tables_cache_v1",
+          JSON.stringify({ recent, appReq, lost, ts: Date.now() }),
+        );
+      } catch {}
+    } catch (err) {
+      // Network blip — keep current tables on screen instead of blanking them.
+      console.warn("refreshTrips failed, keeping cached tables:", err);
+    }
   };
 
   // Fetch all bookings for the All Bookings dialog (supports all date ranges)
