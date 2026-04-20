@@ -51,6 +51,7 @@ import AdminSOSHistory from "@/components/admin/AdminSOSHistory";
 import AdminNamedLocations from "@/components/admin/AdminNamedLocations";
 import AdminVehicles from "@/components/admin/AdminVehicles";
 import DispatchTripForm from "@/components/dispatch/DispatchTripForm";
+import BroadcastCountdown from "@/components/dispatch/BroadcastCountdown";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import LiveTripTracker from "@/components/dispatch/LiveTripTracker";
 import DispatchGoogleMap from "@/components/dispatch/DispatchGoogleMap";
@@ -243,6 +244,8 @@ const Dispatch = () => {
   const [showAllLoss, setShowAllLoss] = useState(false);
   const [lossSearch, setLossSearch] = useState("");
   const [appInlineSearch, setAppInlineSearch] = useState("");
+  const [broadcastTimeoutSec, setBroadcastTimeoutSec] = useState(60);
+  const [passengerTimeoutSec, setPassengerTimeoutSec] = useState(60);
   const [allBookingsSearch, setAllBookingsSearch] = useState("");
   const [allBookingsDateFilter, setAllBookingsDateFilter] = useState<string>("today");
   const [allBookingsCustomDate, setAllBookingsCustomDate] = useState<Date | undefined>(undefined);
