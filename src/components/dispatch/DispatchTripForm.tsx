@@ -972,10 +972,26 @@ const DispatchTripForm = ({
             toast({ title: "No drivers in range", description: "Trip cancelled — no drivers nearby", variant: "destructive" });
             onTripCreated();
           } else {
-            // 🚀 FIRE PUSH IMMEDIATELY — no further awaits before this call
+            // Respect each driver's personal trip_radius_km — never push to
+            // drivers who set a smaller radius than their distance to pickup.
+            // (Direct dispatcher assignments bypass this in the isAssigned branch above.)
+            const eligibleIds = await filterDriversByPersonalRadius(nearbyDrivers as any, pickup.lat, pickup.lng);
+
+            if (eligibleIds.length === 0) {
+              await supabase.from("trips").update({
+                status: "cancelled",
+                cancelled_at: new Date().toISOString(),
+                cancel_reason: "No drivers within personal radius",
+              }).eq("id", tripId);
+              toast({ title: "No drivers in range", description: "All nearby drivers set a smaller radius", variant: "destructive" });
+              onTripCreated();
+              return;
+            }
+
+            // 🚀 FIRE PUSH IMMEDIATELY — only to drivers whose personal radius covers the pickup
             const selectedVtName = vehicleTypes.find(v => v.id === selectedVehicleType)?.name || null;
             notifyTripRequested(
-              nearbyDrivers.map((d: any) => d.driver_id),
+              eligibleIds,
               trip.id,
               tripPayload.pickup_address,
               selectedVehicleType || undefined,
@@ -983,7 +999,7 @@ const DispatchTripForm = ({
               selectedVtName,
             ).catch(console.warn);
 
-            toast({ title: `Sent to ${nearbyDrivers.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
+            toast({ title: `Sent to ${eligibleIds.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
             // Auto-cancel after configurable timeout
             const timeoutMs = broadcastTimeoutMsCache;
