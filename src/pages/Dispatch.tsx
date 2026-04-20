@@ -2486,7 +2486,7 @@ const Dispatch = () => {
           />
         </div>
         <div className={`w-full h-full ${activeTab === "google_map" ? "" : "hidden"}`}>
-          <DispatchGoogleMap />
+          <DispatchGoogleMap isActive={activeTab === "google_map"} />
         </div>
       </div>
 

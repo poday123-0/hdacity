@@ -40,7 +40,7 @@ const DAY_OPTIONS = [
   { value: "sun", label: "Sun" },
 ];
 
-const DispatchGoogleMap = () => {
+const DispatchGoogleMap = ({ isActive = true }: { isActive?: boolean }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
