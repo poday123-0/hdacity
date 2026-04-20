@@ -1366,16 +1366,21 @@ const Dispatch = () => {
 
       {/* Offline banner */}
       {!isOnline && (
-        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between gap-2 shrink-0 animate-pulse">
+        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
-            <WifiOff className="w-4 h-4" />
+            <WifiOff className="w-4 h-4 animate-pulse" />
             <span className="text-sm font-bold">You are offline</span>
-            <span className="text-xs opacity-80">— Trips will be queued and auto-sent when connection returns</span>
+            <span className="text-xs opacity-80 hidden sm:inline">
+              — Using cached drivers, locations & trips. New trips will be queued and auto-sent when back online.
+            </span>
           </div>
           {queuedTrips.length > 0 && (
-            <span className="text-xs font-mono bg-destructive-foreground/20 px-2 py-0.5 rounded">
-              {queuedTrips.length} queued
-            </span>
+            <button
+              onClick={() => setShowQueuePanel((v) => !v)}
+              className="text-xs font-bold bg-destructive-foreground/20 hover:bg-destructive-foreground/30 px-2 py-0.5 rounded transition-colors"
+            >
+              {queuedTrips.length} queued {showQueuePanel ? "▴" : "▾"}
+            </button>
           )}
         </div>
       )}
@@ -1385,7 +1390,15 @@ const Dispatch = () => {
         <div className="bg-warning/15 border-b border-warning/30 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <Upload className="w-4 h-4 text-warning" />
-            <span className="text-sm font-medium text-warning">{queuedTrips.length} queued trip(s) pending sync</span>
+            <span className="text-sm font-medium text-warning">
+              {queuedTrips.length} queued trip(s) pending sync
+            </span>
+            <button
+              onClick={() => setShowQueuePanel((v) => !v)}
+              className="text-[10px] underline text-warning/80 hover:text-warning"
+            >
+              {showQueuePanel ? "Hide" : "View queue"}
+            </button>
           </div>
           <button
             onClick={syncQueue}
@@ -1394,6 +1407,52 @@ const Dispatch = () => {
           >
             {isSyncing ? "Syncing..." : "Sync Now"}
           </button>
+        </div>
+      )}
+
+      {/* Expandable queue panel */}
+      {showQueuePanel && queuedTrips.length > 0 && (
+        <div className="bg-card border-b border-border shrink-0 max-h-64 overflow-y-auto">
+          <div className="px-4 py-2 border-b border-border flex items-center justify-between sticky top-0 bg-card">
+            <span className="text-xs font-bold text-foreground">Queued Trips ({queuedTrips.length})</span>
+            <div className="flex gap-2">
+              <button
+                onClick={syncQueue}
+                disabled={isSyncing || !isOnline}
+                className="text-[10px] font-bold px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40"
+              >
+                {isSyncing ? "Syncing..." : "Sync All"}
+              </button>
+              <button
+                onClick={() => setShowQueuePanel(false)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          {queuedTrips.map((q) => (
+            <div key={q.id} className="px-4 py-2 border-b border-border/50 flex items-center justify-between gap-2 text-[11px]">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-foreground truncate">
+                  {q.payload.customer_name || "—"} • {q.payload.customer_phone || "—"}
+                </div>
+                <div className="text-muted-foreground truncate">
+                  {q.payload.pickup_address || "—"} → {q.payload.dropoff_address || "—"}
+                </div>
+                <div className="text-[9px] text-muted-foreground/70">
+                  Queued {new Date(q.queuedAt).toLocaleTimeString()}
+                </div>
+              </div>
+              <button
+                onClick={() => removeFromQueue(q.id)}
+                className="text-destructive hover:bg-destructive/10 p-1 rounded shrink-0"
+                title="Remove from queue"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
