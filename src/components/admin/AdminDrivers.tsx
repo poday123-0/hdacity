@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff } from "lucide-react";
@@ -10,6 +10,7 @@ const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", yea
 type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review" | "Rejected";
 
 const AdminDrivers = () => {
+  const DRIVERS_PAGE_SIZE = 150;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -57,6 +58,7 @@ const AdminDrivers = () => {
   const [bulkCenterStart, setBulkCenterStart] = useState("");
   const [bulkVehicleSearch, setBulkVehicleSearch] = useState("");
   const [bulkVehicleSelected, setBulkVehicleSelected] = useState<Set<string>>(new Set());
+  const [visibleDriverCount, setVisibleDriverCount] = useState(DRIVERS_PAGE_SIZE);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -190,6 +192,12 @@ const AdminDrivers = () => {
     }
     return true;
   });
+
+  const visibleDrivers = useMemo(() => filteredDrivers.slice(0, visibleDriverCount), [filteredDrivers, visibleDriverCount]);
+
+  useEffect(() => {
+    setVisibleDriverCount(DRIVERS_PAGE_SIZE);
+  }, [search, statusFilter, companyFilter, vehicleStatusFilter, docFilter]);
 
   // Bulk actions
   const toggleSelect = (id: string) => {
@@ -1199,7 +1207,7 @@ const AdminDrivers = () => {
             ) : filteredDrivers.length === 0 ? (
               <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-sm">No drivers found</td></tr>
             ) : (
-              filteredDrivers.map((d) => {
+              visibleDrivers.map((d) => {
                 const docCount = [d.license_front_url, d.license_back_url, d.id_card_front_url, d.id_card_back_url].filter(Boolean).length;
                 const permitCount = [d.taxi_permit_front_url, d.taxi_permit_back_url].filter(Boolean).length;
                 const companyName = companies.find((c) => c.id === d.company_id)?.name || d.company_name || "—";
@@ -1598,6 +1606,17 @@ const AdminDrivers = () => {
           </tbody>
         </table>
       </div>
+        {!loading && filteredDrivers.length > visibleDrivers.length && (
+          <div className="border-t border-border px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Showing {visibleDrivers.length} of {filteredDrivers.length} drivers</p>
+            <button
+              onClick={() => setVisibleDriverCount((prev) => prev + DRIVERS_PAGE_SIZE)}
+              className="px-4 py-2 rounded-xl bg-surface text-foreground text-xs font-semibold hover:bg-muted transition-colors"
+            >
+              Load more drivers
+            </button>
+          </div>
+        )}
     </div>
   );
 };

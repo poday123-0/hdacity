@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2, Upload, Image, FileText, Check, XCircle, Search, Filter, Car, Download, CheckSquare, Square, Building2, Loader2, ShieldCheck, Clock, Eye, User, Ban, ShieldOff, Lock, Timer } from "lucide-react";
@@ -19,6 +19,7 @@ const statusChips: { value: VehicleStatusFilter; label: string; color: string }[
 ];
 
 const AdminVehicles = () => {
+  const VEHICLES_PAGE_SIZE = 150;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -48,6 +49,7 @@ const AdminVehicles = () => {
   const [bulkCompanyId, setBulkCompanyId] = useState("");
   const [bulkCenterCodeStart, setBulkCenterCodeStart] = useState("");
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [visibleVehicleCount, setVisibleVehicleCount] = useState(VEHICLES_PAGE_SIZE);
 
   const handleDocUpload = async (file: File, target: string) => {
     setUploading(target);
@@ -346,6 +348,12 @@ const AdminVehicles = () => {
     return codeA - codeB;
   });
 
+  const visibleVehicles = useMemo(() => filtered.slice(0, visibleVehicleCount), [filtered, visibleVehicleCount]);
+
+  useEffect(() => {
+    setVisibleVehicleCount(VEHICLES_PAGE_SIZE);
+  }, [search, statusFilter, typeFilter, companyFilter]);
+
   return (
     <div className="space-y-5">
       {/* Document preview modal */}
@@ -599,7 +607,7 @@ const AdminVehicles = () => {
             <tr className="border-b border-border bg-surface/50">
               <th className="px-4 py-3 w-10">
                 <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
-                  {selectedIds.size === filtered.length && filtered.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                {selectedIds.size === visibleVehicles.length && visibleVehicles.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                 </button>
               </th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-4 py-3">Vehicle</th>
