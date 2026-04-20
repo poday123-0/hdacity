@@ -801,6 +801,13 @@ const Index = () => {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {
               await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name);
+            }
+          }
+        } catch (pushErr) {
+          console.warn("Push notification failed:", pushErr);
+        }
+
+        // Show nice scheduled confirmation dialog
         setScheduledConfirmationData({
           scheduledAt: scheduledAt || new Date().toISOString(),
           pickup: pickup.name,
