@@ -283,6 +283,17 @@ const AdminNamedLocations = () => {
         body: { query: q.trim(), key },
       });
       if (error) throw error;
+      // Surface Google API errors (e.g. billing not enabled, Places API disabled)
+      if (data?.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+        toast({
+          title: `Google Places: ${data.status}`,
+          description: data.error_message || "Enable the Places API & Billing in Google Cloud Console for this API key.",
+          variant: "destructive",
+        });
+        setPlacesResults([]);
+        setPlacesLoading(false);
+        return;
+      }
       setPlacesResults(Array.isArray(data?.results) ? data.results.slice(0, 8) : []);
       setPlacesOpen(true);
     } catch (err: any) {
