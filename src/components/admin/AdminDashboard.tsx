@@ -69,31 +69,43 @@ const AdminDashboard = () => {
       const todayStartUTC = new Date(maldivesMidnight.getTime() - 5 * 3600000);
 
       const todayISO = todayStartUTC.toISOString();
-      const [drivers, vehicles, trips, activeTrips, passengers, onlineDrivers, completedToday, cancelledToday, todayRevenueData] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
-        supabase.from("vehicles").select("id", { count: "exact", head: true }),
-        supabase.from("trips").select("id", { count: "exact", head: true }),
-        supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started", "arrived"]),
-        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
-        supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayISO),
-        supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayISO),
-        supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayISO),
-      ]);
+      // Use allSettled so a single failed query doesn't wipe out every stat.
+      // Update stats incrementally as each query resolves so the UI never sticks at 0.
+      const queries = [
+        { key: "drivers", q: supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%") },
+        { key: "vehicles", q: supabase.from("vehicles").select("id", { count: "exact", head: true }) },
+        { key: "trips", q: supabase.from("trips").select("id", { count: "exact", head: true }) },
+        { key: "activeTrips", q: supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started", "arrived"]) },
+        { key: "passengers", q: supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider") },
+        { key: "onlineDrivers", q: supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true) },
+        { key: "completedToday", q: supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayISO) },
+        { key: "cancelledToday", q: supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayISO) },
+      ] as const;
 
-      const revenue = (todayRevenueData.data || []).reduce((sum: number, t: any) => sum + (t.actual_fare || 0), 0);
-
-      setStats({
-        drivers: drivers.count || 0,
-        vehicles: vehicles.count || 0,
-        trips: trips.count || 0,
-        activeTrips: activeTrips.count || 0,
-        passengers: passengers.count || 0,
-        onlineDrivers: onlineDrivers.count || 0,
-        completedToday: completedToday.count || 0,
-        cancelledToday: cancelledToday.count || 0,
-        todayRevenue: revenue,
+      queries.forEach(({ key, q }) => {
+        (q as any).then((res: any) => {
+          if (res.error) {
+            console.warn(`[Dashboard] ${key} query failed:`, res.error.message);
+            return;
+          }
+          setStats(prev => ({ ...prev, [key]: res.count || 0 }));
+        });
       });
+
+      // Today revenue (separate because it needs row data, not a count)
+      supabase
+        .from("trips")
+        .select("actual_fare")
+        .eq("status", "completed")
+        .gte("completed_at", todayISO)
+        .then((res: any) => {
+          if (res.error) {
+            console.warn("[Dashboard] todayRevenue query failed:", res.error.message);
+            return;
+          }
+          const revenue = (res.data || []).reduce((sum: number, t: any) => sum + (t.actual_fare || 0), 0);
+          setStats(prev => ({ ...prev, todayRevenue: revenue }));
+        });
     };
     fetchStats();
     // Refresh every 60s — realtime channel below already pushes immediate updates on trip changes
