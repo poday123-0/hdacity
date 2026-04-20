@@ -125,17 +125,13 @@ export const useRoadClosures = () => {
     notes?: string;
     severity?: string;
     expires_at?: string | null;
-    closure_type?: "point" | "line";
-    coordinates?: Array<{ lat: number; lng: number }>;
     schedule_type?: string;
     schedule_days?: string[];
     schedule_start_time?: string | null;
     schedule_end_time?: string | null;
     scheduled_date?: string | null;
   }) => {
-    const payload: any = { ...updates };
-    if (updates.coordinates) payload.coordinates = updates.coordinates as any;
-    const { error } = await supabase.from("road_closures").update(payload).eq("id", id);
+    const { error } = await supabase.from("road_closures").update(updates as any).eq("id", id);
     if (error) throw error;
   };
 
