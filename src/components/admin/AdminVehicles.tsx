@@ -267,10 +267,10 @@ const AdminVehicles = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filtered.length) {
+    if (selectedIds.size === visibleVehicles.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filtered.map(v => v.id)));
+      setSelectedIds(new Set(visibleVehicles.map(v => v.id)));
     }
   };
 
@@ -629,7 +629,7 @@ const AdminVehicles = () => {
                 <p className="text-sm text-muted-foreground">No vehicles found</p>
               </td></tr>
             ) : (
-              filtered.map((v) => {
+              visibleVehicles.map((v) => {
                 const driverName = v.profiles ? `${v.profiles.first_name} ${v.profiles.last_name}` : null;
                 const driverInitials = v.profiles ? `${v.profiles.first_name?.[0] || ""}${v.profiles.last_name?.[0] || ""}` : null;
                 const companyName = v.profiles?.company_name || companies.find(c => c.id === v.profiles?.company_id)?.name || "—";

@@ -204,8 +204,8 @@ const AdminDrivers = () => {
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
   const toggleSelectAll = () => {
-    if (selected.size === filteredDrivers.length) setSelected(new Set());
-    else setSelected(new Set(filteredDrivers.map(d => d.id)));
+    if (selected.size === visibleDrivers.length) setSelected(new Set());
+    else setSelected(new Set(visibleDrivers.map(d => d.id)));
   };
   const sendDriverStatusSms = async (phone: string, countryCode: string, newStatus: string, name: string) => {
     try {
@@ -1187,7 +1187,7 @@ const AdminDrivers = () => {
             <tr className="border-b border-border bg-surface/80 backdrop-blur-sm">
               <th className="px-3 py-3 w-10">
                 <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
-                  {selected.size === filteredDrivers.length && filteredDrivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                  {selected.size === visibleDrivers.length && visibleDrivers.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                 </button>
               </th>
               <th className="text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-3 w-[160px]">Driver</th>
