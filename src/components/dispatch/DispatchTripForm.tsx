@@ -1993,10 +1993,18 @@ const DispatchTripForm = ({
                         {lossAuditLog.map((ev) => (
                           <li key={ev.id} className="px-2 py-1 text-[9px]">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="flex items-center gap-1 min-w-0">
+                              <span className="flex items-center gap-1 min-w-0 flex-wrap">
                                 <span className={`font-bold ${ev.action === 'set' ? 'text-destructive' : 'text-primary'}`}>
                                   {ev.action === 'set' ? 'LOSS SET' : 'LOSS CLEARED'}
                                 </span>
+                                {ev.actor_name && (
+                                  <span className="text-foreground">
+                                    by <span className="font-semibold">{ev.actor_name}</span>
+                                    {ev.actor_role && ev.actor_role !== 'dispatcher' && (
+                                      <span className="text-muted-foreground/70"> ({ev.actor_role})</span>
+                                    )}
+                                  </span>
+                                )}
                                 <span className="font-semibold text-foreground">{ev.code}</span>
                                 <span className="text-muted-foreground truncate">{ev.plate}</span>
                               </span>
