@@ -319,6 +319,61 @@ const AdminDashboard = () => {
         setTopDrivers([]);
       }
 
+      // Driver completion rate (filtered by dispatch source)
+      // For each driver: completed / (completed + cancelled assigned to them)
+      // Considers trips where the driver was actually assigned (driver_id present),
+      // grouped by dispatch_type so admin can compare app vs operator-dispatched performance.
+      const sourceMatches = (t: any) => {
+        if (completionSource === "all") return true;
+        const dt = (t.dispatch_type || "app").toLowerCase();
+        if (completionSource === "app") return dt === "app" || dt === "passenger" || dt === "" || dt === null;
+        if (completionSource === "operator") return dt === "operator" || dt === "dispatch";
+        if (completionSource === "direct") return dt === "direct" || dt === "assign" || dt === "assigned";
+        return true;
+      };
+      const driverRateAgg: Record<string, { completed: number; cancelled: number; revenue: number }> = {};
+      analyticsTrips.forEach(t => {
+        if (!t.driver_id) return;
+        if (!sourceMatches(t)) return;
+        if (!driverRateAgg[t.driver_id]) driverRateAgg[t.driver_id] = { completed: 0, cancelled: 0, revenue: 0 };
+        if (t.status === "completed") {
+          driverRateAgg[t.driver_id].completed += 1;
+          driverRateAgg[t.driver_id].revenue += t.actual_fare || 0;
+        } else if (t.status === "cancelled" || t.status === "expired" || t.status === "no_show") {
+          driverRateAgg[t.driver_id].cancelled += 1;
+        }
+      });
+      // Require at least 3 assigned trips for rate to be meaningful
+      const rateEntries = Object.entries(driverRateAgg)
+        .map(([id, v]) => {
+          const total = v.completed + v.cancelled;
+          return { id, completed: v.completed, total, rate: total ? (v.completed / total) * 100 : 0, revenue: v.revenue };
+        })
+        .filter(e => e.total >= 3)
+        .sort((a, b) => b.rate - a.rate || b.completed - a.completed)
+        .slice(0, 10);
+      if (rateEntries.length > 0) {
+        const { data: rateProfiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, avatar_url")
+          .in("id", rateEntries.map(e => e.id));
+        const profMap = new Map((rateProfiles || []).map((p: any) => [p.id, p]));
+        setCompletionRateDrivers(rateEntries.map(e => {
+          const p: any = profMap.get(e.id);
+          return {
+            id: e.id,
+            name: p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown" : "Unknown",
+            avatar: p?.avatar_url || null,
+            completed: e.completed,
+            total: e.total,
+            rate: Math.round(e.rate),
+            revenue: Math.round(e.revenue),
+          };
+        }));
+      } else {
+        setCompletionRateDrivers([]);
+      }
+
       // Vehicle type split
       const vtCounts: Record<string, number> = {};
       analyticsTrips.forEach(t => {
