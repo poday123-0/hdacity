@@ -390,6 +390,103 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
           )}
         </div>
 
+        {/* Hidden printable export canvas — uses inline hex colors so html-to-image renders cleanly */}
+        <div style={{ position: "fixed", left: "-10000px", top: 0, pointerEvents: "none" }} aria-hidden>
+          <div
+            ref={exportRef}
+            style={{
+              width: "1400px",
+              padding: "48px",
+              background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
+              fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+              color: "#0f172a",
+            }}
+          >
+            {/* Branded header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "20px", borderBottom: "2px solid #0f172a", marginBottom: "28px" }}>
+              <div>
+                <div style={{ fontSize: "11px", letterSpacing: "0.18em", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>HDA Dispatch · Fleet Roster</div>
+                <div style={{ fontSize: "32px", fontWeight: 900, lineHeight: 1.1, marginTop: "6px", letterSpacing: "-0.02em" }}>
+                  {typeFilter ? `${typeFilter} Vehicles` : "All Vehicles"}
+                </div>
+                <div style={{ fontSize: "13px", color: "#475569", marginTop: "4px" }}>
+                  {filtered.length} vehicles · {totalWithContact} with contact · Phone {HDA_DISPATCH_PHONE}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>Generated</div>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a" }}>
+                  {new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                </div>
+              </div>
+            </div>
+
+            {/* Grid — 7 per row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "12px" }}>
+              {filtered.map((v) => {
+                const contact = contacts[v.id];
+                const typeName = v.vehicle_types?.name || "—";
+                return (
+                  <div
+                    key={`exp-${v.id}`}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "14px",
+                      overflow: "hidden",
+                      boxShadow: "0 1px 3px rgba(15, 23, 42, 0.06)",
+                    }}
+                  >
+                    <div style={{
+                      background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                      padding: "8px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}>
+                      <span style={{
+                        background: "#ffffff",
+                        color: "#1e40af",
+                        fontSize: "11px",
+                        fontWeight: 800,
+                        padding: "3px 8px",
+                        borderRadius: "6px",
+                        letterSpacing: "0.02em",
+                      }}>{v.center_code || "—"}</span>
+                      <span style={{
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "999px",
+                        background: contact ? "#22c55e" : "rgba(255,255,255,0.35)",
+                        boxShadow: contact ? "0 0 6px #22c55e" : "none",
+                      }} />
+                    </div>
+                    <div style={{ padding: "10px 10px 12px" }}>
+                      <div style={{ fontSize: "14px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {v.plate_number}
+                      </div>
+                      <div style={{ fontSize: "10px", color: "#64748b", marginTop: "3px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {typeName}{v.color ? ` · ${v.color}` : ""}
+                      </div>
+                      {contact && (
+                        <div style={{ fontSize: "10px", color: "#1e40af", marginTop: "6px", fontWeight: 700, paddingTop: "6px", borderTop: "1px dashed #e2e8f0" }}>
+                          📞 {contact}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#94a3b8", letterSpacing: "0.05em" }}>
+              <span>HDA TAXI · DISPATCH OPERATIONS</span>
+              <span>hda.taxi</span>
+            </div>
+          </div>
+        </div>
+
         {/* Grid */}
         <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3">
           {loading ? (
