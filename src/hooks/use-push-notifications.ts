@@ -155,6 +155,16 @@ export const usePushNotifications = (
           );
         }
 
+        // For trip_cancelled: dispatch a custom event so DriverApp can react
+        // instantly without waiting for the next 2-second realtime/poll cycle.
+        if (notifType === "trip_cancelled") {
+          window.dispatchEvent(
+            new CustomEvent("fcm-trip-cancelled", {
+              detail: { trip_id: payload.data?.trip_id, data: payload.data },
+            })
+          );
+        }
+
         // Show drop-down browser notification (clickable to open app)
         if ("Notification" in window && Notification.permission === "granted") {
           // For trip requests: always show with sound so the driver sees the drop-down
