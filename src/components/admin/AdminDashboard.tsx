@@ -370,7 +370,100 @@ const AdminDashboard = () => {
       setAnalyticsLoading(false);
     };
     fetchAnalytics();
-  }, [analyticsPeriod, customRange, getAnalyticsDateRange, completionSource]);
+  }, [analyticsPeriod, customRange, getAnalyticsDateRange, excludedDriverIds]);
+
+  // Top Completion-Rate Drivers — independent period + source filters
+  useEffect(() => {
+    const fetchCompletionRates = async () => {
+      // Compute date range for this widget's own period
+      const now = new Date();
+      const maldivesNow = new Date(now.getTime() + 5 * 3600000);
+      const start = new Date(maldivesNow);
+      if (completionPeriod === "today") {
+        start.setUTCHours(0, 0, 0, 0);
+      } else if (completionPeriod === "week") {
+        start.setUTCDate(start.getUTCDate() - 6);
+        start.setUTCHours(0, 0, 0, 0);
+      } else {
+        start.setUTCDate(start.getUTCDate() - 29);
+        start.setUTCHours(0, 0, 0, 0);
+      }
+      // Convert back to UTC by subtracting the +5 offset
+      const startUtc = new Date(start.getTime() - 5 * 3600000);
+
+      // Page through trips
+      let allTrips: any[] = [];
+      let from = 0;
+      const batch = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("trips")
+          .select("driver_id, status, actual_fare, dispatch_type, created_at")
+          .gte("created_at", startUtc.toISOString())
+          .order("created_at", { ascending: true })
+          .range(from, from + batch - 1);
+        if (!data || data.length === 0) break;
+        allTrips = allTrips.concat(data);
+        if (data.length < batch) break;
+        from += batch;
+      }
+
+      const sourceMatches = (t: any) => {
+        if (completionSource === "all") return true;
+        const dt = (t.dispatch_type || "app").toLowerCase();
+        if (completionSource === "app") return dt === "app" || dt === "passenger" || dt === "" || dt === null;
+        if (completionSource === "operator") return dt === "operator" || dt === "dispatch";
+        if (completionSource === "direct") return dt === "direct" || dt === "assign" || dt === "assigned";
+        return true;
+      };
+
+      const agg: Record<string, { completed: number; cancelled: number; revenue: number }> = {};
+      allTrips.forEach(t => {
+        if (!t.driver_id) return;
+        if (excludedDriverIds.has(t.driver_id)) return;
+        if (!sourceMatches(t)) return;
+        if (!agg[t.driver_id]) agg[t.driver_id] = { completed: 0, cancelled: 0, revenue: 0 };
+        if (t.status === "completed") {
+          agg[t.driver_id].completed += 1;
+          agg[t.driver_id].revenue += t.actual_fare || 0;
+        } else if (t.status === "cancelled" || t.status === "expired" || t.status === "no_show") {
+          agg[t.driver_id].cancelled += 1;
+        }
+      });
+
+      const entries = Object.entries(agg)
+        .map(([id, v]) => {
+          const total = v.completed + v.cancelled;
+          return { id, completed: v.completed, total, rate: total ? (v.completed / total) * 100 : 0, revenue: v.revenue };
+        })
+        .filter(e => e.total >= 5)
+        .sort((a, b) => b.rate - a.rate || b.completed - a.completed)
+        .slice(0, 10);
+
+      if (entries.length === 0) {
+        setCompletionRateDrivers([]);
+        return;
+      }
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, avatar_url")
+        .in("id", entries.map(e => e.id));
+      const pm = new Map((profs || []).map((p: any) => [p.id, p]));
+      setCompletionRateDrivers(entries.map(e => {
+        const p: any = pm.get(e.id);
+        return {
+          id: e.id,
+          name: p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown" : "Unknown",
+          avatar: p?.avatar_url || null,
+          completed: e.completed,
+          total: e.total,
+          rate: Math.round(e.rate),
+          revenue: Math.round(e.revenue),
+        };
+      }));
+    };
+    fetchCompletionRates();
+  }, [completionPeriod, completionSource, excludedDriverIds]);
 
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
