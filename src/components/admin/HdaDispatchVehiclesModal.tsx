@@ -17,7 +17,7 @@ type Vehicle = {
   center_code: string | null;
   color: string | null;
   driver_id: string | null;
-  vehicle_types?: { name: string } | null;
+  vehicle_types?: { name: string; image_url?: string | null; map_icon_url?: string | null } | null;
 };
 
 type DriverLite = {
