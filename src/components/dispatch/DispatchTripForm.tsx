@@ -163,7 +163,7 @@ const DispatchTripForm = ({
   const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
   const [availableDisposalTypes, setAvailableDisposalTypes] = useState<any[]>([]);
 
-  // Realtime: update centerCodeResults when trip is_loss changes
+  // Realtime: update centerCodeResults when trip is_loss changes + record audit
   useEffect(() => {
     if (centerCodeResults.length === 0) return;
     const vehicleIds = centerCodeResults.map(r => r.vehicle_id).filter(Boolean);
@@ -182,6 +182,24 @@ const DispatchTripForm = ({
           if (newRow.dispatch_type !== 'operator') return;
           const changedVehicleId = newRow.vehicle_id;
           if (!changedVehicleId || !vehicleIds.includes(changedVehicleId)) return;
+
+          // Find the matching entry to get code/plate for audit log
+          const matched = centerCodeResults.find(e => e.vehicle_id === changedVehicleId);
+          if (matched) {
+            const event: LossAuditEvent = {
+              id: `${newRow.id}-${Date.now()}`,
+              ts: Date.now(),
+              code: matched.code,
+              plate: matched.plate_number,
+              vehicle_id: changedVehicleId,
+              action: newRow.is_loss ? 'set' : 'cleared',
+              trip_id: newRow.id,
+              pickup: newRow.pickup_address || null,
+              dropoff: newRow.dropoff_address || null,
+              customer: newRow.customer_name || newRow.customer_phone || null,
+            };
+            setLossAuditLog((prev) => [event, ...prev].slice(0, 30));
+          }
 
           setCenterCodeResults((prev) => {
             const updated = prev.map((entry) => {
