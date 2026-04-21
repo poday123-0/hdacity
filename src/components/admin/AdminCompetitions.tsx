@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp, Camera } from "lucide-react";
+import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp, Camera, ListOrdered } from "lucide-react";
 import { format } from "date-fns";
 import { compressImage } from "@/lib/image-compress";
+import CompetitionDriverTrips from "./CompetitionDriverTrips";
 
 interface Competition {
   id: string;
@@ -81,6 +82,7 @@ const AdminCompetitions = () => {
   const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarDriverIdRef = useRef<string | null>(null);
+  const [tripsModal, setTripsModal] = useState<{ comp: Competition; driverId: string; driverName: string } | null>(null);
 
   const handleAvatarUpload = async (file: File, driverId: string) => {
     setUploadingAvatarId(driverId);
@@ -750,7 +752,14 @@ const AdminCompetitions = () => {
                               </div>
                             </button>
                             <span className="flex-1 text-sm font-medium text-foreground">{entry.driver_name || entry.driver_id.slice(0, 8)}</span>
-                            <span className="text-sm font-bold text-primary">{entry.trip_count} trips</span>
+                            <button
+                              onClick={() => setTripsModal({ comp, driverId: entry.driver_id, driverName: entry.driver_name || entry.driver_id.slice(0, 8) })}
+                              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors"
+                              title="View trip details"
+                            >
+                              <ListOrdered className="w-3 h-3" />
+                              {entry.trip_count} trips
+                            </button>
                             {entry.prize_awarded && <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-bold">Awarded</span>}
                           </div>
                         ))}
@@ -763,6 +772,15 @@ const AdminCompetitions = () => {
           </div>
         ))}
       </div>
+
+      {tripsModal && (
+        <CompetitionDriverTrips
+          competition={tripsModal.comp}
+          driverId={tripsModal.driverId}
+          driverName={tripsModal.driverName}
+          onClose={() => setTripsModal(null)}
+        />
+      )}
     </div>
   );
 };
