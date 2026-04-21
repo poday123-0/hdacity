@@ -55,6 +55,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMessage, setBulkMessage] = useState(DEFAULT_SMS);
   const [bulkSending, setBulkSending] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
