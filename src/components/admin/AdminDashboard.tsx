@@ -64,6 +64,19 @@ const AdminDashboard = () => {
   const [paymentSplit, setPaymentSplit] = useState<{ name: string; value: number }[]>([]);
   const [completionRateDrivers, setCompletionRateDrivers] = useState<{ id: string; name: string; avatar: string | null; completed: number; total: number; rate: number; revenue: number }[]>([]);
   const [completionSource, setCompletionSource] = useState<"all" | "app" | "operator" | "direct">("all");
+  const [completionPeriod, setCompletionPeriod] = useState<"today" | "week" | "month">("month");
+  const [excludedDriverIds, setExcludedDriverIds] = useState<Set<string>>(new Set());
+
+  // Load drivers that should be excluded from analytics (e.g. HDA Dispatch center number 7320207)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .in("phone_number", ["7320207"]);
+      setExcludedDriverIds(new Set((data || []).map((p: any) => p.id)));
+    })();
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
