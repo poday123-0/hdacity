@@ -380,20 +380,31 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                         setExpandedId(isExpanded ? null : v.id);
                         if (isExpanded) { setReassignFor(null); setEditingContact(null); }
                       }}
-                      className={`text-left rounded-xl border p-2 transition-all flex flex-col gap-1 ${
+                      className={`group relative text-left rounded-2xl border overflow-hidden transition-all duration-200 ${
                         isExpanded
-                          ? "bg-primary/10 border-primary shadow-md"
-                          : "bg-card border-border hover:bg-surface hover:border-primary/40"
+                          ? "bg-primary/10 border-primary shadow-lg shadow-primary/20 scale-[0.98]"
+                          : "bg-card border-border hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md bg-primary/15 text-primary text-[10px] font-extrabold">
+                      {/* Top gradient bar with center code */}
+                      <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent px-2 pt-2 pb-1.5 flex items-center justify-between">
+                        <span className="inline-flex items-center justify-center min-w-[30px] h-6 px-2 rounded-md bg-primary text-primary-foreground text-[10px] font-extrabold tracking-wide shadow-sm">
                           {v.center_code || "—"}
                         </span>
-                        {contact && <Phone className="w-2.5 h-2.5 text-accent shrink-0" />}
+                        {contact ? (
+                          <span className="w-2 h-2 rounded-full bg-accent shadow-[0_0_6px_hsl(var(--accent))]" title="Has contact" />
+                        ) : (
+                          <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                        )}
                       </div>
-                      <div className="text-xs font-bold text-foreground truncate leading-tight">{v.plate_number}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{typeName}</div>
+                      {/* Body */}
+                      <div className="px-2 pb-2 pt-0.5">
+                        <div className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">{v.plate_number}</div>
+                        <div className="mt-0.5 flex items-center gap-1">
+                          <Car className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                          <span className="text-[10px] text-muted-foreground truncate font-medium">{typeName}</span>
+                        </div>
+                      </div>
                     </button>
 
                     {isExpanded && (
