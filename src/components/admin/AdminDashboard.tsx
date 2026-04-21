@@ -759,6 +759,88 @@ const AdminDashboard = () => {
             <p className="text-sm text-muted-foreground text-center py-6">No trip data available yet</p>
           )}
         </div>
+
+        {/* Top Drivers + Vehicle Type + Payment */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+              <Star className="w-4 h-4 text-primary" /> Top Drivers
+            </h4>
+            {topDrivers.length > 0 ? (
+              <div className="space-y-2">
+                {topDrivers.map((d, i) => (
+                  <div key={d.name + i} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-muted-foreground w-4">{i + 1}</span>
+                      <span className="text-foreground truncate">{d.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-primary font-semibold">{d.trips} trips</span>
+                      <span className="text-muted-foreground">MVR {d.revenue.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">No completed trips</p>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+              <Car className="w-4 h-4 text-primary" /> Vehicle Type Mix
+            </h4>
+            <div className="h-[160px]">
+              {vehicleTypeSplit.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={vehicleTypeSplit} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} innerRadius={30} strokeWidth={0}>
+                      {vehicleTypeSplit.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">No data</div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+              {vehicleTypeSplit.map((s, i) => (
+                <div key={s.name} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-[10px] text-muted-foreground">{s.name} ({s.value})</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-primary" /> Payment Methods
+            </h4>
+            {paymentSplit.length > 0 ? (
+              <div className="space-y-2">
+                {paymentSplit.map((p, i) => {
+                  const total = paymentSplit.reduce((s, x) => s + x.value, 0);
+                  const pct = total ? Math.round((p.value / total) * 100) : 0;
+                  return (
+                    <div key={p.name} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground">{p.name}</span>
+                        <span className="text-muted-foreground">{p.value} ({pct}%)</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">No completed trips</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Recent Trips */}
