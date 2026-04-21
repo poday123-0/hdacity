@@ -288,7 +288,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div>
             <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-              <Car className="w-4 h-4 text-primary" />
+              <SystemLogo className="w-5 h-5 object-contain" alt="HDA" />
               HDA DISPATCH Vehicles
               <span className="text-xs font-medium text-muted-foreground">({HDA_DISPATCH_PHONE})</span>
             </h2>
@@ -498,7 +498,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground text-sm">
-              <Car className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <SystemLogo className="w-10 h-10 mx-auto mb-2 opacity-30 object-contain" alt="" />
               No vehicles found.
             </div>
           ) : (
@@ -537,7 +537,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                       <div className="px-2 pb-2 pt-0.5">
                         <div className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">{v.plate_number}</div>
                         <div className="mt-0.5 flex items-center gap-1">
-                          <Car className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                          <SystemLogo className="w-2.5 h-2.5 object-contain opacity-60 shrink-0" alt="" />
                           <span className="text-[10px] text-muted-foreground truncate font-medium">{typeName}</span>
                         </div>
                       </div>
