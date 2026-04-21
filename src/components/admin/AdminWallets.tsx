@@ -98,8 +98,21 @@ const AdminWallets = () => {
     const { data } = await supabase.from("wallet_withdrawals").select("*").order("created_at", { ascending: false }).limit(100);
     if (!data) return;
     const userIds = [...new Set(data.map(w => w.user_id))];
-    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", userIds);
+    const adminIds = [...new Set(data.map(w => w.processed_by).filter(Boolean) as string[])];
+    const allIds = [...new Set([...userIds, ...adminIds])];
+    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds);
     const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    // Merge admin profiles into shared adminProfiles map for unified lookup
+    if (adminIds.length > 0) {
+      setAdminProfiles(prev => {
+        const next = new Map(prev);
+        adminIds.forEach(id => {
+          const p = profileMap.get(id);
+          if (p) next.set(id, p);
+        });
+        return next;
+      });
+    }
     setWithdrawals(data.map(w => ({ ...w, amount: Number(w.amount), profile: profileMap.get(w.user_id) })));
   };
 
