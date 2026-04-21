@@ -332,6 +332,7 @@ const AdminDrivers = () => {
         });
         setSmsModal(null);
         setSmsMessage("");
+        setSmsAddSearch("");
       }
     } catch (err: any) {
       toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
