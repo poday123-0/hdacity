@@ -62,6 +62,8 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  const { logoUrl } = useBranding();
+  const exportLogoSrc = logoUrl || hdaLogoFallback;
 
   const loadData = async () => {
     setLoading(true);
@@ -406,21 +408,44 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
             }}
           >
             {/* Branded header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "20px", borderBottom: "2px solid #0f172a", marginBottom: "28px" }}>
-              <div>
-                <div style={{ fontSize: "11px", letterSpacing: "0.18em", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>HDA Dispatch · Fleet Roster</div>
-                <div style={{ fontSize: "32px", fontWeight: 900, lineHeight: 1.1, marginTop: "6px", letterSpacing: "-0.02em" }}>
-                  {typeFilter ? `${typeFilter} Vehicles` : "All Vehicles"}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "16px", borderBottom: "1px solid #e2e8f0", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "14px",
+                  background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)",
+                  border: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 1px 3px rgba(15,23,42,0.08)",
+                }}>
+                  <img src={exportLogoSrc} alt="HDA" crossOrigin="anonymous" style={{ width: "44px", height: "44px", objectFit: "contain" }} />
                 </div>
-                <div style={{ fontSize: "13px", color: "#475569", marginTop: "4px" }}>
-                  {filtered.length} vehicles · {totalWithContact} with contact · Phone {HDA_DISPATCH_PHONE}
+                <div>
+                  <div style={{ fontSize: "20px", fontWeight: 900, color: "#0f172a", letterSpacing: "-0.01em", display: "flex", alignItems: "baseline", gap: "8px" }}>
+                    HDA DISPATCH Vehicles
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#64748b" }}>({HDA_DISPATCH_PHONE})</span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px" }}>
+                    {filtered.length} of {vehicles.length} vehicles · {totalWithContact} with contact
+                  </div>
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>Generated</div>
-                <div style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a" }}>
+                <div style={{ fontSize: "10px", color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>Generated</div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
                   {new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
                 </div>
+              </div>
+            </div>
+
+            {/* Section title */}
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ fontSize: "11px", letterSpacing: "0.18em", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Fleet Roster</div>
+              <div style={{ fontSize: "26px", fontWeight: 900, lineHeight: 1.1, marginTop: "4px", letterSpacing: "-0.02em", color: "#0f172a" }}>
+                {typeFilter ? `${typeFilter} Vehicles` : "All Vehicles"}
               </div>
             </div>
 
