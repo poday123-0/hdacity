@@ -1257,7 +1257,13 @@ const Dispatch = () => {
   };
 
   const handleDispatchCancel = async (tripId: string) => {
-    const { data: tripRow } = await supabase.from("trips").select("vehicle_id").eq("id", tripId).maybeSingle();
+    // Capture pre-cancel state so we know who to notify
+    const { data: tripRow } = await supabase
+      .from("trips")
+      .select("vehicle_id, driver_id, status, vehicle_type_id, pickup_lat, pickup_lng")
+      .eq("id", tripId)
+      .maybeSingle();
+
     await supabase
       .from("trips")
       .update({
@@ -1267,6 +1273,40 @@ const Dispatch = () => {
         is_loss: true,
       })
       .eq("id", tripId);
+
+    // Push-notify the affected driver(s) so cancellation reaches them instantly
+    // even if their realtime channel briefly dropped (locked phone, weak signal).
+    try {
+      const driverIdsToNotify = new Set<string>();
+
+      // (a) If a driver had already accepted the trip — notify them directly.
+      if ((tripRow as any)?.driver_id) {
+        driverIdsToNotify.add((tripRow as any).driver_id);
+      }
+
+      // (b) If trip was still being broadcast (status=requested), notify every
+      // driver who received the original request push so their popup dismisses.
+      if ((tripRow as any)?.status === "requested" || !((tripRow as any)?.driver_id)) {
+        let dlQ = supabase
+          .from("driver_locations")
+          .select("driver_id")
+          .eq("is_online", true);
+        if ((tripRow as any)?.vehicle_type_id) {
+          dlQ = dlQ.eq("vehicle_type_id", (tripRow as any).vehicle_type_id);
+        }
+        const { data: nearbyDrivers } = await dlQ;
+        (nearbyDrivers || []).forEach((d: any) => {
+          if (d.driver_id) driverIdsToNotify.add(d.driver_id);
+        });
+      }
+
+      if (driverIdsToNotify.size > 0) {
+        await notifyTripCancelled(Array.from(driverIdsToNotify), "dispatch", tripId);
+      }
+    } catch (err) {
+      console.error("Failed to push cancel notification:", err);
+    }
+
     broadcastLossActor({
       trip_id: tripId,
       vehicle_id: (tripRow as any)?.vehicle_id || null,
