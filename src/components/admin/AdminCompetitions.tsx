@@ -82,6 +82,7 @@ const AdminCompetitions = () => {
   const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarDriverIdRef = useRef<string | null>(null);
+  const [tripsModal, setTripsModal] = useState<{ comp: Competition; driverId: string; driverName: string } | null>(null);
 
   const handleAvatarUpload = async (file: File, driverId: string) => {
     setUploadingAvatarId(driverId);
