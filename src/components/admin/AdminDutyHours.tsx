@@ -466,15 +466,17 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Clock className="w-4 h-4 text-primary" />
-            Dispatcher Duty Hours
+            {isSelfView ? "My Duty Hours & Performance" : "Dispatcher Duty Hours"}
           </h3>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
-            >
-              <Plus className="w-3 h-3" /> Add Session
-            </button>
+            {!isSelfView && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add Session
+              </button>
+            )}
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
