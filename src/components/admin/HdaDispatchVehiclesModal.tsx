@@ -342,6 +342,15 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
               {types.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <button
+              onClick={exportAsPng}
+              disabled={exporting || filtered.length === 0}
+              title="Export current view as PNG"
+              className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-br from-accent to-accent/80 text-accent-foreground rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-40 transition-all shadow-sm"
+            >
+              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              Export PNG
+            </button>
+            <button
               onClick={() => setBulkOpen(o => !o)}
               disabled={totalWithContact === 0}
               className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-40 transition-all"
