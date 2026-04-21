@@ -145,13 +145,13 @@ const CompetitionDriverTrips = ({ competition, driverId, driverName, onClose }: 
   const totalMins = trips.reduce((s, t) => s + (Number(t.duration_minutes) || 0), 0);
   const totalFare = trips.reduce((s, t) => s + (Number(t.actual_fare) || Number(t.estimated_fare) || 0), 0);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-background rounded-2xl w-full max-w-4xl max-h-[88vh] overflow-hidden shadow-2xl flex flex-col"
+        className="bg-background rounded-2xl w-full max-w-4xl max-h-[88vh] overflow-hidden shadow-2xl flex flex-col border border-border"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
