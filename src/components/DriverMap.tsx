@@ -797,7 +797,19 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, isNavigating, freeNavTarget, mapIconUrl, currentHeading, currentSpeed, navSteps, currentStepIndex, followDriver, navSettings, externalHeading, externalPosition]);
 
-  // Trim route polyline behind driver
+  // Reset map bearing to 0 when not actively navigating.
+  // leaflet-rotate has known visual glitches (markers / polylines appearing detached during zoom)
+  // when the map is rotated. Keeping bearing=0 outside of nav prevents that drift.
+  useEffect(() => {
+    if (isNavigating || freeNavTarget) return;
+    const map = mapInstance.current;
+    if (!map || typeof (map as any).setBearing !== "function") return;
+    (map as any).setBearing(0);
+    setMapHeading(0);
+    onMapHeadingChange?.(0);
+  }, [isNavigating, freeNavTarget, onMapHeadingChange]);
+
+
   useEffect(() => {
     if (!isNavigating || !currentPos || !routePolylineRef.current || routePathRef.current.length < 2) return;
     const fullPath = routePathRef.current;
