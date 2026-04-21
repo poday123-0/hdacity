@@ -2322,6 +2322,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const { data: settingData } = await supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").single();
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
 
+      // Load dispatch_mode for wave-broadcast gating
+      try {
+        const { data: dispatchModeRow } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "dispatch_mode")
+          .maybeSingle();
+        const mode = dispatchModeRow?.value as any;
+        if (typeof mode === "string") dispatchModeRef.current = mode;
+      } catch {}
+
       if (userProfile?.id) {
         const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason, fee_free_until").eq("id", userProfile.id).single();
         // Use admin default if driver hasn't customized (still at DB default of 10)
