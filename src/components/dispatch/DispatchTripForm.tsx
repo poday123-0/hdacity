@@ -8,8 +8,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw, Crosshair, Ban, ShieldOff
+  ChevronUp, ChevronDown, RotateCcw, Crosshair, Ban, ShieldOff, History
 } from "lucide-react";
+
+interface LossAuditEvent {
+  id: string;
+  ts: number;
+  code: string;
+  plate: string;
+  vehicle_id: string;
+  action: 'set' | 'cleared';
+  trip_id: string;
+  pickup?: string | null;
+  dropoff?: string | null;
+  customer?: string | null;
+}
 import MapPicker from "@/components/MapPicker";
 
 interface NominatimResult {
@@ -107,6 +120,8 @@ const DispatchTripForm = ({
   const centerCodeInputRef = useRef<HTMLInputElement | null>(null);
   const [centerCodeResults, setCenterCodeResults] = useState<CenterCodeIndexEntry[]>([]);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(null);
+  const [lossAuditLog, setLossAuditLog] = useState<LossAuditEvent[]>([]);
+  const [showLossAudit, setShowLossAudit] = useState(false);
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,7 +163,7 @@ const DispatchTripForm = ({
   const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
   const [availableDisposalTypes, setAvailableDisposalTypes] = useState<any[]>([]);
 
-  // Realtime: update centerCodeResults when trip is_loss changes
+  // Realtime: update centerCodeResults when trip is_loss changes + record audit
   useEffect(() => {
     if (centerCodeResults.length === 0) return;
     const vehicleIds = centerCodeResults.map(r => r.vehicle_id).filter(Boolean);
@@ -167,6 +182,24 @@ const DispatchTripForm = ({
           if (newRow.dispatch_type !== 'operator') return;
           const changedVehicleId = newRow.vehicle_id;
           if (!changedVehicleId || !vehicleIds.includes(changedVehicleId)) return;
+
+          // Find the matching entry to get code/plate for audit log
+          const matched = centerCodeResults.find(e => e.vehicle_id === changedVehicleId);
+          if (matched) {
+            const event: LossAuditEvent = {
+              id: `${newRow.id}-${Date.now()}`,
+              ts: Date.now(),
+              code: matched.code,
+              plate: matched.plate_number,
+              vehicle_id: changedVehicleId,
+              action: newRow.is_loss ? 'set' : 'cleared',
+              trip_id: newRow.id,
+              pickup: newRow.pickup_address || null,
+              dropoff: newRow.dropoff_address || null,
+              customer: newRow.customer_name || newRow.customer_phone || null,
+            };
+            setLossAuditLog((prev) => [event, ...prev].slice(0, 30));
+          }
 
           setCenterCodeResults((prev) => {
             const updated = prev.map((entry) => {
@@ -1856,6 +1889,65 @@ const DispatchTripForm = ({
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {/* Discreet realtime loss audit log */}
+            {lossAuditLog.length > 0 && (
+              <div className="mt-1 relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLossAudit((v) => !v)}
+                  className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Realtime loss status changes"
+                >
+                  <History className="w-2.5 h-2.5" />
+                  <span>Loss activity ({lossAuditLog.length})</span>
+                  {showLossAudit ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                </button>
+                <AnimatePresence>
+                  {showLossAudit && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-30 left-0 right-0 mt-1 bg-popover border border-border rounded shadow-lg max-h-56 overflow-y-auto"
+                    >
+                      <div className="sticky top-0 bg-popover border-b border-border px-2 py-1 flex items-center justify-between">
+                        <span className="text-[9px] font-semibold text-foreground">Loss audit (this session)</span>
+                        <button
+                          onClick={() => setLossAuditLog([])}
+                          className="text-[9px] text-muted-foreground hover:text-destructive"
+                        >Clear</button>
+                      </div>
+                      <ul className="divide-y divide-border">
+                        {lossAuditLog.map((ev) => (
+                          <li key={ev.id} className="px-2 py-1 text-[9px]">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-1 min-w-0">
+                                <span className={`font-bold ${ev.action === 'set' ? 'text-destructive' : 'text-primary'}`}>
+                                  {ev.action === 'set' ? 'LOSS SET' : 'LOSS CLEARED'}
+                                </span>
+                                <span className="font-semibold text-foreground">{ev.code}</span>
+                                <span className="text-muted-foreground truncate">{ev.plate}</span>
+                              </span>
+                              <span className="text-muted-foreground/70 shrink-0">
+                                {new Date(ev.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </span>
+                            </div>
+                            {(ev.pickup || ev.dropoff || ev.customer) && (
+                              <div className="text-muted-foreground/80 truncate">
+                                {ev.customer && <span>{ev.customer} • </span>}
+                                {ev.pickup && <span>{ev.pickup}</span>}
+                                {ev.dropoff && <span> → {ev.dropoff}</span>}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </div>
