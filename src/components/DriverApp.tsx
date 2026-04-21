@@ -1218,16 +1218,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
     // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
-    if (handlingTripRef.current === trip.id) return;
+    if (handlingTripRef.current === trip.id) {
+      debugLog({ event: "handleNewTrip:reject_duplicate", driver_id: userProfile?.id, trip_id: trip.id });
+      return;
+    }
     handlingTripRef.current = trip.id;
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
       console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} does not match active vehicle type ${activeVehicleTypeIdRef.current} — skipping`);
+      debugLog({ event: "handleNewTrip:reject_vehicle_type_mismatch", driver_id: userProfile?.id, trip_id: trip.id, details: { trip_vt: trip.vehicle_type_id, active_vt: activeVehicleTypeIdRef.current } });
+      handlingTripRef.current = null;
       return;
     }
     if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
       console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} not in driver's eligible types — skipping`);
+      debugLog({ event: "handleNewTrip:reject_vehicle_type_ineligible", driver_id: userProfile?.id, trip_id: trip.id, details: { trip_vt: trip.vehicle_type_id, eligible: Array.from(eligibleVehicleTypeIdsRef.current) } });
+      handlingTripRef.current = null;
       return;
     }
 
@@ -1259,6 +1266,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         const dist = haversineKm(driverPos.lat, driverPos.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
         console.log(`[RADIUS CHECK] Driver pos: ${driverPos.lat.toFixed(4)}, ${driverPos.lng.toFixed(4)} | Pickup: ${trip.pickup_lat}, ${trip.pickup_lng} | Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
         if (dist > tripRadiusRef.current) {
+          debugLog({ event: "handleNewTrip:reject_out_of_radius", driver_id: userProfile?.id, trip_id: trip.id, details: { distance_km: Number(dist.toFixed(2)), radius_km: tripRadiusRef.current } });
           handlingTripRef.current = null; // release lock so next valid trip is processed
           return;
         }
@@ -1266,6 +1274,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         // Still no position even after server fallback — block the trip rather
         // than fail-open. Better to miss one trip than spam every driver.
         console.log(`[RADIUS CHECK] No GPS, no cache, no server position — BLOCKING trip to prevent out-of-range sound`);
+        debugLog({ event: "handleNewTrip:reject_no_position", driver_id: userProfile?.id, trip_id: trip.id });
         handlingTripRef.current = null;
         return;
       }
@@ -1291,6 +1300,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // Show trip request screen with available data right away
     setCurrentTrip(trip);
     setScreen("ride-request");
+    debugLog({ event: "handleNewTrip:show_screen", driver_id: userProfile?.id, trip_id: trip.id });
 
     toast({
       title: "🚗 New Ride Request!",
@@ -1334,6 +1344,16 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
     if (isBlocked || isInvalid) {
       console.log(isBlocked ? `[BLOCK CHECK] Vehicle blocked — dismissing` : `[TRIP CHECK] Trip invalid — dismissing`);
+      debugLog({
+        event: isBlocked ? "handleNewTrip:reject_vehicle_blocked" : "handleNewTrip:reject_trip_invalid",
+        driver_id: userProfile?.id,
+        trip_id: trip.id,
+        details: {
+          fresh_status: freshTrip?.status,
+          fresh_driver_id: freshTrip?.driver_id,
+          age_seconds: freshTrip ? Math.round((Date.now() - new Date(freshTrip.requested_at).getTime()) / 1000) : null,
+        },
+      });
       setScreen("online");
       setCurrentTrip(null);
       setPassengerProfile(null);
