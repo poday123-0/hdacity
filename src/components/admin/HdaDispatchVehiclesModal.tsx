@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { X, Search, Loader2, Car, UserPlus, Save, Phone, MessageSquare, Send, Pencil, Check } from "lucide-react";
+import { X, Search, Loader2, Car, UserPlus, Save, Phone, MessageSquare, Send, Pencil, Check, Download } from "lucide-react";
+import { toPng } from "html-to-image";
 
 const HDA_DISPATCH_PHONE = "7320207";
 const STORAGE_KEY = "hda_dispatch_vehicle_contacts_v1";
