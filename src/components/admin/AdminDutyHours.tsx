@@ -688,7 +688,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                 <th className="text-left py-2 px-2 font-medium">Clock Out</th>
                 <th className="text-left py-2 px-2 font-medium">Duration</th>
                 <th className="text-left py-2 px-2 font-medium">IP</th>
-                <th className="text-left py-2 px-2 font-medium w-20">Actions</th>
+                {!isSelfView && <th className="text-left py-2 px-2 font-medium w-20">Actions</th>}
               </tr>
             </thead>
             <tbody>
