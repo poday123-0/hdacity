@@ -282,15 +282,48 @@ const Index = () => {
     if (!userProfile?.id || phase !== "passenger") return;
 
     const restoreTrip = async () => {
-      // Find any active trip for this passenger
-      const { data: activeTrip } = await supabase
+      const activeStatuses = ["requested", "scheduled", "accepted", "arrived", "started", "in_progress"];
+
+      // 1) Find any active trip already linked to this passenger
+      let { data: activeTrip } = await supabase
         .from("trips")
         .select("*")
         .eq("passenger_id", userProfile.id)
-        .in("status", ["requested", "scheduled", "accepted", "arrived", "started", "in_progress"])
+        .in("status", activeStatuses)
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // 2) Fallback: dispatcher-created trip booked for the same phone number
+      // (passenger_id is null because the customer wasn't logged in at booking)
+      if (!activeTrip && userProfile.phone_number) {
+        const phone = String(userProfile.phone_number).replace(/\D/g, "");
+        const phoneCandidates = Array.from(new Set([
+          userProfile.phone_number,
+          phone,
+          phone.replace(/^960/, ""),
+          `960${phone.replace(/^960/, "")}`,
+        ].filter(Boolean)));
+
+        const { data: phoneTrip } = await supabase
+          .from("trips")
+          .select("*")
+          .is("passenger_id", null)
+          .in("customer_phone", phoneCandidates)
+          .in("status", activeStatuses)
+          .order("requested_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (phoneTrip) {
+          // Link the trip to this account so future updates are picked up by passenger_id
+          await supabase
+            .from("trips")
+            .update({ passenger_id: userProfile.id })
+            .eq("id", phoneTrip.id);
+          activeTrip = { ...phoneTrip, passenger_id: userProfile.id };
+        }
+      }
 
       if (!activeTrip) return;
 
