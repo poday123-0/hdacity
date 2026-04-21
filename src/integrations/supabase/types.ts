@@ -1603,6 +1603,39 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_dispatch_waves: {
+        Row: {
+          created_at: string
+          driver_ids: string[]
+          expires_at: string
+          id: string
+          is_final_broadcast: boolean
+          promoted_at: string | null
+          trip_id: string
+          wave_number: number
+        }
+        Insert: {
+          created_at?: string
+          driver_ids?: string[]
+          expires_at: string
+          id?: string
+          is_final_broadcast?: boolean
+          promoted_at?: string | null
+          trip_id: string
+          wave_number: number
+        }
+        Update: {
+          created_at?: string
+          driver_ids?: string[]
+          expires_at?: string
+          id?: string
+          is_final_broadcast?: boolean
+          promoted_at?: string | null
+          trip_id?: string
+          wave_number?: number
+        }
+        Relationships: []
+      }
       trip_messages: {
         Row: {
           created_at: string

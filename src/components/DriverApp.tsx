@@ -318,6 +318,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const foregroundGpsCleanupRef = useRef<(() => void) | null>(null);
   const tripRadiusRef = useRef(10);
+  const dispatchModeRef = useRef<string>("broadcast");
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
   const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
@@ -1224,6 +1225,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }
     handlingTripRef.current = trip.id;
 
+    // Wave-broadcast gating: when dispatch_mode = wave_broadcast, only handle
+    // trips where this driver is in the current wave's allow-list (or the wave
+    // is the final broadcast). This prevents drivers from seeing the trip
+    // before their wave is reached.
+    if (dispatchModeRef.current === "wave_broadcast" && userProfile?.id) {
+      try {
+        const { data: latestWave } = await supabase
+          .from("trip_dispatch_waves")
+          .select("driver_ids, is_final_broadcast, wave_number")
+          .eq("trip_id", trip.id)
+          .order("wave_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestWave) {
+          const allowList: string[] = (latestWave as any).driver_ids || [];
+          const isFinal = !!(latestWave as any).is_final_broadcast;
+          if (!isFinal && !allowList.includes(userProfile.id)) {
+            debugLog({
+              event: "handleNewTrip:reject_not_in_wave",
+              driver_id: userProfile.id,
+              trip_id: trip.id,
+              details: { wave: (latestWave as any).wave_number, allow_size: allowList.length },
+            });
+            handlingTripRef.current = null;
+            return;
+          }
+        }
+        // If no wave row exists yet, fall through (might be a non-wave broadcast trip)
+      } catch (waveErr) {
+        console.warn("[WAVE CHECK] lookup failed, allowing trip:", waveErr);
+      }
+    }
+
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
       console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} does not match active vehicle type ${activeVehicleTypeIdRef.current} — skipping`);
@@ -1577,6 +1611,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
+    // Wave-broadcast: listen for new wave allow-lists this driver is in
+    const waveChannel = supabase
+      .channel("driver-wave-allowlist")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "trip_dispatch_waves" }, async (payload) => {
+        if (!isActive) return;
+        if (dispatchModeRef.current !== "wave_broadcast") return;
+        const wave = payload.new as any;
+        const inAllowList = (wave.driver_ids || []).includes(userProfile.id);
+        if (!inAllowList && !wave.is_final_broadcast) return;
+        // Fetch the trip and dispatch through the normal handler
+        const { data: trip } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("id", wave.trip_id)
+          .in("status", ["requested", "scheduled"])
+          .is("driver_id", null)
+          .maybeSingle();
+        if (!trip) return;
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip as any);
+        }
+      })
+      .subscribe();
+
     // Listen for target_driver_id updates (auto-nearest cycling)
     const targetChannel = supabase.
     channel("driver-target-updates").
@@ -1765,6 +1824,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
       supabase.removeChannel(targetChannel);
+      supabase.removeChannel(waveChannel);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
@@ -2287,6 +2347,17 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const load = async () => {
       const { data: settingData } = await supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").single();
       const defaultRadius = settingData?.value ? Number(settingData.value) : 10;
+
+      // Load dispatch_mode for wave-broadcast gating
+      try {
+        const { data: dispatchModeRow } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "dispatch_mode")
+          .maybeSingle();
+        const mode = dispatchModeRow?.value as any;
+        if (typeof mode === "string") dispatchModeRef.current = mode;
+      } catch {}
 
       if (userProfile?.id) {
         const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason, fee_free_until").eq("id", userProfile.id).single();

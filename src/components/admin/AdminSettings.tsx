@@ -458,6 +458,7 @@ const AdminSettings = () => {
         <div className="space-y-5">
           {renderSettingSelect('Dispatch Mode', 'dispatch_mode', [
             { value: '"broadcast"', label: "Broadcast to All Nearby" },
+            { value: '"wave_broadcast"', label: "Wave Broadcast (5 → next 5 → all)" },
             { value: '"auto_nearest"', label: "Auto - Nearest Driver First" },
             { value: '"auto_rating"', label: "Auto - Highest Rated Driver First" },
             { value: '"auto_rating_nearest"', label: "Auto - Highest Rated + Nearest" },
@@ -471,6 +472,9 @@ const AdminSettings = () => {
             {renderSettingField("Dispatch Broadcast Timeout (sec)", "dispatch_broadcast_timeout_seconds", "number", "60")}
             {renderSettingField('Max Drivers to Try (0 = unlimited)', 'max_auto_drivers', 'number')}
             {renderSettingField('Default Driver Trip Radius (km)', 'default_trip_radius_km', 'number')}
+            {renderSettingField('Wave Size (drivers per wave)', 'wave_size', 'number', '5')}
+            {renderSettingField('Wave Timeout (sec)', 'wave_timeout_seconds', 'number', '15')}
+            {renderSettingField('Max Targeted Waves Before All-Broadcast', 'max_waves', 'number', '2')}
             {renderSettingField("Min Scheduled Lead Time (min)", "min_scheduled_lead_minutes", "number", "30")}
           </div>
         </div>
