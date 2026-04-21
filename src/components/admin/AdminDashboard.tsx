@@ -608,6 +608,26 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* KPI Summary for selected period */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+          {[
+            { label: "Total Trips", value: kpis.totalTrips.toLocaleString() },
+            { label: "Completed", value: kpis.completed.toLocaleString() },
+            { label: "Cancelled", value: kpis.cancelled.toLocaleString(), destructive: true },
+            { label: "Revenue", value: `MVR ${kpis.revenue.toLocaleString()}` },
+            { label: "Avg Fare", value: `MVR ${kpis.avgFare.toLocaleString()}` },
+            { label: "Completion %", value: `${kpis.completionRate}%`, accent: true },
+            { label: "Cancel %", value: `${kpis.cancellationRate}%`, destructive: true },
+          ].map((k) => (
+            <div key={k.label} className="bg-card border border-border rounded-xl px-3 py-2">
+              <p className="text-[10px] text-muted-foreground truncate">{k.label}</p>
+              <p className={cn("text-base sm:text-lg font-bold truncate", k.destructive ? "text-destructive" : k.accent ? "text-primary" : "text-foreground")}>
+                {k.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
         {/* Revenue Trend + Status Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4">
