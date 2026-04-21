@@ -901,7 +901,78 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Recent Trips */}
+      {/* Top Completion-Rate Drivers */}
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-primary" /> Top Completion-Rate Drivers
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Best success ratio (completed / assigned) for {getPeriodLabel().toLowerCase()} · min 3 trips
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+            {([
+              { v: "all", label: "All" },
+              { v: "app", label: "Customer App" },
+              { v: "operator", label: "Operator" },
+              { v: "direct", label: "Assigned" },
+            ] as const).map(opt => (
+              <button
+                key={opt.v}
+                onClick={() => setCompletionSource(opt.v as any)}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors",
+                  completionSource === opt.v
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {completionRateDrivers.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No driver data for this filter</p>
+        ) : (
+          <div className="space-y-1.5">
+            {completionRateDrivers.map((d, i) => {
+              const rateColor = d.rate >= 90 ? "text-primary" : d.rate >= 70 ? "text-foreground" : "text-destructive";
+              const barColor = d.rate >= 90 ? "bg-primary" : d.rate >= 70 ? "bg-accent-foreground" : "bg-destructive";
+              return (
+                <div key={d.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface/50 transition-colors">
+                  <span className="text-xs font-bold text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>
+                  {d.avatar ? (
+                    <img src={d.avatar} alt={d.name} className="w-9 h-9 rounded-full object-cover border border-border shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary">{d.name.split(" ").map(n => n[0]).slice(0, 2).join("")}</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-semibold text-foreground truncate">{d.name}</p>
+                      <span className={cn("text-sm font-bold shrink-0", rateColor)}>{d.rate}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all duration-500", barColor)} style={{ width: `${d.rate}%` }} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                        {d.completed}/{d.total} · MVR {d.revenue.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">Recent Trips</h3>
