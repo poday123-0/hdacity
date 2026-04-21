@@ -537,7 +537,24 @@ const AdminWallets = () => {
                   </div>
                 </div>
                 {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
-                <p className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleString()}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                  <span>Requested: {new Date(w.created_at).toLocaleString()}</span>
+                  {w.processed_at && (
+                    <span>{w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : "Processed"}: {new Date(w.processed_at).toLocaleString()}</span>
+                  )}
+                </div>
+                {w.status !== "pending" && (
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">By</span>
+                    <span className="font-semibold text-foreground">
+                      {(() => {
+                        const a = w.processed_by ? adminProfiles.get(w.processed_by) : null;
+                        return a ? `${a.first_name} ${a.last_name}`.trim() || a.phone_number : (w.processed_by ? "Admin" : "Unknown");
+                      })()}
+                    </span>
+                  </div>
+                )}
                 {w.status === "pending" && (
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => handleWithdrawal(w, "approved")} className="flex-1 py-2 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform">
