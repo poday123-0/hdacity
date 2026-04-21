@@ -35,6 +35,8 @@ interface TransactionRow {
   proof_url: string | null;
   created_at: string;
   trip_id: string | null;
+  processed_by?: string | null;
+  processed_at?: string | null;
 }
 
 interface WithdrawalRow {
@@ -46,6 +48,8 @@ interface WithdrawalRow {
   notes: string;
   admin_notes: string;
   created_at: string;
+  processed_by?: string | null;
+  processed_at?: string | null;
   profile?: { first_name: string; last_name: string; phone_number: string };
 }
 
