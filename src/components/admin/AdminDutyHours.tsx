@@ -11,7 +11,14 @@ interface DispatcherStats {
   cancelled: number;        // cancelled or expired
 }
 
-const AdminDutyHours = () => {
+interface AdminDutyHoursProps {
+  /** When provided, restrict ALL data (sessions + performance stats) to this single dispatcher.
+   * Also hides admin-only controls (IP allowlist, Add Session button, salary editing). */
+  restrictToDispatcherId?: string;
+}
+
+const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) => {
+  const isSelfView = !!restrictToDispatcherId;
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("month");
@@ -68,18 +75,31 @@ const AdminDutyHours = () => {
 
   const fetchSessions = async () => {
     setLoading(true);
-    let query = supabase
-      .from("dispatch_duty_sessions")
-      .select("*")
-      .order("clock_in", { ascending: false })
-      .limit(500);
 
-    if (dateRange.start) query = query.gte("clock_in", dateRange.start.toISOString());
-    if (dateRange.end) query = query.lte("clock_in", dateRange.end.toISOString());
+    // Paginate to bypass Supabase's default 1000-row limit so counts are accurate
+    const PAGE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    // Hard safety cap: 20k sessions max per filter window (more than enough)
+    while (from < 20000) {
+      let query = supabase
+        .from("dispatch_duty_sessions")
+        .select("*")
+        .order("clock_in", { ascending: false })
+        .range(from, from + PAGE - 1);
 
-    const { data } = await query;
+      if (restrictToDispatcherId) query = query.eq("dispatcher_id", restrictToDispatcherId);
+      if (dateRange.start) query = query.gte("clock_in", dateRange.start.toISOString());
+      if (dateRange.end) query = query.lte("clock_in", dateRange.end.toISOString());
 
-    const ids = [...new Set((data || []).map((s: any) => s.dispatcher_id))];
+      const { data, error } = await query;
+      if (error || !data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    const ids = [...new Set(all.map((s: any) => s.dispatcher_id))];
     let profileMap: Record<string, any> = {};
     if (ids.length > 0) {
       const { data: profiles } = await supabase
@@ -92,7 +112,7 @@ const AdminDutyHours = () => {
     }
 
     setSessions(
-      (data || []).map((s: any) => ({
+      all.map((s: any) => ({
         ...s,
         dispatcher: profileMap[s.dispatcher_id] || null,
       }))
@@ -108,27 +128,41 @@ const AdminDutyHours = () => {
       setDispatcherStats({});
       return;
     }
-    let q = supabase
-      .from("trips")
-      .select("created_by, dispatch_type, target_driver_id, driver_id, status")
-      .in("created_by", dispatcherIds)
-      .limit(20000);
-    if (start) q = q.gte("created_at", start.toISOString());
-    if (end) q = q.lte("created_at", end.toISOString());
 
-    const { data: trips } = await q;
+    // Paginate trips to bypass Supabase's 1000-row default — guarantees accurate counts
+    const PAGE = 1000;
+    let allTrips: any[] = [];
+    let from = 0;
+    // Safety cap: 200k trips per query window
+    while (from < 200000) {
+      let q = supabase
+        .from("trips")
+        .select("created_by, dispatch_type, target_driver_id, driver_id, status")
+        .in("created_by", dispatcherIds)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (start) q = q.gte("created_at", start.toISOString());
+      if (end) q = q.lte("created_at", end.toISOString());
+
+      const { data, error } = await q;
+      if (error || !data || data.length === 0) break;
+      allTrips = allTrips.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
     const stats: Record<string, DispatcherStats> = {};
     dispatcherIds.forEach(id => {
       stats[id] = { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 };
     });
-    (trips || []).forEach((t: any) => {
+    allTrips.forEach((t: any) => {
       const s = stats[t.created_by];
       if (!s) return;
       s.total++;
-      // Direct-assigned: target_driver_id is set OR dispatch_type explicitly says operator
-      if (t.target_driver_id || t.dispatch_type === "operator") s.assigned++;
+      // Direct-assigned: dispatch_type explicitly says operator (or has a target_driver_id without broadcast)
+      if (t.dispatch_type === "operator") s.assigned++;
       // Broadcast / sent to app
-      if (t.dispatch_type === "dispatch_broadcast") s.broadcast++;
+      else if (t.dispatch_type === "dispatch_broadcast") s.broadcast++;
       if (t.status === "completed") s.completed++;
       if (["cancelled", "expired", "no_show"].includes(t.status)) s.cancelled++;
     });
@@ -362,7 +396,8 @@ const AdminDutyHours = () => {
 
   return (
     <div className="space-y-6">
-      {/* IP Restriction Settings */}
+      {/* IP Restriction Settings — admin only */}
+      {!isSelfView && (
       <div className="bg-card border border-border rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -424,21 +459,24 @@ const AdminDutyHours = () => {
           Save IP Settings
         </button>
       </div>
+      )}
 
       {/* Duty Hours Summary */}
       <div className="bg-card border border-border rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Clock className="w-4 h-4 text-primary" />
-            Dispatcher Duty Hours
+            {isSelfView ? "My Duty Hours & Performance" : "Dispatcher Duty Hours"}
           </h3>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
-            >
-              <Plus className="w-3 h-3" /> Add Session
-            </button>
+            {!isSelfView && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add Session
+              </button>
+            )}
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
