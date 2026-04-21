@@ -1003,6 +1003,8 @@ const DispatchTripForm = ({
               selectedVehicleType || undefined,
               estimatedFare,
               selectedVtName,
+              pickup.lat,
+              pickup.lng,
             ).catch(console.warn);
 
             toast({ title: `Sent to ${eligibleIds.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });

@@ -800,7 +800,7 @@ const Index = () => {
           if (eligible.length > 0) {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {
-              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name);
+              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name, pickup.lat, pickup.lng);
             }
           }
         } catch (pushErr) {
@@ -836,7 +836,7 @@ const Index = () => {
           if (eligible.length > 0) {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {
-              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name);
+              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name, pickup.lat, pickup.lng);
             }
           }
         } catch (pushErr) {

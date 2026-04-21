@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { notifyTripRequested } from "@/lib/push-notifications";
+import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send } from "lucide-react";
 
 const statusOptions = [
@@ -309,19 +310,39 @@ const AdminTrips = () => {
                               // Re-broadcast to all eligible online drivers (filtered by vehicle type)
                               let dlQuery = supabase
                                 .from("driver_locations")
-                                .select("driver_id")
+                                .select("driver_id, lat, lng")
                                 .eq("is_online", true)
                                 .eq("is_on_trip", false);
                               if (t.vehicle_type_id) dlQuery = dlQuery.eq("vehicle_type_id", t.vehicle_type_id);
                               const { data: onlineDrivers } = await dlQuery;
                               if (onlineDrivers && onlineDrivers.length > 0) {
-                                const driverIds = onlineDrivers.map((d: any) => d.driver_id);
+                                const hasPickupCoords = typeof t.pickup_lat === "number" && typeof t.pickup_lng === "number";
+                                const driverIds = hasPickupCoords
+                                  ? await filterDriversByPersonalRadius(
+                                      onlineDrivers as any,
+                                      t.pickup_lat,
+                                      t.pickup_lng
+                                    )
+                                  : onlineDrivers.map((d: any) => d.driver_id);
                                 let vtName: string | null = null;
                                 if (t.vehicle_type_id) {
                                   const { data: vtRow } = await supabase.from("vehicle_types").select("name").eq("id", t.vehicle_type_id).maybeSingle();
                                   vtName = (vtRow as any)?.name || null;
                                 }
-                                await notifyTripRequested(driverIds, t.id, t.pickup_address, t.vehicle_type_id || undefined, t.estimated_fare ?? null, vtName);
+                                if (driverIds.length === 0) {
+                                  toast({ title: "No drivers in range", description: "All online drivers are outside their personal radius.", variant: "destructive" });
+                                  return;
+                                }
+                                await notifyTripRequested(
+                                  driverIds,
+                                  t.id,
+                                  t.pickup_address,
+                                  t.vehicle_type_id || undefined,
+                                  t.estimated_fare ?? null,
+                                  vtName,
+                                  t.pickup_lat ?? null,
+                                  t.pickup_lng ?? null,
+                                );
                                 // Also change status to requested so drivers see it as a normal trip
                                 await supabase.from("trips").update({ status: "requested" }).eq("id", t.id);
                                 toast({ title: "Sent to drivers", description: `Notified ${driverIds.length} eligible driver(s)` });
