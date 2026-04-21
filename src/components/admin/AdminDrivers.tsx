@@ -1687,6 +1687,96 @@ const AdminDrivers = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Bulk SMS Modal */}
+      {smsModal && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !smsSending && setSmsModal(null)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  {smsModal.mode === "no-vehicle" ? "Reminder SMS — No Vehicle" : "Send SMS to Selected Drivers"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {smsModal.recipients.length} recipient{smsModal.recipients.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => !smsSending && setSmsModal(null)}
+                disabled={smsSending}
+                className="w-8 h-8 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Recipients preview */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Recipients</label>
+                <div className="mt-1.5 max-h-32 overflow-y-auto bg-surface rounded-xl border border-border p-2 space-y-1">
+                  {smsModal.recipients.slice(0, 50).map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between gap-2 text-xs px-2 py-1">
+                      <span className="text-foreground truncate">{d.first_name} {d.last_name}</span>
+                      <span className="text-muted-foreground shrink-0">+{d.country_code || "960"} {d.phone_number}</span>
+                    </div>
+                  ))}
+                  {smsModal.recipients.length > 50 && (
+                    <p className="text-[10px] text-muted-foreground text-center pt-1">+ {smsModal.recipients.length - 50} more</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Message</label>
+                <textarea
+                  value={smsMessage}
+                  onChange={(e) => setSmsMessage(e.target.value)}
+                  placeholder="Type your SMS message..."
+                  rows={5}
+                  maxLength={640}
+                  disabled={smsSending}
+                  className="w-full mt-1.5 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y disabled:opacity-60"
+                />
+                <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
+                  <span>{smsMessage.length} / 640 characters</span>
+                  <span>{smsMessage.length === 0 ? 0 : Math.ceil(smsMessage.length / 160)} SMS per recipient</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl">
+                <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground">
+                  Real SMS will be sent in batches and may incur costs. Please review the message and recipients carefully.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-border flex items-center justify-end gap-2">
+              <button
+                onClick={() => setSmsModal(null)}
+                disabled={smsSending}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-surface text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendBulkSms}
+                disabled={smsSending || !smsMessage.trim()}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
+              >
+                {smsSending ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><MessageSquare className="w-4 h-4" /> Send to {smsModal.recipients.length}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
