@@ -1225,7 +1225,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
 
-    // Skip trips outside driver's radius — use cached GPS if live GPS unavailable
+    // Skip trips outside driver's radius — use cached GPS, then localStorage,
+    // and finally fall back to the driver_locations row (server-side last position)
+    // so we NEVER fail-open and play sound for out-of-range trips.
     if (trip.pickup_lat && trip.pickup_lng) {
       let driverPos = lastPosRef.current;
       if (!driverPos) {
@@ -1235,12 +1237,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           if (cachedLat && cachedLng) driverPos = { lat: parseFloat(cachedLat), lng: parseFloat(cachedLng) };
         } catch {}
       }
+      if (!driverPos && userProfile?.id) {
+        try {
+          const { data: locRow } = await supabase
+            .from("driver_locations")
+            .select("lat, lng")
+            .eq("driver_id", userProfile.id)
+            .maybeSingle();
+          if (locRow && typeof locRow.lat === "number" && typeof locRow.lng === "number") {
+            driverPos = { lat: Number(locRow.lat), lng: Number(locRow.lng) };
+          }
+        } catch {}
+      }
       if (driverPos) {
         const dist = haversineKm(driverPos.lat, driverPos.lng, Number(trip.pickup_lat), Number(trip.pickup_lng));
         console.log(`[RADIUS CHECK] Driver pos: ${driverPos.lat.toFixed(4)}, ${driverPos.lng.toFixed(4)} | Pickup: ${trip.pickup_lat}, ${trip.pickup_lng} | Distance: ${dist.toFixed(2)}km | Radius: ${tripRadiusRef.current}km | ${dist > tripRadiusRef.current ? "❌ BLOCKED" : "✅ ALLOWED"}`);
-        if (dist > tripRadiusRef.current) return;
+        if (dist > tripRadiusRef.current) {
+          handlingTripRef.current = null; // release lock so next valid trip is processed
+          return;
+        }
       } else {
-        console.log(`[RADIUS CHECK] No GPS and no cached position — fail-open, allowing trip through`);
+        // Still no position even after server fallback — block the trip rather
+        // than fail-open. Better to miss one trip than spam every driver.
+        console.log(`[RADIUS CHECK] No GPS, no cache, no server position — BLOCKING trip to prevent out-of-range sound`);
+        handlingTripRef.current = null;
+        return;
       }
     }
 
@@ -1403,6 +1424,18 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           const cachedLat = localStorage.getItem("hda_driver_last_lat");
           const cachedLng = localStorage.getItem("hda_driver_last_lng");
           if (cachedLat && cachedLng) driverPos = { lat: parseFloat(cachedLat), lng: parseFloat(cachedLng) };
+        } catch {}
+      }
+      if (!driverPos && userProfile?.id) {
+        try {
+          const { data: locRow } = await supabase
+            .from("driver_locations")
+            .select("lat, lng")
+            .eq("driver_id", userProfile.id)
+            .maybeSingle();
+          if (locRow && typeof locRow.lat === "number" && typeof locRow.lng === "number") {
+            driverPos = { lat: Number(locRow.lat), lng: Number(locRow.lng) };
+          }
         } catch {}
       }
       if (driverPos) {
