@@ -310,6 +310,7 @@ const AdminDashboard = () => {
       const driverAgg: Record<string, { trips: number; revenue: number }> = {};
       completedTrips.forEach(t => {
         if (!t.driver_id) return;
+        if (excludedDriverIds.has(t.driver_id)) return;
         if (!driverAgg[t.driver_id]) driverAgg[t.driver_id] = { trips: 0, revenue: 0 };
         driverAgg[t.driver_id].trips += 1;
         driverAgg[t.driver_id].revenue += t.actual_fare || 0;
