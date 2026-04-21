@@ -231,7 +231,9 @@ const AdminLostItems = ({ createdById }: AdminLostItemsProps = {}) => {
                       {item.trip?.profiles ? `${item.trip.profiles.first_name} ${item.trip.profiles.last_name}` : "—"}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground max-w-[150px] truncate">
-                      {item.trip ? `${item.trip.pickup_address} → ${item.trip.dropoff_address}` : "—"}
+                      {item.trip
+                        ? `${item.trip.pickup_address} → ${item.trip.dropoff_address}`
+                        : <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium"><Link2Off className="w-2.5 h-2.5" /> Unlinked</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[item.status] || "bg-muted text-muted-foreground"}`}>
