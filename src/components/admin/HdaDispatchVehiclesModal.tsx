@@ -541,31 +541,41 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                         setExpandedId(isExpanded ? null : v.id);
                         if (isExpanded) { setReassignFor(null); setEditingContact(null); }
                       }}
-                      className={`group relative text-left rounded-2xl border overflow-hidden transition-all duration-200 ${
+                      className={`group relative text-left rounded-xl overflow-hidden transition-all duration-200 bg-card border shadow-sm ${
                         isExpanded
-                          ? "bg-primary/10 border-primary shadow-lg shadow-primary/20 scale-[0.98]"
-                          : "bg-card border-border hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5"
+                          ? "border-primary ring-2 ring-primary/40 scale-[0.98]"
+                          : "border-border hover:shadow-md hover:-translate-y-0.5"
                       }`}
                     >
-                      {/* Top gradient bar with center code */}
-                      <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent px-2 pt-2 pb-1.5 flex items-center justify-between">
-                        <span className="inline-flex items-center justify-center min-w-[30px] h-6 px-2 rounded-md bg-primary text-primary-foreground text-[10px] font-extrabold tracking-wide shadow-sm">
+                      {/* Top blue gradient strip — center code + status dot */}
+                      <div
+                        className="px-2.5 py-2 flex items-center justify-between"
+                        style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)" }}
+                      >
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-2 rounded-md bg-white text-[11px] font-extrabold tracking-wide" style={{ color: "#1e40af" }}>
                           {v.center_code || "—"}
                         </span>
-                        {contact ? (
-                          <span className="w-2 h-2 rounded-full bg-accent shadow-[0_0_6px_hsl(var(--accent))]" title="Has contact" />
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                        )}
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{
+                            background: contact ? "#22c55e" : "rgba(255,255,255,0.35)",
+                            boxShadow: contact ? "0 0 6px #22c55e" : "none",
+                          }}
+                          title={contact ? "Has contact" : "No contact"}
+                        />
                       </div>
-                      {/* Body */}
-                      <div className="px-2 pb-2 pt-0.5 flex items-end justify-between gap-1.5">
+                      {/* Body — plate + type on left, vehicle image on right */}
+                      <div className="px-2.5 py-2 flex items-end justify-between gap-1.5">
                         <div className="min-w-0 flex-1">
                           <div className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">{v.plate_number}</div>
-                          <div className="mt-0.5 flex items-center gap-1">
-                            <SystemLogo className="w-2.5 h-2.5 object-contain opacity-60 shrink-0" alt="" />
-                            <span className="text-[10px] text-muted-foreground truncate font-medium">{typeName}</span>
+                          <div className="text-[10px] text-muted-foreground truncate font-medium mt-0.5">
+                            {typeName}{v.color ? ` · ${v.color}` : ""}
                           </div>
+                          {contact && (
+                            <div className="text-[10px] text-primary font-bold mt-1 pt-1 border-t border-dashed border-border truncate">
+                              📞 {contact}
+                            </div>
+                          )}
                         </div>
                         {(v.vehicle_types?.image_url || v.vehicle_types?.map_icon_url) && (
                           <img
