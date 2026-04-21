@@ -735,7 +735,9 @@ const Dispatch = () => {
           last_name: (d.profiles as any)?.last_name || "",
           phone_number: (d.profiles as any)?.phone_number || "",
           vehicle_name: (d.vehicles as any)?.vehicles_types?.name || (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+          vehicle_type_id: d.vehicle_type_id || (d.vehicles as any)?.vehicle_types?.id || null,
           plate_number: (d.vehicles as any)?.plate_number || "",
+          center_code: (d.vehicles as any)?.center_code || null,
           lat: d.lat,
           lng: d.lng,
         }));
