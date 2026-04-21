@@ -659,15 +659,17 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                       ) : (
                         <p className="text-[10px] text-muted-foreground italic">No rate set</p>
                       )}
-                      <button
-                        onClick={() => {
-                          setEditingSalaryId(id);
-                          setEditSalaryVal(rate > 0 ? rate.toString() : "");
-                        }}
-                        className="text-muted-foreground hover:text-primary"
-                      >
-                        <Pencil className="w-2.5 h-2.5" />
-                      </button>
+                      {!isSelfView && (
+                        <button
+                          onClick={() => {
+                            setEditingSalaryId(id);
+                            setEditSalaryVal(rate > 0 ? rate.toString() : "");
+                          }}
+                          className="text-muted-foreground hover:text-primary"
+                        >
+                          <Pencil className="w-2.5 h-2.5" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
