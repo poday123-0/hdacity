@@ -134,7 +134,9 @@ interface OnlineDriver {
   last_name: string;
   phone_number: string;
   vehicle_name: string;
+  vehicle_type_id?: string | null;
   plate_number: string;
+  center_code?: string | null;
   lat: number;
   lng: number;
 }
