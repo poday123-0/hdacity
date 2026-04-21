@@ -693,9 +693,9 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={isSelfView ? 5 : 6} className="text-center py-6 text-muted-foreground">Loading...</td></tr>
               ) : sessions.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No duty sessions found</td></tr>
+                <tr><td colSpan={isSelfView ? 5 : 6} className="text-center py-6 text-muted-foreground">No duty sessions found</td></tr>
               ) : sessions.map((s: any) => (
                 <tr key={s.id} className="border-b border-border/50 hover:bg-surface/50">
                   <td className="py-2 px-2 font-medium text-foreground">
