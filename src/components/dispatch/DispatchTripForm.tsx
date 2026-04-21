@@ -1054,6 +1054,16 @@ const DispatchTripForm = ({
       // Fire notifications non-blocking for speed
       if (isAssigned && assignedDriverId) {
         notifyTripAssigned(assignedDriverId, trip.id, tripPayload.pickup_address).catch(console.warn);
+        // Optional SMS to passenger when a vehicle is assigned (admin-controlled).
+        // Edge function checks the enabled flag itself and silently skips if off.
+        if (customerPhone.trim()) {
+          supabase.functions.invoke("send-vehicle-assigned-sms", {
+            body: {
+              phone: customerPhone.trim(),
+              vehicle_id: assignedEntry?.vehicle_id || null,
+            },
+          }).catch(console.warn);
+        }
       } else if (pickup) {
         // Pre-fetched in parallel above — use cached results for zero delay
         const tripId = trip.id;
