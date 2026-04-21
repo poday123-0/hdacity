@@ -1891,6 +1891,65 @@ const DispatchTripForm = ({
                 ))}
               </div>
             )}
+            {/* Discreet realtime loss audit log */}
+            {lossAuditLog.length > 0 && (
+              <div className="mt-1 relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLossAudit((v) => !v)}
+                  className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Realtime loss status changes"
+                >
+                  <History className="w-2.5 h-2.5" />
+                  <span>Loss activity ({lossAuditLog.length})</span>
+                  {showLossAudit ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                </button>
+                <AnimatePresence>
+                  {showLossAudit && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-30 left-0 right-0 mt-1 bg-popover border border-border rounded shadow-lg max-h-56 overflow-y-auto"
+                    >
+                      <div className="sticky top-0 bg-popover border-b border-border px-2 py-1 flex items-center justify-between">
+                        <span className="text-[9px] font-semibold text-foreground">Loss audit (this session)</span>
+                        <button
+                          onClick={() => setLossAuditLog([])}
+                          className="text-[9px] text-muted-foreground hover:text-destructive"
+                        >Clear</button>
+                      </div>
+                      <ul className="divide-y divide-border">
+                        {lossAuditLog.map((ev) => (
+                          <li key={ev.id} className="px-2 py-1 text-[9px]">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-1 min-w-0">
+                                <span className={`font-bold ${ev.action === 'set' ? 'text-destructive' : 'text-primary'}`}>
+                                  {ev.action === 'set' ? 'LOSS SET' : 'LOSS CLEARED'}
+                                </span>
+                                <span className="font-semibold text-foreground">{ev.code}</span>
+                                <span className="text-muted-foreground truncate">{ev.plate}</span>
+                              </span>
+                              <span className="text-muted-foreground/70 shrink-0">
+                                {new Date(ev.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </span>
+                            </div>
+                            {(ev.pickup || ev.dropoff || ev.customer) && (
+                              <div className="text-muted-foreground/80 truncate">
+                                {ev.customer && <span>{ev.customer} • </span>}
+                                {ev.pickup && <span>{ev.pickup}</span>}
+                                {ev.dropoff && <span> → {ev.dropoff}</span>}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
 
 
