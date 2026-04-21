@@ -769,7 +769,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       activeVehicleTypeIdRef.current = vehicleTypeId;
 
       // Distance threshold — skip DB writes if driver hasn't moved enough
-      const MIN_MOVE_METERS = 10;
+      // Native bg-location uses this as the OS distanceFilter (lower = more responsive marker, slightly higher battery use)
+      const MIN_MOVE_METERS = 3;
       const lastWrittenPosRef = { lat: 0, lng: 0, time: 0 };
       const haversineMeters = (lat1: number, lng1: number, lat2: number, lng2: number) => {
         const R = 6371000;
