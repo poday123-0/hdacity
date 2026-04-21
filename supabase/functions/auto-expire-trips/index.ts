@@ -219,24 +219,24 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ========== 6. Force-expire trips stuck in active states for 6+ hours ==========
+    // ========== 6. Force-expire trips stuck in active states for 2+ hours ==========
     // Covers cases where a driver loses connectivity / app is killed mid-trip and
-    // the trip ends up frozen for hours on the live map. We mark it as expired,
+    // the trip ends up frozen on the live map / dashboard. We mark it as expired,
     // free the driver, and avoid touching dispatched/operator trips already
     // handled by the 30-minute auto-complete above.
-    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
     const { data: stuckTrips } = await supabase
       .from("trips")
       .select("id, driver_id")
       .in("status", ["accepted", "started", "in_progress", "arrived"])
-      .lt("updated_at", sixHoursAgo);
+      .lt("updated_at", twoHoursAgo);
 
     let stuckExpired = 0;
     if (stuckTrips && stuckTrips.length > 0) {
       const stuckIds = stuckTrips.map((t: any) => t.id);
       const { data: updatedStuck } = await supabase
         .from("trips")
-        .update({ status: "expired", cancel_reason: "Auto-expired: trip inactive for 6h+", cancelled_at: nowISO })
+        .update({ status: "expired", cancel_reason: "Auto-expired: trip inactive for 2h+", cancelled_at: nowISO })
         .in("id", stuckIds)
         .select("id");
       stuckExpired = updatedStuck?.length || 0;
