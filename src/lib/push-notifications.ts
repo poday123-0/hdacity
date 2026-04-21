@@ -107,6 +107,8 @@ export const notifyTripRequested = async (
   vehicleTypeId?: string,
   estimatedFare?: number | null,
   vehicleTypeName?: string | null,
+  pickupLat?: number | null,
+  pickupLng?: number | null,
 ) => {
   const fareNum = typeof estimatedFare === "number" && !isNaN(estimatedFare) ? estimatedFare : null;
   const farePart = fareNum != null && fareNum > 0 ? `Fare: ${Math.round(fareNum)} MVR` : "Tap to view";
@@ -122,6 +124,8 @@ export const notifyTripRequested = async (
       ...(vehicleTypeId ? { vehicle_type_id: vehicleTypeId } : {}),
       ...(vehicleTypeName ? { vehicle_type_name: vehicleTypeName } : {}),
       ...(fareNum != null ? { estimated_fare: String(fareNum) } : {}),
+      ...(typeof pickupLat === "number" ? { pickup_lat: String(pickupLat) } : {}),
+      ...(typeof pickupLng === "number" ? { pickup_lng: String(pickupLng) } : {}),
     }
   );
 };
@@ -209,12 +213,22 @@ export const notifySOSAlert = async (adminIds: string[], userName: string, alert
 };
 
 /** Notify other drivers that a trip was taken by another driver */
-export const notifyTripTaken = async (driverIds: string[], tripId: string) => {
+export const notifyTripTaken = async (
+  driverIds: string[],
+  tripId: string,
+  pickupLat?: number | null,
+  pickupLng?: number | null,
+) => {
   if (driverIds.length === 0) return;
   await sendPushNotification(
     driverIds,
     "🚫 Trip Taken",
     "Another driver accepted this trip",
-    { trip_id: tripId, type: "trip_taken" }
+    {
+      trip_id: tripId,
+      type: "trip_taken",
+      ...(typeof pickupLat === "number" ? { pickup_lat: String(pickupLat) } : {}),
+      ...(typeof pickupLng === "number" ? { pickup_lng: String(pickupLng) } : {}),
+    }
   );
 };
