@@ -88,6 +88,7 @@ import AdBanner from "./AdBanner";
 import DriverLeaderboard from "./DriverLeaderboard";
 
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
+import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { startBackgroundLocation, stopBackgroundLocation } from "@/lib/background-location";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
@@ -4459,14 +4460,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
                   const { data: otherDrivers } = await supabase
                     .from("driver_locations")
-                    .select("driver_id")
+                    .select("driver_id, lat, lng")
                     .eq("is_online", true)
                     .eq("is_on_trip", false)
                     .neq("driver_id", userProfile.id)
                     .gte("updated_at", twoMinAgo);
                   if (otherDrivers && otherDrivers.length > 0) {
-                    const otherIds = otherDrivers.map((d: any) => d.driver_id);
-                    notifyTripTaken(otherIds, currentTrip.id);
+                    const otherIds = await filterDriversByPersonalRadius(
+                      otherDrivers as any,
+                      Number(currentTrip.pickup_lat),
+                      Number(currentTrip.pickup_lng)
+                    );
+                    if (otherIds.length > 0) {
+                      notifyTripTaken(
+                        otherIds,
+                        currentTrip.id,
+                        currentTrip.pickup_lat ?? null,
+                        currentTrip.pickup_lng ?? null,
+                      );
+                    }
                   }
                 } catch (e) { console.warn("Failed to notify other drivers:", e); }
 
