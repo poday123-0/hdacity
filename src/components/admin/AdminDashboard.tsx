@@ -69,13 +69,18 @@ const AdminDashboard = () => {
       const todayStartUTC = new Date(maldivesMidnight.getTime() - 5 * 3600000);
 
       const todayISO = todayStartUTC.toISOString();
+      // Match Live Map definition: only count drivers whose location heartbeat
+      // has been updated within the last 3 hours. Anything older is treated as
+      // stale/offline so the dashboard count can't drift above what's actually
+      // visible on the map.
+      const threeHoursAgoISO = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
       const [drivers, vehicles, trips, activeTrips, passengers, onlineDrivers, completedToday, cancelledToday, todayRevenueData] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).ilike("user_type", "%Driver%"),
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }),
         supabase.from("trips").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "started", "arrived"]),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("user_type", "Rider"),
-        supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true),
+        supabase.from("driver_locations").select("id", { count: "exact", head: true }).eq("is_online", true).gte("updated_at", threeHoursAgoISO),
         supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "completed").gte("completed_at", todayISO),
         supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("cancelled_at", todayISO),
         supabase.from("trips").select("actual_fare").eq("status", "completed").gte("completed_at", todayISO),
