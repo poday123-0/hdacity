@@ -58,6 +58,10 @@ const AdminDashboard = () => {
   const [topAreas, setTopAreas] = useState<{ name: string; count: number }[]>([]);
   const [weeklyRevenue, setWeeklyRevenue] = useState<{ date: string; revenue: number }[]>([]);
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
+  const [kpis, setKpis] = useState({ totalTrips: 0, completed: 0, cancelled: 0, revenue: 0, avgFare: 0, completionRate: 0, cancellationRate: 0 });
+  const [topDrivers, setTopDrivers] = useState<{ name: string; trips: number; revenue: number }[]>([]);
+  const [vehicleTypeSplit, setVehicleTypeSplit] = useState<{ name: string; value: number }[]>([]);
+  const [paymentSplit, setPaymentSplit] = useState<{ name: string; value: number }[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
