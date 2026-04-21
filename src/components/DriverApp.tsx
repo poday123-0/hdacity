@@ -2173,11 +2173,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (!stopped && data) await handleTripCancelledOrTaken(data);
     })();
 
-    // Fast polling fallback (5s) on ride-request screen so the popup dismisses
+    // Fast polling fallback (2s) on ride-request screen so the popup dismisses
     // and the trip sound stops within seconds when another driver accepts.
-    // Also fast (5s) while navigating so dispatch cancellations reach the
-    // driver instantly even if the realtime channel briefly drops.
-    const pollMs = 5000;
+    // Also fast (2s) while navigating so dispatch cancellations reach the
+    // driver instantly even if the realtime channel briefly drops (locked phone).
+    const pollMs = 2000;
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
@@ -2185,10 +2185,25 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     }, pollMs);
 
+    // Instant FCM bridge: when a `trip_cancelled` push arrives for THIS trip,
+    // run the cancel handler right away without waiting for the next poll tick.
+    const onFcmCancel = async (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.trip_id && detail.trip_id !== currentTrip.id) return;
+      const { data } = await supabase
+        .from("trips")
+        .select("status, driver_id, cancel_reason")
+        .eq("id", currentTrip.id)
+        .single();
+      if (data) await handleTripCancelledOrTaken(data);
+    };
+    window.addEventListener("fcm-trip-cancelled", onFcmCancel as EventListener);
+
     return () => {
       stopped = true;
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
+      window.removeEventListener("fcm-trip-cancelled", onFcmCancel as EventListener);
     };
   }, [currentTrip?.id, screen, userProfile?.id, handleTripCancelledOrTaken]);
 

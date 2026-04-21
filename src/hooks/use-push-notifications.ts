@@ -155,6 +155,16 @@ export const usePushNotifications = (
           );
         }
 
+        // For trip_cancelled: dispatch a custom event so DriverApp can react
+        // instantly without waiting for the next 2-second realtime/poll cycle.
+        if (notifType === "trip_cancelled") {
+          window.dispatchEvent(
+            new CustomEvent("fcm-trip-cancelled", {
+              detail: { trip_id: payload.data?.trip_id, data: payload.data },
+            })
+          );
+        }
+
         // Show drop-down browser notification (clickable to open app)
         if ("Notification" in window && Notification.permission === "granted") {
           // For trip requests: always show with sound so the driver sees the drop-down
@@ -464,8 +474,16 @@ export const usePushNotifications = (
                 return;
               }
 
-              // For trip_cancelled: dispatch event and skip sound (DriverApp handles)
-              if (notifType === "trip_cancelled" || notifType === "message_received") {
+              // For trip_cancelled: dispatch event so DriverApp can react instantly
+              // (don't wait for the 2s realtime/poll cycle to detect the change)
+              if (notifType === "trip_cancelled") {
+                try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
+                window.dispatchEvent(new CustomEvent("fcm-trip-cancelled", {
+                  detail: { trip_id: notification.data?.trip_id, data: notification.data }
+                }));
+                return;
+              }
+              if (notifType === "message_received") {
                 try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
                 return;
               }

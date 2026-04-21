@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { notifyTripRequested } from "@/lib/push-notifications";
 import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
-import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send } from "lucide-react";
+import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send, Download, TrendingUp, CheckCircle2, XCircle, Loader2, Route } from "lucide-react";
 
 const statusOptions = [
   { value: "all", label: "All", color: "bg-surface text-foreground" },
@@ -44,17 +44,18 @@ const AdminTrips = () => {
 
   const fetchTrips = async () => {
     setLoading(true);
-    // Default to the last 30 days when the user hasn't picked a date range.
-    // Loading the entire trips table on every mount/realtime tick was the cause
-    // of the slow loading.
+    // Default to the last 30 days when the user hasn't picked a date range,
+    // but always paginate fully through Supabase's 1000-row limit so the
+    // admin sees ALL matching trips instead of just the first page.
     const hasDateRange = !!dateFrom || !!dateTo;
     const defaultFrom = new Date();
     defaultFrom.setDate(defaultFrom.getDate() - 30);
 
     let allTrips: any[] = [];
     const pageSize = 1000;
-    // Cap unbounded pagination: only paginate when the user explicitly set a date range.
-    const maxPages = hasDateRange ? 50 : 1;
+    // Cap at 50 pages = 50k trips per fetch — well above current data volume
+    // and keeps memory bounded if a future filter accidentally widens.
+    const maxPages = 50;
     let from = 0;
     let hasMore = true;
     let page = 0;
