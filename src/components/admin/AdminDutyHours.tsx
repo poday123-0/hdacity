@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign, TrendingUp, Send, UserCheck, Radio, CheckCircle2, XCircle, Trophy } from "lucide-react";
+import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign, TrendingUp, Send, UserCheck, Radio, CheckCircle2, XCircle, Trophy, PackageX } from "lucide-react";
 
 interface DispatcherStats {
   total: number;            // trips created by dispatcher
@@ -9,6 +9,7 @@ interface DispatcherStats {
   broadcast: number;        // sent to app (broadcast wave)
   completed: number;        // ended successfully
   cancelled: number;        // cancelled or expired
+  lostItems: number;        // lost item reports logged by dispatcher
 }
 
 interface AdminDutyHoursProps {
@@ -153,7 +154,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
 
     const stats: Record<string, DispatcherStats> = {};
     dispatcherIds.forEach(id => {
-      stats[id] = { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 };
+      stats[id] = { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0, lostItems: 0 };
     });
     allTrips.forEach((t: any) => {
       const s = stats[t.created_by];
@@ -166,6 +167,30 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
       if (t.status === "completed") s.completed++;
       if (["cancelled", "expired", "no_show"].includes(t.status)) s.cancelled++;
     });
+
+    // Fetch lost item reports created by these dispatchers in the same window (paginated)
+    let allLost: any[] = [];
+    let lostFrom = 0;
+    while (lostFrom < 50000) {
+      let lq = supabase
+        .from("lost_item_reports")
+        .select("created_by")
+        .in("created_by", dispatcherIds)
+        .order("created_at", { ascending: false })
+        .range(lostFrom, lostFrom + PAGE - 1);
+      if (start) lq = lq.gte("created_at", start.toISOString());
+      if (end) lq = lq.lte("created_at", end.toISOString());
+      const { data: lostData, error: lostErr } = await lq;
+      if (lostErr || !lostData || lostData.length === 0) break;
+      allLost = allLost.concat(lostData);
+      if (lostData.length < PAGE) break;
+      lostFrom += PAGE;
+    }
+    allLost.forEach((r: any) => {
+      const s = stats[r.created_by];
+      if (s) s.lostItems++;
+    });
+
     setDispatcherStats(stats);
   };
 
