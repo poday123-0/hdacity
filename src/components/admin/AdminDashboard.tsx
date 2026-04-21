@@ -176,7 +176,7 @@ const AdminDashboard = () => {
       while (true) {
         const { data } = await supabase
           .from("trips")
-          .select("created_at, status, actual_fare, pickup_address, completed_at")
+          .select("created_at, status, actual_fare, estimated_fare, pickup_address, completed_at, driver_id, vehicle_type_id, payment_method, payment_confirmed_method")
           .gte("created_at", start.toISOString())
           .order("created_at", { ascending: true })
           .range(from, from + batchSize - 1);
@@ -192,6 +192,10 @@ const AdminDashboard = () => {
         setTopAreas([]);
         setWeeklyRevenue([]);
         setStatusBreakdown([]);
+        setKpis({ totalTrips: 0, completed: 0, cancelled: 0, revenue: 0, avgFare: 0, completionRate: 0, cancellationRate: 0 });
+        setTopDrivers([]);
+        setVehicleTypeSplit([]);
+        setPaymentSplit([]);
         setAnalyticsLoading(false);
         return;
       }
