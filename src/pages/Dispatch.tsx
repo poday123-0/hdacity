@@ -886,7 +886,7 @@ const Dispatch = () => {
       const { data } = await supabase
         .from("driver_locations")
         .select(
-          `driver_id, lat, lng, profiles:driver_id (first_name, last_name, phone_number), vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))`,
+          `driver_id, lat, lng, vehicle_type_id, profiles:driver_id (first_name, last_name, phone_number), vehicles:vehicle_id (plate_number, center_code, vehicle_types:vehicle_type_id (name))`,
         )
         .eq("is_online", true)
         .eq("is_on_trip", false);
@@ -896,7 +896,9 @@ const Dispatch = () => {
         last_name: (d.profiles as any)?.last_name || "",
         phone_number: (d.profiles as any)?.phone_number || "",
         vehicle_name: (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+        vehicle_type_id: d.vehicle_type_id || null,
         plate_number: (d.vehicles as any)?.plate_number || "",
+        center_code: (d.vehicles as any)?.center_code || null,
         lat: d.lat,
         lng: d.lng,
       }));
