@@ -257,12 +257,47 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
     setBulkSending(false);
   };
 
+  // Convert remote image URL to data URL so html-to-image can embed it without CORS taint
+  const urlToDataUrl = async (url: string): Promise<string | null> => {
+    try {
+      const res = await fetch(url, { mode: "cors", cache: "force-cache" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const fr = new FileReader();
+        fr.onloadend = () => resolve(typeof fr.result === "string" ? fr.result : null);
+        fr.onerror = () => resolve(null);
+        fr.readAsDataURL(blob);
+      });
+    } catch { return null; }
+  };
+
+  const [exportLogoData, setExportLogoData] = useState<string | null>(null);
+  const [exportVehicleImgs, setExportVehicleImgs] = useState<Record<string, string>>({});
+
   const exportAsPng = async () => {
     if (!exportRef.current) return;
     setExporting(true);
     try {
-      // Briefly let layout settle
-      await new Promise(r => setTimeout(r, 50));
+      // Pre-load logo + unique vehicle type images as data URLs (avoids CORS-tainted canvases)
+      const logoData = await urlToDataUrl(exportLogoSrc);
+      setExportLogoData(logoData);
+
+      const uniqueImgUrls = Array.from(new Set(
+        filtered
+          .map(v => v.vehicle_types?.image_url || v.vehicle_types?.map_icon_url)
+          .filter((u): u is string => !!u)
+      ));
+      const entries = await Promise.all(
+        uniqueImgUrls.map(async (u) => [u, await urlToDataUrl(u)] as const)
+      );
+      const imgMap: Record<string, string> = {};
+      entries.forEach(([u, d]) => { if (d) imgMap[u] = d; });
+      setExportVehicleImgs(imgMap);
+
+      // Let React commit the data URLs into the hidden export node
+      await new Promise(r => setTimeout(r, 120));
+
       const dataUrl = await toPng(exportRef.current, {
         pixelRatio: 2,
         cacheBust: true,
