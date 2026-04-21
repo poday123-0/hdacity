@@ -1553,13 +1553,62 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setScreen("navigating");
   };
 
+  // ALWAYS-ON: Listen for direct dispatch assignments to this driver.
+  // This subscription stays mounted whenever the driver is logged in (not just
+  // when screen === "online") because dispatchers can assign a trip while the
+  // driver is on the splash, settings, history, or even the offline screen.
+  // Without this, drivers only saw the trip after the next 8s poll cycle.
+  // Server-side filter on driver_id keeps it cheap and per-driver channel
+  // names prevent multi-tab/multi-driver collisions.
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    let isActive = true;
+    const driverId = userProfile.id;
+
+    const handleAssignedRow = async (trip: any) => {
+      if (!isActive) return;
+      if (!trip || trip.driver_id !== driverId) return;
+      if (trip.status !== "accepted") return;
+      if (trip.booking_type === "scheduled") return;
+      if (trip.id === lastSeenTripRef.current) return;
+      if (handlingTripRef.current === trip.id) return;
+      // If they're already on a trip, queue is handled elsewhere
+      if (currentTripRef.current && currentTripRef.current.id !== trip.id) return;
+      lastSeenTripRef.current = trip.id;
+      handleDirectAssignedTrip(trip as TripRequest);
+    };
+
+    const assignedChannel = supabase
+      .channel(`driver-assigned-${driverId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "trips", filter: `driver_id=eq.${driverId}` },
+        (payload) => handleAssignedRow(payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "trips", filter: `driver_id=eq.${driverId}` },
+        (payload) => {
+          const newRow = payload.new as any;
+          const oldRow = payload.old as any;
+          // Only react when status flipped INTO accepted (new assignment), not
+          // for downstream updates like ratings/fare etc.
+          if (oldRow?.status === "accepted") return;
+          handleAssignedRow(newRow);
+        },
+      )
+      .subscribe();
+
+    return () => { isActive = false; supabase.removeChannel(assignedChannel); };
+  }, [userProfile?.id]);
+
   // Also listen during navigating for chained trip queuing
   useEffect(() => {
     if (screen !== "navigating" || !userProfile?.id || !currentTrip) return;
     let isActive = true;
 
     const chainedChannel = supabase.
-    channel("driver-chained-trip-requests").
+    channel(`driver-chained-${userProfile.id}`).
     on("postgres_changes", {
       event: "INSERT",
       schema: "public",
