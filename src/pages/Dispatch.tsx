@@ -5,6 +5,7 @@ import { useOfflineDispatch } from "@/hooks/use-offline-dispatch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
+import { broadcastLossActor, actorNameFromProfile } from "@/lib/loss-audit-broadcast";
 import {
   Phone,
   MapPin,
