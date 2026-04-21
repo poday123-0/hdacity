@@ -274,6 +274,80 @@ const AdminDashboard = () => {
         name: name.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
         value,
       })));
+
+      // KPI summary
+      const completedTrips = analyticsTrips.filter(t => t.status === "completed");
+      const cancelledTrips = analyticsTrips.filter(t => t.status === "cancelled" || t.status === "expired");
+      const totalRevenue = completedTrips.reduce((s, t) => s + (t.actual_fare || 0), 0);
+      const avgFare = completedTrips.length ? totalRevenue / completedTrips.length : 0;
+      setKpis({
+        totalTrips: analyticsTrips.length,
+        completed: completedTrips.length,
+        cancelled: cancelledTrips.length,
+        revenue: Math.round(totalRevenue),
+        avgFare: Math.round(avgFare),
+        completionRate: analyticsTrips.length ? Math.round((completedTrips.length / analyticsTrips.length) * 100) : 0,
+        cancellationRate: analyticsTrips.length ? Math.round((cancelledTrips.length / analyticsTrips.length) * 100) : 0,
+      });
+
+      // Top drivers (by completed trips & revenue)
+      const driverAgg: Record<string, { trips: number; revenue: number }> = {};
+      completedTrips.forEach(t => {
+        if (!t.driver_id) return;
+        if (!driverAgg[t.driver_id]) driverAgg[t.driver_id] = { trips: 0, revenue: 0 };
+        driverAgg[t.driver_id].trips += 1;
+        driverAgg[t.driver_id].revenue += t.actual_fare || 0;
+      });
+      const topDriverIds = Object.entries(driverAgg)
+        .sort((a, b) => b[1].trips - a[1].trips)
+        .slice(0, 5);
+      if (topDriverIds.length > 0) {
+        const { data: driverProfiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", topDriverIds.map(([id]) => id));
+        const nameMap = new Map((driverProfiles || []).map((p: any) => [p.id, `${p.first_name} ${p.last_name}`.trim()]));
+        setTopDrivers(topDriverIds.map(([id, agg]) => ({
+          name: nameMap.get(id) || "Unknown",
+          trips: agg.trips,
+          revenue: Math.round(agg.revenue),
+        })));
+      } else {
+        setTopDrivers([]);
+      }
+
+      // Vehicle type split
+      const vtCounts: Record<string, number> = {};
+      analyticsTrips.forEach(t => {
+        if (!t.vehicle_type_id) return;
+        vtCounts[t.vehicle_type_id] = (vtCounts[t.vehicle_type_id] || 0) + 1;
+      });
+      const vtIds = Object.keys(vtCounts);
+      if (vtIds.length > 0) {
+        const { data: vts } = await supabase.from("vehicle_types").select("id, name").in("id", vtIds);
+        const vtNameMap = new Map((vts || []).map((v: any) => [v.id, v.name]));
+        setVehicleTypeSplit(
+          Object.entries(vtCounts)
+            .map(([id, value]) => ({ name: vtNameMap.get(id) || "Other", value }))
+            .sort((a, b) => b.value - a.value)
+        );
+      } else {
+        setVehicleTypeSplit([]);
+      }
+
+      // Payment method split (use confirmed if present, fallback to chosen)
+      const payCounts: Record<string, number> = {};
+      completedTrips.forEach(t => {
+        const method = (t.payment_confirmed_method || t.payment_method || "unknown").toString().toLowerCase();
+        const label = method.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        payCounts[label] = (payCounts[label] || 0) + 1;
+      });
+      setPaymentSplit(
+        Object.entries(payCounts)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+      );
+
       setAnalyticsLoading(false);
     };
     fetchAnalytics();
