@@ -184,7 +184,7 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   companies: "manage_companies",
   vehicles: "manage_vehicles",
   named_locations: "manage_locations",
-  duty_hours: "manage_dispatchers",
+  duty_hours: null, // Always visible — dispatchers see only their own data; managers/admins see all
   hdc_map: null,
   google_map: null,
 };
@@ -2656,7 +2656,13 @@ const Dispatch = () => {
         )}
         {activeTab === "duty_hours" && (
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-            <AdminDutyHours restrictToDispatcherId={dispatcherProfile?.id} />
+            <AdminDutyHours
+              restrictToDispatcherId={
+                dispatcherRole === "admin" || dispatcherPermissions.includes("manage_dispatchers")
+                  ? undefined
+                  : dispatcherProfile?.id
+              }
+            />
           </div>
         )}
         <div className={`w-full h-full ${activeTab === "hdc_map" ? "" : "hidden"}`}>
