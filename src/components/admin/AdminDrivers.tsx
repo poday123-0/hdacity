@@ -1251,6 +1251,9 @@ const AdminDrivers = () => {
           <button onClick={() => { setShowBulkAssign("vehicle"); setBulkVehicleSearch(""); setBulkVehicleSelected(new Set()); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/50 text-accent-foreground rounded-xl text-xs font-semibold hover:bg-accent transition-colors">
             <Car className="w-3.5 h-3.5" /> Assign Vehicles
           </button>
+          <button onClick={openSmsSelected} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition-colors">
+            <MessageSquare className="w-3.5 h-3.5" /> Send SMS
+          </button>
           <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-semibold hover:bg-destructive/20 transition-colors">
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
