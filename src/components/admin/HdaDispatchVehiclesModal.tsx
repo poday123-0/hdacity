@@ -55,6 +55,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMessage, setBulkMessage] = useState(DEFAULT_SMS);
   const [bulkSending, setBulkSending] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -95,6 +96,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
       setTypeFilter("");
       setReassignFor(null);
       setBulkOpen(false);
+      setExpandedId(null);
     }
   }, [open]);
 
@@ -352,8 +354,8 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
           )}
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto px-2 sm:px-3 py-2">
+        {/* Grid */}
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3">
           {loading ? (
             <div className="py-16 flex justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -364,26 +366,60 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
               No vehicles found.
             </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
               {filtered.map((v) => {
+                const isExpanded = expandedId === v.id;
                 const isReassigning = reassignFor === v.id;
                 const isEditingC = editingContact === v.id;
                 const contact = contacts[v.id];
+                const typeName = v.vehicle_types?.name || "—";
                 return (
-                  <li key={v.id} className="py-2.5 px-2 hover:bg-surface/50 rounded-lg transition-colors">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-extrabold text-sm shrink-0">
-                        {v.center_code || "—"}
+                  <div key={v.id} className="contents">
+                    <button
+                      onClick={() => {
+                        setExpandedId(isExpanded ? null : v.id);
+                        if (isExpanded) { setReassignFor(null); setEditingContact(null); }
+                      }}
+                      className={`text-left rounded-xl border p-2 transition-all flex flex-col gap-1 ${
+                        isExpanded
+                          ? "bg-primary/10 border-primary shadow-md"
+                          : "bg-card border-border hover:bg-surface hover:border-primary/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md bg-primary/15 text-primary text-[10px] font-extrabold">
+                          {v.center_code || "—"}
+                        </span>
+                        {contact && <Phone className="w-2.5 h-2.5 text-accent shrink-0" />}
                       </div>
-                      <div className="flex-1 min-w-[140px]">
-                        <div className="text-sm font-bold text-foreground">{v.plate_number}</div>
-                        <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2">
-                          <span>{v.vehicle_types?.name || "Unknown type"}</span>
-                          {v.color && <span>· {v.color}</span>}
+                      <div className="text-xs font-bold text-foreground truncate leading-tight">{v.plate_number}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{typeName}</div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="col-span-2 sm:col-span-4 md:col-span-5 lg:col-span-7 -mt-1 mb-1 bg-surface/70 border border-primary/30 rounded-xl p-3 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg bg-primary/15 text-primary flex items-center justify-center font-extrabold text-xs">
+                              {v.center_code || "—"}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-foreground">{v.plate_number}</div>
+                              <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2">
+                                <span>{typeName}</span>
+                                {v.color && <span>· {v.color}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => { setExpandedId(null); setReassignFor(null); setEditingContact(null); }}
+                            className="w-7 h-7 rounded-lg hover:bg-card text-muted-foreground hover:text-foreground flex items-center justify-center"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
 
-                        {/* Contact row */}
-                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {isEditingC ? (
                             <>
                               <input
@@ -392,7 +428,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                                 onChange={(e) => setContactDraft(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && saveContact(v.id)}
                                 placeholder="7XXXXXX"
-                                className="px-2 py-1 bg-card border border-primary rounded text-[11px] w-28 focus:outline-none"
+                                className="px-2 py-1 bg-card border border-primary rounded text-[11px] w-32 focus:outline-none"
                               />
                               <button
                                 onClick={() => saveContact(v.id)}
@@ -402,14 +438,14 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                               </button>
                               <button
                                 onClick={() => { setEditingContact(null); setContactDraft(""); }}
-                                className="w-6 h-6 rounded bg-surface text-muted-foreground flex items-center justify-center hover:bg-muted"
+                                className="w-6 h-6 rounded bg-card text-muted-foreground flex items-center justify-center hover:bg-muted"
                               >
                                 <X className="w-3 h-3" />
                               </button>
                             </>
                           ) : contact ? (
                             <>
-                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-surface px-2 py-0.5 rounded">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2 py-0.5 rounded">
                                 <Phone className="w-2.5 h-2.5 text-primary" /> {contact}
                               </span>
                               <button
@@ -427,79 +463,79 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                               <Phone className="w-2.5 h-2.5" /> Add contact
                             </button>
                           )}
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {contact && !isEditingC && (
-                          <button
-                            onClick={() => sendSingleSms(v.id)}
-                            disabled={sendingSmsId === v.id}
-                            title="Send install reminder SMS"
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-accent text-accent-foreground rounded-lg text-[11px] font-semibold hover:opacity-90 disabled:opacity-50 transition-all"
-                          >
-                            {sendingSmsId === v.id
-                              ? <Loader2 className="w-3 h-3 animate-spin" />
-                              : <MessageSquare className="w-3 h-3" />}
-                            SMS
-                          </button>
-                        )}
-                        <button
-                          onClick={() => { setReassignFor(isReassigning ? null : v.id); setReassignSearch(""); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-semibold hover:bg-primary/20 transition-colors"
-                        >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          {isReassigning ? "Cancel" : "Reassign"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {isReassigning && (
-                      <div className="mt-2 ml-0 sm:ml-15 bg-surface/70 border border-border rounded-xl p-2.5 space-y-2">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                          <input
-                            autoFocus
-                            value={reassignSearch}
-                            onChange={(e) => setReassignSearch(e.target.value)}
-                            placeholder="Search driver by name or phone…"
-                            className="w-full pl-9 pr-3 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                          />
+                          <div className="ml-auto flex items-center gap-1.5">
+                            {contact && !isEditingC && (
+                              <button
+                                onClick={() => sendSingleSms(v.id)}
+                                disabled={sendingSmsId === v.id}
+                                title="Send install reminder SMS"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-accent text-accent-foreground rounded-lg text-[11px] font-semibold hover:opacity-90 disabled:opacity-50 transition-all"
+                              >
+                                {sendingSmsId === v.id
+                                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                                  : <MessageSquare className="w-3 h-3" />}
+                                SMS
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setReassignFor(isReassigning ? null : v.id); setReassignSearch(""); }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 text-primary rounded-lg text-[11px] font-semibold hover:bg-primary/25 transition-colors"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" />
+                              {isReassigning ? "Cancel" : "Reassign"}
+                            </button>
+                          </div>
                         </div>
-                        {reassignSearch && (
-                          <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">
-                            {filteredDrivers.length === 0 ? (
-                              <div className="px-3 py-2 text-[11px] text-muted-foreground">No drivers match.</div>
-                            ) : (
-                              filteredDrivers.map(d => (
-                                <button
-                                  key={d.id}
-                                  disabled={savingId === v.id}
-                                  onClick={() => reassign(v.id, d.id, `${d.first_name} ${d.last_name}`)}
-                                  className="w-full text-left px-3 py-2 hover:bg-surface flex items-center justify-between gap-2 disabled:opacity-50"
-                                >
-                                  <div>
-                                    <div className="text-xs font-semibold text-foreground">{d.first_name} {d.last_name}</div>
-                                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                      <Phone className="w-2.5 h-2.5" /> {d.phone_number}
-                                    </div>
-                                  </div>
-                                  {savingId === v.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                                  ) : (
-                                    <Save className="w-3.5 h-3.5 text-primary" />
-                                  )}
-                                </button>
-                              ))
+
+                        {isReassigning && (
+                          <div className="bg-card border border-border rounded-xl p-2.5 space-y-2">
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                              <input
+                                autoFocus
+                                value={reassignSearch}
+                                onChange={(e) => setReassignSearch(e.target.value)}
+                                placeholder="Search driver by name or phone…"
+                                className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                              />
+                            </div>
+                            {reassignSearch && (
+                              <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-surface">
+                                {filteredDrivers.length === 0 ? (
+                                  <div className="px-3 py-2 text-[11px] text-muted-foreground">No drivers match.</div>
+                                ) : (
+                                  filteredDrivers.map(d => (
+                                    <button
+                                      key={d.id}
+                                      disabled={savingId === v.id}
+                                      onClick={() => reassign(v.id, d.id, `${d.first_name} ${d.last_name}`)}
+                                      className="w-full text-left px-3 py-2 hover:bg-card flex items-center justify-between gap-2 disabled:opacity-50"
+                                    >
+                                      <div>
+                                        <div className="text-xs font-semibold text-foreground">{d.first_name} {d.last_name}</div>
+                                        <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                          <Phone className="w-2.5 h-2.5" /> {d.phone_number}
+                                        </div>
+                                      </div>
+                                      {savingId === v.id ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                                      ) : (
+                                        <Save className="w-3.5 h-3.5 text-primary" />
+                                      )}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
                       </div>
                     )}
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
         </div>
       </div>
