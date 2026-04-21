@@ -140,35 +140,220 @@ const AdminTrips = () => {
 
   const activeFilterCount = [bookingFilter !== "all", dispatchFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
 
+  // Stats from currently filtered set
+  const stats = useMemo(() => {
+    const completed = filteredTrips.filter(t => t.status === "completed");
+    const cancelled = filteredTrips.filter(t => t.status === "cancelled").length;
+    const inProgress = filteredTrips.filter(t => ["accepted", "arrived", "in_progress"].includes(t.status)).length;
+    const revenue = completed.reduce((sum, t) => sum + (Number(t.actual_fare) || 0), 0);
+    const avgFare = completed.length > 0 ? revenue / completed.length : 0;
+    return {
+      total: filteredTrips.length,
+      completed: completed.length,
+      cancelled,
+      inProgress,
+      revenue,
+      avgFare,
+    };
+  }, [filteredTrips]);
+
+  // Quick date presets
+  const applyPreset = (preset: "today" | "week" | "month" | "all") => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const fmt = (d: Date) => d.toISOString().split("T")[0];
+    if (preset === "today") {
+      setDateFrom(fmt(today));
+      setDateTo(fmt(today));
+    } else if (preset === "week") {
+      const w = new Date(today);
+      w.setDate(w.getDate() - 7);
+      setDateFrom(fmt(w));
+      setDateTo(fmt(today));
+    } else if (preset === "month") {
+      const m = new Date(today);
+      m.setDate(m.getDate() - 30);
+      setDateFrom(fmt(m));
+      setDateTo(fmt(today));
+    } else {
+      setDateFrom("");
+      setDateTo("");
+    }
+  };
+
+  const activePreset: "today" | "week" | "month" | "all" | null = (() => {
+    if (!dateFrom && !dateTo) return "all";
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const fmt = (d: Date) => d.toISOString().split("T")[0];
+    const todayStr = fmt(today);
+    if (dateFrom === todayStr && dateTo === todayStr) return "today";
+    const w = new Date(today); w.setDate(w.getDate() - 7);
+    if (dateFrom === fmt(w) && dateTo === todayStr) return "week";
+    const m = new Date(today); m.setDate(m.getDate() - 30);
+    if (dateFrom === fmt(m) && dateTo === todayStr) return "month";
+    return null;
+  })();
+
+  // CSV Export
+  const exportCSV = () => {
+    if (filteredTrips.length === 0) {
+      toast({ title: "Nothing to export", description: "No trips match the current filters." });
+      return;
+    }
+    const headers = [
+      "Created", "Status", "Booking Type", "Source",
+      "Passenger Name", "Passenger Phone",
+      "Driver Name", "Driver Phone",
+      "Pickup", "Dropoff",
+      "Distance (km)", "Duration (min)",
+      "Estimated Fare", "Actual Fare", "Bonus",
+      "Pax", "Luggage", "Payment Method",
+      "Scheduled At", "Rating", "Cancel Reason"
+    ];
+    const escape = (v: any) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).replace(/"/g, '""');
+      return /[",\n]/.test(s) ? `"${s}"` : s;
+    };
+    const rows = filteredTrips.map(t => [
+      new Date(t.created_at).toLocaleString(),
+      t.status,
+      t.booking_type || "",
+      t.dispatch_type || "",
+      t.passenger ? `${t.passenger.first_name} ${t.passenger.last_name}` : t.customer_name || "",
+      t.passenger?.phone_number || t.customer_phone || "",
+      t.driver ? `${t.driver.first_name} ${t.driver.last_name}` : "",
+      t.driver?.phone_number || "",
+      t.pickup_address || "",
+      t.dropoff_address || "",
+      t.distance_km ?? "",
+      t.duration_minutes ?? "",
+      t.estimated_fare ?? "",
+      t.actual_fare ?? "",
+      t.passenger_bonus ?? 0,
+      t.passenger_count ?? 1,
+      t.luggage_count ?? 0,
+      t.payment_method || "",
+      t.scheduled_at ? new Date(t.scheduled_at).toLocaleString() : "",
+      t.rating ?? "",
+      t.cancel_reason || "",
+    ].map(escape).join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `trips-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${filteredTrips.length} trip(s) downloaded.` });
+  };
+
+  const presetBtn = (key: "today" | "week" | "month" | "all", label: string) => (
+    <button
+      key={key}
+      onClick={() => applyPreset(key)}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+        activePreset === key
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "bg-surface text-muted-foreground hover:text-foreground hover:bg-muted"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-2xl font-extrabold text-foreground">Trips</h2>
-          <p className="text-sm text-muted-foreground">{filteredTrips.length} trip{filteredTrips.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm text-muted-foreground">{loading ? "Loading…" : `${filteredTrips.length.toLocaleString()} trip${filteredTrips.length !== 1 ? "s" : ""}`}{trips.length !== filteredTrips.length && !loading ? ` of ${trips.length.toLocaleString()}` : ""}</p>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${showFilters ? "bg-primary text-primary-foreground border-primary" : "bg-surface text-foreground border-border hover:bg-muted"}`}
-        >
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="w-4.5 h-4.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ml-0.5">{activeFilterCount}</span>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportCSV}
+            disabled={loading || filteredTrips.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border bg-surface text-foreground border-border hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Export filtered trips as CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${showFilters ? "bg-primary text-primary-foreground border-primary" : "bg-surface text-foreground border-border hover:bg-muted"}`}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="w-4.5 h-4.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ml-0.5">{activeFilterCount}</span>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by passenger, driver, phone, or address..."
-          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        />
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="bg-card border border-border rounded-2xl p-3.5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><Route className="w-3.5 h-3.5" /></div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</p>
+          </div>
+          <p className="text-xl font-extrabold text-foreground">{stats.total.toLocaleString()}</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-3.5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-green-500/10 text-green-600 dark:text-green-400 flex items-center justify-center"><CheckCircle2 className="w-3.5 h-3.5" /></div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
+          </div>
+          <p className="text-xl font-extrabold text-foreground">{stats.completed.toLocaleString()}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}% rate` : "—"}</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-3.5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center"><Loader2 className="w-3.5 h-3.5" /></div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active</p>
+          </div>
+          <p className="text-xl font-extrabold text-foreground">{stats.inProgress.toLocaleString()}</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-3.5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center"><XCircle className="w-3.5 h-3.5" /></div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cancelled</p>
+          </div>
+          <p className="text-xl font-extrabold text-foreground">{stats.cancelled.toLocaleString()}</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-3.5 hover:shadow-md transition-shadow col-span-2 sm:col-span-1">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><TrendingUp className="w-3.5 h-3.5" /></div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Revenue</p>
+          </div>
+          <p className="text-xl font-extrabold text-foreground">{stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-xs text-muted-foreground font-semibold">MVR</span></p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Avg {stats.avgFare.toFixed(0)} MVR</p>
+        </div>
+      </div>
+
+      {/* Search + Date presets */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by passenger, driver, phone, or address..."
+            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {presetBtn("today", "Today")}
+          {presetBtn("week", "7d")}
+          {presetBtn("month", "30d")}
+          {presetBtn("all", "All")}
+        </div>
       </div>
 
       {/* Status chips */}
