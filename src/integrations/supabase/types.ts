@@ -892,38 +892,48 @@ export type Database = {
       lost_item_reports: {
         Row: {
           created_at: string
+          created_by: string | null
           description: string
           id: string
           reporter_id: string | null
           reporter_name: string | null
           reporter_phone: string | null
           status: string
-          trip_id: string
+          trip_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           description: string
           id?: string
           reporter_id?: string | null
           reporter_name?: string | null
           reporter_phone?: string | null
           status?: string
-          trip_id: string
+          trip_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           description?: string
           id?: string
           reporter_id?: string | null
           reporter_name?: string | null
           reporter_phone?: string | null
           status?: string
-          trip_id?: string
+          trip_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lost_item_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lost_item_reports_reporter_id_fkey"
             columns: ["reporter_id"]
