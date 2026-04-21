@@ -1,7 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X, Upload, Image, Clock } from "lucide-react";
+import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X, Upload, Image, Clock, User } from "lucide-react";
+
+const getCurrentAdmin = (): { id: string | null; name: string } => {
+  try {
+    const stored = localStorage.getItem("hda_admin");
+    if (stored) {
+      const p = JSON.parse(stored);
+      const name = `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.phone_number || "Admin";
+      return { id: p.id || null, name };
+    }
+  } catch {}
+  return { id: null, name: "Admin" };
+};
 
 interface WalletRow {
   id: string;
@@ -23,6 +35,8 @@ interface TransactionRow {
   proof_url: string | null;
   created_at: string;
   trip_id: string | null;
+  processed_by?: string | null;
+  processed_at?: string | null;
 }
 
 interface WithdrawalRow {
@@ -34,6 +48,8 @@ interface WithdrawalRow {
   notes: string;
   admin_notes: string;
   created_at: string;
+  processed_by?: string | null;
+  processed_at?: string | null;
   profile?: { first_name: string; last_name: string; phone_number: string };
 }
 
@@ -42,6 +58,8 @@ const AdminWallets = () => {
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [pendingTopUps, setPendingTopUps] = useState<TransactionRow[]>([]);
+  const [topUpHistory, setTopUpHistory] = useState<TransactionRow[]>([]);
+  const [topUpsTab, setTopUpsTab] = useState<"pending" | "history">("pending");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedWallet, setSelectedWallet] = useState<WalletRow | null>(null);
@@ -53,6 +71,7 @@ const AdminWallets = () => {
   const [activeView, setActiveView] = useState<"wallets" | "withdrawals" | "topups">("wallets");
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [topUpProfiles, setTopUpProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string }>>(new Map());
+  const [adminProfiles, setAdminProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string }>>(new Map());
   const [showHistory, setShowHistory] = useState(false);
   const [historyTransactions, setHistoryTransactions] = useState<TransactionRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -79,13 +98,27 @@ const AdminWallets = () => {
     const { data } = await supabase.from("wallet_withdrawals").select("*").order("created_at", { ascending: false }).limit(100);
     if (!data) return;
     const userIds = [...new Set(data.map(w => w.user_id))];
-    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", userIds);
+    const adminIds = [...new Set(data.map(w => w.processed_by).filter(Boolean) as string[])];
+    const allIds = [...new Set([...userIds, ...adminIds])];
+    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds);
     const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    // Merge admin profiles into shared adminProfiles map for unified lookup
+    if (adminIds.length > 0) {
+      setAdminProfiles(prev => {
+        const next = new Map(prev);
+        adminIds.forEach(id => {
+          const p = profileMap.get(id);
+          if (p) next.set(id, p);
+        });
+        return next;
+      });
+    }
     setWithdrawals(data.map(w => ({ ...w, amount: Number(w.amount), profile: profileMap.get(w.user_id) })));
   };
 
   const fetchPendingTopUps = async () => {
-    const { data } = await supabase
+    // Pending requests
+    const { data: pendingData } = await supabase
       .from("wallet_transactions")
       .select("*")
       .eq("status", "pending")
@@ -93,15 +126,37 @@ const AdminWallets = () => {
       .not("proof_url", "is", null)
       .order("created_at", { ascending: false })
       .limit(100);
-    
-    const txns = (data || []).map(t => ({ ...t, amount: Number(t.amount) }));
-    setPendingTopUps(txns);
 
-    // Fetch profiles for top-up users
-    if (txns.length > 0) {
-      const userIds = [...new Set(txns.map(t => t.user_id))];
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", userIds);
-      setTopUpProfiles(new Map((profiles || []).map(p => [p.id, p])));
+    // Processed history (approved or rejected) — only top-ups (originally had proof_url)
+    const { data: historyData } = await supabase
+      .from("wallet_transactions")
+      .select("*")
+      .in("status", ["completed", "rejected"])
+      .eq("type", "credit")
+      .not("proof_url", "is", null)
+      .not("processed_at", "is", null)
+      .order("processed_at", { ascending: false })
+      .limit(200);
+
+    const pending = (pendingData || []).map(t => ({ ...t, amount: Number(t.amount) }));
+    const history = (historyData || []).map(t => ({ ...t, amount: Number(t.amount) }));
+    setPendingTopUps(pending);
+    setTopUpHistory(history);
+
+    // Fetch profiles for all top-up users + admin processors
+    const userIds = [...new Set([...pending, ...history].map(t => t.user_id))];
+    const adminIds = [...new Set(history.map(t => t.processed_by).filter(Boolean) as string[])];
+    const allIds = [...new Set([...userIds, ...adminIds])];
+    if (allIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds);
+      const userMap = new Map<string, any>();
+      const adminMap = new Map<string, any>();
+      (profiles || []).forEach(p => {
+        if (userIds.includes(p.id)) userMap.set(p.id, p);
+        if (adminIds.includes(p.id)) adminMap.set(p.id, p);
+      });
+      setTopUpProfiles(userMap);
+      setAdminProfiles(adminMap);
     }
   };
 
@@ -165,9 +220,11 @@ const AdminWallets = () => {
 
   const handleWithdrawal = async (withdrawal: WithdrawalRow, action: "approved" | "rejected") => {
     const now = new Date().toISOString();
+    const admin = getCurrentAdmin();
     await supabase.from("wallet_withdrawals").update({
       status: action,
       processed_at: now,
+      processed_by: admin.id,
     } as any).eq("id", withdrawal.id);
 
     if (action === "approved") {
@@ -182,21 +239,27 @@ const AdminWallets = () => {
           type: "debit",
           reason: "Withdrawal approved",
           notes: withdrawal.notes,
+          created_by: admin.id,
         } as any);
       }
     }
 
-    toast({ title: `Withdrawal ${action}` });
+    toast({ title: `Withdrawal ${action}`, description: `By ${admin.name}` });
     fetchWithdrawals();
     fetchWallets();
   };
 
   const handleTopUpAction = async (tx: TransactionRow, action: "approved" | "rejected") => {
     const now = new Date().toISOString();
+    const admin = getCurrentAdmin();
 
     if (action === "approved") {
-      // Update transaction status to completed
-      await supabase.from("wallet_transactions").update({ status: "completed" } as any).eq("id", tx.id);
+      // Update transaction status to completed + audit
+      await supabase.from("wallet_transactions").update({
+        status: "completed",
+        processed_by: admin.id,
+        processed_at: now,
+      } as any).eq("id", tx.id);
 
       // Credit the wallet balance
       const { data: wallet } = await supabase.from("wallets").select("id, balance").eq("id", tx.wallet_id).single();
@@ -205,11 +268,15 @@ const AdminWallets = () => {
         await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", wallet.id);
       }
 
-      toast({ title: `Top-up approved`, description: `${tx.amount} MVR credited to wallet` });
+      toast({ title: `Top-up approved`, description: `${tx.amount} MVR credited • By ${admin.name}` });
     } else {
-      // Mark as rejected
-      await supabase.from("wallet_transactions").update({ status: "rejected" } as any).eq("id", tx.id);
-      toast({ title: `Top-up rejected` });
+      // Mark as rejected + audit
+      await supabase.from("wallet_transactions").update({
+        status: "rejected",
+        processed_by: admin.id,
+        processed_at: now,
+      } as any).eq("id", tx.id);
+      toast({ title: `Top-up rejected`, description: `By ${admin.name}` });
     }
 
     fetchPendingTopUps();
@@ -300,66 +367,147 @@ const AdminWallets = () => {
 
       {/* Top-ups View */}
       {activeView === "topups" && (
-        <div className="grid gap-3">
-          {pendingTopUps.length === 0 ? (
-            <div className="text-center py-12">
-              <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">No pending top-up requests</p>
-            </div>
-          ) : (
-            pendingTopUps.map(tx => {
-              const profile = topUpProfiles.get(tx.user_id);
-              return (
-                <div key={tx.id} className="bg-card rounded-xl border border-amber-500/30 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-amber-600">{tx.amount.toFixed(2)} MVR</p>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
-                        pending
-                      </span>
-                    </div>
-                  </div>
+        <div className="space-y-3">
+          {/* Sub tabs */}
+          <div className="flex bg-surface rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setTopUpsTab("pending")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${topUpsTab === "pending" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
+            >
+              Pending {pendingTopUps.length > 0 ? `(${pendingTopUps.length})` : ""}
+            </button>
+            <button
+              onClick={() => setTopUpsTab("history")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${topUpsTab === "history" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
+            >
+              History {topUpHistory.length > 0 ? `(${topUpHistory.length})` : ""}
+            </button>
+          </div>
 
-                  {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
-                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
-
-                  {/* Proof image */}
-                  {tx.proof_url && (
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
-                      <button onClick={() => setProofPreview(tx.proof_url)} className="block">
-                        <img
-                          src={tx.proof_url}
-                          alt="Transfer slip"
-                          className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
-                        />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => handleTopUpAction(tx, "approved")}
-                      className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Approve & Credit
-                    </button>
-                    <button
-                      onClick={() => handleTopUpAction(tx, "rejected")}
-                      className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <X className="w-3.5 h-3.5" /> Reject
-                    </button>
-                  </div>
+          {topUpsTab === "pending" && (
+            <div className="grid gap-3">
+              {pendingTopUps.length === 0 ? (
+                <div className="text-center py-12">
+                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No pending top-up requests</p>
                 </div>
-              );
-            })
+              ) : (
+                pendingTopUps.map(tx => {
+                  const profile = topUpProfiles.get(tx.user_id);
+                  return (
+                    <div key={tx.id} className="bg-card rounded-xl border border-amber-500/30 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-amber-600">{tx.amount.toFixed(2)} MVR</p>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                            pending
+                          </span>
+                        </div>
+                      </div>
+
+                      {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
+                      <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
+
+                      {/* Proof image */}
+                      {tx.proof_url && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
+                          <button onClick={() => setProofPreview(tx.proof_url)} className="block">
+                            <img
+                              src={tx.proof_url}
+                              alt="Transfer slip"
+                              className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
+                            />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleTopUpAction(tx, "approved")}
+                          className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Approve & Credit
+                        </button>
+                        <button
+                          onClick={() => handleTopUpAction(tx, "rejected")}
+                          className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                        >
+                          <X className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {topUpsTab === "history" && (
+            <div className="grid gap-3">
+              {topUpHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No processed top-ups yet</p>
+                </div>
+              ) : (
+                topUpHistory.map(tx => {
+                  const profile = topUpProfiles.get(tx.user_id);
+                  const admin = tx.processed_by ? adminProfiles.get(tx.processed_by) : null;
+                  const isApproved = tx.status === "completed";
+                  return (
+                    <div key={tx.id} className={`bg-card rounded-xl border p-4 space-y-2 ${isApproved ? "border-green-500/20" : "border-destructive/20"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-lg font-bold ${isApproved ? "text-green-600" : "text-muted-foreground line-through"}`}>
+                            {tx.amount.toFixed(2)} MVR
+                          </p>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isApproved ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+                            {isApproved ? "approved" : "rejected"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
+
+                      {/* Audit info */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
+                        <span>Requested: {new Date(tx.created_at).toLocaleString()}</span>
+                        {tx.processed_at && (
+                          <span>{isApproved ? "Approved" : "Rejected"}: {new Date(tx.processed_at).toLocaleString()}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <User className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">By</span>
+                        <span className="font-semibold text-foreground">
+                          {admin ? `${admin.first_name} ${admin.last_name}`.trim() || admin.phone_number : (tx.processed_by ? "Admin" : "Unknown")}
+                        </span>
+                        {admin?.phone_number && <span className="text-muted-foreground">• {admin.phone_number}</span>}
+                      </div>
+
+                      {tx.proof_url && (
+                        <button onClick={() => setProofPreview(tx.proof_url)} className="text-[10px] text-primary underline">
+                          View transfer slip
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           )}
         </div>
       )}
@@ -389,7 +537,24 @@ const AdminWallets = () => {
                   </div>
                 </div>
                 {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
-                <p className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleString()}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                  <span>Requested: {new Date(w.created_at).toLocaleString()}</span>
+                  {w.processed_at && (
+                    <span>{w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : "Processed"}: {new Date(w.processed_at).toLocaleString()}</span>
+                  )}
+                </div>
+                {w.status !== "pending" && (
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">By</span>
+                    <span className="font-semibold text-foreground">
+                      {(() => {
+                        const a = w.processed_by ? adminProfiles.get(w.processed_by) : null;
+                        return a ? `${a.first_name} ${a.last_name}`.trim() || a.phone_number : (w.processed_by ? "Admin" : "Unknown");
+                      })()}
+                    </span>
+                  </div>
+                )}
                 {w.status === "pending" && (
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => handleWithdrawal(w, "approved")} className="flex-1 py-2 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform">
