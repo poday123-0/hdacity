@@ -58,6 +58,8 @@ const AdminWallets = () => {
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [pendingTopUps, setPendingTopUps] = useState<TransactionRow[]>([]);
+  const [topUpHistory, setTopUpHistory] = useState<TransactionRow[]>([]);
+  const [topUpsTab, setTopUpsTab] = useState<"pending" | "history">("pending");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedWallet, setSelectedWallet] = useState<WalletRow | null>(null);
@@ -69,6 +71,7 @@ const AdminWallets = () => {
   const [activeView, setActiveView] = useState<"wallets" | "withdrawals" | "topups">("wallets");
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [topUpProfiles, setTopUpProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string }>>(new Map());
+  const [adminProfiles, setAdminProfiles] = useState<Map<string, { first_name: string; last_name: string; phone_number: string }>>(new Map());
   const [showHistory, setShowHistory] = useState(false);
   const [historyTransactions, setHistoryTransactions] = useState<TransactionRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
