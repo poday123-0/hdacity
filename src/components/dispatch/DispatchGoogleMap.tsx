@@ -375,6 +375,37 @@ const DispatchGoogleMap = () => {
     return () => { map.off("click", handleClick); };
   }, [drawMode]);
 
+  // HTML-escape helper for safe popup content
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  // Wire up Edit/Delete buttons inside an open Leaflet popup using event listeners
+  // (replaces fragile inline onclick handlers that broke on quotes / special chars in notes)
+  const wireClosurePopup = useCallback((c: typeof closures[0]) => {
+    // Defer to next tick — the popup DOM is inserted right after the popupopen event fires
+    setTimeout(() => {
+      const editBtn = document.querySelector<HTMLButtonElement>(`button[data-closure-edit="${c.id}"]`);
+      const delBtn = document.querySelector<HTMLButtonElement>(`button[data-closure-delete="${c.id}"]`);
+      if (editBtn && !editBtn.dataset.wired) {
+        editBtn.dataset.wired = "1";
+        editBtn.addEventListener("click", () => {
+          setEditingClosureId(c.id);
+          setEditClosureSeverity(c.severity);
+          setEditClosureNotes(c.notes || "");
+          setEditClosureExpiry(c.expires_at || "");
+        });
+      }
+      if (delBtn && !delBtn.dataset.wired) {
+        delBtn.dataset.wired = "1";
+        delBtn.addEventListener("click", async () => {
+          if (!confirm("Delete this closure?")) return;
+          await removeClosure(c.id);
+          toast({ title: "Closure removed" });
+        });
+      }
+    }, 0);
+  }, [removeClosure]);
+
   // Render closures on map
   useEffect(() => {
     if (!mapInstance.current) return;
