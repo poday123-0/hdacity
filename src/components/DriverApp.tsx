@@ -1180,7 +1180,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleNewTrip = async (trip: TripRequest) => {
     // Block ALL trip requests when driver is not idle (on online/offline screen)
     const currentScreen = screenRef.current;
-    debugLog({ event: "handleNewTrip:enter", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, status: trip.status, target_driver_id: trip.target_driver_id, vehicle_type_id: trip.vehicle_type_id } });
+    debugLog({ event: "handleNewTrip:enter", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, status: (trip as any).status, target_driver_id: (trip as any).target_driver_id, vehicle_type_id: trip.vehicle_type_id } });
     if (currentScreen !== "online" && currentScreen !== "offline") {
       // Only allow chained/queued trips during navigating phase
       if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) {
