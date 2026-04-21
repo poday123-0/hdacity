@@ -11,7 +11,14 @@ interface DispatcherStats {
   cancelled: number;        // cancelled or expired
 }
 
-const AdminDutyHours = () => {
+interface AdminDutyHoursProps {
+  /** When provided, restrict ALL data (sessions + performance stats) to this single dispatcher.
+   * Also hides admin-only controls (IP allowlist, Add Session button, salary editing). */
+  restrictToDispatcherId?: string;
+}
+
+const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) => {
+  const isSelfView = !!restrictToDispatcherId;
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("month");
