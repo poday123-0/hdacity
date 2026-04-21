@@ -2173,11 +2173,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (!stopped && data) await handleTripCancelledOrTaken(data);
     })();
 
-    // Fast polling fallback (2s) on ride-request screen so the popup dismisses
-    // and the trip sound stops within seconds when another driver accepts.
-    // Also fast (2s) while navigating so dispatch cancellations reach the
-    // driver instantly even if the realtime channel briefly drops (locked phone).
-    const pollMs = 2000;
+    // Adaptive polling fallback. Realtime + FCM bridge handle most cases —
+    // this poll is the safety net for when the WebSocket briefly drops.
+    //  • 2s on ride-request screen → popup must dismiss within seconds when
+    //    another driver accepts (loud sound, blocks UI).
+    //  • 2s while heading to pickup / arrived → dispatch cancellations are
+    //    most common before the passenger boards; instant dismissal matters.
+    //  • 5s once the trip is in_progress → passenger is in the car, cancels
+    //    are rare, and the FCM `trip_cancelled` bridge still fires instantly
+    //    on push. Halving the request rate cuts server load on long trips.
+    const isPreTrip =
+      screen === "ride-request" ||
+      (screen === "navigating" && driverTripPhase !== "in_progress");
+    const pollMs = isPreTrip ? 2000 : 5000;
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
@@ -2205,7 +2213,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(pollInterval);
       window.removeEventListener("fcm-trip-cancelled", onFcmCancel as EventListener);
     };
-  }, [currentTrip?.id, screen, userProfile?.id, handleTripCancelledOrTaken]);
+  }, [currentTrip?.id, screen, driverTripPhase, userProfile?.id, handleTripCancelledOrTaken]);
 
   // Sync showDriverChat ref
   useEffect(() => {showDriverChatRef.current = showDriverChat;if (showDriverChat) setUnreadDriverMessages(0);}, [showDriverChat]);
