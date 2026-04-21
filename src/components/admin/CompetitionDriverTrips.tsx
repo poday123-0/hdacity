@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { X, Car, MapPin, Clock, Route, User, Phone, Calendar } from "lucide-react";
 import { format } from "date-fns";
