@@ -44,17 +44,18 @@ const AdminTrips = () => {
 
   const fetchTrips = async () => {
     setLoading(true);
-    // Default to the last 30 days when the user hasn't picked a date range.
-    // Loading the entire trips table on every mount/realtime tick was the cause
-    // of the slow loading.
+    // Default to the last 30 days when the user hasn't picked a date range,
+    // but always paginate fully through Supabase's 1000-row limit so the
+    // admin sees ALL matching trips instead of just the first page.
     const hasDateRange = !!dateFrom || !!dateTo;
     const defaultFrom = new Date();
     defaultFrom.setDate(defaultFrom.getDate() - 30);
 
     let allTrips: any[] = [];
     const pageSize = 1000;
-    // Cap unbounded pagination: only paginate when the user explicitly set a date range.
-    const maxPages = hasDateRange ? 50 : 1;
+    // Cap at 50 pages = 50k trips per fetch — well above current data volume
+    // and keeps memory bounded if a future filter accidentally widens.
+    const maxPages = 50;
     let from = 0;
     let hasMore = true;
     let page = 0;
