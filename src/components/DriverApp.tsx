@@ -21,6 +21,7 @@ import DriverCompleteScreen from "@/components/DriverCompleteScreen";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/image-compress";
+import { debugLog } from "@/lib/debug-log";
 import { getDefaultDocImage } from "@/lib/default-images";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
@@ -1179,9 +1180,13 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const handleNewTrip = async (trip: TripRequest) => {
     // Block ALL trip requests when driver is not idle (on online/offline screen)
     const currentScreen = screenRef.current;
+    debugLog({ event: "handleNewTrip:enter", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, status: trip.status, target_driver_id: trip.target_driver_id, vehicle_type_id: trip.vehicle_type_id } });
     if (currentScreen !== "online" && currentScreen !== "offline") {
       // Only allow chained/queued trips during navigating phase
-      if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) return;
+      if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) {
+        debugLog({ event: "handleNewTrip:reject_screen", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, hasCurrentTrip: !!currentTripRef.current, hasQueuedTrip: !!queuedTripRef.current } });
+        return;
+      }
       const activeTrip = currentTripRef.current!;
       // Check if new trip's pickup is near current trip's dropoff
       if (activeTrip.dropoff_lat && activeTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
