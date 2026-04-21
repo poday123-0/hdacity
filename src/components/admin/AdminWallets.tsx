@@ -1,7 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X, Upload, Image, Clock } from "lucide-react";
+import { Wallet, Plus, Minus, Search, History, ArrowDownCircle, Check, X, Upload, Image, Clock, User } from "lucide-react";
+
+const getCurrentAdmin = (): { id: string | null; name: string } => {
+  try {
+    const stored = localStorage.getItem("hda_admin");
+    if (stored) {
+      const p = JSON.parse(stored);
+      const name = `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.phone_number || "Admin";
+      return { id: p.id || null, name };
+    }
+  } catch {}
+  return { id: null, name: "Admin" };
+};
 
 interface WalletRow {
   id: string;
