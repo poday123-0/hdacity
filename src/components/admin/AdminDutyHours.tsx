@@ -46,31 +46,38 @@ const AdminDutyHours = () => {
 
   const fetchSessions = async () => {
     setLoading(true);
+  // Compute the active date range for filters
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    if (dateFilter === "today") {
+      start = new Date(now); start.setHours(0, 0, 0, 0);
+    } else if (dateFilter === "week") {
+      start = new Date(now); start.setHours(0, 0, 0, 0);
+      const day = start.getDay();
+      const diffToMonday = day === 0 ? 6 : day - 1;
+      start.setDate(start.getDate() - diffToMonday);
+    } else if (dateFilter === "month") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    } else if (dateFilter === "custom" && customStart) {
+      start = new Date(`${customStart}T00:00:00`);
+      end = customEnd ? new Date(`${customEnd}T23:59:59`) : null;
+    }
+    return { start, end };
+  }, [dateFilter, customStart, customEnd]);
+
+  const fetchSessions = async () => {
+    setLoading(true);
     let query = supabase
       .from("dispatch_duty_sessions")
       .select("*")
       .order("clock_in", { ascending: false })
-      .limit(200);
+      .limit(500);
 
-    const now = new Date();
-    if (dateFilter === "today") {
-      // Start of today (local midnight)
-      const start = new Date(now);
-      start.setHours(0, 0, 0, 0);
-      query = query.gte("clock_in", start.toISOString());
-    } else if (dateFilter === "week") {
-      // Start of current ISO week (Monday 00:00 local)
-      const start = new Date(now);
-      start.setHours(0, 0, 0, 0);
-      const day = start.getDay(); // 0 (Sun) – 6 (Sat)
-      const diffToMonday = day === 0 ? 6 : day - 1;
-      start.setDate(start.getDate() - diffToMonday);
-      query = query.gte("clock_in", start.toISOString());
-    } else if (dateFilter === "month") {
-      // Start of current calendar month (1st 00:00 local)
-      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-      query = query.gte("clock_in", start.toISOString());
-    }
+    if (dateRange.start) query = query.gte("clock_in", dateRange.start.toISOString());
+    if (dateRange.end) query = query.lte("clock_in", dateRange.end.toISOString());
 
     const { data } = await query;
 
@@ -79,7 +86,7 @@ const AdminDutyHours = () => {
     if (ids.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, phone_number")
+        .select("id, first_name, last_name, phone_number, avatar_url")
         .in("id", ids);
       (profiles || []).forEach((p: any) => {
         profileMap[p.id] = p;
@@ -93,6 +100,41 @@ const AdminDutyHours = () => {
       }))
     );
     setLoading(false);
+
+    // Now fetch trip-level performance for the same window + dispatchers
+    fetchDispatcherStats(ids, dateRange.start, dateRange.end);
+  };
+
+  const fetchDispatcherStats = async (dispatcherIds: string[], start: Date | null, end: Date | null) => {
+    if (dispatcherIds.length === 0) {
+      setDispatcherStats({});
+      return;
+    }
+    let q = supabase
+      .from("trips")
+      .select("created_by, dispatch_type, target_driver_id, driver_id, status")
+      .in("created_by", dispatcherIds)
+      .limit(20000);
+    if (start) q = q.gte("created_at", start.toISOString());
+    if (end) q = q.lte("created_at", end.toISOString());
+
+    const { data: trips } = await q;
+    const stats: Record<string, DispatcherStats> = {};
+    dispatcherIds.forEach(id => {
+      stats[id] = { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 };
+    });
+    (trips || []).forEach((t: any) => {
+      const s = stats[t.created_by];
+      if (!s) return;
+      s.total++;
+      // Direct-assigned: target_driver_id is set OR dispatch_type explicitly says operator
+      if (t.target_driver_id || t.dispatch_type === "operator") s.assigned++;
+      // Broadcast / sent to app
+      if (t.dispatch_type === "dispatch_broadcast") s.broadcast++;
+      if (t.status === "completed") s.completed++;
+      if (["cancelled", "expired", "no_show"].includes(t.status)) s.cancelled++;
+    });
+    setDispatcherStats(stats);
   };
 
   const fetchIpSettings = async () => {
