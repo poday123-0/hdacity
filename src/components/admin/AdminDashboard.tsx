@@ -409,7 +409,7 @@ const AdminDashboard = () => {
       setAnalyticsLoading(false);
     };
     fetchAnalytics();
-  }, [analyticsPeriod, customRange, getAnalyticsDateRange]);
+  }, [analyticsPeriod, customRange, getAnalyticsDateRange, completionSource]);
 
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
