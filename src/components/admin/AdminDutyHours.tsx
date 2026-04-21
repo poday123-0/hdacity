@@ -659,15 +659,17 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                       ) : (
                         <p className="text-[10px] text-muted-foreground italic">No rate set</p>
                       )}
-                      <button
-                        onClick={() => {
-                          setEditingSalaryId(id);
-                          setEditSalaryVal(rate > 0 ? rate.toString() : "");
-                        }}
-                        className="text-muted-foreground hover:text-primary"
-                      >
-                        <Pencil className="w-2.5 h-2.5" />
-                      </button>
+                      {!isSelfView && (
+                        <button
+                          onClick={() => {
+                            setEditingSalaryId(id);
+                            setEditSalaryVal(rate > 0 ? rate.toString() : "");
+                          }}
+                          className="text-muted-foreground hover:text-primary"
+                        >
+                          <Pencil className="w-2.5 h-2.5" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -686,14 +688,14 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                 <th className="text-left py-2 px-2 font-medium">Clock Out</th>
                 <th className="text-left py-2 px-2 font-medium">Duration</th>
                 <th className="text-left py-2 px-2 font-medium">IP</th>
-                <th className="text-left py-2 px-2 font-medium w-20">Actions</th>
+                {!isSelfView && <th className="text-left py-2 px-2 font-medium w-20">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={isSelfView ? 5 : 6} className="text-center py-6 text-muted-foreground">Loading...</td></tr>
               ) : sessions.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No duty sessions found</td></tr>
+                <tr><td colSpan={isSelfView ? 5 : 6} className="text-center py-6 text-muted-foreground">No duty sessions found</td></tr>
               ) : sessions.map((s: any) => (
                 <tr key={s.id} className="border-b border-border/50 hover:bg-surface/50">
                   <td className="py-2 px-2 font-medium text-foreground">
@@ -734,29 +736,31 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                   </td>
                   <td className="py-2 px-2 font-semibold text-foreground">{formatDuration(s.clock_in, s.clock_out)}</td>
                   <td className="py-2 px-2 text-muted-foreground font-mono text-[10px]">{s.ip_address || "-"}</td>
-                  <td className="py-2 px-2">
-                    <div className="flex items-center gap-1">
-                      {editingId === s.id ? (
-                        <>
-                          <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => deleteSession(s.id)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+                  {!isSelfView && (
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-1">
+                        {editingId === s.id ? (
+                          <>
+                            <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => deleteSession(s.id)} className="text-muted-foreground hover:text-destructive">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
