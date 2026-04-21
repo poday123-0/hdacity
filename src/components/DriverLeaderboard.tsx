@@ -108,7 +108,15 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
 
   const fetchCompetitions = async () => {
     setLoading(true);
-    
+
+    // Trigger a fresh recompute so stale cached entries (e.g. trips outside
+    // the configured date range) are cleared before we read them.
+    try {
+      await supabase.functions.invoke("refresh-competition-leaderboards");
+    } catch (err) {
+      console.warn("Leaderboard refresh failed, showing cached data:", err);
+    }
+
     // Get driver's approved vehicle types
     const { data: driverVTs } = await supabase
       .from("driver_vehicle_types")
