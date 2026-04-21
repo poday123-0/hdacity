@@ -58,6 +58,10 @@ const AdminDashboard = () => {
   const [topAreas, setTopAreas] = useState<{ name: string; count: number }[]>([]);
   const [weeklyRevenue, setWeeklyRevenue] = useState<{ date: string; revenue: number }[]>([]);
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
+  const [kpis, setKpis] = useState({ totalTrips: 0, completed: 0, cancelled: 0, revenue: 0, avgFare: 0, completionRate: 0, cancellationRate: 0 });
+  const [topDrivers, setTopDrivers] = useState<{ name: string; trips: number; revenue: number }[]>([]);
+  const [vehicleTypeSplit, setVehicleTypeSplit] = useState<{ name: string; value: number }[]>([]);
+  const [paymentSplit, setPaymentSplit] = useState<{ name: string; value: number }[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -172,7 +176,7 @@ const AdminDashboard = () => {
       while (true) {
         const { data } = await supabase
           .from("trips")
-          .select("created_at, status, actual_fare, pickup_address, completed_at")
+          .select("created_at, status, actual_fare, estimated_fare, pickup_address, completed_at, driver_id, vehicle_type_id, payment_method, payment_confirmed_method")
           .gte("created_at", start.toISOString())
           .order("created_at", { ascending: true })
           .range(from, from + batchSize - 1);
@@ -188,6 +192,10 @@ const AdminDashboard = () => {
         setTopAreas([]);
         setWeeklyRevenue([]);
         setStatusBreakdown([]);
+        setKpis({ totalTrips: 0, completed: 0, cancelled: 0, revenue: 0, avgFare: 0, completionRate: 0, cancellationRate: 0 });
+        setTopDrivers([]);
+        setVehicleTypeSplit([]);
+        setPaymentSplit([]);
         setAnalyticsLoading(false);
         return;
       }
@@ -266,6 +274,80 @@ const AdminDashboard = () => {
         name: name.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
         value,
       })));
+
+      // KPI summary
+      const completedTrips = analyticsTrips.filter(t => t.status === "completed");
+      const cancelledTrips = analyticsTrips.filter(t => t.status === "cancelled" || t.status === "expired");
+      const totalRevenue = completedTrips.reduce((s, t) => s + (t.actual_fare || 0), 0);
+      const avgFare = completedTrips.length ? totalRevenue / completedTrips.length : 0;
+      setKpis({
+        totalTrips: analyticsTrips.length,
+        completed: completedTrips.length,
+        cancelled: cancelledTrips.length,
+        revenue: Math.round(totalRevenue),
+        avgFare: Math.round(avgFare),
+        completionRate: analyticsTrips.length ? Math.round((completedTrips.length / analyticsTrips.length) * 100) : 0,
+        cancellationRate: analyticsTrips.length ? Math.round((cancelledTrips.length / analyticsTrips.length) * 100) : 0,
+      });
+
+      // Top drivers (by completed trips & revenue)
+      const driverAgg: Record<string, { trips: number; revenue: number }> = {};
+      completedTrips.forEach(t => {
+        if (!t.driver_id) return;
+        if (!driverAgg[t.driver_id]) driverAgg[t.driver_id] = { trips: 0, revenue: 0 };
+        driverAgg[t.driver_id].trips += 1;
+        driverAgg[t.driver_id].revenue += t.actual_fare || 0;
+      });
+      const topDriverIds = Object.entries(driverAgg)
+        .sort((a, b) => b[1].trips - a[1].trips)
+        .slice(0, 5);
+      if (topDriverIds.length > 0) {
+        const { data: driverProfiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", topDriverIds.map(([id]) => id));
+        const nameMap = new Map((driverProfiles || []).map((p: any) => [p.id, `${p.first_name} ${p.last_name}`.trim()]));
+        setTopDrivers(topDriverIds.map(([id, agg]) => ({
+          name: nameMap.get(id) || "Unknown",
+          trips: agg.trips,
+          revenue: Math.round(agg.revenue),
+        })));
+      } else {
+        setTopDrivers([]);
+      }
+
+      // Vehicle type split
+      const vtCounts: Record<string, number> = {};
+      analyticsTrips.forEach(t => {
+        if (!t.vehicle_type_id) return;
+        vtCounts[t.vehicle_type_id] = (vtCounts[t.vehicle_type_id] || 0) + 1;
+      });
+      const vtIds = Object.keys(vtCounts);
+      if (vtIds.length > 0) {
+        const { data: vts } = await supabase.from("vehicle_types").select("id, name").in("id", vtIds);
+        const vtNameMap = new Map((vts || []).map((v: any) => [v.id, v.name]));
+        setVehicleTypeSplit(
+          Object.entries(vtCounts)
+            .map(([id, value]) => ({ name: vtNameMap.get(id) || "Other", value }))
+            .sort((a, b) => b.value - a.value)
+        );
+      } else {
+        setVehicleTypeSplit([]);
+      }
+
+      // Payment method split (use confirmed if present, fallback to chosen)
+      const payCounts: Record<string, number> = {};
+      completedTrips.forEach(t => {
+        const method = (t.payment_confirmed_method || t.payment_method || "unknown").toString().toLowerCase();
+        const label = method.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        payCounts[label] = (payCounts[label] || 0) + 1;
+      });
+      setPaymentSplit(
+        Object.entries(payCounts)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+      );
+
       setAnalyticsLoading(false);
     };
     fetchAnalytics();
@@ -526,6 +608,26 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* KPI Summary for selected period */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+          {[
+            { label: "Total Trips", value: kpis.totalTrips.toLocaleString() },
+            { label: "Completed", value: kpis.completed.toLocaleString() },
+            { label: "Cancelled", value: kpis.cancelled.toLocaleString(), destructive: true },
+            { label: "Revenue", value: `MVR ${kpis.revenue.toLocaleString()}` },
+            { label: "Avg Fare", value: `MVR ${kpis.avgFare.toLocaleString()}` },
+            { label: "Completion %", value: `${kpis.completionRate}%`, accent: true },
+            { label: "Cancel %", value: `${kpis.cancellationRate}%`, destructive: true },
+          ].map((k) => (
+            <div key={k.label} className="bg-card border border-border rounded-xl px-3 py-2">
+              <p className="text-[10px] text-muted-foreground truncate">{k.label}</p>
+              <p className={cn("text-base sm:text-lg font-bold truncate", k.destructive ? "text-destructive" : k.accent ? "text-primary" : "text-foreground")}>
+                {k.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
         {/* Revenue Trend + Status Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4">
@@ -656,6 +758,88 @@ const AdminDashboard = () => {
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">No trip data available yet</p>
           )}
+        </div>
+
+        {/* Top Drivers + Vehicle Type + Payment */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+              <Star className="w-4 h-4 text-primary" /> Top Drivers
+            </h4>
+            {topDrivers.length > 0 ? (
+              <div className="space-y-2">
+                {topDrivers.map((d, i) => (
+                  <div key={d.name + i} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-muted-foreground w-4">{i + 1}</span>
+                      <span className="text-foreground truncate">{d.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-primary font-semibold">{d.trips} trips</span>
+                      <span className="text-muted-foreground">MVR {d.revenue.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">No completed trips</p>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+              <Car className="w-4 h-4 text-primary" /> Vehicle Type Mix
+            </h4>
+            <div className="h-[160px]">
+              {vehicleTypeSplit.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={vehicleTypeSplit} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} innerRadius={30} strokeWidth={0}>
+                      {vehicleTypeSplit.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">No data</div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+              {vehicleTypeSplit.map((s, i) => (
+                <div key={s.name} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-[10px] text-muted-foreground">{s.name} ({s.value})</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-primary" /> Payment Methods
+            </h4>
+            {paymentSplit.length > 0 ? (
+              <div className="space-y-2">
+                {paymentSplit.map((p, i) => {
+                  const total = paymentSplit.reduce((s, x) => s + x.value, 0);
+                  const pct = total ? Math.round((p.value / total) * 100) : 0;
+                  return (
+                    <div key={p.name} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground">{p.name}</span>
+                        <span className="text-muted-foreground">{p.value} ({pct}%)</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">No completed trips</p>
+            )}
+          </div>
         </div>
       </div>
 
