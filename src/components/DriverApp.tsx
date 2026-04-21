@@ -1824,6 +1824,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
       supabase.removeChannel(targetChannel);
+      supabase.removeChannel(waveChannel);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [screen, userProfile?.id, tripRequestSoundUrl]);
