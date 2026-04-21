@@ -1170,6 +1170,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   // Ref-based guard to prevent concurrent handleNewTrip calls (state is stale in async closures)
   const handlingTripRef = useRef<string | null>(null);
+  // Dedup guard: prevents duplicate "Trip Taken/Cancelled" toasts + sounds when FCM,
+  // realtime, and the 5s polling backup all fire for the same trip within a short window.
+  // Key format: `${trip_id}:${status}` — first signal wins, others ignored for 10s.
+  const handledCancelOrTakenRef = useRef<Map<string, number>>(new Map());
 
   const handleNewTrip = async (trip: TripRequest) => {
     // Block ALL trip requests when driver is not idle (on online/offline screen)
