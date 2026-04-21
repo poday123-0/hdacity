@@ -679,9 +679,9 @@ const Dispatch = () => {
             .from("driver_locations")
             .select(
               `
-              driver_id, lat, lng,
+              driver_id, lat, lng, vehicle_type_id,
               profiles:driver_id (first_name, last_name, phone_number),
-              vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
+              vehicles:vehicle_id (plate_number, center_code, vehicle_types:vehicle_type_id (name))
             `,
             )
             .eq("is_online", true)
