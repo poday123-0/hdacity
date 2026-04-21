@@ -57,6 +57,9 @@ const AdminDrivers = () => {
   const [bulkCenterStart, setBulkCenterStart] = useState("");
   const [bulkVehicleSearch, setBulkVehicleSearch] = useState("");
   const [bulkVehicleSelected, setBulkVehicleSelected] = useState<Set<string>>(new Set());
+  const [smsModal, setSmsModal] = useState<null | { mode: "no-vehicle" | "selected"; recipients: any[] }>(null);
+  const [smsMessage, setSmsMessage] = useState("");
+  const [smsSending, setSmsSending] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
