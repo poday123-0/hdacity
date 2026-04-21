@@ -448,9 +448,103 @@ const AdminDutyHours = () => {
               <option value="week">This Week</option>
               <option value="month">This Month</option>
               <option value="all">All Time</option>
+              <option value="custom">Custom Range</option>
             </select>
+            {dateFilter === "custom" && (
+              <>
+                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                  className="text-xs bg-surface border border-border rounded-lg px-2 py-1.5 text-foreground" />
+                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                  className="text-xs bg-surface border border-border rounded-lg px-2 py-1.5 text-foreground" />
+              </>
+            )}
           </div>
         </div>
+
+        {/* Dispatcher Performance Leaderboard */}
+        {Object.keys(dispatcherSummary).length > 0 && (() => {
+          const ranked = Object.entries(dispatcherSummary)
+            .map(([id, info]: [string, any]) => ({
+              id, info,
+              stats: dispatcherStats[id] || { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 },
+            }))
+            .sort((a, b) => b.stats.total - a.stats.total);
+          const totals = ranked.reduce((acc, r) => {
+            acc.total += r.stats.total;
+            acc.assigned += r.stats.assigned;
+            acc.broadcast += r.stats.broadcast;
+            acc.completed += r.stats.completed;
+            acc.cancelled += r.stats.cancelled;
+            return acc;
+          }, { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 });
+          return (
+            <div className="bg-gradient-to-br from-primary/5 via-card to-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Dispatcher Performance
+                </h4>
+                <p className="text-[10px] text-muted-foreground">Real trip data for selected period</p>
+              </div>
+              {/* Totals strip */}
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { label: "Total", value: totals.total, Icon: Send, color: "text-primary" },
+                  { label: "Assigned", value: totals.assigned, Icon: UserCheck, color: "text-sky-500" },
+                  { label: "Sent to App", value: totals.broadcast, Icon: Radio, color: "text-amber-500" },
+                  { label: "Completed", value: totals.completed, Icon: CheckCircle2, color: "text-success" },
+                  { label: "Cancelled", value: totals.cancelled, Icon: XCircle, color: "text-destructive" },
+                ].map(s => {
+                  const Icon = s.Icon;
+                  return (
+                    <div key={s.label} className="bg-surface rounded-lg p-2 text-center">
+                      <Icon className={`w-3.5 h-3.5 mx-auto ${s.color}`} />
+                      <p className="text-base font-bold text-foreground mt-0.5">{s.value}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{s.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Per-dispatcher rows */}
+              <div className="space-y-1.5">
+                {ranked.map(({ id, info, stats }, idx) => {
+                  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+                  const name = info.dispatcher ? `${info.dispatcher.first_name} ${info.dispatcher.last_name}` : "Unknown";
+                  return (
+                    <div key={id} className="bg-surface rounded-lg p-2.5 flex items-center gap-3">
+                      <div className="flex items-center gap-2 w-32 shrink-0">
+                        {idx === 0 && stats.total > 0 ? (
+                          <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+                        ) : (
+                          <span className="w-4 text-center text-[10px] font-bold text-muted-foreground">#{idx + 1}</span>
+                        )}
+                        {info.dispatcher?.avatar_url ? (
+                          <img src={info.dispatcher.avatar_url} alt={name} className="w-7 h-7 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary">
+                            {name.charAt(0)}
+                          </div>
+                        )}
+                        <p className="text-xs font-semibold text-foreground truncate">{name}</p>
+                      </div>
+                      <div className="flex-1 grid grid-cols-5 gap-1 text-center">
+                        <div><p className="text-sm font-bold text-foreground">{stats.total}</p><p className="text-[9px] text-muted-foreground">Total</p></div>
+                        <div><p className="text-sm font-bold text-sky-500">{stats.assigned}</p><p className="text-[9px] text-muted-foreground">Assigned</p></div>
+                        <div><p className="text-sm font-bold text-amber-500">{stats.broadcast}</p><p className="text-[9px] text-muted-foreground">Sent</p></div>
+                        <div><p className="text-sm font-bold text-success">{stats.completed}</p><p className="text-[9px] text-muted-foreground">Done</p></div>
+                        <div><p className="text-sm font-bold text-destructive">{stats.cancelled}</p><p className="text-[9px] text-muted-foreground">Cancel</p></div>
+                      </div>
+                      <div className="w-16 text-right shrink-0">
+                        <p className="text-sm font-bold text-foreground">{completionRate}%</p>
+                        <p className="text-[9px] text-muted-foreground">complete</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Summary cards with salary */}
         {Object.keys(dispatcherSummary).length > 0 && (
