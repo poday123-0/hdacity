@@ -198,6 +198,7 @@ const AdminDashboard = () => {
         setTopDrivers([]);
         setVehicleTypeSplit([]);
         setPaymentSplit([]);
+        setCompletionRateDrivers([]);
         setAnalyticsLoading(false);
         return;
       }
