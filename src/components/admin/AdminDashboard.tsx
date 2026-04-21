@@ -64,6 +64,19 @@ const AdminDashboard = () => {
   const [paymentSplit, setPaymentSplit] = useState<{ name: string; value: number }[]>([]);
   const [completionRateDrivers, setCompletionRateDrivers] = useState<{ id: string; name: string; avatar: string | null; completed: number; total: number; rate: number; revenue: number }[]>([]);
   const [completionSource, setCompletionSource] = useState<"all" | "app" | "operator" | "direct">("all");
+  const [completionPeriod, setCompletionPeriod] = useState<"today" | "week" | "month">("month");
+  const [excludedDriverIds, setExcludedDriverIds] = useState<Set<string>>(new Set());
+
+  // Load drivers that should be excluded from analytics (e.g. HDA Dispatch center number 7320207)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .in("phone_number", ["7320207"]);
+      setExcludedDriverIds(new Set((data || []).map((p: any) => p.id)));
+    })();
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -297,6 +310,7 @@ const AdminDashboard = () => {
       const driverAgg: Record<string, { trips: number; revenue: number }> = {};
       completedTrips.forEach(t => {
         if (!t.driver_id) return;
+        if (excludedDriverIds.has(t.driver_id)) return;
         if (!driverAgg[t.driver_id]) driverAgg[t.driver_id] = { trips: 0, revenue: 0 };
         driverAgg[t.driver_id].trips += 1;
         driverAgg[t.driver_id].revenue += t.actual_fare || 0;
@@ -319,60 +333,7 @@ const AdminDashboard = () => {
         setTopDrivers([]);
       }
 
-      // Driver completion rate (filtered by dispatch source)
-      // For each driver: completed / (completed + cancelled assigned to them)
-      // Considers trips where the driver was actually assigned (driver_id present),
-      // grouped by dispatch_type so admin can compare app vs operator-dispatched performance.
-      const sourceMatches = (t: any) => {
-        if (completionSource === "all") return true;
-        const dt = (t.dispatch_type || "app").toLowerCase();
-        if (completionSource === "app") return dt === "app" || dt === "passenger" || dt === "" || dt === null;
-        if (completionSource === "operator") return dt === "operator" || dt === "dispatch";
-        if (completionSource === "direct") return dt === "direct" || dt === "assign" || dt === "assigned";
-        return true;
-      };
-      const driverRateAgg: Record<string, { completed: number; cancelled: number; revenue: number }> = {};
-      analyticsTrips.forEach(t => {
-        if (!t.driver_id) return;
-        if (!sourceMatches(t)) return;
-        if (!driverRateAgg[t.driver_id]) driverRateAgg[t.driver_id] = { completed: 0, cancelled: 0, revenue: 0 };
-        if (t.status === "completed") {
-          driverRateAgg[t.driver_id].completed += 1;
-          driverRateAgg[t.driver_id].revenue += t.actual_fare || 0;
-        } else if (t.status === "cancelled" || t.status === "expired" || t.status === "no_show") {
-          driverRateAgg[t.driver_id].cancelled += 1;
-        }
-      });
-      // Require at least 3 assigned trips for rate to be meaningful
-      const rateEntries = Object.entries(driverRateAgg)
-        .map(([id, v]) => {
-          const total = v.completed + v.cancelled;
-          return { id, completed: v.completed, total, rate: total ? (v.completed / total) * 100 : 0, revenue: v.revenue };
-        })
-        .filter(e => e.total >= 3)
-        .sort((a, b) => b.rate - a.rate || b.completed - a.completed)
-        .slice(0, 10);
-      if (rateEntries.length > 0) {
-        const { data: rateProfiles } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, avatar_url")
-          .in("id", rateEntries.map(e => e.id));
-        const profMap = new Map((rateProfiles || []).map((p: any) => [p.id, p]));
-        setCompletionRateDrivers(rateEntries.map(e => {
-          const p: any = profMap.get(e.id);
-          return {
-            id: e.id,
-            name: p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown" : "Unknown",
-            avatar: p?.avatar_url || null,
-            completed: e.completed,
-            total: e.total,
-            rate: Math.round(e.rate),
-            revenue: Math.round(e.revenue),
-          };
-        }));
-      } else {
-        setCompletionRateDrivers([]);
-      }
+      // (Driver completion-rate widget runs in its own effect with its own period filter)
 
       // Vehicle type split
       const vtCounts: Record<string, number> = {};
@@ -409,7 +370,100 @@ const AdminDashboard = () => {
       setAnalyticsLoading(false);
     };
     fetchAnalytics();
-  }, [analyticsPeriod, customRange, getAnalyticsDateRange, completionSource]);
+  }, [analyticsPeriod, customRange, getAnalyticsDateRange, excludedDriverIds]);
+
+  // Top Completion-Rate Drivers — independent period + source filters
+  useEffect(() => {
+    const fetchCompletionRates = async () => {
+      // Compute date range for this widget's own period
+      const now = new Date();
+      const maldivesNow = new Date(now.getTime() + 5 * 3600000);
+      const start = new Date(maldivesNow);
+      if (completionPeriod === "today") {
+        start.setUTCHours(0, 0, 0, 0);
+      } else if (completionPeriod === "week") {
+        start.setUTCDate(start.getUTCDate() - 6);
+        start.setUTCHours(0, 0, 0, 0);
+      } else {
+        start.setUTCDate(start.getUTCDate() - 29);
+        start.setUTCHours(0, 0, 0, 0);
+      }
+      // Convert back to UTC by subtracting the +5 offset
+      const startUtc = new Date(start.getTime() - 5 * 3600000);
+
+      // Page through trips
+      let allTrips: any[] = [];
+      let from = 0;
+      const batch = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("trips")
+          .select("driver_id, status, actual_fare, dispatch_type, created_at")
+          .gte("created_at", startUtc.toISOString())
+          .order("created_at", { ascending: true })
+          .range(from, from + batch - 1);
+        if (!data || data.length === 0) break;
+        allTrips = allTrips.concat(data);
+        if (data.length < batch) break;
+        from += batch;
+      }
+
+      const sourceMatches = (t: any) => {
+        if (completionSource === "all") return true;
+        const dt = (t.dispatch_type || "app").toLowerCase();
+        if (completionSource === "app") return dt === "app" || dt === "passenger" || dt === "" || dt === null;
+        if (completionSource === "operator") return dt === "operator" || dt === "dispatch";
+        if (completionSource === "direct") return dt === "direct" || dt === "assign" || dt === "assigned";
+        return true;
+      };
+
+      const agg: Record<string, { completed: number; cancelled: number; revenue: number }> = {};
+      allTrips.forEach(t => {
+        if (!t.driver_id) return;
+        if (excludedDriverIds.has(t.driver_id)) return;
+        if (!sourceMatches(t)) return;
+        if (!agg[t.driver_id]) agg[t.driver_id] = { completed: 0, cancelled: 0, revenue: 0 };
+        if (t.status === "completed") {
+          agg[t.driver_id].completed += 1;
+          agg[t.driver_id].revenue += t.actual_fare || 0;
+        } else if (t.status === "cancelled" || t.status === "expired" || t.status === "no_show") {
+          agg[t.driver_id].cancelled += 1;
+        }
+      });
+
+      const entries = Object.entries(agg)
+        .map(([id, v]) => {
+          const total = v.completed + v.cancelled;
+          return { id, completed: v.completed, total, rate: total ? (v.completed / total) * 100 : 0, revenue: v.revenue };
+        })
+        .filter(e => e.total >= 5)
+        .sort((a, b) => b.rate - a.rate || b.completed - a.completed)
+        .slice(0, 10);
+
+      if (entries.length === 0) {
+        setCompletionRateDrivers([]);
+        return;
+      }
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, avatar_url")
+        .in("id", entries.map(e => e.id));
+      const pm = new Map((profs || []).map((p: any) => [p.id, p]));
+      setCompletionRateDrivers(entries.map(e => {
+        const p: any = pm.get(e.id);
+        return {
+          id: e.id,
+          name: p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown" : "Unknown",
+          avatar: p?.avatar_url || null,
+          completed: e.completed,
+          total: e.total,
+          rate: Math.round(e.rate),
+          revenue: Math.round(e.revenue),
+        };
+      }));
+    };
+    fetchCompletionRates();
+  }, [completionPeriod, completionSource, excludedDriverIds]);
 
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
@@ -903,16 +957,38 @@ const AdminDashboard = () => {
 
       {/* Top Completion-Rate Drivers */}
       <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-primary" /> Top Completion-Rate Drivers
-            </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              Best success ratio (completed / assigned) for {getPeriodLabel().toLowerCase()} · min 3 trips
-            </p>
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-primary" /> Top Completion-Rate Drivers
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Best success ratio (completed / assigned) · min 5 trips · excludes HDA Dispatch
+              </p>
+            </div>
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5 shrink-0">
+              {([
+                { v: "today", label: "Today" },
+                { v: "week", label: "Week" },
+                { v: "month", label: "Month" },
+              ] as const).map(opt => (
+                <button
+                  key={opt.v}
+                  onClick={() => setCompletionPeriod(opt.v)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors",
+                    completionPeriod === opt.v
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5 self-start flex-wrap">
             {([
               { v: "all", label: "All" },
               { v: "app", label: "Customer App" },
@@ -934,6 +1010,7 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
+
 
         {completionRateDrivers.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No driver data for this filter</p>
