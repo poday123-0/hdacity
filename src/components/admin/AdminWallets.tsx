@@ -207,9 +207,11 @@ const AdminWallets = () => {
 
   const handleWithdrawal = async (withdrawal: WithdrawalRow, action: "approved" | "rejected") => {
     const now = new Date().toISOString();
+    const admin = getCurrentAdmin();
     await supabase.from("wallet_withdrawals").update({
       status: action,
       processed_at: now,
+      processed_by: admin.id,
     } as any).eq("id", withdrawal.id);
 
     if (action === "approved") {
@@ -224,21 +226,27 @@ const AdminWallets = () => {
           type: "debit",
           reason: "Withdrawal approved",
           notes: withdrawal.notes,
+          created_by: admin.id,
         } as any);
       }
     }
 
-    toast({ title: `Withdrawal ${action}` });
+    toast({ title: `Withdrawal ${action}`, description: `By ${admin.name}` });
     fetchWithdrawals();
     fetchWallets();
   };
 
   const handleTopUpAction = async (tx: TransactionRow, action: "approved" | "rejected") => {
     const now = new Date().toISOString();
+    const admin = getCurrentAdmin();
 
     if (action === "approved") {
-      // Update transaction status to completed
-      await supabase.from("wallet_transactions").update({ status: "completed" } as any).eq("id", tx.id);
+      // Update transaction status to completed + audit
+      await supabase.from("wallet_transactions").update({
+        status: "completed",
+        processed_by: admin.id,
+        processed_at: now,
+      } as any).eq("id", tx.id);
 
       // Credit the wallet balance
       const { data: wallet } = await supabase.from("wallets").select("id, balance").eq("id", tx.wallet_id).single();
@@ -247,11 +255,15 @@ const AdminWallets = () => {
         await supabase.from("wallets").update({ balance: newBalance, updated_at: now } as any).eq("id", wallet.id);
       }
 
-      toast({ title: `Top-up approved`, description: `${tx.amount} MVR credited to wallet` });
+      toast({ title: `Top-up approved`, description: `${tx.amount} MVR credited • By ${admin.name}` });
     } else {
-      // Mark as rejected
-      await supabase.from("wallet_transactions").update({ status: "rejected" } as any).eq("id", tx.id);
-      toast({ title: `Top-up rejected` });
+      // Mark as rejected + audit
+      await supabase.from("wallet_transactions").update({
+        status: "rejected",
+        processed_by: admin.id,
+        processed_at: now,
+      } as any).eq("id", tx.id);
+      toast({ title: `Top-up rejected`, description: `By ${admin.name}` });
     }
 
     fetchPendingTopUps();
