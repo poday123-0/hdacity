@@ -8,8 +8,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Users, Luggage, Plus, Minus, X, Search,
   Loader2, Navigation, Send, Trash2, DollarSign, CheckCircle2, Car, Clock,
-  ChevronUp, ChevronDown, RotateCcw, Crosshair, Ban, ShieldOff
+  ChevronUp, ChevronDown, RotateCcw, Crosshair, Ban, ShieldOff, History
 } from "lucide-react";
+
+interface LossAuditEvent {
+  id: string;
+  ts: number;
+  code: string;
+  plate: string;
+  vehicle_id: string;
+  action: 'set' | 'cleared';
+  trip_id: string;
+  pickup?: string | null;
+  dropoff?: string | null;
+  customer?: string | null;
+}
 import MapPicker from "@/components/MapPicker";
 
 interface NominatimResult {
