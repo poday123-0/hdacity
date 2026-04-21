@@ -953,21 +953,56 @@ const DispatchTripForm = ({
       // (e.g. 375 + 377). Assigning code 377 must NOT clear code 375's loss.
       const assignedVehicleId = assignedEntry?.vehicle_id || null;
       if (assignedVehicleId) {
+        // Capture the trip(s) we'll clear so we can broadcast actor info per trip
+        const { data: lossTrips } = await supabase.from("trips")
+          .select("id")
+          .eq("vehicle_id", assignedVehicleId)
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator");
         supabase.from("trips")
           .update({ is_loss: false })
           .eq("vehicle_id", assignedVehicleId)
           .eq("is_loss", true)
           .eq("dispatch_type", "operator")
-          .then(() => { onTripCreated(); });
+          .then(() => {
+            (lossTrips || []).forEach((lt: any) => {
+              broadcastLossActor({
+                trip_id: lt.id,
+                vehicle_id: assignedVehicleId,
+                action: "cleared",
+                actor_name: actorNameFromProfile(dispatcherProfile),
+                actor_role: "dispatcher",
+                ts: Date.now(),
+              });
+            });
+            onTripCreated();
+          });
       } else if (assignedDriverId && dispatchMethod === "specific") {
         // Manual driver assignment with no center-code vehicle linked —
         // fall back to the legacy driver-scoped clear so behaviour is unchanged.
+        const { data: lossTrips } = await supabase.from("trips")
+          .select("id, vehicle_id")
+          .eq("driver_id", assignedDriverId)
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator");
         supabase.from("trips")
           .update({ is_loss: false })
           .eq("driver_id", assignedDriverId)
           .eq("is_loss", true)
           .eq("dispatch_type", "operator")
-          .then(() => { onTripCreated(); });
+          .then(() => {
+            (lossTrips || []).forEach((lt: any) => {
+              broadcastLossActor({
+                trip_id: lt.id,
+                vehicle_id: lt.vehicle_id || null,
+                action: "cleared",
+                actor_name: actorNameFromProfile(dispatcherProfile),
+                actor_role: "dispatcher",
+                ts: Date.now(),
+              });
+            });
+            onTripCreated();
+          });
       }
 
       if (stops.length > 0) {
