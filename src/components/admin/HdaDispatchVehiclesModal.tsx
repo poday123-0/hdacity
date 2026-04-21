@@ -96,6 +96,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
       setTypeFilter("");
       setReassignFor(null);
       setBulkOpen(false);
+      setExpandedId(null);
     }
   }, [open]);
 
