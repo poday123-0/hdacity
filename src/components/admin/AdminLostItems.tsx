@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { PackageX, Search, CheckCircle, Clock, X, AlertTriangle, Plus, Phone, ChevronDown, ChevronRight } from "lucide-react";
+import { PackageX, Search, CheckCircle, Clock, X, AlertTriangle, Plus, Phone, ChevronDown, ChevronRight, Link2Off } from "lucide-react";
+
+interface AdminLostItemsProps {
+  /** When provided, the report will be tagged as created by this user (for dispatcher performance metrics). */
+  createdById?: string;
+}
 
 const statusOptions = ["reported", "investigating", "found", "returned", "closed"];
 const statusColors: Record<string, string> = {
@@ -14,7 +19,7 @@ const statusColors: Record<string, string> = {
 
 const emptyForm = { description: "", trip_id: "", reporter_name: "", reporter_phone: "" };
 
-const AdminLostItems = () => {
+const AdminLostItems = ({ createdById }: AdminLostItemsProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -62,14 +67,14 @@ const AdminLostItems = () => {
 
   const submitReport = async () => {
     if (!form.description.trim()) { toast({ title: "Enter description", variant: "destructive" }); return; }
-    if (!form.trip_id) { toast({ title: "Please link a trip", description: "A trip must be selected for the lost item report.", variant: "destructive" }); return; }
     setSaving(true);
     const payload: any = {
       description: form.description.trim(),
-      trip_id: form.trip_id,
+      trip_id: form.trip_id || null,
       reporter_name: form.reporter_name.trim() || null,
       reporter_phone: form.reporter_phone.trim() || null,
       status: "reported",
+      created_by: createdById || null,
     };
     const { error } = await supabase.from("lost_item_reports").insert(payload);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
@@ -130,13 +135,20 @@ const AdminLostItems = () => {
               <input value={form.reporter_phone} onChange={e => setForm({ ...form, reporter_phone: e.target.value })} placeholder="e.g. 7771234" className={inputCls} />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground">Link to Trip <span className="text-destructive">*</span></label>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                Link to Trip <span className="text-muted-foreground/70 font-normal">(optional — leave empty if no trip is known)</span>
+              </label>
               <input value={tripSearch} onChange={e => searchTrips(e.target.value)} placeholder="Search by customer name, phone, or address..." className={inputCls} />
               {form.trip_id && (
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-xs text-primary font-medium">Trip linked ✓</span>
                   <button onClick={() => { setForm({ ...form, trip_id: "" }); setTripSearch(""); }} className="text-xs text-destructive hover:underline">Remove</button>
                 </div>
+              )}
+              {!form.trip_id && tripSearch.length === 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
+                  <Link2Off className="w-3 h-3" /> No trip will be linked — report will be saved as standalone.
+                </p>
               )}
               {recentTrips.length > 0 && !form.trip_id && (
                 <div className="mt-1.5 bg-surface border border-border rounded-lg max-h-[160px] overflow-y-auto">
