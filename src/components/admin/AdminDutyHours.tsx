@@ -185,7 +185,7 @@ const AdminDutyHours = () => {
     fetchIpSettings();
     fetchSalaryRates();
     fetchDispatchers();
-  }, [dateFilter]);
+  }, [dateFilter, customStart, customEnd]);
 
   const saveIpSettings = async () => {
     setIpLoading(true);
