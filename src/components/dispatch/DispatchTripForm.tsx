@@ -120,6 +120,8 @@ const DispatchTripForm = ({
   const centerCodeInputRef = useRef<HTMLInputElement | null>(null);
   const [centerCodeResults, setCenterCodeResults] = useState<CenterCodeIndexEntry[]>([]);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(null);
+  const [lossAuditLog, setLossAuditLog] = useState<LossAuditEvent[]>([]);
+  const [showLossAudit, setShowLossAudit] = useState(false);
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
