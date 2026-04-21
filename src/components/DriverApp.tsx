@@ -1611,6 +1611,31 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     }).
     subscribe();
 
+    // Wave-broadcast: listen for new wave allow-lists this driver is in
+    const waveChannel = supabase
+      .channel("driver-wave-allowlist")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "trip_dispatch_waves" }, async (payload) => {
+        if (!isActive) return;
+        if (dispatchModeRef.current !== "wave_broadcast") return;
+        const wave = payload.new as any;
+        const inAllowList = (wave.driver_ids || []).includes(userProfile.id);
+        if (!inAllowList && !wave.is_final_broadcast) return;
+        // Fetch the trip and dispatch through the normal handler
+        const { data: trip } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("id", wave.trip_id)
+          .in("status", ["requested", "scheduled"])
+          .is("driver_id", null)
+          .maybeSingle();
+        if (!trip) return;
+        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+          lastSeenTripRef.current = trip.id;
+          handleNewTrip(trip as any);
+        }
+      })
+      .subscribe();
+
     // Listen for target_driver_id updates (auto-nearest cycling)
     const targetChannel = supabase.
     channel("driver-target-updates").
