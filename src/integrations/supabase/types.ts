@@ -1051,6 +1051,9 @@ export type Database = {
           is_read: boolean
           message: string
           read_by: Json
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
           target_type: string
           target_user_id: string | null
           title: string
@@ -1063,6 +1066,9 @@ export type Database = {
           is_read?: boolean
           message?: string
           read_by?: Json
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
           target_type?: string
           target_user_id?: string | null
           title: string
@@ -1075,6 +1081,9 @@ export type Database = {
           is_read?: boolean
           message?: string
           read_by?: Json
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
           target_type?: string
           target_user_id?: string | null
           title?: string
