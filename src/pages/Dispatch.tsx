@@ -1069,7 +1069,7 @@ const Dispatch = () => {
     setAllBookingsLoading(true);
     try {
       const tripSelect =
-        "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, is_loss, accepted_at, driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+        "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, booking_notes, created_by, is_loss, accepted_at, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
 
       const now = new Date();
       let dateStart: Date | null = null;
@@ -2344,7 +2344,23 @@ const Dispatch = () => {
                                   <div>
                                     <span className="text-muted-foreground">Customer:</span>{" "}
                                     <span className="text-foreground">
-                                      {t.customer_name || "—"} • {t.customer_phone || "—"}
+                                      {(() => {
+                                        const p = (t as any).passenger;
+                                        const pName = p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() : "";
+                                        const name = t.customer_name || pName || "—";
+                                        const phoneRaw = t.customer_phone || p?.phone_number || "";
+                                        return (
+                                          <>
+                                            {name}
+                                            {" • "}
+                                            {phoneRaw ? (
+                                              <a href={`tel:${phoneRaw}`} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                                {phoneRaw}
+                                              </a>
+                                            ) : "—"}
+                                          </>
+                                        );
+                                      })()}
                                     </span>
                                   </div>
                                   <div>
