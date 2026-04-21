@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX, BarChart3, Calendar, Activity, CalendarDays } from "lucide-react";
+import { Users, Car, MapPin, DollarSign, TrendingUp, Clock, ExternalLink, Navigation, UserCheck, AlertTriangle, X, MessageSquare, Star, User, PackageX, BarChart3, Calendar, Activity, CalendarDays, ShieldCheck } from "lucide-react";
 import SOSAlertPanel from "@/components/SOSAlertPanel";
 import MaldivesMap from "@/components/SmartMaldivesMap";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from "recharts";
@@ -62,6 +62,8 @@ const AdminDashboard = () => {
   const [topDrivers, setTopDrivers] = useState<{ name: string; trips: number; revenue: number }[]>([]);
   const [vehicleTypeSplit, setVehicleTypeSplit] = useState<{ name: string; value: number }[]>([]);
   const [paymentSplit, setPaymentSplit] = useState<{ name: string; value: number }[]>([]);
+  const [completionRateDrivers, setCompletionRateDrivers] = useState<{ id: string; name: string; avatar: string | null; completed: number; total: number; rate: number; revenue: number }[]>([]);
+  const [completionSource, setCompletionSource] = useState<"all" | "app" | "operator" | "direct">("all");
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -176,7 +178,7 @@ const AdminDashboard = () => {
       while (true) {
         const { data } = await supabase
           .from("trips")
-          .select("created_at, status, actual_fare, estimated_fare, pickup_address, completed_at, driver_id, vehicle_type_id, payment_method, payment_confirmed_method")
+          .select("created_at, status, actual_fare, estimated_fare, pickup_address, completed_at, driver_id, vehicle_type_id, payment_method, payment_confirmed_method, dispatch_type")
           .gte("created_at", start.toISOString())
           .order("created_at", { ascending: true })
           .range(from, from + batchSize - 1);
@@ -196,6 +198,7 @@ const AdminDashboard = () => {
         setTopDrivers([]);
         setVehicleTypeSplit([]);
         setPaymentSplit([]);
+        setCompletionRateDrivers([]);
         setAnalyticsLoading(false);
         return;
       }
@@ -316,6 +319,61 @@ const AdminDashboard = () => {
         setTopDrivers([]);
       }
 
+      // Driver completion rate (filtered by dispatch source)
+      // For each driver: completed / (completed + cancelled assigned to them)
+      // Considers trips where the driver was actually assigned (driver_id present),
+      // grouped by dispatch_type so admin can compare app vs operator-dispatched performance.
+      const sourceMatches = (t: any) => {
+        if (completionSource === "all") return true;
+        const dt = (t.dispatch_type || "app").toLowerCase();
+        if (completionSource === "app") return dt === "app" || dt === "passenger" || dt === "" || dt === null;
+        if (completionSource === "operator") return dt === "operator" || dt === "dispatch";
+        if (completionSource === "direct") return dt === "direct" || dt === "assign" || dt === "assigned";
+        return true;
+      };
+      const driverRateAgg: Record<string, { completed: number; cancelled: number; revenue: number }> = {};
+      analyticsTrips.forEach(t => {
+        if (!t.driver_id) return;
+        if (!sourceMatches(t)) return;
+        if (!driverRateAgg[t.driver_id]) driverRateAgg[t.driver_id] = { completed: 0, cancelled: 0, revenue: 0 };
+        if (t.status === "completed") {
+          driverRateAgg[t.driver_id].completed += 1;
+          driverRateAgg[t.driver_id].revenue += t.actual_fare || 0;
+        } else if (t.status === "cancelled" || t.status === "expired" || t.status === "no_show") {
+          driverRateAgg[t.driver_id].cancelled += 1;
+        }
+      });
+      // Require at least 3 assigned trips for rate to be meaningful
+      const rateEntries = Object.entries(driverRateAgg)
+        .map(([id, v]) => {
+          const total = v.completed + v.cancelled;
+          return { id, completed: v.completed, total, rate: total ? (v.completed / total) * 100 : 0, revenue: v.revenue };
+        })
+        .filter(e => e.total >= 3)
+        .sort((a, b) => b.rate - a.rate || b.completed - a.completed)
+        .slice(0, 10);
+      if (rateEntries.length > 0) {
+        const { data: rateProfiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, avatar_url")
+          .in("id", rateEntries.map(e => e.id));
+        const profMap = new Map((rateProfiles || []).map((p: any) => [p.id, p]));
+        setCompletionRateDrivers(rateEntries.map(e => {
+          const p: any = profMap.get(e.id);
+          return {
+            id: e.id,
+            name: p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown" : "Unknown",
+            avatar: p?.avatar_url || null,
+            completed: e.completed,
+            total: e.total,
+            rate: Math.round(e.rate),
+            revenue: Math.round(e.revenue),
+          };
+        }));
+      } else {
+        setCompletionRateDrivers([]);
+      }
+
       // Vehicle type split
       const vtCounts: Record<string, number> = {};
       analyticsTrips.forEach(t => {
@@ -351,7 +409,7 @@ const AdminDashboard = () => {
       setAnalyticsLoading(false);
     };
     fetchAnalytics();
-  }, [analyticsPeriod, customRange, getAnalyticsDateRange]);
+  }, [analyticsPeriod, customRange, getAnalyticsDateRange, completionSource]);
 
   // Fetch live driver locations — only drivers linked to an active vehicle
   useEffect(() => {
@@ -843,7 +901,78 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Recent Trips */}
+      {/* Top Completion-Rate Drivers */}
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-primary" /> Top Completion-Rate Drivers
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Best success ratio (completed / assigned) for {getPeriodLabel().toLowerCase()} · min 3 trips
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+            {([
+              { v: "all", label: "All" },
+              { v: "app", label: "Customer App" },
+              { v: "operator", label: "Operator" },
+              { v: "direct", label: "Assigned" },
+            ] as const).map(opt => (
+              <button
+                key={opt.v}
+                onClick={() => setCompletionSource(opt.v as any)}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors",
+                  completionSource === opt.v
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {completionRateDrivers.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No driver data for this filter</p>
+        ) : (
+          <div className="space-y-1.5">
+            {completionRateDrivers.map((d, i) => {
+              const rateColor = d.rate >= 90 ? "text-primary" : d.rate >= 70 ? "text-foreground" : "text-destructive";
+              const barColor = d.rate >= 90 ? "bg-primary" : d.rate >= 70 ? "bg-accent-foreground" : "bg-destructive";
+              return (
+                <div key={d.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface/50 transition-colors">
+                  <span className="text-xs font-bold text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>
+                  {d.avatar ? (
+                    <img src={d.avatar} alt={d.name} className="w-9 h-9 rounded-full object-cover border border-border shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary">{d.name.split(" ").map(n => n[0]).slice(0, 2).join("")}</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-semibold text-foreground truncate">{d.name}</p>
+                      <span className={cn("text-sm font-bold shrink-0", rateColor)}>{d.rate}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all duration-500", barColor)} style={{ width: `${d.rate}%` }} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                        {d.completed}/{d.total} · MVR {d.revenue.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">Recent Trips</h3>

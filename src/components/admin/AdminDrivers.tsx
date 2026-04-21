@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff, MessageSquare, Send } from "lucide-react";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
 
@@ -57,6 +57,9 @@ const AdminDrivers = () => {
   const [bulkCenterStart, setBulkCenterStart] = useState("");
   const [bulkVehicleSearch, setBulkVehicleSearch] = useState("");
   const [bulkVehicleSelected, setBulkVehicleSelected] = useState<Set<string>>(new Set());
+  const [smsModal, setSmsModal] = useState<null | { mode: "no-vehicle" | "selected"; recipients: any[] }>(null);
+  const [smsMessage, setSmsMessage] = useState("");
+  const [smsSending, setSmsSending] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -274,6 +277,67 @@ const AdminDrivers = () => {
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { toast({ title: `Vehicle type assigned to ${vehicleIds.length} vehicle(s)` }); setShowBulkAssign(null); setBulkVehicleSelected(new Set()); fetchAll(); }
   };
+
+  const DEFAULT_NO_VEHICLE_SMS = "Hi! Your HDA Taxi driver profile is almost ready, but no vehicle has been added yet. Please open the app, add your vehicle details and documents to start receiving trips. Need help? Contact us. - HDA Taxi";
+
+  const openSmsNoVehicle = () => {
+    const noVehicleDrivers = drivers.filter(d => {
+      if (d.status === "Rejected") return false;
+      const v = driverVehicles[d.id] || [];
+      return v.length === 0;
+    });
+    if (noVehicleDrivers.length === 0) {
+      toast({ title: "No drivers without vehicles found" });
+      return;
+    }
+    setSmsMessage(DEFAULT_NO_VEHICLE_SMS);
+    setSmsModal({ mode: "no-vehicle", recipients: noVehicleDrivers });
+  };
+
+  const openSmsSelected = () => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    const recipients = drivers.filter(d => ids.includes(d.id));
+    setSmsMessage("");
+    setSmsModal({ mode: "selected", recipients });
+  };
+
+  const sendBulkSms = async () => {
+    if (!smsModal || !smsMessage.trim()) return;
+    const phoneNumbers = smsModal.recipients
+      .map(d => {
+        const phone = String(d.phone_number || "").replace(/\D/g, "");
+        const cc = String(d.country_code || "960").replace(/\D/g, "");
+        if (!phone || phone.length < 7) return null;
+        return phone.startsWith(cc) ? phone : `${cc}${phone}`;
+      })
+      .filter((n): n is string => !!n);
+    if (phoneNumbers.length === 0) {
+      toast({ title: "No valid phone numbers in selection", variant: "destructive" });
+      return;
+    }
+    setSmsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: smsMessage.trim(), target_type: "custom", phone_numbers: phoneNumbers },
+      });
+      if (error) throw error;
+      if (data?.error && !data?.sent) {
+        toast({ title: "SMS Error", description: data.error, variant: "destructive" });
+      } else {
+        toast({
+          title: `SMS sent to ${data?.sent || 0} of ${data?.total || phoneNumbers.length} drivers`,
+          description: data?.failed > 0 ? `${data.failed} failed` : undefined,
+        });
+        setSmsModal(null);
+        setSmsMessage("");
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
+    }
+    setSmsSending(false);
+  };
+
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
@@ -799,6 +863,28 @@ const AdminDrivers = () => {
         </div>
       )}
 
+      {/* No-vehicle SMS reminder */}
+      {!loading && (() => {
+        const noVehCount = drivers.filter(d => d.status !== "Rejected" && (driverVehicles[d.id] || []).length === 0).length;
+        if (noVehCount === 0) return null;
+        return (
+          <div className="flex items-center justify-between gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-yellow-500/20 flex items-center justify-center shrink-0">
+                <Car className="w-4 h-4 text-yellow-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{noVehCount} driver{noVehCount !== 1 ? "s" : ""} without a vehicle</p>
+                <p className="text-[11px] text-muted-foreground truncate">Send a reminder SMS so they complete their profile</p>
+              </div>
+            </div>
+            <button onClick={openSmsNoVehicle} className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity shrink-0">
+              <MessageSquare className="w-3.5 h-3.5" /> Send Reminder SMS
+            </button>
+          </div>
+        );
+      })()}
+
       {/* ── Pending Vehicles Quick Actions ── */}
       {!loading && pendingVehicles.length > 0 && (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -1164,6 +1250,9 @@ const AdminDrivers = () => {
           </button>
           <button onClick={() => { setShowBulkAssign("vehicle"); setBulkVehicleSearch(""); setBulkVehicleSelected(new Set()); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/50 text-accent-foreground rounded-xl text-xs font-semibold hover:bg-accent transition-colors">
             <Car className="w-3.5 h-3.5" /> Assign Vehicles
+          </button>
+          <button onClick={openSmsSelected} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition-colors">
+            <MessageSquare className="w-3.5 h-3.5" /> Send SMS
           </button>
           <button onClick={bulkDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-semibold hover:bg-destructive/20 transition-colors">
             <Trash2 className="w-3.5 h-3.5" /> Delete
