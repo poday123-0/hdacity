@@ -772,6 +772,15 @@ const AdminCompetitions = () => {
           </div>
         ))}
       </div>
+
+      {tripsModal && (
+        <CompetitionDriverTrips
+          competition={tripsModal.comp}
+          driverId={tripsModal.driverId}
+          driverName={tripsModal.driverName}
+          onClose={() => setTripsModal(null)}
+        />
+      )}
     </div>
   );
 };
