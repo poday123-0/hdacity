@@ -484,6 +484,28 @@ const AdminSettings = () => {
         {renderSettingField("SMS Message Text", "no_vehicle_sms_text", "text", "HDA: No drivers available right now. Book directly & find available drivers at https://hda.taxi")}
       </SectionCard>
 
+      <SectionCard title="Vehicle Assigned SMS" description="SMS sent to passenger when a vehicle is assigned from dispatch. Use {plate}, {color}, {type} as placeholders." icon={MessageSquare}>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Enable</p>
+              <p className="text-xs text-muted-foreground">Turn this SMS on or off without changing the message text.</p>
+            </div>
+            <Switch
+              checked={settings["vehicle_assigned_sms_enabled"] === true || settings["vehicle_assigned_sms_enabled"] === "true"}
+              onCheckedChange={(checked) => { setSettings({ ...settings, vehicle_assigned_sms_enabled: checked }); updateSetting("vehicle_assigned_sms_enabled", checked); }}
+            />
+          </div>
+          {renderSettingTextarea(
+            "SMS Message Text",
+            "vehicle_assigned_sms_text",
+            "HDA TAXI,\n\nOur vehicle is on the way to pick you up,\n\n{plate} . {color} {type}\n\nInstall Hda App to view the realtime trip status.\n\nInstall- https://hda.taxi",
+            8,
+          )}
+          <p className="text-[11px] text-muted-foreground">Placeholders: <code className="px-1 py-0.5 rounded bg-muted">{"{plate}"}</code> <code className="px-1 py-0.5 rounded bg-muted">{"{color}"}</code> <code className="px-1 py-0.5 rounded bg-muted">{"{type}"}</code></p>
+        </div>
+      </SectionCard>
+
       <SectionCard title="Emergency Numbers" description="Shown in SOS dialog for passengers and drivers" icon={Phone}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {renderSettingField('Call Center Phone Number', 'call_center_number', 'text', 'e.g. 3001234')}
