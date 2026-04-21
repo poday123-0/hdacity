@@ -1,12 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign } from "lucide-react";
+import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign, TrendingUp, Send, UserCheck, Radio, CheckCircle2, XCircle, Trophy } from "lucide-react";
+
+interface DispatcherStats {
+  total: number;            // trips created by dispatcher
+  assigned: number;         // direct-assigned to a specific driver
+  broadcast: number;        // sent to app (broadcast wave)
+  completed: number;        // ended successfully
+  cancelled: number;        // cancelled or expired
+}
 
 const AdminDutyHours = () => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [dispatcherStats, setDispatcherStats] = useState<Record<string, DispatcherStats>>({});
 
   // IP Allowlist
   const [ipEnabled, setIpEnabled] = useState(false);
