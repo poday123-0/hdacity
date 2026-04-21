@@ -4466,11 +4466,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                     .neq("driver_id", userProfile.id)
                     .gte("updated_at", twoMinAgo);
                   if (otherDrivers && otherDrivers.length > 0) {
-                    const otherIds = await filterDriversByPersonalRadius(
-                      otherDrivers as any,
-                      Number(currentTrip.pickup_lat),
-                      Number(currentTrip.pickup_lng)
-                    );
+                    const hasPickupCoords = typeof currentTrip.pickup_lat === "number" && typeof currentTrip.pickup_lng === "number";
+                    const otherIds = hasPickupCoords
+                      ? await filterDriversByPersonalRadius(
+                          otherDrivers as any,
+                          currentTrip.pickup_lat,
+                          currentTrip.pickup_lng
+                        )
+                      : otherDrivers.map((d: any) => d.driver_id);
                     if (otherIds.length > 0) {
                       notifyTripTaken(
                         otherIds,

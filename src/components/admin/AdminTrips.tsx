@@ -316,11 +316,14 @@ const AdminTrips = () => {
                               if (t.vehicle_type_id) dlQuery = dlQuery.eq("vehicle_type_id", t.vehicle_type_id);
                               const { data: onlineDrivers } = await dlQuery;
                               if (onlineDrivers && onlineDrivers.length > 0) {
-                                const driverIds = await filterDriversByPersonalRadius(
-                                  onlineDrivers as any,
-                                  Number(t.pickup_lat),
-                                  Number(t.pickup_lng)
-                                );
+                                const hasPickupCoords = typeof t.pickup_lat === "number" && typeof t.pickup_lng === "number";
+                                const driverIds = hasPickupCoords
+                                  ? await filterDriversByPersonalRadius(
+                                      onlineDrivers as any,
+                                      t.pickup_lat,
+                                      t.pickup_lng
+                                    )
+                                  : onlineDrivers.map((d: any) => d.driver_id);
                                 let vtName: string | null = null;
                                 if (t.vehicle_type_id) {
                                   const { data: vtRow } = await supabase.from("vehicle_types").select("name").eq("id", t.vehicle_type_id).maybeSingle();
