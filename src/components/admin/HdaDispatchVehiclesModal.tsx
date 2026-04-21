@@ -489,6 +489,8 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
               {filtered.map((v) => {
                 const contact = contacts[v.id];
                 const typeName = v.vehicle_types?.name || "—";
+                const rawImg = v.vehicle_types?.image_url || v.vehicle_types?.map_icon_url || "";
+                const vImg = rawImg ? (exportVehicleImgs[rawImg] || rawImg) : "";
                 return (
                   <div
                     key={`exp-${v.id}`}
@@ -500,16 +502,18 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                       boxShadow: "0 1px 3px rgba(15, 23, 42, 0.06)",
                     }}
                   >
+                    {/* Soft blue header strip */}
                     <div style={{
-                      background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                      background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
                       padding: "8px 10px",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
+                      borderBottom: "1px solid #e0e7ff",
                     }}>
                       <span style={{
-                        background: "#ffffff",
-                        color: "#1e40af",
+                        background: "#1e40af",
+                        color: "#ffffff",
                         fontSize: "11px",
                         fontWeight: 800,
                         padding: "3px 8px",
@@ -520,21 +524,30 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                         width: "8px",
                         height: "8px",
                         borderRadius: "999px",
-                        background: contact ? "#22c55e" : "rgba(255,255,255,0.35)",
-                        boxShadow: contact ? "0 0 6px #22c55e" : "none",
+                        background: contact ? "#22c55e" : "#cbd5e1",
                       }} />
                     </div>
-                    <div style={{ padding: "10px 10px 12px" }}>
-                      <div style={{ fontSize: "14px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {v.plate_number}
-                      </div>
-                      <div style={{ fontSize: "10px", color: "#64748b", marginTop: "3px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {typeName}{v.color ? ` · ${v.color}` : ""}
-                      </div>
-                      {contact && (
-                        <div style={{ fontSize: "10px", color: "#1e40af", marginTop: "6px", fontWeight: 700, paddingTop: "6px", borderTop: "1px dashed #e2e8f0" }}>
-                          📞 {contact}
+                    <div style={{ padding: "10px 10px 12px", display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "14px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {v.plate_number}
                         </div>
+                        <div style={{ fontSize: "10px", color: "#64748b", marginTop: "3px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {typeName}{v.color ? ` · ${v.color}` : ""}
+                        </div>
+                        {contact && (
+                          <div style={{ fontSize: "10px", color: "#1e40af", marginTop: "6px", fontWeight: 700, paddingTop: "6px", borderTop: "1px dashed #e2e8f0" }}>
+                            📞 {contact}
+                          </div>
+                        )}
+                      </div>
+                      {vImg && (
+                        <img
+                          src={vImg}
+                          alt={typeName}
+                          crossOrigin="anonymous"
+                          style={{ width: "44px", height: "32px", objectFit: "contain", flexShrink: 0 }}
+                        />
                       )}
                     </div>
                   </div>
