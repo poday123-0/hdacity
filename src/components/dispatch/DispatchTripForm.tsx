@@ -914,8 +914,21 @@ const DispatchTripForm = ({
         }
       }
 
-      // If the assigned driver had a loss trip, clear it
-      if (assignedDriverId) {
+      // If the assigned VEHICLE (center code) had a loss trip, clear only
+      // that vehicle's loss — NOT every loss trip belonging to the driver.
+      // A driver/number (e.g. 7320207) can hold multiple center codes
+      // (e.g. 375 + 377). Assigning code 377 must NOT clear code 375's loss.
+      const assignedVehicleId = assignedEntry?.vehicle_id || null;
+      if (assignedVehicleId) {
+        supabase.from("trips")
+          .update({ is_loss: false })
+          .eq("vehicle_id", assignedVehicleId)
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator")
+          .then(() => { onTripCreated(); });
+      } else if (assignedDriverId && dispatchMethod === "specific") {
+        // Manual driver assignment with no center-code vehicle linked —
+        // fall back to the legacy driver-scoped clear so behaviour is unchanged.
         supabase.from("trips")
           .update({ is_loss: false })
           .eq("driver_id", assignedDriverId)
