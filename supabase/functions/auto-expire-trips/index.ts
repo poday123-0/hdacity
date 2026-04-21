@@ -219,6 +219,49 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ========== 6. Force-expire trips stuck in active states for 6+ hours ==========
+    // Covers cases where a driver loses connectivity / app is killed mid-trip and
+    // the trip ends up frozen for hours on the live map. We mark it as expired,
+    // free the driver, and avoid touching dispatched/operator trips already
+    // handled by the 30-minute auto-complete above.
+    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString();
+    const { data: stuckTrips } = await supabase
+      .from("trips")
+      .select("id, driver_id")
+      .in("status", ["accepted", "started", "in_progress", "arrived"])
+      .lt("updated_at", sixHoursAgo);
+
+    let stuckExpired = 0;
+    if (stuckTrips && stuckTrips.length > 0) {
+      const stuckIds = stuckTrips.map((t: any) => t.id);
+      const { data: updatedStuck } = await supabase
+        .from("trips")
+        .update({ status: "expired", cancel_reason: "Auto-expired: trip inactive for 6h+", cancelled_at: nowISO })
+        .in("id", stuckIds)
+        .select("id");
+      stuckExpired = updatedStuck?.length || 0;
+
+      const stuckDriverIds = stuckTrips.map((t: any) => t.driver_id).filter(Boolean);
+      if (stuckDriverIds.length > 0) {
+        await supabase
+          .from("driver_locations")
+          .update({ is_on_trip: false })
+          .in("driver_id", stuckDriverIds);
+      }
+    }
+
+    // ========== 7. Mark drivers offline if no heartbeat for 3 hours ==========
+    // Keeps dashboard count, live map, and dispatch lists in sync — a driver
+    // that hasn't pinged in 3h shouldn't still appear as "online".
+    const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString();
+    const { data: staleOnline } = await supabase
+      .from("driver_locations")
+      .update({ is_online: false })
+      .eq("is_online", true)
+      .lt("updated_at", threeHoursAgo)
+      .select("id");
+    const staleOffline = staleOnline?.length || 0;
+
     return new Response(
       JSON.stringify({
         expired: (expired?.length || 0) + (expired2?.length || 0),
@@ -226,6 +269,8 @@ Deno.serve(async (req) => {
         pinged_scheduled: pingedCount,
         locked_drivers: lockedDrivers,
         auto_completed: autoCompleted?.length || 0,
+        stuck_expired: stuckExpired,
+        stale_offline: staleOffline,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
