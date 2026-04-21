@@ -318,6 +318,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const foregroundGpsCleanupRef = useRef<(() => void) | null>(null);
   const tripRadiusRef = useRef(10);
+  const dispatchModeRef = useRef<string>("broadcast");
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
   const [driverMapInstance, setDriverMapInstance] = useState<any>(null);
@@ -1223,6 +1224,39 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return;
     }
     handlingTripRef.current = trip.id;
+
+    // Wave-broadcast gating: when dispatch_mode = wave_broadcast, only handle
+    // trips where this driver is in the current wave's allow-list (or the wave
+    // is the final broadcast). This prevents drivers from seeing the trip
+    // before their wave is reached.
+    if (dispatchModeRef.current === "wave_broadcast" && userProfile?.id) {
+      try {
+        const { data: latestWave } = await supabase
+          .from("trip_dispatch_waves")
+          .select("driver_ids, is_final_broadcast, wave_number")
+          .eq("trip_id", trip.id)
+          .order("wave_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestWave) {
+          const allowList: string[] = (latestWave as any).driver_ids || [];
+          const isFinal = !!(latestWave as any).is_final_broadcast;
+          if (!isFinal && !allowList.includes(userProfile.id)) {
+            debugLog({
+              event: "handleNewTrip:reject_not_in_wave",
+              driver_id: userProfile.id,
+              trip_id: trip.id,
+              details: { wave: (latestWave as any).wave_number, allow_size: allowList.length },
+            });
+            handlingTripRef.current = null;
+            return;
+          }
+        }
+        // If no wave row exists yet, fall through (might be a non-wave broadcast trip)
+      } catch (waveErr) {
+        console.warn("[WAVE CHECK] lookup failed, allowing trip:", waveErr);
+      }
+    }
 
     // Skip trips that don't match the driver's currently selected vehicle type
     if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
