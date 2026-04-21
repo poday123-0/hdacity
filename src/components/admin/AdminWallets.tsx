@@ -354,66 +354,147 @@ const AdminWallets = () => {
 
       {/* Top-ups View */}
       {activeView === "topups" && (
-        <div className="grid gap-3">
-          {pendingTopUps.length === 0 ? (
-            <div className="text-center py-12">
-              <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">No pending top-up requests</p>
-            </div>
-          ) : (
-            pendingTopUps.map(tx => {
-              const profile = topUpProfiles.get(tx.user_id);
-              return (
-                <div key={tx.id} className="bg-card rounded-xl border border-amber-500/30 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-amber-600">{tx.amount.toFixed(2)} MVR</p>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
-                        pending
-                      </span>
-                    </div>
-                  </div>
+        <div className="space-y-3">
+          {/* Sub tabs */}
+          <div className="flex bg-surface rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setTopUpsTab("pending")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${topUpsTab === "pending" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
+            >
+              Pending {pendingTopUps.length > 0 ? `(${pendingTopUps.length})` : ""}
+            </button>
+            <button
+              onClick={() => setTopUpsTab("history")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${topUpsTab === "history" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
+            >
+              History {topUpHistory.length > 0 ? `(${topUpHistory.length})` : ""}
+            </button>
+          </div>
 
-                  {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
-                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
-
-                  {/* Proof image */}
-                  {tx.proof_url && (
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
-                      <button onClick={() => setProofPreview(tx.proof_url)} className="block">
-                        <img
-                          src={tx.proof_url}
-                          alt="Transfer slip"
-                          className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
-                        />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => handleTopUpAction(tx, "approved")}
-                      className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Approve & Credit
-                    </button>
-                    <button
-                      onClick={() => handleTopUpAction(tx, "rejected")}
-                      className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <X className="w-3.5 h-3.5" /> Reject
-                    </button>
-                  </div>
+          {topUpsTab === "pending" && (
+            <div className="grid gap-3">
+              {pendingTopUps.length === 0 ? (
+                <div className="text-center py-12">
+                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No pending top-up requests</p>
                 </div>
-              );
-            })
+              ) : (
+                pendingTopUps.map(tx => {
+                  const profile = topUpProfiles.get(tx.user_id);
+                  return (
+                    <div key={tx.id} className="bg-card rounded-xl border border-amber-500/30 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-amber-600">{tx.amount.toFixed(2)} MVR</p>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                            pending
+                          </span>
+                        </div>
+                      </div>
+
+                      {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
+                      <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
+
+                      {/* Proof image */}
+                      {tx.proof_url && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
+                          <button onClick={() => setProofPreview(tx.proof_url)} className="block">
+                            <img
+                              src={tx.proof_url}
+                              alt="Transfer slip"
+                              className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
+                            />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleTopUpAction(tx, "approved")}
+                          className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Approve & Credit
+                        </button>
+                        <button
+                          onClick={() => handleTopUpAction(tx, "rejected")}
+                          className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                        >
+                          <X className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {topUpsTab === "history" && (
+            <div className="grid gap-3">
+              {topUpHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No processed top-ups yet</p>
+                </div>
+              ) : (
+                topUpHistory.map(tx => {
+                  const profile = topUpProfiles.get(tx.user_id);
+                  const admin = tx.processed_by ? adminProfiles.get(tx.processed_by) : null;
+                  const isApproved = tx.status === "completed";
+                  return (
+                    <div key={tx.id} className={`bg-card rounded-xl border p-4 space-y-2 ${isApproved ? "border-green-500/20" : "border-destructive/20"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {profile ? `${profile.first_name} ${profile.last_name}` : "Unknown"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{profile?.phone_number}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-lg font-bold ${isApproved ? "text-green-600" : "text-muted-foreground line-through"}`}>
+                            {tx.amount.toFixed(2)} MVR
+                          </p>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isApproved ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+                            {isApproved ? "approved" : "rejected"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {tx.notes && <p className="text-xs text-muted-foreground">{tx.notes}</p>}
+
+                      {/* Audit info */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
+                        <span>Requested: {new Date(tx.created_at).toLocaleString()}</span>
+                        {tx.processed_at && (
+                          <span>{isApproved ? "Approved" : "Rejected"}: {new Date(tx.processed_at).toLocaleString()}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <User className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">By</span>
+                        <span className="font-semibold text-foreground">
+                          {admin ? `${admin.first_name} ${admin.last_name}`.trim() || admin.phone_number : (tx.processed_by ? "Admin" : "Unknown")}
+                        </span>
+                        {admin?.phone_number && <span className="text-muted-foreground">• {admin.phone_number}</span>}
+                      </div>
+
+                      {tx.proof_url && (
+                        <button onClick={() => setProofPreview(tx.proof_url)} className="text-[10px] text-primary underline">
+                          View transfer slip
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           )}
         </div>
       )}
