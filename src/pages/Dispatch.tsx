@@ -134,7 +134,9 @@ interface OnlineDriver {
   last_name: string;
   phone_number: string;
   vehicle_name: string;
+  vehicle_type_id?: string | null;
   plate_number: string;
+  center_code?: string | null;
   lat: number;
   lng: number;
 }
@@ -677,9 +679,9 @@ const Dispatch = () => {
             .from("driver_locations")
             .select(
               `
-              driver_id, lat, lng,
+              driver_id, lat, lng, vehicle_type_id,
               profiles:driver_id (first_name, last_name, phone_number),
-              vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))
+              vehicles:vehicle_id (plate_number, center_code, vehicle_types:vehicle_type_id (name))
             `,
             )
             .eq("is_online", true)
@@ -733,7 +735,9 @@ const Dispatch = () => {
           last_name: (d.profiles as any)?.last_name || "",
           phone_number: (d.profiles as any)?.phone_number || "",
           vehicle_name: (d.vehicles as any)?.vehicles_types?.name || (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+          vehicle_type_id: d.vehicle_type_id || (d.vehicles as any)?.vehicle_types?.id || null,
           plate_number: (d.vehicles as any)?.plate_number || "",
+          center_code: (d.vehicles as any)?.center_code || null,
           lat: d.lat,
           lng: d.lng,
         }));
@@ -882,7 +886,7 @@ const Dispatch = () => {
       const { data } = await supabase
         .from("driver_locations")
         .select(
-          `driver_id, lat, lng, profiles:driver_id (first_name, last_name, phone_number), vehicles:vehicle_id (plate_number, vehicle_types:vehicle_type_id (name))`,
+          `driver_id, lat, lng, vehicle_type_id, profiles:driver_id (first_name, last_name, phone_number), vehicles:vehicle_id (plate_number, center_code, vehicle_types:vehicle_type_id (name))`,
         )
         .eq("is_online", true)
         .eq("is_on_trip", false);
@@ -892,7 +896,9 @@ const Dispatch = () => {
         last_name: (d.profiles as any)?.last_name || "",
         phone_number: (d.profiles as any)?.phone_number || "",
         vehicle_name: (d.vehicles as any)?.vehicle_types?.name || "Unknown",
+        vehicle_type_id: d.vehicle_type_id || null,
         plate_number: (d.vehicles as any)?.plate_number || "",
+        center_code: (d.vehicles as any)?.center_code || null,
         lat: d.lat,
         lng: d.lng,
       }));
@@ -2368,6 +2374,65 @@ const Dispatch = () => {
                                     <span className="text-foreground">{t.actual_fare ?? t.estimated_fare ?? "—"}</span>
                                   </div>
                                 </div>
+                                {/* Sent-to recipients (only while still searching) */}
+                                {t.status === "requested" && !t.accepted_at && (() => {
+                                  const isDirect = !!t.target_driver_id;
+                                  const recipients = isDirect
+                                    ? onlineDrivers.filter((d) => d.driver_id === t.target_driver_id)
+                                    : onlineDrivers.filter((d) =>
+                                        t.vehicle_type_id ? d.vehicle_type_id === t.vehicle_type_id : true,
+                                      );
+                                  return (
+                                    <div className="mx-2.5 mb-2 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-2">
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <span className="relative flex h-1.5 w-1.5">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                                        </span>
+                                        <span className="text-[9px] font-bold uppercase tracking-wide text-primary">
+                                          {isDirect ? "Direct Assign" : "Broadcasting to"}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-foreground bg-primary/10 px-1.5 py-0.5 rounded">
+                                          {recipients.length} {recipients.length === 1 ? "driver" : "drivers"}
+                                        </span>
+                                      </div>
+                                      {recipients.length === 0 ? (
+                                        <p className="text-[10px] text-muted-foreground italic">
+                                          {isDirect ? "Driver currently offline" : "No matching online drivers"}
+                                        </p>
+                                      ) : (
+                                        <div className="flex flex-wrap gap-1">
+                                          {recipients.slice(0, 12).map((d) => (
+                                            <a
+                                              key={d.driver_id}
+                                              href={`tel:${d.phone_number}`}
+                                              onClick={(e) => e.stopPropagation()}
+                                              title={`${d.first_name} ${d.last_name} · ${d.vehicle_name}${d.plate_number ? ` · ${d.plate_number}` : ""}${d.phone_number ? ` · ${d.phone_number}` : ""}`}
+                                              className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-card border border-border hover:border-primary hover:bg-primary/5 transition-colors"
+                                            >
+                                              <span className="w-4 h-4 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[8px] font-bold">
+                                                {(d.first_name?.[0] || "?").toUpperCase()}
+                                              </span>
+                                              <span className="text-[9px] font-semibold text-foreground">
+                                                {d.first_name}
+                                              </span>
+                                              {d.center_code && (
+                                                <span className="text-[8px] font-bold text-primary">
+                                                  {d.center_code}
+                                                </span>
+                                              )}
+                                            </a>
+                                          ))}
+                                          {recipients.length > 12 && (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">
+                                              +{recipients.length - 12} more
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>
