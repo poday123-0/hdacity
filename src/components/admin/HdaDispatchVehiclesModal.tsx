@@ -17,7 +17,7 @@ type Vehicle = {
   center_code: string | null;
   color: string | null;
   driver_id: string | null;
-  vehicle_types?: { name: string } | null;
+  vehicle_types?: { name: string; image_url?: string | null; map_icon_url?: string | null } | null;
 };
 
 type DriverLite = {
@@ -83,7 +83,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
     const [vRes, dRes] = await Promise.all([
       supabase
         .from("vehicles")
-        .select("id, plate_number, center_code, color, driver_id, vehicle_types(name)")
+        .select("id, plate_number, center_code, color, driver_id, vehicle_types(name, image_url, map_icon_url)")
         .in("driver_id", ids)
         .order("center_code", { ascending: true, nullsFirst: false }),
       supabase
@@ -559,12 +559,23 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                         )}
                       </div>
                       {/* Body */}
-                      <div className="px-2 pb-2 pt-0.5">
-                        <div className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">{v.plate_number}</div>
-                        <div className="mt-0.5 flex items-center gap-1">
-                          <SystemLogo className="w-2.5 h-2.5 object-contain opacity-60 shrink-0" alt="" />
-                          <span className="text-[10px] text-muted-foreground truncate font-medium">{typeName}</span>
+                      <div className="px-2 pb-2 pt-0.5 flex items-end justify-between gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">{v.plate_number}</div>
+                          <div className="mt-0.5 flex items-center gap-1">
+                            <SystemLogo className="w-2.5 h-2.5 object-contain opacity-60 shrink-0" alt="" />
+                            <span className="text-[10px] text-muted-foreground truncate font-medium">{typeName}</span>
+                          </div>
                         </div>
+                        {(v.vehicle_types?.image_url || v.vehicle_types?.map_icon_url) && (
+                          <img
+                            src={v.vehicle_types.image_url || v.vehicle_types.map_icon_url}
+                            alt={typeName}
+                            className="w-8 h-8 object-contain shrink-0 drop-shadow-sm"
+                            loading="lazy"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        )}
                       </div>
                     </button>
 
