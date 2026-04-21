@@ -1924,6 +1924,23 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
 
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
+    // Dedup: ignore repeated signals for the same (trip, status) within 10s.
+    // Multiple sources (FCM push, realtime UPDATE, 5s polling backup) can all fire
+    // for the same event — without this, the driver hears the sound 2-3 times and
+    // sees stacked toasts.
+    const tripId = updated?.id || currentTrip?.id;
+    if (tripId && (updated?.status === "accepted" || updated?.status === "cancelled")) {
+      const key = `${tripId}:${updated.status}`;
+      const now = Date.now();
+      const last = handledCancelOrTakenRef.current.get(key);
+      if (last && now - last < 10000) return false;
+      handledCancelOrTakenRef.current.set(key, now);
+      // Garbage-collect entries older than 60s to prevent unbounded growth
+      for (const [k, t] of handledCancelOrTakenRef.current) {
+        if (now - t > 60000) handledCancelOrTakenRef.current.delete(k);
+      }
+    }
+
     // Trip accepted by ANOTHER driver while we're on ride-request screen
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
       stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
@@ -1960,7 +1977,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       return true;
     }
     return false;
-  }, [userProfile?.id]);
+  }, [userProfile?.id, currentTrip?.id]);
 
   // Monitor active trip for cancellation or acceptance by another driver
   useEffect(() => {
