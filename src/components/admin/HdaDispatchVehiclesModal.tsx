@@ -456,7 +456,7 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
                   justifyContent: "center",
                   boxShadow: "0 1px 3px rgba(15,23,42,0.08)",
                 }}>
-                  <img src={exportLogoSrc} alt="HDA" crossOrigin="anonymous" style={{ width: "44px", height: "44px", objectFit: "contain" }} />
+                  <img src={exportLogoData || exportLogoSrc} alt="HDA" crossOrigin="anonymous" style={{ width: "44px", height: "44px", objectFit: "contain" }} />
                 </div>
                 <div>
                   <div style={{ fontSize: "20px", fontWeight: 900, color: "#0f172a", letterSpacing: "-0.01em", display: "flex", alignItems: "baseline", gap: "8px" }}>
