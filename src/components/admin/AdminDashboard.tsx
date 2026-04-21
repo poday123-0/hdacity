@@ -62,6 +62,8 @@ const AdminDashboard = () => {
   const [topDrivers, setTopDrivers] = useState<{ name: string; trips: number; revenue: number }[]>([]);
   const [vehicleTypeSplit, setVehicleTypeSplit] = useState<{ name: string; value: number }[]>([]);
   const [paymentSplit, setPaymentSplit] = useState<{ name: string; value: number }[]>([]);
+  const [completionRateDrivers, setCompletionRateDrivers] = useState<{ id: string; name: string; avatar: string | null; completed: number; total: number; rate: number; revenue: number }[]>([]);
+  const [completionSource, setCompletionSource] = useState<"all" | "app" | "operator" | "direct">("all");
 
   useEffect(() => {
     const fetchStats = async () => {
