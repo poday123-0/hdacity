@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { X, Search, Loader2, Car, UserPlus, Save, Phone, MessageSquare, Send, Pencil, Check, Download } from "lucide-react";
+import { X, Search, Loader2, UserPlus, Save, Phone, MessageSquare, Send, Pencil, Check, Download } from "lucide-react";
 import { toPng } from "html-to-image";
+import SystemLogo from "@/components/SystemLogo";
+import { useBranding } from "@/hooks/use-branding";
+import hdaLogoFallback from "@/assets/hda-logo.png";
 
 const HDA_DISPATCH_PHONE = "7320207";
 const STORAGE_KEY = "hda_dispatch_vehicle_contacts_v1";
