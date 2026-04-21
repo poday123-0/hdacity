@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign, TrendingUp, Send, UserCheck, Radio, CheckCircle2, XCircle, Trophy } from "lucide-react";
+import { Clock, Shield, Plus, Trash2, Save, ToggleLeft, ToggleRight, Pencil, X, Check, DollarSign, TrendingUp, Send, UserCheck, Radio, CheckCircle2, XCircle, Trophy, PackageX } from "lucide-react";
 
 interface DispatcherStats {
   total: number;            // trips created by dispatcher
@@ -9,6 +9,7 @@ interface DispatcherStats {
   broadcast: number;        // sent to app (broadcast wave)
   completed: number;        // ended successfully
   cancelled: number;        // cancelled or expired
+  lostItems: number;        // lost item reports logged by dispatcher
 }
 
 interface AdminDutyHoursProps {
@@ -153,7 +154,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
 
     const stats: Record<string, DispatcherStats> = {};
     dispatcherIds.forEach(id => {
-      stats[id] = { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 };
+      stats[id] = { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0, lostItems: 0 };
     });
     allTrips.forEach((t: any) => {
       const s = stats[t.created_by];
@@ -166,6 +167,30 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
       if (t.status === "completed") s.completed++;
       if (["cancelled", "expired", "no_show"].includes(t.status)) s.cancelled++;
     });
+
+    // Fetch lost item reports created by these dispatchers in the same window (paginated)
+    let allLost: any[] = [];
+    let lostFrom = 0;
+    while (lostFrom < 50000) {
+      let lq = supabase
+        .from("lost_item_reports")
+        .select("created_by")
+        .in("created_by", dispatcherIds)
+        .order("created_at", { ascending: false })
+        .range(lostFrom, lostFrom + PAGE - 1);
+      if (start) lq = lq.gte("created_at", start.toISOString());
+      if (end) lq = lq.lte("created_at", end.toISOString());
+      const { data: lostData, error: lostErr } = await lq;
+      if (lostErr || !lostData || lostData.length === 0) break;
+      allLost = allLost.concat(lostData);
+      if (lostData.length < PAGE) break;
+      lostFrom += PAGE;
+    }
+    allLost.forEach((r: any) => {
+      const s = stats[r.created_by];
+      if (s) s.lostItems++;
+    });
+
     setDispatcherStats(stats);
   };
 
@@ -504,7 +529,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
           const ranked = Object.entries(dispatcherSummary)
             .map(([id, info]: [string, any]) => ({
               id, info,
-              stats: dispatcherStats[id] || { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 },
+              stats: dispatcherStats[id] || { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0, lostItems: 0 },
             }))
             .sort((a, b) => b.stats.total - a.stats.total);
           const totals = ranked.reduce((acc, r) => {
@@ -513,8 +538,9 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
             acc.broadcast += r.stats.broadcast;
             acc.completed += r.stats.completed;
             acc.cancelled += r.stats.cancelled;
+            acc.lostItems += r.stats.lostItems;
             return acc;
-          }, { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 });
+          }, { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0, lostItems: 0 });
           return (
             <div className="bg-gradient-to-br from-primary/5 via-card to-card border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -525,13 +551,14 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                 <p className="text-[10px] text-muted-foreground">Real trip data for selected period</p>
               </div>
               {/* Totals strip */}
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {[
                   { label: "Total", value: totals.total, Icon: Send, color: "text-primary" },
                   { label: "Assigned", value: totals.assigned, Icon: UserCheck, color: "text-sky-500" },
                   { label: "Sent to App", value: totals.broadcast, Icon: Radio, color: "text-amber-500" },
                   { label: "Completed", value: totals.completed, Icon: CheckCircle2, color: "text-success" },
                   { label: "Cancelled", value: totals.cancelled, Icon: XCircle, color: "text-destructive" },
+                  { label: "Lost Items", value: totals.lostItems, Icon: PackageX, color: "text-fuchsia-500" },
                 ].map(s => {
                   const Icon = s.Icon;
                   return (
@@ -565,12 +592,13 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                         )}
                         <p className="text-xs font-semibold text-foreground truncate">{name}</p>
                       </div>
-                      <div className="flex-1 grid grid-cols-5 gap-1 text-center">
+                      <div className="flex-1 grid grid-cols-6 gap-1 text-center">
                         <div><p className="text-sm font-bold text-foreground">{stats.total}</p><p className="text-[9px] text-muted-foreground">Total</p></div>
                         <div><p className="text-sm font-bold text-sky-500">{stats.assigned}</p><p className="text-[9px] text-muted-foreground">Assigned</p></div>
                         <div><p className="text-sm font-bold text-amber-500">{stats.broadcast}</p><p className="text-[9px] text-muted-foreground">Sent</p></div>
                         <div><p className="text-sm font-bold text-success">{stats.completed}</p><p className="text-[9px] text-muted-foreground">Done</p></div>
                         <div><p className="text-sm font-bold text-destructive">{stats.cancelled}</p><p className="text-[9px] text-muted-foreground">Cancel</p></div>
+                        <div><p className="text-sm font-bold text-fuchsia-500">{stats.lostItems}</p><p className="text-[9px] text-muted-foreground">Lost</p></div>
                       </div>
                       <div className="w-16 text-right shrink-0">
                         <p className="text-sm font-bold text-foreground">{completionRate}%</p>

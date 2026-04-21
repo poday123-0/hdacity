@@ -2621,7 +2621,7 @@ const Dispatch = () => {
         )}
         {activeTab === "lost_items" && (
           <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-            <AdminLostItems />
+            <AdminLostItems createdById={dispatcherProfile?.id} />
           </div>
         )}
         {activeTab === "sos_history" && (
