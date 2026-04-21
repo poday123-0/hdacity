@@ -44,8 +44,6 @@ const AdminDutyHours = () => {
   const [addEndTime, setAddEndTime] = useState("");
   const [addSaving, setAddSaving] = useState(false);
 
-  const fetchSessions = async () => {
-    setLoading(true);
   // Compute the active date range for filters
   const dateRange = useMemo(() => {
     const now = new Date();
