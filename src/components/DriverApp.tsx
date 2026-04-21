@@ -1924,6 +1924,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     if (updated.status === "accepted" && updated.driver_id !== userProfile?.id) {
       stopAllSounds(); tripSoundRef.current = null; handlingTripRef.current = null;
       if (rideRequestTimerRef.current) { clearInterval(rideRequestTimerRef.current); rideRequestTimerRef.current = null; }
+      // Play the configured "Driver: Trip Cancelled" sound so this driver knows the request is gone
+      const { data: takenSound } = await supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_cancelled").eq("is_default", true).eq("is_active", true).single();
+      if (takenSound?.file_url) playSound(takenSound.file_url);
       toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
       setScreen("online");
       setCurrentTrip(null);
