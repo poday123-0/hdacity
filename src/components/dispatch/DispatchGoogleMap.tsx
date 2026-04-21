@@ -375,6 +375,37 @@ const DispatchGoogleMap = () => {
     return () => { map.off("click", handleClick); };
   }, [drawMode]);
 
+  // HTML-escape helper for safe popup content
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  // Wire up Edit/Delete buttons inside an open Leaflet popup using event listeners
+  // (replaces fragile inline onclick handlers that broke on quotes / special chars in notes)
+  const wireClosurePopup = useCallback((c: typeof closures[0]) => {
+    // Defer to next tick — the popup DOM is inserted right after the popupopen event fires
+    setTimeout(() => {
+      const editBtn = document.querySelector<HTMLButtonElement>(`button[data-closure-edit="${c.id}"]`);
+      const delBtn = document.querySelector<HTMLButtonElement>(`button[data-closure-delete="${c.id}"]`);
+      if (editBtn && !editBtn.dataset.wired) {
+        editBtn.dataset.wired = "1";
+        editBtn.addEventListener("click", () => {
+          setEditingClosureId(c.id);
+          setEditClosureSeverity(c.severity);
+          setEditClosureNotes(c.notes || "");
+          setEditClosureExpiry(c.expires_at || "");
+        });
+      }
+      if (delBtn && !delBtn.dataset.wired) {
+        delBtn.dataset.wired = "1";
+        delBtn.addEventListener("click", async () => {
+          if (!confirm("Delete this closure?")) return;
+          await removeClosure(c.id);
+          toast({ title: "Closure removed" });
+        });
+      }
+    }, 0);
+  }, [removeClosure]);
+
   // Render closures on map
   useEffect(() => {
     if (!mapInstance.current) return;
@@ -397,21 +428,21 @@ const DispatchGoogleMap = () => {
         const marker = L.marker([coords[0].lat, coords[0].lng], { icon, zIndexOffset: 2000 }).addTo(map);
 
         const driverInfo = c.reported_by_type === "driver" && c.reporter_name
-          ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
+          ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${escapeHtml(c.reporter_name)}${c.reporter_phone ? ` (${escapeHtml(c.reporter_phone)})` : ""}</div>`
           : "";
-        const safeNotes = (c.notes || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
         const popupHtml = `
           <div style="font-size:12px;padding:4px;max-width:240px">
             ${driverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
-            ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+            ${c.notes ? `<br/><span style="color:#666">${escapeHtml(c.notes)}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
             <div style="display:flex;gap:6px;margin-top:8px">
-              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${safeNotes}','${c.expires_at || ""}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#3b82f6;color:white;border:0;cursor:pointer">✏️ Edit</button>
-              <button onclick="if(confirm('Delete this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#ef4444;color:white;border:0;cursor:pointer">🗑 Delete</button>
+              <button data-closure-edit="${c.id}" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#3b82f6;color:white;border:0;cursor:pointer">✏️ Edit</button>
+              <button data-closure-delete="${c.id}" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#ef4444;color:white;border:0;cursor:pointer">🗑 Delete</button>
             </div>
           </div>`;
         marker.bindPopup(popupHtml);
+        marker.on("popupopen", () => wireClosurePopup(c));
         closureLayersRef.current.push(marker);
       } else if (c.closure_type === "line" && coords.length > 1) {
         const line = L.polyline(
@@ -430,21 +461,21 @@ const DispatchGoogleMap = () => {
         const infoMarker = L.marker([midPoint.lat, midPoint.lng], { icon, zIndexOffset: 2001 }).addTo(map);
 
         const lineDriverInfo = c.reported_by_type === "driver" && c.reporter_name
-          ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${c.reporter_name}${c.reporter_phone ? ` (${c.reporter_phone})` : ""}</div>`
+          ? `<div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:2px">🚗 Reported by: ${escapeHtml(c.reporter_name)}${c.reporter_phone ? ` (${escapeHtml(c.reporter_phone)})` : ""}</div>`
           : "";
-        const safeLineNotes = (c.notes || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
         const popupHtml = `
           <div style="font-size:12px;padding:4px;max-width:240px">
             ${lineDriverInfo}
             <strong style="color:${sev.color}">${sev.label}</strong>
-            ${c.notes ? `<br/><span style="color:#666">${c.notes}</span>` : ""}
+            ${c.notes ? `<br/><span style="color:#666">${escapeHtml(c.notes)}</span>` : ""}
             ${c.expires_at ? `<br/><span style="font-size:10px;color:#999">Expires: ${new Date(c.expires_at).toLocaleString("en-US", { timeZone: "Indian/Maldives" })}</span>` : ""}
             <div style="display:flex;gap:6px;margin-top:8px">
-              <button onclick="window.__editClosure__('${c.id}','${c.severity}','${safeLineNotes}','${c.expires_at || ""}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#3b82f6;color:white;border:0;cursor:pointer">✏️ Edit</button>
-              <button onclick="if(confirm('Delete this closure?'))window.__removeClosure__('${c.id}')" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#ef4444;color:white;border:0;cursor:pointer">🗑 Delete</button>
+              <button data-closure-edit="${c.id}" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#3b82f6;color:white;border:0;cursor:pointer">✏️ Edit</button>
+              <button data-closure-delete="${c.id}" style="flex:1;padding:5px 8px;font-size:11px;font-weight:600;border-radius:6px;background:#ef4444;color:white;border:0;cursor:pointer">🗑 Delete</button>
             </div>
           </div>`;
         infoMarker.bindPopup(popupHtml);
+        infoMarker.on("popupopen", () => wireClosurePopup(c));
 
         closureLayersRef.current.push(line);
         closureLayersRef.current.push(infoMarker);
