@@ -123,6 +123,18 @@ function getNativeSoundName(soundCategory: string): string {
   return map[soundCategory] || "default";
 }
 
+const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -206,11 +218,11 @@ Deno.serve(async (req) => {
     const isTripRequestType = data?.type === "trip_requested";
     let filteredUserIds = user_ids;
 
-    if (isTripRequestType && user_ids.length > 0) {
+    if ((isTripRequestType || data?.type === "trip_taken") && user_ids.length > 0) {
       // Check driver_locations to see who is actually online and operating the correct vehicle type
       let driverLocQuery = supabase
         .from("driver_locations")
-        .select("driver_id")
+        .select("driver_id, lat, lng")
         .in("driver_id", user_ids)
         .eq("is_online", true);
 
@@ -221,17 +233,51 @@ Deno.serve(async (req) => {
       }
 
       const { data: onlineDrivers } = await driverLocQuery;
-      const onlineSet = new Set((onlineDrivers || []).map((d: any) => d.driver_id));
+      const pickupLat = data?.pickup_lat != null ? Number(data.pickup_lat) : null;
+      const pickupLng = data?.pickup_lng != null ? Number(data.pickup_lng) : null;
+
+      const onlineFiltered = (onlineDrivers || []).filter((d: any) => {
+        if (pickupLat == null || pickupLng == null || typeof d.lat !== "number" || typeof d.lng !== "number") {
+          return true;
+        }
+        return haversineKm(pickupLat, pickupLng, Number(d.lat), Number(d.lng)) <= 50;
+      });
+
+      const onlineSet = new Set(onlineFiltered.map((d: any) => d.driver_id));
       filteredUserIds = user_ids.filter((id: string) => onlineSet.has(id));
 
+      if (pickupLat != null && pickupLng != null && onlineFiltered.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, trip_radius_km")
+          .in("id", onlineFiltered.map((d: any) => d.driver_id));
+        const { data: defaultSetting } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "default_trip_radius_km")
+          .maybeSingle();
+
+        const defaultRadius = defaultSetting?.value != null ? Number(defaultSetting.value) : 10;
+        const radiusByDriver = new Map<string, number>();
+        for (const p of profiles || []) {
+          const dbDefault = 10;
+          const r = (p as any).trip_radius_km;
+          radiusByDriver.set((p as any).id, r === dbDefault || r == null ? defaultRadius : Number(r));
+        }
+
+        filteredUserIds = onlineFiltered
+          .filter((d: any) => haversineKm(pickupLat, pickupLng, Number(d.lat), Number(d.lng)) <= (radiusByDriver.get(d.driver_id) ?? defaultRadius))
+          .map((d: any) => d.driver_id);
+      }
+
       if (filteredUserIds.length === 0) {
-        console.log("No online drivers found among user_ids — skipping trip_requested notification");
+        console.log(`No eligible in-range drivers found among user_ids — skipping ${data?.type || "driver"} notification`);
         return new Response(
-          JSON.stringify({ success: true, sent: 0, message: "No online drivers found" }),
+          JSON.stringify({ success: true, sent: 0, message: "No eligible in-range drivers found" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      console.log(`Filtered ${user_ids.length} → ${filteredUserIds.length} online driver(s) for trip_requested`);
+      console.log(`Filtered ${user_ids.length} → ${filteredUserIds.length} in-range driver(s) for ${data?.type}`);
     }
 
     const { data: tokens, error: tokenError } = await supabase
