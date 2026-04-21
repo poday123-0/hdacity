@@ -60,6 +60,7 @@ const AdminDrivers = () => {
   const [smsModal, setSmsModal] = useState<null | { mode: "no-vehicle" | "selected"; recipients: any[] }>(null);
   const [smsMessage, setSmsMessage] = useState("");
   const [smsSending, setSmsSending] = useState(false);
+  const [smsAddSearch, setSmsAddSearch] = useState("");
 
   const fetchAll = async () => {
     setLoading(true);
