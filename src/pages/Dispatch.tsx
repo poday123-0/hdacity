@@ -2031,6 +2031,14 @@ const Dispatch = () => {
                                               })
                                               .eq("id", t.id)
                                               .then(() => {
+                                                broadcastLossActor({
+                                                  trip_id: t.id,
+                                                  vehicle_id: t.vehicle?.id || (t as any).vehicle_id || null,
+                                                  action: "cleared",
+                                                  actor_name: actorNameFromProfile(dispatcherProfile),
+                                                  actor_role: "dispatcher",
+                                                  ts: Date.now(),
+                                                });
                                                 toast({ title: "Removed from Loss/Cancel" });
                                                 refreshTrips();
                                               });
