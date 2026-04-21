@@ -166,6 +166,33 @@ const DispatchTripForm = ({
   const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
   const [availableDisposalTypes, setAvailableDisposalTypes] = useState<any[]>([]);
 
+  // Buffers actor info from broadcasts to merge with postgres_changes events.
+  // Key: `${trip_id}:${action}` → { actor_name, actor_role, ts }
+  const actorBufferRef = useRef<Map<string, { actor_name: string; actor_role: string; ts: number }>>(new Map());
+
+  // Subscribe to actor broadcasts (who set/cleared loss). Lives independently
+  // of centerCodeResults so we never miss an actor event due to re-subscriptions.
+  useEffect(() => {
+    const unsub = subscribeLossActor((payload: LossAuditActorPayload) => {
+      const key = `${payload.trip_id}:${payload.action}`;
+      actorBufferRef.current.set(key, {
+        actor_name: payload.actor_name,
+        actor_role: payload.actor_role,
+        ts: payload.ts,
+      });
+      // Backfill any audit entry already in the log that lacks actor info
+      setLossAuditLog((prev) => prev.map((ev) => {
+        if (ev.trip_id === payload.trip_id && ev.action === payload.action && !ev.actor_name) {
+          return { ...ev, actor_name: payload.actor_name, actor_role: payload.actor_role };
+        }
+        return ev;
+      }));
+      // Auto-expire buffer entries after 30s to avoid leaks
+      setTimeout(() => { actorBufferRef.current.delete(key); }, 30000);
+    });
+    return unsub;
+  }, []);
+
   // Realtime: update centerCodeResults when trip is_loss changes + record audit
   useEffect(() => {
     if (centerCodeResults.length === 0) return;
@@ -189,17 +216,21 @@ const DispatchTripForm = ({
           // Find the matching entry to get code/plate for audit log
           const matched = centerCodeResults.find(e => e.vehicle_id === changedVehicleId);
           if (matched) {
+            const action: 'set' | 'cleared' = newRow.is_loss ? 'set' : 'cleared';
+            const buffered = actorBufferRef.current.get(`${newRow.id}:${action}`);
             const event: LossAuditEvent = {
               id: `${newRow.id}-${Date.now()}`,
               ts: Date.now(),
               code: matched.code,
               plate: matched.plate_number,
               vehicle_id: changedVehicleId,
-              action: newRow.is_loss ? 'set' : 'cleared',
+              action,
               trip_id: newRow.id,
               pickup: newRow.pickup_address || null,
               dropoff: newRow.dropoff_address || null,
               customer: newRow.customer_name || newRow.customer_phone || null,
+              actor_name: buffered?.actor_name || null,
+              actor_role: buffered?.actor_role || null,
             };
             setLossAuditLog((prev) => [event, ...prev].slice(0, 30));
           }
