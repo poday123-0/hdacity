@@ -2166,6 +2166,8 @@ export type Database = {
           created_by: string | null
           id: string
           notes: string | null
+          processed_at: string | null
+          processed_by: string | null
           proof_url: string | null
           reason: string
           status: string
@@ -2180,6 +2182,8 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
           proof_url?: string | null
           reason?: string
           status?: string
@@ -2194,6 +2198,8 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
           proof_url?: string | null
           reason?: string
           status?: string
