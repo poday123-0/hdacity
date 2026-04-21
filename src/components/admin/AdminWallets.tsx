@@ -104,7 +104,8 @@ const AdminWallets = () => {
   };
 
   const fetchPendingTopUps = async () => {
-    const { data } = await supabase
+    // Pending requests
+    const { data: pendingData } = await supabase
       .from("wallet_transactions")
       .select("*")
       .eq("status", "pending")
@@ -112,15 +113,37 @@ const AdminWallets = () => {
       .not("proof_url", "is", null)
       .order("created_at", { ascending: false })
       .limit(100);
-    
-    const txns = (data || []).map(t => ({ ...t, amount: Number(t.amount) }));
-    setPendingTopUps(txns);
 
-    // Fetch profiles for top-up users
-    if (txns.length > 0) {
-      const userIds = [...new Set(txns.map(t => t.user_id))];
-      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", userIds);
-      setTopUpProfiles(new Map((profiles || []).map(p => [p.id, p])));
+    // Processed history (approved or rejected) — only top-ups (originally had proof_url)
+    const { data: historyData } = await supabase
+      .from("wallet_transactions")
+      .select("*")
+      .in("status", ["completed", "rejected"])
+      .eq("type", "credit")
+      .not("proof_url", "is", null)
+      .not("processed_at", "is", null)
+      .order("processed_at", { ascending: false })
+      .limit(200);
+
+    const pending = (pendingData || []).map(t => ({ ...t, amount: Number(t.amount) }));
+    const history = (historyData || []).map(t => ({ ...t, amount: Number(t.amount) }));
+    setPendingTopUps(pending);
+    setTopUpHistory(history);
+
+    // Fetch profiles for all top-up users + admin processors
+    const userIds = [...new Set([...pending, ...history].map(t => t.user_id))];
+    const adminIds = [...new Set(history.map(t => t.processed_by).filter(Boolean) as string[])];
+    const allIds = [...new Set([...userIds, ...adminIds])];
+    if (allIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds);
+      const userMap = new Map<string, any>();
+      const adminMap = new Map<string, any>();
+      (profiles || []).forEach(p => {
+        if (userIds.includes(p.id)) userMap.set(p.id, p);
+        if (adminIds.includes(p.id)) adminMap.set(p.id, p);
+      });
+      setTopUpProfiles(userMap);
+      setAdminProfiles(adminMap);
     }
   };
 
