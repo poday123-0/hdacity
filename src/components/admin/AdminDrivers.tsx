@@ -1825,7 +1825,7 @@ const AdminDrivers = () => {
               </button>
               <button
                 onClick={sendBulkSms}
-                disabled={smsSending || !smsMessage.trim()}
+                disabled={smsSending || !smsMessage.trim() || smsModal.recipients.length === 0}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
               >
                 {smsSending ? (
