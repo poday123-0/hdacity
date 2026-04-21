@@ -252,6 +252,30 @@ const HdaDispatchVehiclesModal = ({ open, onClose, onUpdated }: Props) => {
     setBulkSending(false);
   };
 
+  const exportAsPng = async () => {
+    if (!exportRef.current) return;
+    setExporting(true);
+    try {
+      // Briefly let layout settle
+      await new Promise(r => setTimeout(r, 50));
+      const dataUrl = await toPng(exportRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      const filterTag = typeFilter ? `_${typeFilter.replace(/\s+/g, "-")}` : "";
+      link.download = `HDA-Dispatch-Vehicles${filterTag}_${stamp}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast({ title: "Exported ✅", description: `${filtered.length} vehicles saved as PNG` });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    }
+    setExporting(false);
+  };
+
   if (!open) return null;
 
   return (
