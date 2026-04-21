@@ -278,6 +278,67 @@ const AdminDrivers = () => {
     else { toast({ title: `Vehicle type assigned to ${vehicleIds.length} vehicle(s)` }); setShowBulkAssign(null); setBulkVehicleSelected(new Set()); fetchAll(); }
   };
 
+  const DEFAULT_NO_VEHICLE_SMS = "Hi! Your HDA Taxi driver profile is almost ready, but no vehicle has been added yet. Please open the app, add your vehicle details and documents to start receiving trips. Need help? Contact us. - HDA Taxi";
+
+  const openSmsNoVehicle = () => {
+    const noVehicleDrivers = drivers.filter(d => {
+      if (d.status === "Rejected") return false;
+      const v = driverVehicles[d.id] || [];
+      return v.length === 0;
+    });
+    if (noVehicleDrivers.length === 0) {
+      toast({ title: "No drivers without vehicles found" });
+      return;
+    }
+    setSmsMessage(DEFAULT_NO_VEHICLE_SMS);
+    setSmsModal({ mode: "no-vehicle", recipients: noVehicleDrivers });
+  };
+
+  const openSmsSelected = () => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    const recipients = drivers.filter(d => ids.includes(d.id));
+    setSmsMessage("");
+    setSmsModal({ mode: "selected", recipients });
+  };
+
+  const sendBulkSms = async () => {
+    if (!smsModal || !smsMessage.trim()) return;
+    const phoneNumbers = smsModal.recipients
+      .map(d => {
+        const phone = String(d.phone_number || "").replace(/\D/g, "");
+        const cc = String(d.country_code || "960").replace(/\D/g, "");
+        if (!phone || phone.length < 7) return null;
+        return phone.startsWith(cc) ? phone : `${cc}${phone}`;
+      })
+      .filter((n): n is string => !!n);
+    if (phoneNumbers.length === 0) {
+      toast({ title: "No valid phone numbers in selection", variant: "destructive" });
+      return;
+    }
+    setSmsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bulk-sms", {
+        body: { message: smsMessage.trim(), target_type: "custom", phone_numbers: phoneNumbers },
+      });
+      if (error) throw error;
+      if (data?.error && !data?.sent) {
+        toast({ title: "SMS Error", description: data.error, variant: "destructive" });
+      } else {
+        toast({
+          title: `SMS sent to ${data?.sent || 0} of ${data?.total || phoneNumbers.length} drivers`,
+          description: data?.failed > 0 ? `${data.failed} failed` : undefined,
+        });
+        setSmsModal(null);
+        setSmsMessage("");
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to send SMS", description: err.message, variant: "destructive" });
+    }
+    setSmsSending(false);
+  };
+
+
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
     const driver = drivers.find(d => d.id === id);
