@@ -237,7 +237,15 @@ const AdminCompetitions = () => {
         await supabase.from("competition_prizes").insert(prizeInserts);
       }
 
-      toast({ title: editingId ? "Competition updated!" : "Competition created! 🏆" });
+      // Auto-refresh leaderboard so new date range / filters take effect immediately
+      // (otherwise stale competition_entries from the old config remain visible)
+      try {
+        await supabase.functions.invoke("refresh-competition-leaderboards");
+      } catch (refreshErr) {
+        console.warn("Leaderboard auto-refresh failed:", refreshErr);
+      }
+
+      toast({ title: editingId ? "Competition updated & leaderboard refreshed!" : "Competition created! 🏆" });
       resetForm();
       fetchAll();
     } catch (err: any) {
