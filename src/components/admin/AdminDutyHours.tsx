@@ -529,7 +529,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
           const ranked = Object.entries(dispatcherSummary)
             .map(([id, info]: [string, any]) => ({
               id, info,
-              stats: dispatcherStats[id] || { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 },
+              stats: dispatcherStats[id] || { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0, lostItems: 0 },
             }))
             .sort((a, b) => b.stats.total - a.stats.total);
           const totals = ranked.reduce((acc, r) => {
@@ -538,8 +538,9 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
             acc.broadcast += r.stats.broadcast;
             acc.completed += r.stats.completed;
             acc.cancelled += r.stats.cancelled;
+            acc.lostItems += r.stats.lostItems;
             return acc;
-          }, { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0 });
+          }, { total: 0, assigned: 0, broadcast: 0, completed: 0, cancelled: 0, lostItems: 0 });
           return (
             <div className="bg-gradient-to-br from-primary/5 via-card to-card border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -550,13 +551,14 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                 <p className="text-[10px] text-muted-foreground">Real trip data for selected period</p>
               </div>
               {/* Totals strip */}
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {[
                   { label: "Total", value: totals.total, Icon: Send, color: "text-primary" },
                   { label: "Assigned", value: totals.assigned, Icon: UserCheck, color: "text-sky-500" },
                   { label: "Sent to App", value: totals.broadcast, Icon: Radio, color: "text-amber-500" },
                   { label: "Completed", value: totals.completed, Icon: CheckCircle2, color: "text-success" },
                   { label: "Cancelled", value: totals.cancelled, Icon: XCircle, color: "text-destructive" },
+                  { label: "Lost Items", value: totals.lostItems, Icon: PackageX, color: "text-fuchsia-500" },
                 ].map(s => {
                   const Icon = s.Icon;
                   return (
@@ -590,12 +592,13 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                         )}
                         <p className="text-xs font-semibold text-foreground truncate">{name}</p>
                       </div>
-                      <div className="flex-1 grid grid-cols-5 gap-1 text-center">
+                      <div className="flex-1 grid grid-cols-6 gap-1 text-center">
                         <div><p className="text-sm font-bold text-foreground">{stats.total}</p><p className="text-[9px] text-muted-foreground">Total</p></div>
                         <div><p className="text-sm font-bold text-sky-500">{stats.assigned}</p><p className="text-[9px] text-muted-foreground">Assigned</p></div>
                         <div><p className="text-sm font-bold text-amber-500">{stats.broadcast}</p><p className="text-[9px] text-muted-foreground">Sent</p></div>
                         <div><p className="text-sm font-bold text-success">{stats.completed}</p><p className="text-[9px] text-muted-foreground">Done</p></div>
                         <div><p className="text-sm font-bold text-destructive">{stats.cancelled}</p><p className="text-[9px] text-muted-foreground">Cancel</p></div>
+                        <div><p className="text-sm font-bold text-fuchsia-500">{stats.lostItems}</p><p className="text-[9px] text-muted-foreground">Lost</p></div>
                       </div>
                       <div className="w-16 text-right shrink-0">
                         <p className="text-sm font-bold text-foreground">{completionRate}%</p>
