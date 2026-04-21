@@ -957,16 +957,38 @@ const AdminDashboard = () => {
 
       {/* Top Completion-Rate Drivers */}
       <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-primary" /> Top Completion-Rate Drivers
-            </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              Best success ratio (completed / assigned) for {getPeriodLabel().toLowerCase()} · min 3 trips
-            </p>
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-primary" /> Top Completion-Rate Drivers
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Best success ratio (completed / assigned) · min 5 trips · excludes HDA Dispatch
+              </p>
+            </div>
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5 shrink-0">
+              {([
+                { v: "today", label: "Today" },
+                { v: "week", label: "Week" },
+                { v: "month", label: "Month" },
+              ] as const).map(opt => (
+                <button
+                  key={opt.v}
+                  onClick={() => setCompletionPeriod(opt.v)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors",
+                    completionPeriod === opt.v
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5 self-start flex-wrap">
             {([
               { v: "all", label: "All" },
               { v: "app", label: "Customer App" },
@@ -988,6 +1010,7 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
+
 
         {completionRateDrivers.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No driver data for this filter</p>
