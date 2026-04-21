@@ -863,6 +863,28 @@ const AdminDrivers = () => {
         </div>
       )}
 
+      {/* No-vehicle SMS reminder */}
+      {!loading && (() => {
+        const noVehCount = drivers.filter(d => d.status !== "Rejected" && (driverVehicles[d.id] || []).length === 0).length;
+        if (noVehCount === 0) return null;
+        return (
+          <div className="flex items-center justify-between gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-yellow-500/20 flex items-center justify-center shrink-0">
+                <Car className="w-4 h-4 text-yellow-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{noVehCount} driver{noVehCount !== 1 ? "s" : ""} without a vehicle</p>
+                <p className="text-[11px] text-muted-foreground truncate">Send a reminder SMS so they complete their profile</p>
+              </div>
+            </div>
+            <button onClick={openSmsNoVehicle} className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity shrink-0">
+              <MessageSquare className="w-3.5 h-3.5" /> Send Reminder SMS
+            </button>
+          </div>
+        );
+      })()}
+
       {/* ── Pending Vehicles Quick Actions ── */}
       {!loading && pendingVehicles.length > 0 && (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
