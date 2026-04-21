@@ -736,29 +736,31 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
                   </td>
                   <td className="py-2 px-2 font-semibold text-foreground">{formatDuration(s.clock_in, s.clock_out)}</td>
                   <td className="py-2 px-2 text-muted-foreground font-mono text-[10px]">{s.ip_address || "-"}</td>
-                  <td className="py-2 px-2">
-                    <div className="flex items-center gap-1">
-                      {editingId === s.id ? (
-                        <>
-                          <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => deleteSession(s.id)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+                  {!isSelfView && (
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-1">
+                        {editingId === s.id ? (
+                          <>
+                            <button onClick={() => saveEdit(s.id)} className="text-primary hover:text-primary/80">
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEdit(s)} className="text-muted-foreground hover:text-primary">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => deleteSession(s.id)} className="text-muted-foreground hover:text-destructive">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
