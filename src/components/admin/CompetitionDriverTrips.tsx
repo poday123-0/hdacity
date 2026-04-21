@@ -278,7 +278,8 @@ const CompetitionDriverTrips = ({ competition, driverId, driverName, onClose }: 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
