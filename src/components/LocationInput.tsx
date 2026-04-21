@@ -346,7 +346,7 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
 
     let resolved = false;
 
-    const onPosition = async (pos: GeolocationPosition) => {
+    const onPosition = async (pos: GeolocationPosition, fromCache = false) => {
       if (resolved) return; // Only use the first fix
       resolved = true;
 
@@ -363,6 +363,15 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
       setPickup(quickLoc);
       setPickupQuery(quickLoc.name);
       setDetectingLocation(false);
+
+      // Cache fresh fixes for instant reuse next time
+      if (!fromCache) {
+        try {
+          localStorage.setItem("hda_passenger_last_pos", JSON.stringify({
+            lat: latitude, lng: longitude, accuracy, ts: Date.now(),
+          }));
+        } catch {}
+      }
 
       if (autoFocusDropoff && !dropoff) {
         setActiveField("dropoff");
@@ -385,21 +394,49 @@ const LocationInput = ({ onSearch, userId, onMapPickerChange }: LocationInputPro
       }).catch(() => {});
     };
 
-    // Use watchPosition to get the best fix quickly, then stop
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      onPosition,
-      (err) => {
-        console.warn("Geolocation error:", err.message);
-        setDetectingLocation(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    // 1. INSTANT: Use cached position if fresh (< 2 minutes old) — feels immediate
+    try {
+      const cachedRaw = localStorage.getItem("hda_passenger_last_pos");
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (cached?.lat && cached?.lng && Date.now() - cached.ts < 120_000) {
+          onPosition({
+            coords: { latitude: cached.lat, longitude: cached.lng, accuracy: cached.accuracy || 50 } as any,
+            timestamp: cached.ts,
+          } as GeolocationPosition, true);
+          // Refresh cache silently in background
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              try {
+                localStorage.setItem("hda_passenger_last_pos", JSON.stringify({
+                  lat: pos.coords.latitude, lng: pos.coords.longitude,
+                  accuracy: pos.coords.accuracy, ts: Date.now(),
+                }));
+              } catch {}
+            },
+            () => {},
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+          );
+          return;
+        }
+      }
+    } catch {}
+
+    // 2. FAST: Coarse fix using OS last-known (instant on most devices)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => onPosition(pos),
+      () => {},
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
 
-    // Also get a fast coarse position immediately
-    navigator.geolocation.getCurrentPosition(
-      onPosition,
-      () => {},
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 }
+    // 3. ACCURATE: High-accuracy watcher in parallel as fallback / upgrade
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => onPosition(pos),
+      (err) => {
+        console.warn("Geolocation error:", err.message);
+        if (!resolved) setDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
     );
   };
 
