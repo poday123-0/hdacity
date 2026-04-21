@@ -5,6 +5,7 @@ import { useOfflineDispatch } from "@/hooks/use-offline-dispatch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
+import { broadcastLossActor, actorNameFromProfile } from "@/lib/loss-audit-broadcast";
 import {
   Phone,
   MapPin,
@@ -1238,13 +1239,24 @@ const Dispatch = () => {
 
   const handleMarkLoss = async (tripId: string) => {
     setMarkingLoss(tripId);
+    // Look up vehicle for accurate audit attribution
+    const { data: tripRow } = await supabase.from("trips").select("vehicle_id").eq("id", tripId).maybeSingle();
     await supabase.from("trips").update({ is_loss: true }).eq("id", tripId);
+    broadcastLossActor({
+      trip_id: tripId,
+      vehicle_id: (tripRow as any)?.vehicle_id || null,
+      action: "set",
+      actor_name: actorNameFromProfile(dispatcherProfile),
+      actor_role: "dispatcher",
+      ts: Date.now(),
+    });
     toast({ title: "Marked as Loss" });
     refreshTrips();
     setMarkingLoss(null);
   };
 
   const handleDispatchCancel = async (tripId: string) => {
+    const { data: tripRow } = await supabase.from("trips").select("vehicle_id").eq("id", tripId).maybeSingle();
     await supabase
       .from("trips")
       .update({
@@ -1254,6 +1266,14 @@ const Dispatch = () => {
         is_loss: true,
       })
       .eq("id", tripId);
+    broadcastLossActor({
+      trip_id: tripId,
+      vehicle_id: (tripRow as any)?.vehicle_id || null,
+      action: "set",
+      actor_name: actorNameFromProfile(dispatcherProfile),
+      actor_role: "dispatcher",
+      ts: Date.now(),
+    });
     toast({ title: "Trip Cancelled" });
     refreshTrips();
   };
@@ -1716,6 +1736,14 @@ const Dispatch = () => {
                                       })
                                       .eq("id", t.id)
                                       .then(() => {
+                                        broadcastLossActor({
+                                          trip_id: t.id,
+                                          vehicle_id: t.vehicle?.id || (t as any).vehicle_id || null,
+                                          action: "cleared",
+                                          actor_name: actorNameFromProfile(dispatcherProfile),
+                                          actor_role: "dispatcher",
+                                          ts: Date.now(),
+                                        });
                                         toast({ title: "Removed from Loss" });
                                         refreshTrips();
                                       });
@@ -2003,6 +2031,14 @@ const Dispatch = () => {
                                               })
                                               .eq("id", t.id)
                                               .then(() => {
+                                                broadcastLossActor({
+                                                  trip_id: t.id,
+                                                  vehicle_id: t.vehicle?.id || (t as any).vehicle_id || null,
+                                                  action: "cleared",
+                                                  actor_name: actorNameFromProfile(dispatcherProfile),
+                                                  actor_role: "dispatcher",
+                                                  ts: Date.now(),
+                                                });
                                                 toast({ title: "Removed from Loss/Cancel" });
                                                 refreshTrips();
                                               });

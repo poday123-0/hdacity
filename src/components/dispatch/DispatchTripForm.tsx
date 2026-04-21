@@ -22,8 +22,11 @@ interface LossAuditEvent {
   pickup?: string | null;
   dropoff?: string | null;
   customer?: string | null;
+  actor_name?: string | null;
+  actor_role?: string | null;
 }
 import MapPicker from "@/components/MapPicker";
+import { broadcastLossActor, subscribeLossActor, actorNameFromProfile, type LossAuditActorPayload } from "@/lib/loss-audit-broadcast";
 
 interface NominatimResult {
   place_id: number;
@@ -163,6 +166,33 @@ const DispatchTripForm = ({
   const [selectedDisposalType, setSelectedDisposalType] = useState<string | null>(null);
   const [availableDisposalTypes, setAvailableDisposalTypes] = useState<any[]>([]);
 
+  // Buffers actor info from broadcasts to merge with postgres_changes events.
+  // Key: `${trip_id}:${action}` → { actor_name, actor_role, ts }
+  const actorBufferRef = useRef<Map<string, { actor_name: string; actor_role: string; ts: number }>>(new Map());
+
+  // Subscribe to actor broadcasts (who set/cleared loss). Lives independently
+  // of centerCodeResults so we never miss an actor event due to re-subscriptions.
+  useEffect(() => {
+    const unsub = subscribeLossActor((payload: LossAuditActorPayload) => {
+      const key = `${payload.trip_id}:${payload.action}`;
+      actorBufferRef.current.set(key, {
+        actor_name: payload.actor_name,
+        actor_role: payload.actor_role,
+        ts: payload.ts,
+      });
+      // Backfill any audit entry already in the log that lacks actor info
+      setLossAuditLog((prev) => prev.map((ev) => {
+        if (ev.trip_id === payload.trip_id && ev.action === payload.action && !ev.actor_name) {
+          return { ...ev, actor_name: payload.actor_name, actor_role: payload.actor_role };
+        }
+        return ev;
+      }));
+      // Auto-expire buffer entries after 30s to avoid leaks
+      setTimeout(() => { actorBufferRef.current.delete(key); }, 30000);
+    });
+    return unsub;
+  }, []);
+
   // Realtime: update centerCodeResults when trip is_loss changes + record audit
   useEffect(() => {
     if (centerCodeResults.length === 0) return;
@@ -186,17 +216,21 @@ const DispatchTripForm = ({
           // Find the matching entry to get code/plate for audit log
           const matched = centerCodeResults.find(e => e.vehicle_id === changedVehicleId);
           if (matched) {
+            const action: 'set' | 'cleared' = newRow.is_loss ? 'set' : 'cleared';
+            const buffered = actorBufferRef.current.get(`${newRow.id}:${action}`);
             const event: LossAuditEvent = {
               id: `${newRow.id}-${Date.now()}`,
               ts: Date.now(),
               code: matched.code,
               plate: matched.plate_number,
               vehicle_id: changedVehicleId,
-              action: newRow.is_loss ? 'set' : 'cleared',
+              action,
               trip_id: newRow.id,
               pickup: newRow.pickup_address || null,
               dropoff: newRow.dropoff_address || null,
               customer: newRow.customer_name || newRow.customer_phone || null,
+              actor_name: buffered?.actor_name || null,
+              actor_role: buffered?.actor_role || null,
             };
             setLossAuditLog((prev) => [event, ...prev].slice(0, 30));
           }
@@ -953,21 +987,56 @@ const DispatchTripForm = ({
       // (e.g. 375 + 377). Assigning code 377 must NOT clear code 375's loss.
       const assignedVehicleId = assignedEntry?.vehicle_id || null;
       if (assignedVehicleId) {
+        // Capture the trip(s) we'll clear so we can broadcast actor info per trip
+        const { data: lossTrips } = await supabase.from("trips")
+          .select("id")
+          .eq("vehicle_id", assignedVehicleId)
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator");
         supabase.from("trips")
           .update({ is_loss: false })
           .eq("vehicle_id", assignedVehicleId)
           .eq("is_loss", true)
           .eq("dispatch_type", "operator")
-          .then(() => { onTripCreated(); });
+          .then(() => {
+            (lossTrips || []).forEach((lt: any) => {
+              broadcastLossActor({
+                trip_id: lt.id,
+                vehicle_id: assignedVehicleId,
+                action: "cleared",
+                actor_name: actorNameFromProfile(dispatcherProfile),
+                actor_role: "dispatcher",
+                ts: Date.now(),
+              });
+            });
+            onTripCreated();
+          });
       } else if (assignedDriverId && dispatchMethod === "specific") {
         // Manual driver assignment with no center-code vehicle linked —
         // fall back to the legacy driver-scoped clear so behaviour is unchanged.
+        const { data: lossTrips } = await supabase.from("trips")
+          .select("id, vehicle_id")
+          .eq("driver_id", assignedDriverId)
+          .eq("is_loss", true)
+          .eq("dispatch_type", "operator");
         supabase.from("trips")
           .update({ is_loss: false })
           .eq("driver_id", assignedDriverId)
           .eq("is_loss", true)
           .eq("dispatch_type", "operator")
-          .then(() => { onTripCreated(); });
+          .then(() => {
+            (lossTrips || []).forEach((lt: any) => {
+              broadcastLossActor({
+                trip_id: lt.id,
+                vehicle_id: lt.vehicle_id || null,
+                action: "cleared",
+                actor_name: actorNameFromProfile(dispatcherProfile),
+                actor_role: "dispatcher",
+                ts: Date.now(),
+              });
+            });
+            onTripCreated();
+          });
       }
 
       if (stops.length > 0) {
@@ -1924,10 +1993,18 @@ const DispatchTripForm = ({
                         {lossAuditLog.map((ev) => (
                           <li key={ev.id} className="px-2 py-1 text-[9px]">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="flex items-center gap-1 min-w-0">
+                              <span className="flex items-center gap-1 min-w-0 flex-wrap">
                                 <span className={`font-bold ${ev.action === 'set' ? 'text-destructive' : 'text-primary'}`}>
                                   {ev.action === 'set' ? 'LOSS SET' : 'LOSS CLEARED'}
                                 </span>
+                                {ev.actor_name && (
+                                  <span className="text-foreground">
+                                    by <span className="font-semibold">{ev.actor_name}</span>
+                                    {ev.actor_role && ev.actor_role !== 'dispatcher' && (
+                                      <span className="text-muted-foreground/70"> ({ev.actor_role})</span>
+                                    )}
+                                  </span>
+                                )}
                                 <span className="font-semibold text-foreground">{ev.code}</span>
                                 <span className="text-muted-foreground truncate">{ev.plate}</span>
                               </span>
