@@ -825,6 +825,21 @@ const Index = () => {
 
       // Send push notification ONLY to drivers matching vehicle type AND within their personal radius
       if (data.status === "requested") {
+        // Wave-based dispatch (if enabled) — initialize wave 1
+        try {
+          const { data: modeRow } = await supabase
+            .from("system_settings")
+            .select("value")
+            .eq("key", "dispatch_mode")
+            .maybeSingle();
+          const mode = (modeRow?.value as any) || "broadcast";
+          if (mode === "wave_broadcast") {
+            await supabase.functions.invoke("dispatch-wave-init", { body: { trip_id: data.id } });
+          }
+        } catch (waveErr) {
+          console.warn("Wave init failed:", waveErr);
+        }
+
         try {
           const { data: locData } = await supabase
             .from("driver_locations")
