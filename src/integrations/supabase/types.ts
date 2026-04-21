@@ -361,6 +361,45 @@ export type Database = {
           },
         ]
       }
+      debug_logs: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          details: Json
+          device: string | null
+          driver_id: string | null
+          event: string
+          id: string
+          platform: string | null
+          source: string
+          trip_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          details?: Json
+          device?: string | null
+          driver_id?: string | null
+          event: string
+          id?: string
+          platform?: string | null
+          source?: string
+          trip_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          details?: Json
+          device?: string | null
+          driver_id?: string | null
+          event?: string
+          id?: string
+          platform?: string | null
+          source?: string
+          trip_id?: string | null
+        }
+        Relationships: []
+      }
       device_tokens: {
         Row: {
           created_at: string
