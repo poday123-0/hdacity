@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { notifyTripRequested } from "@/lib/push-notifications";
 import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
-import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send } from "lucide-react";
+import { MessageSquare, X, PackageX, Star, MapPin, Clock, DollarSign, User, Users, Luggage, CalendarClock, Timer, Phone, Search, Filter, Calendar, Send, Download, TrendingUp, CheckCircle2, XCircle, Loader2, Route } from "lucide-react";
 
 const statusOptions = [
   { value: "all", label: "All", color: "bg-surface text-foreground" },
