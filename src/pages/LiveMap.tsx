@@ -260,7 +260,7 @@ const LiveMap = () => {
 
         {/* Legend - hide for shared trip */}
         {!sharedTripId && (
-          <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2">
+          <div className="absolute bottom-4 left-4 z-[1000] bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2 shadow-lg pointer-events-auto">
             <p className="text-xs font-semibold text-foreground">Legend</p>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-[#4285F4]" />
@@ -283,7 +283,7 @@ const LiveMap = () => {
 
         {/* Shared trip info card */}
         {sharedTripId && activeTrips.length > 0 && (
-          <div className="absolute bottom-4 left-4 right-4 bg-card/95 backdrop-blur border border-border rounded-2xl p-4 space-y-2">
+          <div className="absolute bottom-4 left-4 right-4 z-[1000] bg-card/95 backdrop-blur border border-border rounded-2xl p-4 space-y-2 shadow-lg pointer-events-auto">
             {activeTrips[0].driverName && (
               <p className="text-sm font-bold text-foreground">🚕 {activeTrips[0].driverName}</p>
             )}
@@ -299,7 +299,7 @@ const LiveMap = () => {
 
         {/* Active trips sidebar - admin view only */}
         {!sharedTripId && activeTrips.length > 0 && (
-          <div className="absolute top-4 right-4 w-64 max-h-[calc(100%-2rem)] overflow-y-auto bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2">
+          <div className="absolute top-4 right-4 z-[1000] w-64 max-h-[calc(100%-2rem)] overflow-y-auto bg-card/90 backdrop-blur border border-border rounded-xl p-3 space-y-2 shadow-lg pointer-events-auto">
             <p className="text-xs font-semibold text-foreground">{activeTrips.length} Active Trip{activeTrips.length !== 1 ? "s" : ""}</p>
             {activeTrips.map(trip => (
               <div key={trip.id} className="bg-surface rounded-lg p-2 space-y-1">
