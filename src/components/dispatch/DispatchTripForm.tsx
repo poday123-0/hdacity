@@ -22,8 +22,11 @@ interface LossAuditEvent {
   pickup?: string | null;
   dropoff?: string | null;
   customer?: string | null;
+  actor_name?: string | null;
+  actor_role?: string | null;
 }
 import MapPicker from "@/components/MapPicker";
+import { broadcastLossActor, subscribeLossActor, actorNameFromProfile, type LossAuditActorPayload } from "@/lib/loss-audit-broadcast";
 
 interface NominatimResult {
   place_id: number;
