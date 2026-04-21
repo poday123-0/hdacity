@@ -184,7 +184,7 @@ const tabPermissionMap: Record<DispatchTab, string | null> = {
   companies: "manage_companies",
   vehicles: "manage_vehicles",
   named_locations: "manage_locations",
-  duty_hours: "manage_dispatchers",
+  duty_hours: null, // Always visible — dispatchers see only their own data; managers/admins see all
   hdc_map: null,
   google_map: null,
 };
