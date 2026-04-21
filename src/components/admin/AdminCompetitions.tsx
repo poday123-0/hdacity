@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp, Camera } from "lucide-react";
+import { Trophy, Plus, Trash2, Edit, Eye, Award, ChevronDown, ChevronUp, Camera, ListOrdered } from "lucide-react";
 import { format } from "date-fns";
 import { compressImage } from "@/lib/image-compress";
+import CompetitionDriverTrips from "./CompetitionDriverTrips";
 
 interface Competition {
   id: string;
