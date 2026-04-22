@@ -219,24 +219,36 @@ Deno.serve(async (req) => {
     let filteredUserIds = user_ids;
 
     if ((isTripRequestType || data?.type === "trip_taken") && user_ids.length > 0) {
-      // Check driver_locations to see who is actually online and operating the correct vehicle type
-      let driverLocQuery = supabase
+      // Check driver_locations to see who is actually online.
+      // For vehicle-type filtering: a driver matches if EITHER their current
+      // active vehicle matches OR they are approved for that vehicle type.
+      // This ensures multi-type drivers (Car + Van) receive both request kinds.
+      const { data: onlineDrivers } = await supabase
         .from("driver_locations")
-        .select("driver_id, lat, lng")
+        .select("driver_id, lat, lng, vehicle_type_id")
         .in("driver_id", user_ids)
         .eq("is_online", true);
 
-      // If a vehicle_type_id is specified in the notification data, only notify drivers
-      // currently operating that vehicle type (prevents e.g. Mini Pickup drivers getting Car requests)
-      if (data?.vehicle_type_id) {
-        driverLocQuery = driverLocQuery.eq("vehicle_type_id", data.vehicle_type_id);
+      let typeMatchedOnline = (onlineDrivers || []) as any[];
+      if (data?.vehicle_type_id && typeMatchedOnline.length > 0) {
+        const driverIds = typeMatchedOnline.map((d: any) => d.driver_id);
+        const { data: approved } = await supabase
+          .from("driver_vehicle_types")
+          .select("driver_id")
+          .eq("vehicle_type_id", data.vehicle_type_id)
+          .eq("status", "approved")
+          .in("driver_id", driverIds);
+        const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+        typeMatchedOnline = typeMatchedOnline.filter(
+          (d: any) => d.vehicle_type_id === data.vehicle_type_id || approvedSet.has(d.driver_id)
+        );
       }
-
-      const { data: onlineDrivers } = await driverLocQuery;
+      // Replace local var name used below
+      const onlineDriversFiltered = typeMatchedOnline;
       const pickupLat = data?.pickup_lat != null ? Number(data.pickup_lat) : null;
       const pickupLng = data?.pickup_lng != null ? Number(data.pickup_lng) : null;
 
-      const onlineFiltered = (onlineDrivers || []).filter((d: any) => {
+      const onlineFiltered = onlineDriversFiltered.filter((d: any) => {
         if (pickupLat == null || pickupLng == null || typeof d.lat !== "number" || typeof d.lng !== "number") {
           return true;
         }

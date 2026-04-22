@@ -105,16 +105,31 @@ Deno.serve(async (req) => {
       const tried = new Set<string>();
       (allWaves || []).forEach((w: any) => (w.driver_ids || []).forEach((d: string) => tried.add(d)));
 
-      // Eligible = online + idle + matching vehicle type
-      let q = supabase
+      // Eligible = online + idle, matching the trip's vehicle type via either
+      // (a) currently active vehicle_type_id, or (b) approved driver_vehicle_types.
+      // This lets multi-type drivers (e.g. Car + Van approved) receive both kinds.
+      const { data: locs } = await supabase
         .from("driver_locations")
         .select("driver_id, lat, lng, vehicle_type_id")
         .eq("is_online", true)
         .eq("is_on_trip", false);
-      if (trip.vehicle_type_id) q = q.eq("vehicle_type_id", trip.vehicle_type_id);
-      const { data: locs } = await q;
 
-      const remaining = (locs || []).filter((l: any) => !tried.has(l.driver_id));
+      let typeMatched = (locs || []) as any[];
+      if (trip.vehicle_type_id && typeMatched.length > 0) {
+        const driverIds = typeMatched.map((d: any) => d.driver_id);
+        const { data: approved } = await supabase
+          .from("driver_vehicle_types")
+          .select("driver_id")
+          .eq("vehicle_type_id", trip.vehicle_type_id)
+          .eq("status", "approved")
+          .in("driver_id", driverIds);
+        const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+        typeMatched = typeMatched.filter(
+          (d: any) => d.vehicle_type_id === trip.vehicle_type_id || approvedSet.has(d.driver_id)
+        );
+      }
+
+      const remaining = typeMatched.filter((l: any) => !tried.has(l.driver_id));
       if (remaining.length === 0) {
         // Nobody left to try — final wave with the same set is pointless. Mark final and continue.
         await supabase
