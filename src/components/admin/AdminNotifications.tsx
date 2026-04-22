@@ -160,7 +160,13 @@ const AdminNotifications = () => {
         if (allTokenUsers.length > 0) {
           const userIds = [...new Set(allTokenUsers.map((t: any) => t.user_id))];
           await supabase.functions.invoke("send-push-notification", {
-            body: { user_ids: userIds, title: title.trim(), body: message.trim() },
+            body: {
+              user_ids: userIds,
+              title: title.trim(),
+              body: message.trim(),
+              ...(userTypeFilter ? { target_user_type: userTypeFilter } : {}),
+              ...(imageUrl ? { data: { image_url: imageUrl } } : {}),
+            },
           });
         }
       } catch (pushErr) {

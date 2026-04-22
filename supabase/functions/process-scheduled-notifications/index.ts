@@ -34,6 +34,10 @@ Deno.serve(async (req) => {
     for (const n of due) {
       try {
         // Resolve recipients via device_tokens (paginated to bypass 1000-row cap)
+        const targetUserType =
+          n.target_type === "drivers" ? "driver" :
+          n.target_type === "passengers" ? "passenger" : undefined;
+
         let userIds: string[] = [];
         if (n.target_user_id) {
           userIds = [n.target_user_id];
@@ -42,8 +46,7 @@ Deno.serve(async (req) => {
           const all: { user_id: string }[] = [];
           for (let from = 0; from < 50000; from += PAGE) {
             let q = supabase.from("device_tokens").select("user_id").eq("is_active", true);
-            if (n.target_type === "drivers") q = q.eq("user_type", "driver");
-            else if (n.target_type === "passengers") q = q.eq("user_type", "passenger");
+            if (targetUserType) q = q.eq("user_type", targetUserType);
             const { data: tokens } = await q.range(from, from + PAGE - 1);
             if (!tokens || tokens.length === 0) break;
             all.push(...tokens);
@@ -54,7 +57,13 @@ Deno.serve(async (req) => {
 
         if (userIds.length > 0) {
           await supabase.functions.invoke("send-push-notification", {
-            body: { user_ids: userIds, title: n.title, body: n.message, data: n.image_url ? { image_url: n.image_url } : undefined },
+            body: {
+              user_ids: userIds,
+              title: n.title,
+              body: n.message,
+              ...(targetUserType ? { target_user_type: targetUserType } : {}),
+              ...(n.image_url ? { data: { image_url: n.image_url } } : {}),
+            },
           });
         }
 
