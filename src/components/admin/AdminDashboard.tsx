@@ -660,7 +660,7 @@ const AdminDashboard = () => {
             <ExternalLink className="w-3 h-3" /> Fullscreen
           </a>
         </div>
-        <div className="h-[250px] sm:h-[400px]">
+        <div className="h-[250px] sm:h-[400px] relative isolate z-0">
           <MaldivesMap vehicleMarkers={vehicleMarkers} tripRoutes={tripRoutes} />
         </div>
       </div>
