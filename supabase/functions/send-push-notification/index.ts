@@ -280,28 +280,35 @@ Deno.serve(async (req) => {
       console.log(`Filtered ${user_ids.length} → ${filteredUserIds.length} in-range driver(s) for ${data?.type}`);
     }
 
-    const { data: tokens, error: tokenError } = await supabase
-      .from("device_tokens")
-      .select("token, user_id, device_type, user_type")
-      .in("user_id", filteredUserIds)
-      .eq("is_active", true);
-
-    if (tokenError) throw tokenError;
+    // Fetch device tokens in chunks to avoid PostgREST URL-length limits
+    // when broadcasting to hundreds/thousands of users (e.g., all passengers).
+    const TOKEN_CHUNK = 200;
+    const allTokens: any[] = [];
+    for (let i = 0; i < filteredUserIds.length; i += TOKEN_CHUNK) {
+      const chunk = filteredUserIds.slice(i, i + TOKEN_CHUNK);
+      const { data: tokens, error: tokenError } = await supabase
+        .from("device_tokens")
+        .select("token, user_id, device_type, user_type")
+        .in("user_id", chunk)
+        .eq("is_active", true);
+      if (tokenError) throw tokenError;
+      if (tokens) allTokens.push(...tokens);
+    }
 
     // For trip requests, only send to tokens registered as "driver" user_type
     const filteredTokens = isTripRequestType
-      ? (tokens || []).filter((t: any) => t.user_type === "driver")
-      : (tokens || []);
+      ? allTokens.filter((t: any) => t.user_type === "driver")
+      : allTokens;
 
     if (filteredTokens.length === 0) {
-      console.log("No active tokens found for user_ids:", filteredUserIds);
+      console.log("No active tokens found for user_id count:", filteredUserIds.length);
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: "No active tokens found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Found ${filteredTokens.length} active token(s) for user_ids:`, filteredUserIds);
+    console.log(`Found ${filteredTokens.length} active token(s) across ${filteredUserIds.length} user_id(s)`);
 
     let totalSent = 0;
     const failedTokens: string[] = [];
