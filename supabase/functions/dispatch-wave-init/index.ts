@@ -95,15 +95,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Find eligible online idle drivers matching vehicle type
-    let q = supabase
+    // Find eligible online idle drivers.
+    // A driver matches the trip's vehicle type if EITHER
+    //   (a) their currently active vehicle (driver_locations.vehicle_type_id) matches, OR
+    //   (b) they are approved for that vehicle type in driver_vehicle_types
+    // This ensures multi-type center drivers (e.g. Car + Van) receive both kinds of requests.
+    const { data: locs } = await supabase
       .from("driver_locations")
       .select("driver_id, lat, lng, vehicle_type_id")
       .eq("is_online", true)
       .eq("is_on_trip", false);
-    if (trip.vehicle_type_id) q = q.eq("vehicle_type_id", trip.vehicle_type_id);
-    const { data: locs } = await q;
-    const eligible = (locs || []) as any[];
+    let eligible = (locs || []) as any[];
+
+    if (trip.vehicle_type_id && eligible.length > 0) {
+      const driverIds = eligible.map((d) => d.driver_id);
+      const { data: approved } = await supabase
+        .from("driver_vehicle_types")
+        .select("driver_id")
+        .eq("vehicle_type_id", trip.vehicle_type_id)
+        .eq("status", "approved")
+        .in("driver_id", driverIds);
+      const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+      eligible = eligible.filter(
+        (d) => d.vehicle_type_id === trip.vehicle_type_id || approvedSet.has(d.driver_id)
+      );
+    }
 
     if (eligible.length === 0) {
       return new Response(JSON.stringify({ wave: 0, reason: "no_eligible_drivers" }), {
