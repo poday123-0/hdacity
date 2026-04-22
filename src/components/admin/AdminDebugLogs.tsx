@@ -152,6 +152,86 @@ const AdminDebugLogs = () => {
   const eventOptions = Array.from(new Set(logs.map((l) => l.event))).sort();
   const filtered = eventFilter === "all" ? logs : logs.filter((l) => l.event === eventFilter);
 
+  // Resolve unique IDs that need lookup
+  const { neededDriverIds, neededTripIds } = useMemo(() => {
+    const dSet = new Set<string>();
+    const tSet = new Set<string>();
+    for (const l of logs) {
+      if (l.driver_id) dSet.add(l.driver_id);
+      if (l.trip_id) tSet.add(l.trip_id);
+    }
+    return { neededDriverIds: Array.from(dSet), neededTripIds: Array.from(tSet) };
+  }, [logs]);
+
+  // Fetch profiles + trips + vehicles when logs change
+  useEffect(() => {
+    const run = async () => {
+      // 1. Drivers from log rows
+      const missingDrivers = neededDriverIds.filter((id) => !profileMap[id]);
+      // 2. Trips
+      const missingTrips = neededTripIds.filter((id) => !tripMap[id]);
+
+      let trips: TripInfo[] = [];
+      if (missingTrips.length > 0) {
+        const { data } = await supabase
+          .from("trips")
+          .select("id, passenger_id, driver_id, vehicle_id, customer_name, customer_phone, pickup_address, dropoff_address, status")
+          .in("id", missingTrips);
+        trips = (data as TripInfo[]) || [];
+        if (trips.length > 0) {
+          setTripMap((prev) => {
+            const next = { ...prev };
+            trips.forEach((t) => { next[t.id] = t; });
+            return next;
+          });
+        }
+      }
+
+      // Collect extra profile / vehicle ids from trips
+      const extraProfileIds = new Set<string>();
+      const vehicleIds = new Set<string>();
+      [...trips, ...Object.values(tripMap)].forEach((t) => {
+        if (t.passenger_id) extraProfileIds.add(t.passenger_id);
+        if (t.driver_id) extraProfileIds.add(t.driver_id);
+        if (t.vehicle_id) vehicleIds.add(t.vehicle_id);
+      });
+
+      const allProfileIds = Array.from(new Set([...missingDrivers, ...Array.from(extraProfileIds)]))
+        .filter((id) => !profileMap[id]);
+
+      if (allProfileIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, phone_number, avatar_url, user_type")
+          .in("id", allProfileIds);
+        if (profs && profs.length > 0) {
+          setProfileMap((prev) => {
+            const next = { ...prev };
+            (profs as ProfileInfo[]).forEach((p) => { next[p.id] = p; });
+            return next;
+          });
+        }
+      }
+
+      const missingVehicles = Array.from(vehicleIds).filter((id) => !vehicleMap[id]);
+      if (missingVehicles.length > 0) {
+        const { data: vehs } = await supabase
+          .from("vehicles")
+          .select("id, make, model, plate_number, color, year, image_url")
+          .in("id", missingVehicles);
+        if (vehs && vehs.length > 0) {
+          setVehicleMap((prev) => {
+            const next = { ...prev };
+            (vehs as VehicleInfo[]).forEach((v) => { next[v.id] = v; });
+            return next;
+          });
+        }
+      }
+    };
+    if (logs.length > 0) void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs]);
+
   // Aggregate quick stats
   const stats = filtered.reduce(
     (acc, l) => {
@@ -162,6 +242,7 @@ const AdminDebugLogs = () => {
     },
     { entered: 0, shown: 0, rejected: 0 }
   );
+
 
   return (
     <div className="space-y-4">
