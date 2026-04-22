@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { user_ids, title, body, data, topic } = await req.json();
+    const { user_ids, title, body, data, topic, target_user_type } = await req.json();
 
     // Fetch ALL default sounds (one per category) in a single query
     const soundMap: Record<string, string> = {};
@@ -282,18 +282,39 @@ Deno.serve(async (req) => {
 
     // Fetch device tokens in chunks to avoid PostgREST URL-length limits
     // when broadcasting to hundreds/thousands of users (e.g., all passengers).
-    const TOKEN_CHUNK = 200;
+    // Each chunk is also paginated to bypass the 1000-row response cap when
+    // many users share devices or have multiple registered tokens.
+    const TOKEN_CHUNK = 150;
+    const PAGE = 1000;
     const allTokens: any[] = [];
+    const seenTokens = new Set<string>();
     for (let i = 0; i < filteredUserIds.length; i += TOKEN_CHUNK) {
       const chunk = filteredUserIds.slice(i, i + TOKEN_CHUNK);
-      const { data: tokens, error: tokenError } = await supabase
-        .from("device_tokens")
-        .select("token, user_id, device_type, user_type")
-        .in("user_id", chunk)
-        .eq("is_active", true);
-      if (tokenError) throw tokenError;
-      if (tokens) allTokens.push(...tokens);
+      for (let from = 0; from < 5000; from += PAGE) {
+        let q = supabase
+          .from("device_tokens")
+          .select("token, user_id, device_type, user_type")
+          .in("user_id", chunk)
+          .eq("is_active", true);
+        // When the caller targets a specific audience (drivers / passengers),
+        // restrict to that user_type so a shared device that's registered for
+        // multiple roles only receives ONE push for that role.
+        if (target_user_type === "driver" || target_user_type === "passenger") {
+          q = q.eq("user_type", target_user_type);
+        }
+        const { data: tokens, error: tokenError } = await q.range(from, from + PAGE - 1);
+        if (tokenError) throw tokenError;
+        if (!tokens || tokens.length === 0) break;
+        for (const t of tokens) {
+          if (!seenTokens.has(t.token)) {
+            seenTokens.add(t.token);
+            allTokens.push(t);
+          }
+        }
+        if (tokens.length < PAGE) break;
+      }
     }
+    console.log(`Token fetch complete: ${allTokens.length} unique active token(s) for ${filteredUserIds.length} user(s)${target_user_type ? ` (filtered to ${target_user_type})` : ""}`);
 
     // For trip requests, only send to tokens registered as "driver" user_type
     const filteredTokens = isTripRequestType
