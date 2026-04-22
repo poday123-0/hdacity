@@ -351,8 +351,10 @@ Deno.serve(async (req) => {
     }
     console.log(`Loaded ${Object.keys(driverSoundPrefs).length} driver-specific sound preference(s)`);
 
-    const results = await Promise.allSettled(
-      filteredTokens.map(async (t: any) => {
+    // Send in batches of 100 concurrent requests to avoid FCM rate limits / Deno fetch saturation
+    // when broadcasting to hundreds of recipients (e.g., all passengers).
+    const SEND_BATCH = 100;
+    const buildAndSend = async (t: any) => {
         const type = data?.type || "default";
         const isTripRequest = type === "trip_requested";
         const isTripAssigned = type === "trip_assigned";
