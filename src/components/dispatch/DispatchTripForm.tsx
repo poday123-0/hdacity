@@ -969,8 +969,26 @@ const DispatchTripForm = ({
       let defaultRadiusCache = 10;
       if (broadcastData) {
         const [driversRes, timeoutRes, defaultRes] = broadcastData as any;
-        const allDrivers = driversRes?.data || [];
-        
+        let allDrivers = (driversRes?.data || []) as any[];
+
+        // Vehicle-type filter: include drivers whose currently active vehicle
+        // matches OR who are approved for the requested type via
+        // driver_vehicle_types. This lets multi-type center drivers (Car + Van)
+        // receive both kinds of broadcast requests.
+        if (selectedVehicleType && allDrivers.length > 0) {
+          const driverIds = allDrivers.map((d: any) => d.driver_id);
+          const { data: approved } = await supabase
+            .from("driver_vehicle_types")
+            .select("driver_id")
+            .eq("vehicle_type_id", selectedVehicleType)
+            .eq("status", "approved")
+            .in("driver_id", driverIds);
+          const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+          allDrivers = allDrivers.filter(
+            (d: any) => d.vehicle_type_id === selectedVehicleType || approvedSet.has(d.driver_id)
+          );
+        }
+
         broadcastDriversCache = allDrivers;
         if (timeoutRes?.data?.value) {
           const secs = typeof timeoutRes.data.value === "number" ? timeoutRes.data.value : parseInt(String(timeoutRes.data.value)) || 60;
