@@ -38,12 +38,20 @@ const AdminNotifications = () => {
 
   const fetchNotifications = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("notifications")
-      .select("id, title, message, target_type, image_url, created_at, scheduled_at, sent_at, status")
-      .order("created_at", { ascending: false })
-      .limit(100);
-    setNotifications((data as Notification[]) || []);
+    // Paginate to bypass Supabase's default 1000-row cap and load full history.
+    const PAGE = 1000;
+    const all: Notification[] = [];
+    for (let from = 0; from < 10000; from += PAGE) {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("id, title, message, target_type, image_url, created_at, scheduled_at, sent_at, status")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...(data as Notification[]));
+      if (data.length < PAGE) break;
+    }
+    setNotifications(all);
     setLoading(false);
   };
 
