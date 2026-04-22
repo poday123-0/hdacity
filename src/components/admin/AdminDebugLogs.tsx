@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, Loader2, Trash2, Smartphone, Globe, AlertTriangle, CheckCircle2, Clock, Filter } from "lucide-react";
+import { Search, Loader2, Trash2, Smartphone, Globe, AlertTriangle, CheckCircle2, Clock, Filter, Phone, Car, User } from "lucide-react";
 
 type LogRow = {
   id: string;
@@ -14,6 +14,37 @@ type LogRow = {
   platform: string | null;
   app_version: string | null;
   details: any;
+};
+
+type ProfileInfo = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string | null;
+  avatar_url: string | null;
+  user_type: string;
+};
+
+type VehicleInfo = {
+  id: string;
+  make: string | null;
+  model: string | null;
+  plate_number: string;
+  color: string | null;
+  year: number | null;
+  image_url: string | null;
+};
+
+type TripInfo = {
+  id: string;
+  passenger_id: string | null;
+  driver_id: string | null;
+  vehicle_id: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  pickup_address: string;
+  dropoff_address: string;
+  status: string;
 };
 
 type SearchMode = "driver" | "trip" | "phone" | "recent";
