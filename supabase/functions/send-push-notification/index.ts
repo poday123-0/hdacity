@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
       const pickupLat = data?.pickup_lat != null ? Number(data.pickup_lat) : null;
       const pickupLng = data?.pickup_lng != null ? Number(data.pickup_lng) : null;
 
-      const onlineFiltered = (onlineDrivers || []).filter((d: any) => {
+      const onlineFiltered = onlineDriversFiltered.filter((d: any) => {
         if (pickupLat == null || pickupLng == null || typeof d.lat !== "number" || typeof d.lng !== "number") {
           return true;
         }

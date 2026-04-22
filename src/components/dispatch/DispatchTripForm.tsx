@@ -946,11 +946,11 @@ const DispatchTripForm = ({
       // Fire trip insert + broadcast pre-fetch in parallel
       const tripInsertPromise = supabase.from("trips").insert(tripPayload).select("*").single();
 
+      // Pull all online idle drivers; vehicle-type filtering is applied later
+      // so that drivers approved for the requested type via driver_vehicle_types
+      // (multi-type center drivers, e.g. Car + Van) also receive the broadcast,
+      // not just those whose currently active vehicle matches.
       const driverLocQuery = supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false);
-      // Only send to drivers currently operating the requested vehicle type
-      if (selectedVehicleType) {
-        driverLocQuery.eq("vehicle_type_id", selectedVehicleType);
-      }
 
       // Pre-fetch system default radius in parallel — drivers' personal radii
       // are fetched right after we know who's online, but we kick off the
