@@ -42,55 +42,53 @@ const AdminTrips = () => {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [lostItems, setLostItems] = useState<any[]>([]);
 
+  // Trip columns the table/modal/CSV actually display. Selecting an explicit
+  // column list (instead of `*`) cuts payload size dramatically — addresses,
+  // notes and other long text fields aren't all needed up front.
+  const TRIP_COLUMNS =
+    "id, status, booking_type, dispatch_type, fare_type, created_at, scheduled_at, " +
+    "pickup_address, dropoff_address, pickup_lat, pickup_lng, " +
+    "estimated_fare, actual_fare, passenger_bonus, distance_km, duration_minutes, " +
+    "passenger_count, luggage_count, payment_method, rating, feedback_text, " +
+    "cancel_reason, booking_notes, vehicle_type_id, driver_id, passenger_id, " +
+    "customer_name, customer_phone, " +
+    "passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), " +
+    "driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)";
+
   const fetchTrips = async () => {
     setLoading(true);
-    // Default to the last 30 days when the user hasn't picked a date range,
-    // but always paginate fully through Supabase's 1000-row limit so the
-    // admin sees ALL matching trips instead of just the first page.
+    // Default to the last 7 days when the user hasn't picked a date range —
+    // keeps the initial payload small. Use the date filter for older data.
     const hasDateRange = !!dateFrom || !!dateTo;
     const defaultFrom = new Date();
-    defaultFrom.setDate(defaultFrom.getDate() - 30);
+    defaultFrom.setDate(defaultFrom.getDate() - 7);
 
-    let allTrips: any[] = [];
-    const pageSize = 1000;
-    // Cap at 50 pages = 50k trips per fetch — well above current data volume
-    // and keeps memory bounded if a future filter accidentally widens.
-    const maxPages = 50;
-    let from = 0;
-    let hasMore = true;
-    let page = 0;
+    // Cap at 5000 rows per fetch. With the new index on created_at this
+    // returns in a single round-trip and is far more than what fits on screen.
+    const HARD_LIMIT = 5000;
 
-    while (hasMore && page < maxPages) {
-      let query = supabase
-        .from("trips")
-        .select("*, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)")
-        .order("created_at", { ascending: false })
-        .range(from, from + pageSize - 1);
+    let query = supabase
+      .from("trips")
+      .select(TRIP_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(HARD_LIMIT);
 
-      if (filter !== "all") query = query.eq("status", filter);
-      if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
-      if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
-      if (dateFrom) {
-        query = query.gte("created_at", new Date(dateFrom).toISOString());
-      } else if (!hasDateRange) {
-        query = query.gte("created_at", defaultFrom.toISOString());
-      }
-      if (dateTo) {
-        const endDate = new Date(dateTo);
-        endDate.setHours(23, 59, 59, 999);
-        query = query.lte("created_at", endDate.toISOString());
-      }
-      const { data } = await query;
-      if (data && data.length > 0) {
-        allTrips = allTrips.concat(data);
-        from += pageSize;
-        page += 1;
-        if (data.length < pageSize) hasMore = false;
-      } else {
-        hasMore = false;
-      }
+    if (filter !== "all") query = query.eq("status", filter);
+    if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
+    if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
+    if (dateFrom) {
+      query = query.gte("created_at", new Date(dateFrom).toISOString());
+    } else if (!hasDateRange) {
+      query = query.gte("created_at", defaultFrom.toISOString());
     }
-    setTrips(allTrips);
+    if (dateTo) {
+      const endDate = new Date(dateTo);
+      endDate.setHours(23, 59, 59, 999);
+      query = query.lte("created_at", endDate.toISOString());
+    }
+
+    const { data } = await query;
+    setTrips((data as any[]) || []);
     setLoading(false);
   };
 
