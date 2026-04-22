@@ -893,9 +893,23 @@ const Index = () => {
             .from("driver_locations")
             .select("driver_id, lat, lng, vehicle_type_id")
             .eq("is_online", true)
-            .eq("is_on_trip", false)
-            .eq("vehicle_type_id", selectedVehicleType.id);
-          const eligible = locData || [];
+            .eq("is_on_trip", false);
+          let eligible = (locData || []) as any[];
+          // Vehicle-type match = currently active vehicle OR approved via
+          // driver_vehicle_types (so multi-type center drivers receive both kinds).
+          if (eligible.length > 0 && selectedVehicleType.id) {
+            const driverIdsAll = eligible.map((d: any) => d.driver_id);
+            const { data: approved } = await supabase
+              .from("driver_vehicle_types")
+              .select("driver_id")
+              .eq("vehicle_type_id", selectedVehicleType.id)
+              .eq("status", "approved")
+              .in("driver_id", driverIdsAll);
+            const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+            eligible = eligible.filter(
+              (d: any) => d.vehicle_type_id === selectedVehicleType.id || approvedSet.has(d.driver_id)
+            );
+          }
           if (eligible.length > 0) {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {
