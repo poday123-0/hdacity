@@ -428,10 +428,10 @@ const AdminDebugLogs = () => {
                             {driverProfile ? `${driverProfile.first_name} ${driverProfile.last_name}`.trim() || "Unnamed" : `${log.driver_id?.slice(0, 8)}…`}
                           </p>
                           {driverProfile?.phone_number && (
-                            <a href={`tel:${driverProfile.phone_number}`} className="text-[11px] text-primary flex items-center gap-1 truncate">
-                              <Phone className="w-2.5 h-2.5" />
+                            <p className="text-[11px] text-foreground flex items-center gap-1 truncate font-mono select-all">
+                              <Phone className="w-2.5 h-2.5 text-muted-foreground" />
                               {driverProfile.phone_number}
-                            </a>
+                            </p>
                           )}
                         </div>
                       </div>
@@ -456,10 +456,10 @@ const AdminDebugLogs = () => {
                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Passenger</p>
                           <p className="text-xs font-semibold text-foreground truncate">{passengerName || "Guest"}</p>
                           {passengerPhone && (
-                            <a href={`tel:${passengerPhone}`} className="text-[11px] text-primary flex items-center gap-1 truncate">
-                              <Phone className="w-2.5 h-2.5" />
+                            <p className="text-[11px] text-foreground flex items-center gap-1 truncate font-mono select-all">
+                              <Phone className="w-2.5 h-2.5 text-muted-foreground" />
                               {passengerPhone}
-                            </a>
+                            </p>
                           )}
                         </div>
                       </div>

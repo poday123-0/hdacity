@@ -91,6 +91,7 @@ import DriverLeaderboard from "./DriverLeaderboard";
 import { notifyTripCancelled, notifyTripAccepted, notifyDriverArrived, notifyTripStarted, notifyTripCompleted, notifyTripTaken } from "@/lib/push-notifications";
 import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import NativeAppPromoPrompt from "@/components/NativeAppPromoPrompt";
 import { startBackgroundLocation, stopBackgroundLocation } from "@/lib/background-location";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import DriverNotifications from "@/components/DriverNotifications";
@@ -6823,6 +6824,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       </AnimatePresence>
 
       <PWAInstallPrompt />
+      <NativeAppPromoPrompt />
       <NotificationPermissionPrompt />
       <SuggestPlace userId={userProfile?.id} userType="driver" visible={showSuggestPlace} onClose={() => setShowSuggestPlace(false)} />
 
