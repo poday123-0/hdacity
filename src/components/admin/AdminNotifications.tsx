@@ -146,11 +146,19 @@ const AdminNotifications = () => {
       // Send push immediately
       try {
         const userTypeFilter = targetType === "drivers" ? "driver" : targetType === "passengers" ? "passenger" : undefined;
-        let tokenQuery = supabase.from("device_tokens").select("user_id").eq("is_active", true);
-        if (userTypeFilter) tokenQuery = tokenQuery.eq("user_type", userTypeFilter);
-        const { data: tokenUsers } = await tokenQuery;
-        if (tokenUsers && tokenUsers.length > 0) {
-          const userIds = [...new Set(tokenUsers.map((t: any) => t.user_id))];
+        // Paginate to bypass Supabase's default 1000-row cap (we have 600+ passenger tokens).
+        const PAGE = 1000;
+        const allTokenUsers: { user_id: string }[] = [];
+        for (let from = 0; from < 50000; from += PAGE) {
+          let q = supabase.from("device_tokens").select("user_id").eq("is_active", true);
+          if (userTypeFilter) q = q.eq("user_type", userTypeFilter);
+          const { data } = await q.range(from, from + PAGE - 1);
+          if (!data || data.length === 0) break;
+          allTokenUsers.push(...data);
+          if (data.length < PAGE) break;
+        }
+        if (allTokenUsers.length > 0) {
+          const userIds = [...new Set(allTokenUsers.map((t: any) => t.user_id))];
           await supabase.functions.invoke("send-push-notification", {
             body: { user_ids: userIds, title: title.trim(), body: message.trim() },
           });
