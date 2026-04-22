@@ -392,12 +392,114 @@ const AdminDebugLogs = () => {
                 </span>
               </div>
 
-              {(log.driver_id || log.trip_id) && (
-                <div className="flex flex-wrap gap-3 text-[11px] font-mono text-muted-foreground">
-                  {log.driver_id && <span>👤 {log.driver_id.slice(0, 8)}…</span>}
-                  {log.trip_id && <span>🧾 {log.trip_id.slice(0, 8)}…</span>}
-                </div>
-              )}
+              {(() => {
+                const trip = log.trip_id ? tripMap[log.trip_id] : null;
+                const driverProfile = log.driver_id ? profileMap[log.driver_id] : (trip?.driver_id ? profileMap[trip.driver_id] : null);
+                const passengerProfile = trip?.passenger_id ? profileMap[trip.passenger_id] : null;
+                const vehicle = trip?.vehicle_id ? vehicleMap[trip.vehicle_id] : null;
+
+                const passengerName = passengerProfile
+                  ? `${passengerProfile.first_name} ${passengerProfile.last_name}`.trim()
+                  : (trip?.customer_name || null);
+                const passengerPhone = passengerProfile?.phone_number || trip?.customer_phone || null;
+
+                if (!driverProfile && !passengerName && !vehicle && !log.driver_id && !log.trip_id) return null;
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Driver card */}
+                    {(driverProfile || log.driver_id) && (
+                      <div className="flex items-center gap-2 p-2 bg-surface border border-border rounded-lg">
+                        {driverProfile?.avatar_url ? (
+                          <img
+                            src={driverProfile.avatar_url}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover border border-border flex-shrink-0"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Driver</p>
+                          <p className="text-xs font-semibold text-foreground truncate">
+                            {driverProfile ? `${driverProfile.first_name} ${driverProfile.last_name}`.trim() || "Unnamed" : `${log.driver_id?.slice(0, 8)}…`}
+                          </p>
+                          {driverProfile?.phone_number && (
+                            <a href={`tel:${driverProfile.phone_number}`} className="text-[11px] text-primary flex items-center gap-1 truncate">
+                              <Phone className="w-2.5 h-2.5" />
+                              {driverProfile.phone_number}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Passenger card */}
+                    {passengerName && (
+                      <div className="flex items-center gap-2 p-2 bg-surface border border-border rounded-lg">
+                        {passengerProfile?.avatar_url ? (
+                          <img
+                            src={passengerProfile.avatar_url}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover border border-border flex-shrink-0"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-success" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Passenger</p>
+                          <p className="text-xs font-semibold text-foreground truncate">{passengerName || "Guest"}</p>
+                          {passengerPhone && (
+                            <a href={`tel:${passengerPhone}`} className="text-[11px] text-primary flex items-center gap-1 truncate">
+                              <Phone className="w-2.5 h-2.5" />
+                              {passengerPhone}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Vehicle card */}
+                    {vehicle && (
+                      <div className="flex items-center gap-2 p-2 bg-surface border border-border rounded-lg sm:col-span-2">
+                        {vehicle.image_url ? (
+                          <img
+                            src={vehicle.image_url}
+                            alt=""
+                            className="w-12 h-9 rounded object-cover border border-border flex-shrink-0 bg-muted"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="w-12 h-9 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                            <Car className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Vehicle</p>
+                          <p className="text-xs font-semibold text-foreground truncate">
+                            {[vehicle.year, vehicle.color, vehicle.make, vehicle.model].filter(Boolean).join(" ")} · <span className="font-mono">{vehicle.plate_number}</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Trip ID fallback */}
+                    {log.trip_id && (
+                      <p className="text-[10px] font-mono text-muted-foreground sm:col-span-2">
+                        🧾 trip {log.trip_id.slice(0, 8)}…
+                        {trip && <span className="ml-2">· {trip.status}</span>}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
 
               {log.details && Object.keys(log.details).length > 0 && (
                 <pre className="text-[11px] bg-surface border border-border rounded-lg p-2 overflow-x-auto text-muted-foreground">
