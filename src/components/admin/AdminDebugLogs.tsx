@@ -86,6 +86,11 @@ const AdminDebugLogs = () => {
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [hours, setHours] = useState(24);
 
+  // Lookup caches: id -> info
+  const [profileMap, setProfileMap] = useState<Record<string, ProfileInfo>>({});
+  const [vehicleMap, setVehicleMap] = useState<Record<string, VehicleInfo>>({});
+  const [tripMap, setTripMap] = useState<Record<string, TripInfo>>({});
+
   const search = async () => {
     setLoading(true);
     try {
