@@ -491,14 +491,28 @@ const AdminTrips = () => {
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
-                              // Re-broadcast to all eligible online drivers (filtered by vehicle type)
-                              let dlQuery = supabase
+                              // Re-broadcast to all eligible online drivers.
+                              // Vehicle-type match = currently active vehicle OR approved
+                              // via driver_vehicle_types (multi-type drivers receive all).
+                              const { data: rawDrivers } = await supabase
                                 .from("driver_locations")
-                                .select("driver_id, lat, lng")
+                                .select("driver_id, lat, lng, vehicle_type_id")
                                 .eq("is_online", true)
                                 .eq("is_on_trip", false);
-                              if (t.vehicle_type_id) dlQuery = dlQuery.eq("vehicle_type_id", t.vehicle_type_id);
-                              const { data: onlineDrivers } = await dlQuery;
+                              let onlineDrivers = (rawDrivers || []) as any[];
+                              if (t.vehicle_type_id && onlineDrivers.length > 0) {
+                                const ids = onlineDrivers.map((d: any) => d.driver_id);
+                                const { data: approved } = await supabase
+                                  .from("driver_vehicle_types")
+                                  .select("driver_id")
+                                  .eq("vehicle_type_id", t.vehicle_type_id)
+                                  .eq("status", "approved")
+                                  .in("driver_id", ids);
+                                const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+                                onlineDrivers = onlineDrivers.filter(
+                                  (d: any) => d.vehicle_type_id === t.vehicle_type_id || approvedSet.has(d.driver_id)
+                                );
+                              }
                               if (onlineDrivers && onlineDrivers.length > 0) {
                                 const hasPickupCoords = typeof t.pickup_lat === "number" && typeof t.pickup_lng === "number";
                                 const driverIds = hasPickupCoords
