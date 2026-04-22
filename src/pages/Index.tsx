@@ -30,6 +30,7 @@ import { fetchSoundUrls, playSound } from "@/lib/sound-utils";
 import SOSButton from "@/components/SOSButton";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import NativeAppPromoPrompt from "@/components/NativeAppPromoPrompt";
 import NotificationPanel from "@/components/DriverNotifications";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 
@@ -1493,6 +1494,7 @@ const Index = () => {
       </div>
 
       <PWAInstallPrompt />
+      <NativeAppPromoPrompt />
       <NotificationPermissionPrompt />
       <NotificationPanel userId={userProfile?.id} userType="passenger" visible={showPassengerNotifs} onClose={() => setShowPassengerNotifs(false)} />
 
