@@ -483,8 +483,12 @@ Deno.serve(async (req) => {
 
         perTokenResults.push(tokenResult);
         return result;
-      })
-    );
+    };
+
+    for (let i = 0; i < filteredTokens.length; i += SEND_BATCH) {
+      const batch = filteredTokens.slice(i, i + SEND_BATCH);
+      await Promise.allSettled(batch.map(buildAndSend));
+    }
 
     // Deactivate invalid tokens
     if (failedTokens.length > 0) {
