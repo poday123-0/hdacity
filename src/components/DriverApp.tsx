@@ -3405,6 +3405,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <span className="text-[9px] font-semibold text-destructive">OFF</span>
               </button>
             )}
+            {!currentTrip && <RefreshButton size="sm" />}
             {!currentTrip &&
             <button
               onClick={() => setShowNotifications(true)}
