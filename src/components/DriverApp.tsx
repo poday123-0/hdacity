@@ -303,6 +303,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showDriverCancelConfirm, setShowDriverCancelConfirm] = useState(false);
   const [showCancelledByPassengerPopup, setShowCancelledByPassengerPopup] = useState(false);
   const [cancelledTripReason, setCancelledTripReason] = useState("");
+  const [showTripTakenPopup, setShowTripTakenPopup] = useState(false);
   const recenterRef = useRef<(() => void) | null>(null);
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
