@@ -416,17 +416,7 @@ const Index = () => {
   // Fetch actual online driver locations
   const [vehicleMarkers, setVehicleMarkers] = useState<Array<{ id: string; lat: number; lng: number; name: string; imageUrl?: string; icon?: string }>>([]);
 
-  const passengerPTR = usePullToRefresh({
-    onRefresh: async () => {
-      // Force SW to check for updates, then hard-reload to bypass cache
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) await reg.update().catch(() => {});
-      }
-      window.location.reload();
-    },
-    disabled: passengerScreen !== "home",
-  });
+  // Pull-to-refresh removed in favor of an explicit refresh button in the top bar.
 
   const fetchOnlineDrivers = useCallback(async () => {
     // Only fetch drivers updated within the last 60 minutes (filters out stale/inactive)
@@ -1414,8 +1404,7 @@ const Index = () => {
 
   // PASSENGER MODE
   return (
-    <div ref={passengerPTR.containerRef} className="relative w-full h-[100dvh] overflow-hidden bg-background" style={{ fontSize: `${passengerTextSize * 16}px` }}>
-      <PullToRefreshIndicator pullDistance={passengerPTR.pullDistance} refreshing={passengerPTR.refreshing} progress={passengerPTR.progress} />
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-background" style={{ fontSize: `${passengerTextSize * 16}px` }}>
       <div className="absolute inset-0">
         <MaldivesMap rideData={rideMapData} vehicleMarkers={vehicleMarkers} onMapReady={setPassengerMapInstance} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/60 pointer-events-none z-[401]" />
