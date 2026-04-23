@@ -139,7 +139,14 @@ const checkPendingSounds = async () => {
       const fiveMinAgo = Date.now() - 5 * 60 * 1000;
       for (const s of response.sounds) {
         if (s.timestamp > fiveMinAgo && s.sound_url) {
-          const shouldLoop = s.notification_type === "trip_requested" || s.notification_type === "sos_alert";
+          // Do not auto-replay queued trip-request sounds on app resume.
+          // DriverApp already re-checks for an actual pending trip and will only
+          // show/play it if the request is still valid for this driver.
+          if (s.notification_type === "trip_requested") {
+            console.log("[SoundManager] Skipping stale queued trip_requested replay; DriverApp will validate the trip instead");
+            continue;
+          }
+          const shouldLoop = s.notification_type === "sos_alert";
           playTrackedSound(s.sound_url, shouldLoop);
           break; // Only play the most recent relevant sound
         }
