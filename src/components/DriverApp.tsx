@@ -7,8 +7,7 @@ const formatMonth = (m: string) => {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 };
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
+import RefreshButton from "@/components/RefreshButton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/components/AuthScreen";
@@ -304,6 +303,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [showDriverCancelConfirm, setShowDriverCancelConfirm] = useState(false);
   const [showCancelledByPassengerPopup, setShowCancelledByPassengerPopup] = useState(false);
   const [cancelledTripReason, setCancelledTripReason] = useState("");
+  const [showTripTakenPopup, setShowTripTakenPopup] = useState(false);
   const recenterRef = useRef<(() => void) | null>(null);
   const followToggleRef = useRef<(() => void) | null>(null);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true);
@@ -2115,7 +2115,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       // Play the configured "Driver: Trip Cancelled" sound so this driver knows the request is gone
       const { data: takenSound } = await supabase.from("notification_sounds").select("file_url").eq("category", "driver_trip_cancelled").eq("is_default", true).eq("is_active", true).single();
       if (takenSound?.file_url) playSound(takenSound.file_url);
-      toast({ title: "Trip Taken", description: "This trip was accepted by another driver.", variant: "destructive" });
+      setShowTripTakenPopup(true);
       setScreen("online");
       setCurrentTrip(null);
       setPassengerProfile(null);
@@ -3034,17 +3034,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
 
-  const driverPTR = usePullToRefresh({
-    onRefresh: async () => {
-      // Force SW to check for updates, then hard-reload to bypass cache
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) await reg.update().catch(() => {});
-      }
-      window.location.reload();
-    },
-    disabled: false
-  });
+  // Pull-to-refresh removed in favor of an explicit refresh button in the header.
 
   // Helper: update competition leaderboard entries after trip completion
   const updateCompetitionEntries = async (driverId: string) => {
@@ -3177,8 +3167,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   return (
-    <div ref={driverPTR.containerRef} className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
-      <PullToRefreshIndicator pullDistance={driverPTR.pullDistance} refreshing={driverPTR.refreshing} progress={driverPTR.progress} />
+    <div className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Floating trip bubble — shows when a trip request exists but driver isn't on ride-request screen or navigating (already on a trip) */}
@@ -3417,6 +3406,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 <span className="text-[9px] font-semibold text-destructive">OFF</span>
               </button>
             )}
+            {!currentTrip && <RefreshButton size="sm" />}
             {!currentTrip &&
             <button
               onClick={() => setShowNotifications(true)}
@@ -4607,7 +4597,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 single();
 
                 if (verifyTrip?.driver_id !== userProfile.id) {
-                  toast({ title: "Trip Taken", description: "Another driver accepted this trip first.", variant: "destructive" });
+                  setShowTripTakenPopup(true);
                   setScreen("online");
                   setCurrentTrip(null);
                   setPassengerProfile(null);
@@ -5176,6 +5166,63 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform"
                 >
                   OK
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Trip Taken (by another driver) Popup */}
+      <AnimatePresence>
+        {showTripTakenPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowTripTakenPopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 280 }}
+              className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 pt-8 pb-5 text-center">
+                <motion.div
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.08, type: "spring", stiffness: 260, damping: 16 }}
+                  className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/15 to-destructive/20 flex items-center justify-center mx-auto mb-4 border-2 border-orange-500/30"
+                >
+                  <XCircle className="w-10 h-10 text-orange-500" />
+                </motion.div>
+                <motion.h3
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18 }}
+                  className="text-xl font-bold text-foreground"
+                >
+                  Trip Already Taken
+                </motion.h3>
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.24 }}
+                  className="text-sm text-muted-foreground mt-2 leading-relaxed"
+                >
+                  Another driver accepted this trip first. Stay online — the next request is on the way.
+                </motion.p>
+              </div>
+              <div className="px-6 pb-6">
+                <button
+                  onClick={() => setShowTripTakenPopup(false)}
+                  className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.6)]"
+                >
+                  Got it
                 </button>
               </div>
             </motion.div>

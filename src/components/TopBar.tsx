@@ -9,6 +9,7 @@ import MapPicker from "@/components/MapPicker";
 import ThemeToggle from "@/components/ThemeToggle";
 import PassengerWallet from "@/components/PassengerWallet";
 import SuggestPlace from "@/components/SuggestPlace";
+import RefreshButton from "@/components/RefreshButton";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -382,6 +383,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
           </div>
 
           <div className="flex items-center gap-2">
+            <RefreshButton />
             <button
               onClick={() => onNotificationPress ? onNotificationPress() : handleOpenNotifications()}
               className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative active:scale-95 transition-transform"
