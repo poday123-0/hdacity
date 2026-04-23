@@ -5198,7 +5198,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                   transition={{ delay: 0.08, type: "spring", stiffness: 260, damping: 16 }}
                   className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/15 to-destructive/20 flex items-center justify-center mx-auto mb-4 border-2 border-orange-500/30"
                 >
-                  <CarIcon className="w-10 h-10 text-orange-500" />
+                  <XCircle className="w-10 h-10 text-orange-500" />
                 </motion.div>
                 <motion.h3
                   initial={{ opacity: 0, y: 8 }}
