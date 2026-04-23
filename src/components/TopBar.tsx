@@ -9,6 +9,7 @@ import MapPicker from "@/components/MapPicker";
 import ThemeToggle from "@/components/ThemeToggle";
 import PassengerWallet from "@/components/PassengerWallet";
 import SuggestPlace from "@/components/SuggestPlace";
+import RefreshButton from "@/components/RefreshButton";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
