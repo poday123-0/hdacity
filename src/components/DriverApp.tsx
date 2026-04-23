@@ -5173,6 +5173,63 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         )}
       </AnimatePresence>
 
+      {/* Trip Taken (by another driver) Popup */}
+      <AnimatePresence>
+        {showTripTakenPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowTripTakenPopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 280 }}
+              className="bg-card rounded-3xl shadow-2xl w-full max-w-[340px] overflow-hidden border border-border/40"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 pt-8 pb-5 text-center">
+                <motion.div
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.08, type: "spring", stiffness: 260, damping: 16 }}
+                  className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/15 to-destructive/20 flex items-center justify-center mx-auto mb-4 border-2 border-orange-500/30"
+                >
+                  <CarIcon className="w-10 h-10 text-orange-500" />
+                </motion.div>
+                <motion.h3
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18 }}
+                  className="text-xl font-bold text-foreground"
+                >
+                  Trip Already Taken
+                </motion.h3>
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.24 }}
+                  className="text-sm text-muted-foreground mt-2 leading-relaxed"
+                >
+                  Another driver accepted this trip first. Stay online — the next request is on the way.
+                </motion.p>
+              </div>
+              <div className="px-6 pb-6">
+                <button
+                  onClick={() => setShowTripTakenPopup(false)}
+                  className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-base font-bold active:scale-95 transition-transform shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.6)]"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Driver Chat */}
       {currentTrip &&
       <TripChat
