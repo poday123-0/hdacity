@@ -222,8 +222,12 @@ export const usePushNotifications = (
                 const recent = sounds.filter((s: any) => s.timestamp > fiveMinAgo);
                 if (recent.length > 0) {
                   const latest = recent[recent.length - 1];
+                  if (latest.notification_type === "trip_requested") {
+                    console.log("Skipping queued trip_requested replay on foreground; driver app will validate and show the actual trip if still pending");
+                    return;
+                  }
                   console.log("Replaying pending sound from SW:", latest.notification_type);
-                  const shouldLoop = latest.notification_type === "trip_requested" || latest.notification_type === "sos_alert";
+                  const shouldLoop = latest.notification_type === "sos_alert";
                   playTrackedSound(latest.sound_url, shouldLoop);
                 }
               }

@@ -396,8 +396,10 @@ Deno.serve(async (req) => {
 
         // Resolve sound category and URL based on recipient's user type
         const soundCategory = getSoundCategory(type, t.user_type || "passenger");
-        // Driver's personal sound preference overrides the category default
-        const driverPref = driverSoundPrefs[t.user_id];
+        // Driver personal preference is ONLY for incoming trip requests.
+        // All other driver/passenger/admin sounds must keep using the admin-configured
+        // category sound so events like trip_taken / cancelled never play the trip-request tone.
+        const driverPref = soundCategory === "trip_request" ? driverSoundPrefs[t.user_id] : undefined;
         const soundUrl = driverPref?.sound_url || soundMap[soundCategory] || "";
 
         // Resolve native sound file name for Android/iOS
