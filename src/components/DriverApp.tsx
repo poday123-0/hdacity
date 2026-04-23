@@ -1315,34 +1315,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     }
 
-    // === SHOW UI IMMEDIATELY for fastest response ===
-    // Vibrate to alert driver
-    try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
-
-    // Play sound immediately — but on native, skip if app is backgrounded
-    // because the OS notification channel already plays trip_request.mp3
-    const isNativeBg = typeof (window as any).Capacitor !== "undefined"
-      && (window as any).Capacitor?.isNativePlatform?.()
-      && document.visibilityState !== "visible";
-
-    if (tripRequestSoundUrl && !isNativeBg) {
-      try {
-        stopAllSounds();
-        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
-      } catch {}
-    }
-
-    // Show trip request screen with available data right away
-    setCurrentTrip(trip);
-    setScreen("ride-request");
-    debugLog({ event: "handleNewTrip:show_screen", driver_id: userProfile?.id, trip_id: trip.id });
-
-    toast({
-      title: "🚗 New Ride Request!",
-      description: `${trip.pickup_address} → ${trip.dropoff_address}`
-    });
-
-    // === VALIDATE + FETCH EXTRA DATA IN PARALLEL (non-blocking for UI) ===
+    // Validate the trip before playing the looping request sound or showing the request screen.
+    // This prevents the common false-alert case where the push arrives but the trip has already
+    // been taken/cancelled by the time the driver app processes it.
     const [blockResult, freshTripResult, pProfileRes, stopsRes, timeoutRes, roadRes] = await Promise.all([
       userProfile?.id
         ? supabase
@@ -1398,6 +1373,29 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       handlingTripRef.current = null;
       return;
     }
+
+    // === SHOW UI ONLY AFTER VALIDATION ===
+    try { navigator.vibrate?.([300, 100, 300, 100, 300, 100, 300, 100, 300]); } catch {}
+
+    const isNativeBg = typeof (window as any).Capacitor !== "undefined"
+      && (window as any).Capacitor?.isNativePlatform?.()
+      && document.visibilityState !== "visible";
+
+    if (tripRequestSoundUrl && !isNativeBg) {
+      try {
+        stopAllSounds();
+        tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
+      } catch {}
+    }
+
+    setCurrentTrip(trip);
+    setScreen("ride-request");
+    debugLog({ event: "handleNewTrip:show_screen", driver_id: userProfile?.id, trip_id: trip.id });
+
+    toast({
+      title: "🚗 New Ride Request!",
+      description: `${trip.pickup_address} → ${trip.dropoff_address}`
+    });
 
     // Look up road names from nearby named_locations
     const namedLocs = (roadRes.data as any[]) || [];
