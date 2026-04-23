@@ -7,8 +7,7 @@ const formatMonth = (m: string) => {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 };
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
+import RefreshButton from "@/components/RefreshButton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/components/AuthScreen";
@@ -3034,17 +3033,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
 
   const initials = `${userProfile?.first_name?.[0] || ""}${userProfile?.last_name?.[0] || ""}`;
 
-  const driverPTR = usePullToRefresh({
-    onRefresh: async () => {
-      // Force SW to check for updates, then hard-reload to bypass cache
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) await reg.update().catch(() => {});
-      }
-      window.location.reload();
-    },
-    disabled: false
-  });
+  // Pull-to-refresh removed in favor of an explicit refresh button in the header.
 
   // Helper: update competition leaderboard entries after trip completion
   const updateCompetitionEntries = async (driverId: string) => {
@@ -3177,8 +3166,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   };
 
   return (
-    <div ref={driverPTR.containerRef} className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
-      <PullToRefreshIndicator pullDistance={driverPTR.pullDistance} refreshing={driverPTR.refreshing} progress={driverPTR.progress} />
+    <div className="relative w-full h-[100dvh] md:max-w-none max-w-screen-sm mx-auto overflow-hidden bg-surface driver-text-root" style={{ fontSize: `${textSize * 16}px` }}>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
       {/* Floating trip bubble — shows when a trip request exists but driver isn't on ride-request screen or navigating (already on a trip) */}
