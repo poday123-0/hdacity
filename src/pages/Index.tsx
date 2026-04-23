@@ -1,6 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import type { BookingType } from "@/components/LocationInput";
 import { AnimatePresence, motion } from "framer-motion";
 import { Car, User, X, CalendarCheck, Clock, MapPin, ArrowRight, CheckCircle2 } from "lucide-react";
