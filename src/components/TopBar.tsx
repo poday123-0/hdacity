@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download, Save, CalendarClock, FileText, Shield } from "lucide-react";
+import { Menu, Bell, Car, X, Clock, LogOut, BellOff, Phone, Plus, Trash2, Pencil, Users, Check, Share2, Camera, PackageSearch, MapPin, Home, Briefcase, Heart, Star, CirclePlus, MapPinned, Search, Loader2, Navigation, Wallet, Download, Save, CalendarClock, FileText, Shield, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SystemLogo from "@/components/SystemLogo";
 import { UserProfile } from "@/components/AuthScreen";
@@ -382,6 +382,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
           </div>
 
           <div className="flex items-center gap-2">
+            <RefreshButton />
             <button
               onClick={() => onNotificationPress ? onNotificationPress() : handleOpenNotifications()}
               className="w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center relative active:scale-95 transition-transform"
