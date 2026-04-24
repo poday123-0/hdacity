@@ -5102,7 +5102,10 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                       status: "cancelled",
                       cancel_reason: "Cancelled by driver",
                       cancelled_at: new Date().toISOString(),
-                    }).eq("id", currentTrip.id);
+                      cancelled_by: userProfile.id,
+                      cancelled_by_type: "driver",
+                      cancelled_by_name: `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim() || userProfile.phone_number || null,
+                    } as any).eq("id", currentTrip.id);
                     await supabase.from("driver_locations").update({ is_on_trip: false, session_id: deviceSessionId.current } as any).eq("driver_id", userProfile.id);
                     // Notify the passenger about cancellation
                     if (currentTrip.passenger_id) {

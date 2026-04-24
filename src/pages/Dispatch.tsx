@@ -756,7 +756,8 @@ const Dispatch = () => {
   const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedRefreshTrips = useCallback((immediate?: boolean) => {
     if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
-    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 100 : 500);
+    // Longer debounce so high-frequency trip updates don't cause table flicker.
+    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 700 : 1800);
   }, []);
 
   useEffect(() => {
@@ -837,8 +838,12 @@ const Dispatch = () => {
           setRecentTrips((prev) => patchTrip(prev));
           setAppRequestTrips((prev) => patchTrip(prev));
           setLostTrips((prev) => patchTrip(prev));
-          // Debounced full refetch for joined data (driver/vehicle details)
-          debouncedRefreshTrips();
+          // Only do a full refetch when driver assignment changes (need driver join data)
+          // or when status transitions to a state where joined data may be incomplete.
+          const needsRefetch =
+            (updated.driver_id && updated.driver_id !== old?.driver_id) ||
+            (updated.vehicle_id && updated.vehicle_id !== old?.vehicle_id);
+          if (needsRefetch) debouncedRefreshTrips();
         },
       )
       .on(
@@ -1270,7 +1275,10 @@ const Dispatch = () => {
         cancelled_at: new Date().toISOString(),
         cancel_reason: "Cancelled by dispatch",
         is_loss: true,
-      })
+        cancelled_by: dispatcherProfile?.id || null,
+        cancelled_by_type: "dispatcher",
+        cancelled_by_name: dispatcherProfile ? (`${dispatcherProfile.first_name || ""} ${dispatcherProfile.last_name || ""}`.trim() || dispatcherProfile.phone_number || null) : null,
+      } as any)
       .eq("id", tripId);
 
     // Push-notify the affected driver(s) so cancellation reaches them instantly

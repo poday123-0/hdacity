@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff, MessageSquare, Send } from "lucide-react";
+import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, FileUp, Loader2, Plus, ChevronDown, ChevronUp, Car, Star, ThumbsDown, CheckSquare, Square, AlertTriangle, Clock, ShieldCheck, Filter, Check, XCircle, Image, Building2, Ban, ShieldOff, MessageSquare, Send, ListOrdered } from "lucide-react";
+import { DriverTripsModal } from "@/components/admin/DriverTripsModal";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
 
@@ -22,6 +23,7 @@ const AdminDrivers = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [tripsModalDriver, setTripsModalDriver] = useState<{ id: string; name: string } | null>(null);
   const [editForm, setEditForm] = useState<any>({
     first_name: "", last_name: "", email: "", phone_number: "",
     company_id: "", monthly_fee: "", bank_id: "", bank_account_number: "", bank_account_name: "",
@@ -1389,6 +1391,7 @@ const AdminDrivers = () => {
                               <span className="text-[10px] text-muted-foreground whitespace-nowrap">Docs {docCount}/4</span>
                             )}
                           </div>
+                          <button onClick={() => setTripsModalDriver({ id: d.id, name: `${d.first_name || ""} ${d.last_name || ""}`.trim() || d.phone_number || "Driver" })} className="w-6 h-6 shrink-0 rounded-md bg-surface flex items-center justify-center text-muted-foreground hover:text-primary transition-colors" title="View trips"><ListOrdered className="w-3 h-3" /></button>
                           <button onClick={() => openEdit(d)} className="w-6 h-6 shrink-0 rounded-md bg-surface flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Pencil className="w-3 h-3" /></button>
                           <button onClick={() => deleteDriver(d.id)} className="w-6 h-6 shrink-0 rounded-md bg-surface flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3 h-3" /></button>
                         </div>
@@ -1838,6 +1841,13 @@ const AdminDrivers = () => {
             </div>
           </div>
         </div>
+      )}
+      {tripsModalDriver && (
+        <DriverTripsModal
+          driverId={tripsModalDriver.id}
+          driverName={tripsModalDriver.name}
+          onClose={() => setTripsModalDriver(null)}
+        />
       )}
     </div>
   );

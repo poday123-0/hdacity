@@ -55,8 +55,8 @@ const AdminTrips = () => {
     "passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), " +
     "driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number)";
 
-  const fetchTrips = async () => {
-    setLoading(true);
+  const fetchTrips = async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     // Default to the last 7 days when the user hasn't picked a date range —
     // keeps the initial payload small. Use the date filter for older data.
     const hasDateRange = !!dateFrom || !!dateTo;
@@ -89,7 +89,7 @@ const AdminTrips = () => {
 
     const { data } = await query;
     setTrips((data as any[]) || []);
-    setLoading(false);
+    if (!opts.silent) setLoading(false);
   };
 
   useEffect(() => { fetchTrips(); }, [filter, bookingFilter, dispatchFilter, dateFrom, dateTo]);
@@ -99,13 +99,14 @@ const AdminTrips = () => {
   fetchTripsRef.current = fetchTrips;
 
   useEffect(() => {
-    // Debounce rapid bursts of trip updates so the UI stays responsive
+    // Debounce rapid bursts of trip updates so the UI stays responsive.
+    // Use a longer 2s debounce + silent refetch (no loading flicker).
     let debounceId: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel("admin-trips-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
         if (debounceId) clearTimeout(debounceId);
-        debounceId = setTimeout(() => fetchTripsRef.current(), 400);
+        debounceId = setTimeout(() => fetchTripsRef.current({ silent: true }), 2000);
       })
       .subscribe();
     return () => {
