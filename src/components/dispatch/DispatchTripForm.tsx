@@ -1962,7 +1962,21 @@ const DispatchTripForm = ({
                     <div className="flex items-center justify-between">
                       <span className="text-foreground">
                         {selectedCenterCode === info.code && <CheckCircle2 className="w-3 h-3 inline mr-1 text-primary" />}
-                        {info.has_loss && <span className="text-[9px] font-bold text-destructive mr-1">LOSS</span>}
+                        {info.has_loss && (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const { data: vs } = await supabase
+                                .from("vehicles")
+                                .select("id")
+                                .eq("center_code", info.code);
+                              setTripsModalCode({ code: info.code, vehicleIds: (vs || []).map((v: any) => v.id) });
+                            }}
+                            className="text-[9px] font-bold text-destructive mr-1 hover:underline"
+                            title="View trips (including loss)"
+                          >LOSS</button>
+                        )}
                         <span className="font-bold">{info.code}</span>
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type === 'Mini Pickup' ? 'MPickup' : info.vehicle_type === 'Big Pickup' ? 'BPickup' : info.vehicle_type}</span>}
