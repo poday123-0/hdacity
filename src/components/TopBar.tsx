@@ -748,7 +748,7 @@ const TopBar = ({ onDriverMode, onRegisterDriver, onLogout, userName, userProfil
                         {trip.status === "scheduled" && (
                           <button
                             onClick={async () => {
-                              await supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString() }).eq("id", trip.id);
+                              await supabase.from("trips").update({ status: "cancelled", cancel_reason: "Cancelled by passenger", cancelled_at: new Date().toISOString(), cancelled_by: userProfile?.id || null, cancelled_by_type: "passenger", cancelled_by_name: `${userProfile?.first_name || ""} ${userProfile?.last_name || ""}`.trim() || userProfile?.phone_number || null } as any).eq("id", trip.id);
                               fetchBookings();
                               toast({ title: "Booking cancelled" });
                             }}
