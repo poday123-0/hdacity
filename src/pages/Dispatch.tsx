@@ -756,7 +756,8 @@ const Dispatch = () => {
   const tripRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedRefreshTrips = useCallback((immediate?: boolean) => {
     if (tripRefreshDebounceRef.current) clearTimeout(tripRefreshDebounceRef.current);
-    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 100 : 500);
+    // Longer debounce so high-frequency trip updates don't cause table flicker.
+    tripRefreshDebounceRef.current = setTimeout(() => refreshTrips(), immediate ? 700 : 1800);
   }, []);
 
   useEffect(() => {
