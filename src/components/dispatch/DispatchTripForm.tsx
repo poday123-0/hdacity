@@ -1967,7 +1967,23 @@ const DispatchTripForm = ({
                         {" "}<span className="font-semibold">{info.plate_number}</span>
                         {info.vehicle_type && <span className="text-muted-foreground"> • {info.vehicle_type === 'Mini Pickup' ? 'MPickup' : info.vehicle_type === 'Big Pickup' ? 'BPickup' : info.vehicle_type}</span>}
                         {info.color && <span className="text-muted-foreground"> • {info.color}</span>}
-                        {(info.today_trips || 0) > 0 && <span className="text-primary font-semibold"> • {info.today_trips}</span>}
+                        {(info.today_trips || 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const { data: vs } = await supabase
+                                .from("vehicles")
+                                .select("id")
+                                .eq("center_code", info.code);
+                              setTripsModalCode({ code: info.code, vehicleIds: (vs || []).map((v: any) => v.id) });
+                            }}
+                            className="text-primary font-semibold hover:underline"
+                            title="View trips for this center code"
+                          >
+                            {" "}• {info.today_trips}
+                          </button>
+                        )}
                         {info.driver_phone && <span className="text-muted-foreground"> • {info.driver_phone}</span>}
                         {info.last_trip_date && <span className="text-muted-foreground/70 text-[9px]"> • {new Date(info.last_trip_date).toLocaleDateString([], { month: "short", day: "2-digit" })} {new Date(info.last_trip_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                       </span>
