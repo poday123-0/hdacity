@@ -125,6 +125,7 @@ const DispatchTripForm = ({
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(null);
   const [lossAuditLog, setLossAuditLog] = useState<LossAuditEvent[]>([]);
   const [showLossAudit, setShowLossAudit] = useState(false);
+  const [tripsModalCode, setTripsModalCode] = useState<{ code: string; vehicleIds: string[] } | null>(null);
 
   const [selecting, setSelecting] = useState<"pickup" | "dropoff" | number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
