@@ -2185,6 +2185,13 @@ const DispatchTripForm = ({
           </div>
         </div>
       )}
+      {tripsModalCode && (
+        <CenterCodeTripsModal
+          centerCode={tripsModalCode.code}
+          vehicleIds={tripsModalCode.vehicleIds}
+          onClose={() => setTripsModalCode(null)}
+        />
+      )}
     </div>
   );
 };
