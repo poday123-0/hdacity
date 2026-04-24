@@ -245,8 +245,9 @@ const DispatchTripForm = ({
               const getPriority = (item: CenterCodeIndexEntry) => {
                 const hasLoss = !!item.has_loss;
                 const hasTripsToday = (item.today_trips || 0) > 0;
-                if (hasLoss) return 0;
-                if (!hasTripsToday) return 1;
+                // No trips today comes FIRST (most available), then loss, then has-trips
+                if (!hasTripsToday && !hasLoss) return 0;
+                if (hasLoss) return 1;
                 return 2;
               };
               const priorityDiff = getPriority(a) - getPriority(b);
