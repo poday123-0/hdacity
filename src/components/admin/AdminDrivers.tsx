@@ -1842,6 +1842,13 @@ const AdminDrivers = () => {
           </div>
         </div>
       )}
+      {tripsModalDriver && (
+        <DriverTripsModal
+          driverId={tripsModalDriver.id}
+          driverName={tripsModalDriver.name}
+          onClose={() => setTripsModalDriver(null)}
+        />
+      )}
     </div>
   );
 };
