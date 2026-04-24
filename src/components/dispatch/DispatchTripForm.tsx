@@ -245,8 +245,9 @@ const DispatchTripForm = ({
               const getPriority = (item: CenterCodeIndexEntry) => {
                 const hasLoss = !!item.has_loss;
                 const hasTripsToday = (item.today_trips || 0) > 0;
-                if (hasLoss) return 0;
-                if (!hasTripsToday) return 1;
+                // No trips today comes FIRST (most available), then loss, then has-trips
+                if (!hasTripsToday && !hasLoss) return 0;
+                if (hasLoss) return 1;
                 return 2;
               };
               const priorityDiff = getPriority(a) - getPriority(b);
@@ -1670,10 +1671,10 @@ const DispatchTripForm = ({
                         const getPriority = (item: CenterCodeIndexEntry) => {
                           const hasLoss = !!item.has_loss;
                           const hasTripsToday = (item.today_trips || 0) > 0;
-
-                          if (hasLoss) return 0; // Loss always top
-                          if (!hasTripsToday) return 1; // No trips today next
-                          return 2; // Has trips today last
+                          // No trips today comes FIRST (most available), then loss, then has-trips
+                          if (!hasTripsToday && !hasLoss) return 0;
+                          if (hasLoss) return 1;
+                          return 2;
                         };
 
                         const priorityDiff = getPriority(a) - getPriority(b);
@@ -1783,8 +1784,7 @@ const DispatchTripForm = ({
                       .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
                       .gte("created_at", todayStartISO)
                       .in("status", ["requested", "accepted", "started", "completed"])
-                      .eq("dispatch_type", "operator")
-                      .eq("is_loss", false),
+                      .eq("dispatch_type", "operator"),
                     supabase
                       .from("trips")
                       .select("id", { count: "exact", head: true })
@@ -1897,8 +1897,7 @@ const DispatchTripForm = ({
                         .in("vehicle_id", codeVehicleIds.length > 0 ? codeVehicleIds : ["__none__"])
                         .gte("created_at", todayStartISO)
                         .in("status", ["requested", "accepted", "started", "completed"])
-                        .eq("dispatch_type", "operator")
-                        .eq("is_loss", false),
+                        .eq("dispatch_type", "operator"),
                       supabase
                         .from("trips")
                         .select("id", { count: "exact", head: true })

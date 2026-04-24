@@ -539,7 +539,6 @@ const Dispatch = () => {
                 .gte("created_at", todayISO)
 .in("status", ["requested", "accepted", "arrived", "started", "completed"])
                  .eq("dispatch_type", "operator")
-                 .eq("is_loss", false)
             : Promise.resolve({ data: [] as any[] }),
           vehicleIds.length
             ? supabase
