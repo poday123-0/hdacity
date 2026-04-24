@@ -23,6 +23,7 @@ const AdminDrivers = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [tripsModalDriver, setTripsModalDriver] = useState<{ id: string; name: string } | null>(null);
   const [editForm, setEditForm] = useState<any>({
     first_name: "", last_name: "", email: "", phone_number: "",
     company_id: "", monthly_fee: "", bank_id: "", bank_account_number: "", bank_account_name: "",
