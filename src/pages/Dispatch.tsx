@@ -838,8 +838,12 @@ const Dispatch = () => {
           setRecentTrips((prev) => patchTrip(prev));
           setAppRequestTrips((prev) => patchTrip(prev));
           setLostTrips((prev) => patchTrip(prev));
-          // Debounced full refetch for joined data (driver/vehicle details)
-          debouncedRefreshTrips();
+          // Only do a full refetch when driver assignment changes (need driver join data)
+          // or when status transitions to a state where joined data may be incomplete.
+          const needsRefetch =
+            (updated.driver_id && updated.driver_id !== old?.driver_id) ||
+            (updated.vehicle_id && updated.vehicle_id !== old?.vehicle_id);
+          if (needsRefetch) debouncedRefreshTrips();
         },
       )
       .on(
