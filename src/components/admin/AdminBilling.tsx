@@ -601,25 +601,12 @@ const AdminBilling = () => {
     setDriverCardLoading(false);
   };
 
-  // Helper: deduct wallet balance when marking center vehicle as paid
-  const deductWalletForCenterFee = async (driverId: string | null, fee: number) => {
-    if (!driverId || fee <= 0) return;
-    const walletBal = centerWallets.get(driverId) || 0;
-    if (walletBal <= 0) return;
-    const deductAmt = Math.min(walletBal, fee);
-    const { data: walletRow } = await supabase.from("wallets").select("id, balance").eq("user_id", driverId).maybeSingle();
-    if (!walletRow) return;
-    const newBalance = Math.max(0, Number(walletRow.balance) - deductAmt);
-    await supabase.from("wallets").update({ balance: newBalance, updated_at: new Date().toISOString() } as any).eq("id", walletRow.id);
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletRow.id,
-      user_id: driverId,
-      amount: deductAmt,
-      type: "debit",
-      reason: `Center fee deduction for ${formatMonth(centerMonth)}`,
-      status: "completed",
-    } as any);
-    centerWallets.set(driverId, newBalance);
+  // NOTE: Wallet deduction was removed from "Mark Paid" / "Approve" flows.
+  // Admin actions record an external (cash / slip) payment and must NOT
+  // touch the driver's wallet balance. Wallet should only be debited when
+  // the driver themselves chooses to pay from wallet.
+  const deductWalletForCenterFee = async (_driverId: string | null, _fee: number) => {
+    return;
   };
 
   return (
@@ -1446,12 +1433,12 @@ const AdminBilling = () => {
                           if (existing?.status === "approved") continue;
                           const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
                           const fee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
-                          const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
-                          const balanceDue = Math.max(0, fee - walletBal);
+                          // Record the full fee as externally paid — do NOT
+                          // subtract wallet balance here. Wallet is untouched.
                           if (existing) {
-                            await supabase.from("center_payments").update({ status: "approved", amount: balanceDue, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                            await supabase.from("center_payments").update({ status: "approved", amount: fee, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
                           } else {
-                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: balanceDue, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
+                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: fee, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
                           }
                           await deductWalletForCenterFee(cv.driver_id, fee);
                           if (!cv.is_active) {
@@ -1844,18 +1831,16 @@ const AdminBilling = () => {
                             {(!monthPayment || monthPayment.status === "rejected") && (
                               <button
                                 onClick={async () => {
+                                  // Record full fee as externally paid (cash/slip).
+                                  // Wallet is intentionally NOT deducted here.
                                   if (monthPayment) {
-                                    const wBalUpd = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
-                                    const bDueUpd = Math.max(0, centerFee - wBalUpd);
-                                    await supabase.from("center_payments").update({ status: "approved", amount: bDueUpd, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    await supabase.from("center_payments").update({ status: "approved", amount: centerFee, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
                                   } else {
-                                    const wBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
-                                    const bDue = Math.max(0, centerFee - wBal);
                                     await supabase.from("center_payments").insert({
                                       driver_id: cv.driver_id,
                                       vehicle_id: cv.id,
                                       vehicle_type_id: cv.vehicle_type_id,
-                                      amount: bDue,
+                                      amount: centerFee,
                                       payment_month: centerMonth,
                                       status: "approved",
                                       approved_at: new Date().toISOString(),
@@ -1865,7 +1850,6 @@ const AdminBilling = () => {
                                   if (!cv.is_active) {
                                     await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
                                   }
-                                  await deductWalletForCenterFee(cv.driver_id, centerFee);
                                   toast({ title: "Marked as paid" });
                                   fetchCenterData();
                                 }}
@@ -1878,13 +1862,11 @@ const AdminBilling = () => {
                               <>
                                 <button
                                   onClick={async () => {
-                                    const wBalApp = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
-                                    const bDueApp = Math.max(0, centerFee - wBalApp);
-                                    await supabase.from("center_payments").update({ status: "approved", amount: bDueApp, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
+                                    // Approving a submitted slip: record full fee, do not touch wallet.
+                                    await supabase.from("center_payments").update({ status: "approved", amount: centerFee, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", monthPayment.id);
                                     if (!cv.is_active) {
                                       await supabase.from("vehicles").update({ is_active: true } as any).eq("id", cv.id);
                                     }
-                                    await deductWalletForCenterFee(cv.driver_id, centerFee);
                                     toast({ title: "Payment approved" });
                                     fetchCenterData();
                                   }}
