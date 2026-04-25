@@ -1433,12 +1433,12 @@ const AdminBilling = () => {
                           if (existing?.status === "approved") continue;
                           const vt = vehicleTypes.find((v: any) => v.id === cv.vehicle_type_id);
                           const fee = cv.center_fee_exempt ? 0 : (cv.custom_center_fee != null ? cv.custom_center_fee : ((vt as any)?.center_fee || 0));
-                          const walletBal = cv.driver_id ? (centerWallets.get(cv.driver_id) || 0) : 0;
-                          const balanceDue = Math.max(0, fee - walletBal);
+                          // Record the full fee as externally paid — do NOT
+                          // subtract wallet balance here. Wallet is untouched.
                           if (existing) {
-                            await supabase.from("center_payments").update({ status: "approved", amount: balanceDue, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
+                            await supabase.from("center_payments").update({ status: "approved", amount: fee, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any).eq("id", existing.id);
                           } else {
-                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: balanceDue, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
+                            await supabase.from("center_payments").insert({ driver_id: cv.driver_id, vehicle_id: cv.id, vehicle_type_id: cv.vehicle_type_id, amount: fee, payment_month: centerMonth, status: "approved", approved_at: new Date().toISOString() } as any);
                           }
                           await deductWalletForCenterFee(cv.driver_id, fee);
                           if (!cv.is_active) {
