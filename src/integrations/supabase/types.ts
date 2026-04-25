@@ -1151,6 +1151,7 @@ export type Database = {
           license_back_url: string | null
           license_expiry: string | null
           license_front_url: string | null
+          map_icon_url: string | null
           monthly_fee: number
           phone_number: string
           rejection_reason: string | null
@@ -1185,6 +1186,7 @@ export type Database = {
           license_back_url?: string | null
           license_expiry?: string | null
           license_front_url?: string | null
+          map_icon_url?: string | null
           monthly_fee?: number
           phone_number: string
           rejection_reason?: string | null
@@ -1219,6 +1221,7 @@ export type Database = {
           license_back_url?: string | null
           license_expiry?: string | null
           license_front_url?: string | null
+          map_icon_url?: string | null
           monthly_fee?: number
           phone_number?: string
           rejection_reason?: string | null
