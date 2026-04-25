@@ -3455,7 +3455,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         mapIconUrl={(() => {
           const sel = driverVehicles.find((v) => v.id === selectedVehicleId) || driverVehicles[0];
           const vt = sel ? vehicleTypes.find((t) => t.id === sel.vehicle_type_id) : null;
-          return vt?.map_icon_url || null;
+          // Prefer the driver's own vehicle photo over the admin-set vehicle-type icon
+          return sel?.image_url || vt?.map_icon_url || null;
         })()}
         passengerMapIconUrl={passengerMapIconUrl}
         passengerLiveLocation={passengerLiveLocation}
