@@ -601,25 +601,12 @@ const AdminBilling = () => {
     setDriverCardLoading(false);
   };
 
-  // Helper: deduct wallet balance when marking center vehicle as paid
-  const deductWalletForCenterFee = async (driverId: string | null, fee: number) => {
-    if (!driverId || fee <= 0) return;
-    const walletBal = centerWallets.get(driverId) || 0;
-    if (walletBal <= 0) return;
-    const deductAmt = Math.min(walletBal, fee);
-    const { data: walletRow } = await supabase.from("wallets").select("id, balance").eq("user_id", driverId).maybeSingle();
-    if (!walletRow) return;
-    const newBalance = Math.max(0, Number(walletRow.balance) - deductAmt);
-    await supabase.from("wallets").update({ balance: newBalance, updated_at: new Date().toISOString() } as any).eq("id", walletRow.id);
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletRow.id,
-      user_id: driverId,
-      amount: deductAmt,
-      type: "debit",
-      reason: `Center fee deduction for ${formatMonth(centerMonth)}`,
-      status: "completed",
-    } as any);
-    centerWallets.set(driverId, newBalance);
+  // NOTE: Wallet deduction was removed from "Mark Paid" / "Approve" flows.
+  // Admin actions record an external (cash / slip) payment and must NOT
+  // touch the driver's wallet balance. Wallet should only be debited when
+  // the driver themselves chooses to pay from wallet.
+  const deductWalletForCenterFee = async (_driverId: string | null, _fee: number) => {
+    return;
   };
 
   return (
