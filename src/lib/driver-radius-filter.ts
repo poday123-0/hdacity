@@ -52,10 +52,10 @@ export async function filterDriversByPersonalRadius(
 
   const radiusByDriver = new Map<string, number>();
   (profilesRes.data || []).forEach((p: any) => {
-    // DriverApp treats the DB default of 10 as "use admin default"
-    const dbDefault = 10;
+    // Always honor the driver's saved personal radius; only use the admin
+    // default when the driver has not set any value (null).
     const r = p.trip_radius_km;
-    radiusByDriver.set(p.id, r === dbDefault || r == null ? defaultRadius : Number(r));
+    radiusByDriver.set(p.id, r == null ? defaultRadius : Number(r));
   });
 
   return withCoords
