@@ -481,10 +481,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { attribution: "", maxZoom: 19 }).addTo(map);
     tileLayerRef.current = tileLayer;
 
-    // Driver marker
-    const icon = mapIconUrl
-      ? customImgIcon(mapIconUrl, 44)
-      : driverDotIcon();
+    // Driver marker — always use a clean directional car icon so the driver
+    // sees a clear "which way am I facing" indicator instead of the admin-set
+    // vehicle map icon (that icon is for passengers/dispatch viewing the driver).
+    const icon = driverCarIcon(prevHeadingRef.current || 0);
     const driverMarker = L.marker(center, { icon, zIndexOffset: 1000 }).addTo(map);
     driverMarkerRef.current = driverMarker;
     mapInstance.current = map;
@@ -759,13 +759,12 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
     prevMarkerPosRef.current = displayPos;
 
-    // Update icon: keep the driver's custom map icon when not navigating;
-    // only swap to a directional arrow during turn-by-turn navigation / free-nav
-    // where heading-direction is meaningful. (mapIconUrl effect handles initial set + updates.)
+    // Update icon: use a sleek directional arrow during turn-by-turn / free-nav,
+    // and a rotating car icon while idle/online so heading is always visible.
     if (isNavigating || freeNavTarget) {
       driverMarkerRef.current.setIcon(driverArrowIcon(heading));
-    } else if (!mapIconUrl) {
-      driverMarkerRef.current.setIcon(driverDotIcon());
+    } else {
+      driverMarkerRef.current.setIcon(driverCarIcon(heading));
     }
 
     // Rotate map to match driver heading during navigation
@@ -841,11 +840,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     }
   }, [currentPos, freeNavTarget]);
 
-  // Apply map icon when available
-  useEffect(() => {
-    if (!mapIconUrl || !driverMarkerRef.current) return;
-    driverMarkerRef.current.setIcon(customImgIcon(mapIconUrl, 36));
-  }, [mapIconUrl]);
+  // NOTE: mapIconUrl (admin-set vehicle map icon) is intentionally NOT applied
+  // to the driver's OWN marker. The driver always sees a directional car/arrow
+  // icon so they can tell which way they're facing. The admin map icon is still
+  // used for passenger and dispatch maps where heading isn't the focus.
 
   // Auto-refocus on turn change
   const prevStepIndexRef = useRef(0);
