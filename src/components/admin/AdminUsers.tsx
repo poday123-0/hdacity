@@ -37,9 +37,11 @@ const AdminUsers = () => {
   const [lookingUp, setLookingUp] = useState(false);
   const [editingPermissions, setEditingPermissions] = useState<string | null>(null);
   const [editPermissions, setEditPermissions] = useState<string[]>([]);
+  const [editBypassOtp, setEditBypassOtp] = useState<string>("");
   const [notFound, setNotFound] = useState(false);
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
+  const [bypassOtp, setBypassOtp] = useState<string>("");
 
   const getCallerId = () => {
     try {
@@ -101,6 +103,7 @@ const AdminUsers = () => {
     setNewFirstName("");
     setNewLastName("");
     setSelectedPermissions([]);
+    setBypassOtp("");
   };
 
   const addUser = async () => {
@@ -122,6 +125,7 @@ const AdminUsers = () => {
       phone_number: addPhone,
       role: addRole,
       permissions: selectedPermissions,
+      bypass_otp: bypassOtp.trim() || null,
     };
 
     // If creating new user
@@ -159,12 +163,12 @@ const AdminUsers = () => {
 
   const updatePermissions = async (roleId: string) => {
     const { data, error } = await supabase.functions.invoke("manage-user-role", {
-      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions, caller_id: getCallerId() },
+      body: { action: "update_permissions", role_id: roleId, permissions: editPermissions, bypass_otp: editBypassOtp.trim() || null, caller_id: getCallerId() },
     });
     if (error || data?.error) {
       toast({ title: "Error", description: data?.error || error?.message, variant: "destructive" });
     } else {
-      toast({ title: "Permissions updated" });
+      toast({ title: "Updated" });
       setEditingPermissions(null);
       fetchUsers();
     }
