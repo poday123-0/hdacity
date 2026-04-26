@@ -67,12 +67,12 @@ Deno.serve(async (req) => {
     const maxPages = 5; // up to ~100 results
 
     do {
-      const url = nextPageToken
+      const url: string = nextPageToken
         ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${nextPageToken}&key=${googleKey}`
         : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${centerLat},${centerLng}&radius=${radiusMeters}&key=${googleKey}`;
 
-      const res = await fetch(url);
-      const data = await res.json();
+      const res: Response = await fetch(url);
+      const data: any = await res.json();
 
       if (data.results) {
         allPlaces.push(...data.results);

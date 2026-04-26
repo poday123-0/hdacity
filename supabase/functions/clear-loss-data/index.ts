@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
       .update({ is_loss: false })
       .eq("is_loss", true)
       .eq("dispatch_type", "operator")
-      .select("id", { count: "exact", head: true });
+      .select("id");
 
     if (error) throw error;
 
