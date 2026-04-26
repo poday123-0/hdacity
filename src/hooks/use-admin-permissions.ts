@@ -28,7 +28,7 @@ export function useAdminPermissions(): AdminPermissions {
     let cancelled = false;
     const load = async () => {
       try {
-        const stored = localStorage.getItem("hda_admin");
+        const stored = localStorage.getItem("hda_admin") || localStorage.getItem("hda_dispatcher");
         if (!stored) {
           if (!cancelled) setLoading(false);
           return;
