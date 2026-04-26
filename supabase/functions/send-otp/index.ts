@@ -84,10 +84,22 @@ serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("MSG Owl send error:", data);
+      console.error("MSG Owl send error:", response.status, data);
+
+      // Handle insufficient balance (402) with a clear, user-actionable message
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({
+            error: "SMS service balance is exhausted. Please top up the SMS account to send verification codes.",
+            code: "SMS_BALANCE_EXHAUSTED",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ error: "Failed to send SMS", details: data }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
