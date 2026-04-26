@@ -48,6 +48,28 @@ serve(async (req) => {
       );
     }
 
+    // Admin/dispatcher bypass OTP — skip SMS if a fixed code is set for this number
+    const localNumber = fullNumber.startsWith("960") ? fullNumber.slice(3) : fullNumber;
+    const { data: bypassProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone_number", localNumber);
+    if (bypassProfiles && bypassProfiles.length > 0) {
+      const ids = bypassProfiles.map((p: any) => p.id);
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("bypass_otp, role")
+        .in("user_id", ids)
+        .in("role", ["admin", "dispatcher"]);
+      const hasBypass = (roles || []).some((r: any) => r.bypass_otp && String(r.bypass_otp).length > 0);
+      if (hasBypass) {
+        return new Response(
+          JSON.stringify({ success: true, bypass: true, message: "Use your assigned admin code" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const code = generateCode();
 
     // Store the OTP code in database (with retry for transient SSL errors)

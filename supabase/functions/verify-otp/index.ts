@@ -36,6 +36,28 @@ serve(async (req) => {
       );
     }
 
+    // Admin/dispatcher bypass OTP — admins may set a fixed code per user
+    const localNumber = fullNumber.startsWith("960") ? fullNumber.slice(3) : fullNumber;
+    const { data: bypassProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone_number", localNumber);
+    if (bypassProfiles && bypassProfiles.length > 0) {
+      const ids = bypassProfiles.map((p: any) => p.id);
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, bypass_otp, role")
+        .in("user_id", ids)
+        .in("role", ["admin", "dispatcher"]);
+      const match = (roles || []).find((r: any) => r.bypass_otp && r.bypass_otp === code);
+      if (match) {
+        return new Response(
+          JSON.stringify({ success: true, bypass: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Find the latest unexpired, unverified OTP for this number
     const { data: otpRecord, error: dbError } = await supabase
       .from("otp_codes")
