@@ -5,6 +5,7 @@ import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, Fil
 import { DriverTripsModal } from "@/components/admin/DriverTripsModal";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
+import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
 
