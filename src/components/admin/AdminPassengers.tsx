@@ -13,6 +13,7 @@ const statusChips: { value: StatusFilter; label: string; color: string }[] = [
 ];
 
 const AdminPassengers = () => {
+  const { maskPhone } = useAdminPermissions();
   const [passengers, setPassengers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
