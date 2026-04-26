@@ -30,6 +30,7 @@ const dispatchTypeLabels: Record<string, { label: string; color: string }> = {
 };
 
 const AdminTrips = () => {
+  const { maskPhone } = useAdminPermissions();
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -447,11 +448,11 @@ const AdminTrips = () => {
                   <tr key={t.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-foreground">{t.passenger ? `${t.passenger.first_name} ${t.passenger.last_name}` : t.customer_name || "—"}</p>
-                      <p className="text-[10px] text-muted-foreground">{t.passenger?.phone_number || t.customer_phone || ""}</p>
+                      <p className="text-[10px] text-muted-foreground">{maskPhone(t.passenger?.phone_number || t.customer_phone || "")}</p>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-foreground">{t.driver ? `${t.driver.first_name} ${t.driver.last_name}` : "—"}</p>
-                      <p className="text-[10px] text-muted-foreground">{t.driver?.phone_number || ""}</p>
+                      <p className="text-[10px] text-muted-foreground">{maskPhone(t.driver?.phone_number || "")}</p>
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
                       <p className="text-xs text-foreground truncate">{t.pickup_address || "—"}</p>
@@ -624,7 +625,7 @@ const AdminTrips = () => {
                     {selectedTrip.customer_phone && (
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Phone className="w-3 h-3" />
-                        <span>Customer: <span className="text-foreground font-medium">{selectedTrip.customer_phone}</span></span>
+                        <span>Customer: <span className="text-foreground font-medium">{maskPhone(selectedTrip.customer_phone)}</span></span>
                       </div>
                     )}
                     {selectedTrip.dispatch_type && (
