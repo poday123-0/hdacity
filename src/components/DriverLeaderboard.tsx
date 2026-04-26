@@ -297,6 +297,105 @@ const DriverLeaderboard = ({ driverId, onClose }: Props) => {
               </div>
             )}
 
+            {/* 🏆 Winners showcase — only after the competition ends */}
+            {isEnded && entries.length > 0 && (
+              <div className="rounded-2xl p-4 bg-gradient-to-br from-yellow-500/15 via-amber-500/10 to-orange-500/15 border border-yellow-500/30">
+                <h3 className="text-sm font-extrabold text-foreground text-center mb-3 flex items-center justify-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  <span>Congratulations to our winners!</span>
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                </h3>
+                <div className="flex items-end justify-center gap-2">
+                  {/* 2nd place — left, shorter */}
+                  {entries[1] && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                      className="flex flex-col items-center flex-1 max-w-[100px]"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 p-0.5 shadow-lg">
+                        <div className="w-full h-full rounded-full bg-background overflow-hidden flex items-center justify-center">
+                          {entries[1].avatar_url ? (
+                            <img src={entries[1].avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-muted-foreground">{(entries[1].driver_name || "D").slice(0, 2).toUpperCase()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-2xl mt-1">🥈</span>
+                      <p className="text-[11px] font-bold text-foreground text-center truncate w-full">{entries[1].driver_name}</p>
+                      <p className="text-[10px] text-muted-foreground">{entries[1].trip_count} trips</p>
+                      <div className="w-full h-12 mt-1.5 rounded-t-lg bg-gradient-to-b from-gray-300 to-gray-400/60 flex items-start justify-center pt-1">
+                        <span className="text-xs font-black text-background">2</span>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* 1st place — center, tallest */}
+                  {entries[0] && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex flex-col items-center flex-1 max-w-[110px]"
+                    >
+                      <motion.div
+                        animate={{ rotate: [-3, 3, -3] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="text-2xl"
+                      >
+                        👑
+                      </motion.div>
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 p-0.5 shadow-xl shadow-yellow-500/30">
+                        <div className="w-full h-full rounded-full bg-background overflow-hidden flex items-center justify-center">
+                          {entries[0].avatar_url ? (
+                            <img src={entries[0].avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-muted-foreground">{(entries[0].driver_name || "D").slice(0, 2).toUpperCase()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-2xl mt-1">🥇</span>
+                      <p className="text-xs font-extrabold text-foreground text-center truncate w-full">{entries[0].driver_name}</p>
+                      <p className="text-[10px] text-yellow-600 dark:text-yellow-400 font-bold">{entries[0].trip_count} trips</p>
+                      <div className="w-full h-16 mt-1.5 rounded-t-lg bg-gradient-to-b from-yellow-400 to-amber-500/70 flex items-start justify-center pt-1">
+                        <span className="text-sm font-black text-background">1</span>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* 3rd place — right, shortest */}
+                  {entries[2] && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="flex flex-col items-center flex-1 max-w-[100px]"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 p-0.5 shadow-lg">
+                        <div className="w-full h-full rounded-full bg-background overflow-hidden flex items-center justify-center">
+                          {entries[2].avatar_url ? (
+                            <img src={entries[2].avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-muted-foreground">{(entries[2].driver_name || "D").slice(0, 2).toUpperCase()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-2xl mt-1">🥉</span>
+                      <p className="text-[11px] font-bold text-foreground text-center truncate w-full">{entries[2].driver_name}</p>
+                      <p className="text-[10px] text-muted-foreground">{entries[2].trip_count} trips</p>
+                      <div className="w-full h-9 mt-1.5 rounded-t-lg bg-gradient-to-b from-amber-600 to-orange-700/60 flex items-start justify-center pt-1">
+                        <span className="text-xs font-black text-background">3</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+                {selectedComp.status === "completed" && (
+                  <p className="text-center text-[10px] text-muted-foreground mt-3">🎁 Prizes have been awarded</p>
+                )}
+              </div>
+            )}
+
             {/* Info bar */}
             <div className="flex items-center gap-3 bg-surface rounded-xl px-3 py-2">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
