@@ -220,6 +220,15 @@ const Dispatch = () => {
   const [dispatcherPermissions, setDispatcherPermissions] = useState<string[]>([]);
   const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
+  // Mask phone numbers if dispatcher has the hide_phone_numbers restriction
+  // (admins implicitly skip this restriction unless explicitly set on their role row).
+  const shouldHidePhones = dispatcherPermissions.includes("hide_phone_numbers");
+  const maskPhone = (phone: string | null | undefined): string => {
+    if (!phone) return "";
+    if (!shouldHidePhones) return String(phone);
+    const s = String(phone);
+    return s.length <= 3 ? "•••" : `••••• ${s.slice(-2)}`;
+  };
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
   const { isOnline, queuedTrips, isSyncing, queueTrip, removeFromQueue, syncQueue, cacheDrivers, getCachedDrivers } = useOfflineDispatch();
   const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
