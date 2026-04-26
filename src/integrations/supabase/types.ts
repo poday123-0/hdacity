@@ -1947,6 +1947,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          bypass_otp: string | null
           created_at: string
           id: string
           permissions: Json
@@ -1954,6 +1955,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bypass_otp?: string | null
           created_at?: string
           id?: string
           permissions?: Json
@@ -1961,6 +1963,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bypass_otp?: string | null
           created_at?: string
           id?: string
           permissions?: Json
