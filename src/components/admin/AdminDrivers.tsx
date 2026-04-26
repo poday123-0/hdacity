@@ -12,6 +12,7 @@ const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", yea
 type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review" | "Rejected";
 
 const AdminDrivers = () => {
+  const { maskPhone } = useAdminPermissions();
   const [drivers, setDrivers] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
