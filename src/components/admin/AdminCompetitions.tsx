@@ -678,11 +678,9 @@ const AdminCompetitions = () => {
                   <Button size="sm" variant="outline" onClick={() => handleRefreshLeaderboard(comp)} disabled={loading}>
                     <Eye className="w-3.5 h-3.5 mr-1.5" /> Refresh Leaderboard
                   </Button>
-                  {comp.status !== "completed" && (
-                    <Button size="sm" onClick={() => handleAwardPrizes(comp)} disabled={loading}>
-                      <Award className="w-3.5 h-3.5 mr-1.5" /> Award Prizes
-                    </Button>
-                  )}
+                  <Button size="sm" onClick={() => handleAwardPrizes(comp)} disabled={loading}>
+                    <Award className="w-3.5 h-3.5 mr-1.5" /> Award Prizes
+                  </Button>
                 </div>
 
                 {/* Prizes */}
