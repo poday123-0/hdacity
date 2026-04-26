@@ -288,6 +288,18 @@ const AdminUsers = () => {
             </div>
           )}
 
+          {/* Bypass OTP */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Bypass OTP (optional)</label>
+            <input
+              value={bypassOtp}
+              onChange={(e) => setBypassOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="e.g. 123456"
+              className="w-full mt-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">If set, this user can log in to the admin panel using this fixed code instead of an SMS OTP.</p>
+          </div>
+
           {/* Permissions */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Permissions</label>
