@@ -1752,7 +1752,7 @@ const Dispatch = () => {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Customer Phone:</span>{" "}
-                                <span className="text-foreground">{t.customer_phone || "—"}</span>
+                                <span className="text-foreground">{maskPhone(t.customer_phone) || "—"}</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Driver:</span>{" "}
@@ -2013,7 +2013,7 @@ const Dispatch = () => {
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Customer Phone:</span>{" "}
-                                    <span className="text-foreground">{t.customer_phone || "—"}</span>
+                                    <span className="text-foreground">{maskPhone(t.customer_phone) || "—"}</span>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Driver:</span>{" "}
@@ -2030,7 +2030,7 @@ const Dispatch = () => {
                                         <div>
                                           <span className="text-muted-foreground">Driver Phone:</span>{" "}
                                           <span className="text-foreground">
-                                            {t.driver ? (t.driver as any).phone_number || "—" : "—"}
+                                            {t.driver ? maskPhone((t.driver as any).phone_number) || "—" : "—"}
                                           </span>
                                         </div>;
                                         const assigned = getAssignedVehicleDetails(t);
@@ -2387,7 +2387,7 @@ const Dispatch = () => {
                                             href={`tel:${driver.phone_number}`}
                                             className="text-[10px] text-primary hover:underline"
                                           >
-                                            {driver.phone_number}
+                                            {maskPhone(driver.phone_number)}
                                           </a>
                                           {isOngoing && (
                                             <button
