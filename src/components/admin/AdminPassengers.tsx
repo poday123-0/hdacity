@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, Pencil, Trash2, X, FileUp, Upload, Loader2, UserCheck, UserX, CheckSquare, Square } from "lucide-react";
+import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
 type StatusFilter = "all" | "Active" | "Inactive";
 
