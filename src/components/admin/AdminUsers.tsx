@@ -22,6 +22,7 @@ const AVAILABLE_PERMISSIONS = [
   { key: "view_dashboard", label: "View Dashboard" },
   { key: "manage_wallets", label: "Manage Wallets" },
   { key: "manage_banks", label: "Manage Banks" },
+  { key: "hide_phone_numbers", label: "🔒 Hide Phone Numbers" },
 ];
 
 const AdminUsers = () => {
