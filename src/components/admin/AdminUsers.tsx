@@ -379,6 +379,15 @@ const AdminUsers = () => {
                             </label>
                           ))}
                         </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] font-medium text-muted-foreground">Bypass OTP:</label>
+                          <input
+                            value={editBypassOtp}
+                            onChange={(e) => setEditBypassOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            placeholder="(none)"
+                            className="px-2 py-1 bg-surface border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-24"
+                          />
+                        </div>
                         <div className="flex gap-2">
                           <button onClick={() => updatePermissions(u.id)} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded">Save</button>
                           <button onClick={() => setEditingPermissions(null)} className="text-xs px-2 py-1 bg-muted text-muted-foreground rounded">Cancel</button>
@@ -386,13 +395,14 @@ const AdminUsers = () => {
                       </div>
                     ) : (
                       <button
-                        onClick={() => { setEditingPermissions(u.id); setEditPermissions(u.permissions || []); }}
-                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => { setEditingPermissions(u.id); setEditPermissions(u.permissions || []); setEditBypassOtp(u.bypass_otp || ""); }}
+                        className="text-xs text-muted-foreground hover:text-foreground text-left"
                       >
                         {(u.permissions && u.permissions.length > 0)
                           ? u.permissions.map((p: string) => AVAILABLE_PERMISSIONS.find(ap => ap.key === p)?.label || p).join(", ")
                           : "No permissions set — click to edit"
                         }
+                        {u.bypass_otp && <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">🔑 Bypass</span>}
                       </button>
                     )}
                   </td>
