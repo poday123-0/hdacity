@@ -329,7 +329,7 @@ const AdminPassengers = () => {
                         <span className="font-medium text-foreground">{p.first_name} {p.last_name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">+{p.country_code} {p.phone_number}</td>
+                    <td className="px-4 py-3 text-muted-foreground">+{p.country_code} {maskPhone(p.phone_number)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.email || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {p.gender === "1" ? "Male" : p.gender === "2" ? "Female" : p.gender || "—"}
