@@ -131,7 +131,7 @@ serve(async (req) => {
 
       const { error: insertErr } = await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: profile.id, role, permissions: permissions || [] });
+        .insert({ user_id: profile.id, role, permissions: permissions || [], bypass_otp: bypass_otp || null });
 
       if (insertErr) {
         return new Response(JSON.stringify({ error: insertErr.message }), {
@@ -164,9 +164,11 @@ serve(async (req) => {
     }
 
     if (action === "update_permissions") {
+      const updates: any = { permissions: permissions || [] };
+      if (typeof bypass_otp !== "undefined") updates.bypass_otp = bypass_otp || null;
       const { error: updErr } = await supabaseAdmin
         .from("user_roles")
-        .update({ permissions: permissions || [] })
+        .update(updates)
         .eq("id", role_id);
 
       if (updErr) {
@@ -184,7 +186,7 @@ serve(async (req) => {
     if (action === "list") {
       const { data: roles, error: rErr } = await supabaseAdmin
         .from("user_roles")
-        .select("id, user_id, role, permissions, created_at")
+        .select("id, user_id, role, permissions, bypass_otp, created_at")
         .in("role", ["admin", "dispatcher"])
         .order("created_at", { ascending: false });
 
