@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Search, Pencil, Trash2, X, FileUp, Upload, Loader2, UserCheck, UserX, CheckSquare, Square } from "lucide-react";
+import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
 type StatusFilter = "all" | "Active" | "Inactive";
 
@@ -12,6 +13,7 @@ const statusChips: { value: StatusFilter; label: string; color: string }[] = [
 ];
 
 const AdminPassengers = () => {
+  const { maskPhone } = useAdminPermissions();
   const [passengers, setPassengers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -327,7 +329,7 @@ const AdminPassengers = () => {
                         <span className="font-medium text-foreground">{p.first_name} {p.last_name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">+{p.country_code} {p.phone_number}</td>
+                    <td className="px-4 py-3 text-muted-foreground">+{p.country_code} {maskPhone(p.phone_number)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.email || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {p.gender === "1" ? "Male" : p.gender === "2" ? "Female" : p.gender || "—"}

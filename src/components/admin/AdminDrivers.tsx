@@ -5,12 +5,14 @@ import { Search, UserCheck, UserX, Pencil, Trash2, X, Upload, Eye, Download, Fil
 import { DriverTripsModal } from "@/components/admin/DriverTripsModal";
 import VehicleMakeModelSelect from "@/components/VehicleMakeModelSelect";
 import { DEFAULT_VEHICLE_IMAGE } from "@/lib/default-images";
+import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
 const emptyVehicleForm = { plate_number: "", make: "", model: "", color: "", year: "", vehicle_type_id: "", image_url: "", registration_url: "", insurance_url: "", vehicle_status: "pending", rejection_reason: "", center_code: "" };
 
 type StatusFilter = "all" | "Active" | "Inactive" | "Pending" | "Pending Review" | "Rejected";
 
 const AdminDrivers = () => {
+  const { maskPhone } = useAdminPermissions();
   const [drivers, setDrivers] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -948,7 +950,7 @@ const AdminDrivers = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-foreground">{driver.first_name} {driver.last_name}</p>
-                          <p className="text-[10px] text-muted-foreground">+{driver.country_code} {driver.phone_number} · {driver.email || "No email"}</p>
+                          <p className="text-[10px] text-muted-foreground">+{driver.country_code} {maskPhone(driver.phone_number)} · {driver.email || "No email"}</p>
                         </div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPendingDriver ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" : driver.status === "Active" ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                           {driver.status}
@@ -1320,7 +1322,7 @@ const AdminDrivers = () => {
                           <span className="text-sm font-semibold text-foreground truncate">{d.first_name} {d.last_name}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">+960 {d.phone_number}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">+960 {maskPhone(d.phone_number)}</td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground truncate">{companyName}</td>
                       <td className="px-3 py-2.5">
                         {driverRatings[d.id] ? (
@@ -1727,7 +1729,7 @@ const AdminDrivers = () => {
                     <div key={d.id} className="flex items-center justify-between gap-2 text-xs px-2 py-1.5 hover:bg-card rounded-lg group">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className="text-foreground truncate">{d.first_name} {d.last_name}</span>
-                        <span className="text-muted-foreground shrink-0">+{d.country_code || "960"} {d.phone_number}</span>
+                        <span className="text-muted-foreground shrink-0">+{d.country_code || "960"} {maskPhone(d.phone_number)}</span>
                       </div>
                       <button
                         onClick={() => setSmsModal(prev => prev ? { ...prev, recipients: prev.recipients.filter(r => r.id !== d.id) } : prev)}
@@ -1783,7 +1785,7 @@ const AdminDrivers = () => {
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <span className="text-foreground truncate">{d.first_name} {d.last_name}</span>
-                            <span className="text-muted-foreground shrink-0">+{d.country_code || "960"} {d.phone_number}</span>
+                            <span className="text-muted-foreground shrink-0">+{d.country_code || "960"} {maskPhone(d.phone_number)}</span>
                           </div>
                           <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
                         </button>

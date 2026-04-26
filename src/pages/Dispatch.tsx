@@ -220,6 +220,15 @@ const Dispatch = () => {
   const [dispatcherPermissions, setDispatcherPermissions] = useState<string[]>([]);
   const [dispatcherRole, setDispatcherRole] = useState<string>("dispatcher");
   const [activeTab, setActiveTab] = useState<DispatchTab>("dispatch");
+  // Mask phone numbers if dispatcher has the hide_phone_numbers restriction
+  // (admins implicitly skip this restriction unless explicitly set on their role row).
+  const shouldHidePhones = dispatcherPermissions.includes("hide_phone_numbers");
+  const maskPhone = (phone: string | null | undefined): string => {
+    if (!phone) return "";
+    if (!shouldHidePhones) return String(phone);
+    const s = String(phone);
+    return s.length <= 3 ? "•••" : `••••• ${s.slice(-2)}`;
+  };
   usePushNotifications(dispatcherProfile?.id, "dispatcher");
   const { isOnline, queuedTrips, isSyncing, queueTrip, removeFromQueue, syncQueue, cacheDrivers, getCachedDrivers } = useOfflineDispatch();
   const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
@@ -1743,7 +1752,7 @@ const Dispatch = () => {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Customer Phone:</span>{" "}
-                                <span className="text-foreground">{t.customer_phone || "—"}</span>
+                                <span className="text-foreground">{maskPhone(t.customer_phone) || "—"}</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Driver:</span>{" "}
@@ -2004,7 +2013,7 @@ const Dispatch = () => {
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Customer Phone:</span>{" "}
-                                    <span className="text-foreground">{t.customer_phone || "—"}</span>
+                                    <span className="text-foreground">{maskPhone(t.customer_phone) || "—"}</span>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Driver:</span>{" "}
@@ -2021,7 +2030,7 @@ const Dispatch = () => {
                                         <div>
                                           <span className="text-muted-foreground">Driver Phone:</span>{" "}
                                           <span className="text-foreground">
-                                            {t.driver ? (t.driver as any).phone_number || "—" : "—"}
+                                            {t.driver ? maskPhone((t.driver as any).phone_number) || "—" : "—"}
                                           </span>
                                         </div>;
                                         const assigned = getAssignedVehicleDetails(t);
@@ -2378,7 +2387,7 @@ const Dispatch = () => {
                                             href={`tel:${driver.phone_number}`}
                                             className="text-[10px] text-primary hover:underline"
                                           >
-                                            {driver.phone_number}
+                                            {maskPhone(driver.phone_number)}
                                           </a>
                                           {isOngoing && (
                                             <button
@@ -2491,7 +2500,7 @@ const Dispatch = () => {
                                               key={d.driver_id}
                                               href={`tel:${d.phone_number}`}
                                               onClick={(e) => e.stopPropagation()}
-                                              title={`${d.first_name} ${d.last_name} · ${d.vehicle_name}${d.plate_number ? ` · ${d.plate_number}` : ""}${d.phone_number ? ` · ${d.phone_number}` : ""}`}
+                                              title={`${d.first_name} ${d.last_name} · ${d.vehicle_name}${d.plate_number ? ` · ${d.plate_number}` : ""}${d.phone_number ? ` · ${maskPhone(d.phone_number)}` : ""}`}
                                               className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-card border border-border hover:border-primary hover:bg-primary/5 transition-colors"
                                             >
                                               <span className="w-4 h-4 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[8px] font-bold">
@@ -2994,7 +3003,7 @@ const Dispatch = () => {
                           <div>
                             <span className="text-muted-foreground">Customer:</span>{" "}
                             <span className="text-foreground">
-                              {t.customer_name || "—"} {t.customer_phone || ""}
+                              {t.customer_name || "—"} {maskPhone(t.customer_phone)}
                             </span>
                           </div>
                           <div>
@@ -3302,7 +3311,7 @@ const Dispatch = () => {
                                   {driver.first_name} {driver.last_name}
                                 </span>
                                 <a href={`tel:${driver.phone_number}`} className="text-primary hover:underline">
-                                  {driver.phone_number}
+                                  {maskPhone(driver.phone_number)}
                                 </a>
                                 {driver.company_name && (
                                   <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">
@@ -3333,7 +3342,7 @@ const Dispatch = () => {
                               <div>
                                 <span className="text-muted-foreground">Customer:</span>{" "}
                                 <span className="text-foreground">
-                                  {t.customer_name || "—"} • {t.customer_phone || "—"}
+                                  {t.customer_name || "—"} • {maskPhone(t.customer_phone) || "—"}
                                 </span>
                               </div>
                               <div>
