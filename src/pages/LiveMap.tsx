@@ -69,7 +69,9 @@ const LiveMap = () => {
       }
     };
     fetchLocations();
-    const interval = setInterval(fetchLocations, 3000);
+    // 10s cadence (was 3s) — fleet positions don't need sub-3s refresh, and
+    // this query returns one row per online driver so it grows with fleet size.
+    const interval = setInterval(fetchLocations, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -130,7 +132,8 @@ const LiveMap = () => {
       }
     };
     fetchTrips();
-    const interval = setInterval(fetchTrips, 3000);
+    // 10s cadence (was 3s) for active trip list — saves ~70% bandwidth.
+    const interval = setInterval(fetchTrips, 10000);
     return () => clearInterval(interval);
   }, [sharedTripId]);
 
