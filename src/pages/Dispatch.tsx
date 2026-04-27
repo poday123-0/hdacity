@@ -924,8 +924,14 @@ const Dispatch = () => {
     const driverChannel = supabase
       .channel("dispatch-driver-locations")
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
-        if (driverDebounce) clearTimeout(driverDebounce);
-        driverDebounce = setTimeout(() => refreshOnlineDrivers(), 2_000);
+        // Coalesce many heartbeat events into a single refresh every 15s
+        // to drastically reduce mobile data usage. The dispatcher map does
+        // not need sub-second precision for the overall fleet view.
+        if (driverDebounce) return;
+        driverDebounce = setTimeout(() => {
+          driverDebounce = null;
+          refreshOnlineDrivers();
+        }, 15_000);
       })
       .subscribe();
     return () => {

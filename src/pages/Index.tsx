@@ -501,13 +501,13 @@ const Index = () => {
 
   useEffect(() => {
     fetchOnlineDrivers();
-    const channel = supabase
-      .channel("driver-locations-map")
-      .on("postgres_changes", { event: "*", schema: "public", table: "driver_locations" }, () => {
-        fetchOnlineDrivers();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    // Refresh nearby drivers on a fixed cadence instead of on every realtime
+    // heartbeat. Drivers update their location every 3-10s; reacting to each
+    // event triggered 3 queries × dozens of times per minute, ballooning data
+    // usage on cellular connections. A 20s poll keeps the map fresh while
+    // cutting bandwidth dramatically.
+    const interval = setInterval(fetchOnlineDrivers, 20000);
+    return () => { clearInterval(interval); };
   }, [fetchOnlineDrivers]);
 
   // Listen for admin force-refresh signal via realtime — show banner instead of instant reload
