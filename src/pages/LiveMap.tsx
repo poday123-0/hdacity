@@ -132,7 +132,8 @@ const LiveMap = () => {
       }
     };
     fetchTrips();
-    const interval = setInterval(fetchTrips, 3000);
+    // 10s cadence (was 3s) for active trip list — saves ~70% bandwidth.
+    const interval = setInterval(fetchTrips, 10000);
     return () => clearInterval(interval);
   }, [sharedTripId]);
 
