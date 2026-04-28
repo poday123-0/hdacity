@@ -2172,19 +2172,19 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       if (!stopped && data) await handleTripCancelledOrTaken(data);
     })();
 
-    // Adaptive polling fallback. Realtime + FCM bridge handle most cases —
-    // this poll is the safety net for when the WebSocket briefly drops.
-    //  • 2s on ride-request screen → popup must dismiss within seconds when
-    //    another driver accepts (loud sound, blocks UI).
-    //  • 2s while heading to pickup / arrived → dispatch cancellations are
-    //    most common before the passenger boards; instant dismissal matters.
-    //  • 5s once the trip is in_progress → passenger is in the car, cancels
-    //    are rare, and the FCM `trip_cancelled` bridge still fires instantly
-    //    on push. Halving the request rate cuts server load on long trips.
+    // Adaptive polling fallback. Realtime + FCM bridge handle the vast majority
+    // of cancel/taken signals — this poll is just the safety net for when the
+    // WebSocket briefly drops. Both channels are extremely reliable on mobile,
+    // so we keep this poll slow to minimize background data usage:
+    //  • 5s on ride-request / pre-pickup → still feels instant on the popup
+    //    because realtime + FCM beat the poll in practice.
+    //  • 10s once the trip is in_progress → passenger is in the car, cancels
+    //    are very rare, and the FCM `trip_cancelled` bridge fires instantly
+    //    when needed. Halving the rate again cuts data on long trips.
     const isPreTrip =
       screen === "ride-request" ||
       (screen === "navigating" && driverTripPhase !== "in_progress");
-    const pollMs = isPreTrip ? 2000 : 5000;
+    const pollMs = isPreTrip ? 5000 : 10000;
     const pollInterval = setInterval(async () => {
       const { data } = await supabase.from("trips").select("status, driver_id, cancel_reason").eq("id", currentTrip.id).single();
       if (data) {
