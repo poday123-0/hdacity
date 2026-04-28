@@ -859,53 +859,60 @@ const Index = () => {
 
       setPassengerScreen("searching");
 
-      // Send push notification ONLY to drivers matching vehicle type AND within their personal radius
+      // Dispatch decision:
+      //   • broadcast mode → push to all eligible drivers right now
+      //   • wave_broadcast mode → call dispatch-wave-init; the edge function is
+      //     responsible for sending the push to ONLY the wave-1 drivers, and
+      //     dispatch-wave-promote handles waves 2 & 3. Skipping the broadcast
+      //     here is what makes wave dispatch actually wave (otherwise everyone
+      //     gets pinged at t=0, defeating the purpose).
       if (data.status === "requested") {
-        // Wave-based dispatch (if enabled) — initialize wave 1
+        let mode: string = "broadcast";
         try {
           const { data: modeRow } = await supabase
             .from("system_settings")
             .select("value")
             .eq("key", "dispatch_mode")
             .maybeSingle();
-          const mode = (modeRow?.value as any) || "broadcast";
-          if (mode === "wave_broadcast") {
-            await supabase.functions.invoke("dispatch-wave-init", { body: { trip_id: data.id } });
-          }
-        } catch (waveErr) {
-          console.warn("Wave init failed:", waveErr);
-        }
+          mode = (modeRow?.value as any) || "broadcast";
+        } catch {}
 
-        try {
-          const { data: locData } = await supabase
-            .from("driver_locations")
-            .select("driver_id, lat, lng, vehicle_type_id")
-            .eq("is_online", true)
-            .eq("is_on_trip", false);
-          let eligible = (locData || []) as any[];
-          // Vehicle-type match = currently active vehicle OR approved via
-          // driver_vehicle_types (so multi-type center drivers receive both kinds).
-          if (eligible.length > 0 && selectedVehicleType.id) {
-            const driverIdsAll = eligible.map((d: any) => d.driver_id);
-            const { data: approved } = await supabase
-              .from("driver_vehicle_types")
-              .select("driver_id")
-              .eq("vehicle_type_id", selectedVehicleType.id)
-              .eq("status", "approved")
-              .in("driver_id", driverIdsAll);
-            const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
-            eligible = eligible.filter(
-              (d: any) => d.vehicle_type_id === selectedVehicleType.id || approvedSet.has(d.driver_id)
-            );
+        if (mode === "wave_broadcast") {
+          try {
+            await supabase.functions.invoke("dispatch-wave-init", { body: { trip_id: data.id } });
+          } catch (waveErr) {
+            console.warn("Wave init failed:", waveErr);
           }
-          if (eligible.length > 0) {
-            const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
-            if (driverIds.length > 0) {
-              await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name, pickup.lat, pickup.lng);
+        } else {
+          try {
+            const { data: locData } = await supabase
+              .from("driver_locations")
+              .select("driver_id, lat, lng, vehicle_type_id")
+              .eq("is_online", true)
+              .eq("is_on_trip", false);
+            let eligible = (locData || []) as any[];
+            if (eligible.length > 0 && selectedVehicleType.id) {
+              const driverIdsAll = eligible.map((d: any) => d.driver_id);
+              const { data: approved } = await supabase
+                .from("driver_vehicle_types")
+                .select("driver_id")
+                .eq("vehicle_type_id", selectedVehicleType.id)
+                .eq("status", "approved")
+                .in("driver_id", driverIdsAll);
+              const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
+              eligible = eligible.filter(
+                (d: any) => d.vehicle_type_id === selectedVehicleType.id || approvedSet.has(d.driver_id)
+              );
             }
+            if (eligible.length > 0) {
+              const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
+              if (driverIds.length > 0) {
+                await notifyTripRequested(driverIds, data.id, pickup.name, selectedVehicleType.id, estimatedFare + passengerBonus, selectedVehicleType.name, pickup.lat, pickup.lng);
+              }
+            }
+          } catch (pushErr) {
+            console.warn("Push notification failed:", pushErr);
           }
-        } catch (pushErr) {
-          console.warn("Push notification failed:", pushErr);
         }
       }
     } catch (err: any) {
