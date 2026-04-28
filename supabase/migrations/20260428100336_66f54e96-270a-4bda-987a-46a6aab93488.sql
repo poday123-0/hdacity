@@ -1,0 +1,1 @@
+UPDATE public.system_settings SET value = '"wave_broadcast"'::jsonb, updated_at = now() WHERE key = 'dispatch_mode';
