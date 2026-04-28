@@ -1,8 +1,14 @@
 // Wave-broadcast dispatch promoter
 // Runs every 5s via pg_cron. Finds expired waves whose trips are still
-// requested+unassigned, then creates the next wave (excluding all
-// previously-attempted drivers). After max_waves, the final wave broadcasts
-// to ALL nearby eligible drivers.
+// requested+unassigned, then creates the next wave.
+//
+// Wave progression (per user requirement):
+//   Wave 1 = nearest drivers from default company (HDA Taxi) — done by dispatch-wave-init
+//   Wave 2 = nearest drivers from all OTHER companies, excluding wave-1 drivers
+//   Wave 3 = ALL remaining eligible drivers (final broadcast)
+//
+// All waves filter by each driver's personal trip_radius_km. Pushes are sent
+// from this function so out-of-wave drivers never get a notification ping.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -39,6 +45,28 @@ const getSetting = async <T,>(key: string, fallback: T): Promise<T> => {
   return data.value as T;
 };
 
+const pushTripRequested = async (driverIds: string[], trip: any) => {
+  if (driverIds.length === 0) return;
+  try {
+    await supabase.functions.invoke("send-push-notification", {
+      body: {
+        userIds: driverIds,
+        title: "🚖 New Trip Request",
+        body: trip.pickup_address || "New ride request",
+        data: {
+          type: "trip_requested",
+          trip_id: trip.id,
+          vehicle_type_id: trip.vehicle_type_id || "",
+          pickup_lat: String(trip.pickup_lat || ""),
+          pickup_lng: String(trip.pickup_lng || ""),
+        },
+      },
+    });
+  } catch (e) {
+    console.warn("[wave-promote] push send failed:", (e as any)?.message || e);
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -52,9 +80,11 @@ Deno.serve(async (req) => {
 
     const waveSize = await getSetting<number>("wave_size", 5);
     const waveTimeout = await getSetting<number>("wave_timeout_seconds", 15);
-    const maxWaves = await getSetting<number>("max_waves", 2);
+    // Final broadcast happens at wave 3 (wave 1 = HDA, wave 2 = others, wave 3 = all)
+    const finalWaveNumber = 3;
+    const defaultRadius = Number(await getSetting<any>("default_trip_radius_km", 10));
+    const defaultCompanyId = await getSetting<string>("default_company_id", "");
 
-    // Find expired, un-promoted waves
     const nowIso = new Date().toISOString();
     const { data: expired, error: expErr } = await supabase
       .from("trip_dispatch_waves")
@@ -80,16 +110,14 @@ Deno.serve(async (req) => {
         .update({ promoted_at: nowIso })
         .eq("id", wave.id);
 
-      // If this was the final broadcast, no further action — trip will time out on its own
       if (wave.is_final_broadcast) {
         results.push({ trip_id: wave.trip_id, action: "final_already_sent" });
         continue;
       }
 
-      // Check trip is still requested + unassigned
       const { data: trip } = await supabase
         .from("trips")
-        .select("id, status, driver_id, pickup_lat, pickup_lng, vehicle_type_id")
+        .select("id, status, driver_id, pickup_lat, pickup_lng, pickup_address, vehicle_type_id")
         .eq("id", wave.trip_id)
         .single();
       if (!trip || trip.driver_id || (trip.status !== "requested" && trip.status !== "scheduled")) {
@@ -97,7 +125,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Collect every driver that has already been offered (across all prior waves)
+      // Drivers already offered across all prior waves
       const { data: allWaves } = await supabase
         .from("trip_dispatch_waves")
         .select("driver_ids")
@@ -105,9 +133,7 @@ Deno.serve(async (req) => {
       const tried = new Set<string>();
       (allWaves || []).forEach((w: any) => (w.driver_ids || []).forEach((d: string) => tried.add(d)));
 
-      // Eligible = online + idle, matching the trip's vehicle type via either
-      // (a) currently active vehicle_type_id, or (b) approved driver_vehicle_types.
-      // This lets multi-type drivers (e.g. Car + Van approved) receive both kinds.
+      // Eligible online + idle + vehicle-type matched drivers
       const { data: locs } = await supabase
         .from("driver_locations")
         .select("driver_id, lat, lng, vehicle_type_id")
@@ -129,39 +155,57 @@ Deno.serve(async (req) => {
         );
       }
 
-      const remaining = typeMatched.filter((l: any) => !tried.has(l.driver_id));
-      if (remaining.length === 0) {
-        // Nobody left to try — final wave with the same set is pointless. Mark final and continue.
-        await supabase
-          .from("trip_dispatch_waves")
-          .insert({
-            trip_id: wave.trip_id,
-            wave_number: wave.wave_number + 1,
-            driver_ids: [],
-            is_final_broadcast: true,
-            expires_at: new Date(Date.now() + waveTimeout * 1000).toISOString(),
-          });
-        results.push({ trip_id: wave.trip_id, action: "no_more_drivers" });
-        continue;
-      }
+      // Profiles → company + personal radius
+      const allIds = typeMatched.map((d: any) => d.driver_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, company_id, trip_radius_km")
+        .in("id", allIds);
+      const radiusByDriver = new Map<string, number>();
+      const companyByDriver = new Map<string, string | null>();
+      (profiles || []).forEach((p: any) => {
+        const r = p.trip_radius_km;
+        radiusByDriver.set(p.id, r == null ? defaultRadius : Number(r));
+        companyByDriver.set(p.id, p.company_id || null);
+      });
 
       const pLat = Number(trip.pickup_lat || 0);
       const pLng = Number(trip.pickup_lng || 0);
-      const ranked = remaining
+
+      // Apply personal radius and skip already-tried drivers
+      const inRadiusUntried = typeMatched
+        .filter((d: any) => !tried.has(d.driver_id))
         .map((d: any) => ({
           driver_id: d.driver_id,
           dist: haversineKm(pLat, pLng, Number(d.lat), Number(d.lng)),
+          company_id: companyByDriver.get(d.driver_id) || null,
         }))
+        .filter((d) => {
+          const r = radiusByDriver.get(d.driver_id) ?? defaultRadius;
+          return d.dist <= r;
+        })
         .sort((a, b) => a.dist - b.dist);
 
-      const isFinal = wave.wave_number >= maxWaves;
-      const next = isFinal ? ranked.map((d) => d.driver_id) : ranked.slice(0, waveSize).map((d) => d.driver_id);
+      const nextWaveNumber = wave.wave_number + 1;
+      let nextIds: string[] = [];
 
+      if (nextWaveNumber === 2) {
+        // Wave 2 = nearest from all OTHER companies (not the default HDA)
+        const others = inRadiusUntried.filter(
+          (d) => !defaultCompanyId || d.company_id !== defaultCompanyId
+        );
+        nextIds = others.slice(0, waveSize).map((d) => d.driver_id);
+      } else {
+        // Wave 3+ = all remaining (final broadcast)
+        nextIds = inRadiusUntried.map((d) => d.driver_id);
+      }
+
+      const isFinal = nextWaveNumber >= finalWaveNumber;
       const expiresAt = new Date(Date.now() + waveTimeout * 1000).toISOString();
       const { error: insErr } = await supabase.from("trip_dispatch_waves").insert({
         trip_id: wave.trip_id,
-        wave_number: wave.wave_number + 1,
-        driver_ids: next,
+        wave_number: nextWaveNumber,
+        driver_ids: nextIds,
         is_final_broadcast: isFinal,
         expires_at: expiresAt,
       });
@@ -169,11 +213,15 @@ Deno.serve(async (req) => {
         results.push({ trip_id: wave.trip_id, error: insErr.message });
         continue;
       }
+
+      // Send push only to this wave's drivers
+      await pushTripRequested(nextIds, trip);
+
       results.push({
         trip_id: wave.trip_id,
         action: "promoted",
-        wave: wave.wave_number + 1,
-        drivers: next.length,
+        wave: nextWaveNumber,
+        drivers: nextIds.length,
         is_final: isFinal,
       });
     }

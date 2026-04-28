@@ -1,0 +1,2 @@
+UPDATE public.system_settings SET value = '3'::jsonb, updated_at = now() WHERE key = 'max_waves';
+INSERT INTO public.system_settings (key, value, description) SELECT 'max_waves', '3'::jsonb, 'Total number of dispatch waves before final broadcast' WHERE NOT EXISTS (SELECT 1 FROM public.system_settings WHERE key = 'max_waves');

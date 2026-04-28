@@ -122,8 +122,12 @@ export const usePushNotifications = (
         const soundUrl = payload.data?.sound_url;
         const notifType = payload.data?.type || "default";
 
-        // Skip sound for types already handled by DriverApp's own realtime listeners
-        const driverHandledTypes = ["trip_requested", "trip_assigned", "message_received", "trip_cancelled"];
+        // Skip sound for types already handled by DriverApp's own realtime listeners.
+        // `trip_taken` is included because the realtime UPDATE on the trips row
+        // (other driver took it) already plays the configured "trip cancelled"
+        // sound — playing it again from the FCM foreground handler causes the
+        // doubled-sound bug.
+        const driverHandledTypes = ["trip_requested", "trip_assigned", "message_received", "trip_cancelled", "trip_taken"];
         if (!driverHandledTypes.includes(notifType)) {
           if (soundUrl) {
             playTrackedSound(soundUrl);
@@ -488,6 +492,13 @@ export const usePushNotifications = (
                 return;
               }
               if (notifType === "message_received") {
+                try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
+                return;
+              }
+              // trip_taken: don't play sound here — the realtime listener in
+              // DriverApp already plays the "another driver accepted" sound and
+              // dedups across signals. Playing again would double the sound.
+              if (notifType === "trip_taken") {
                 try { await PushNotifications.removeAllDeliveredNotifications(); } catch {}
                 return;
               }
