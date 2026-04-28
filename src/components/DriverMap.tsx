@@ -262,6 +262,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
   const lastRouteFetchAtRef = useRef(0);
   const lastRerouteOriginRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastCameraUpdateAtRef = useRef(0);
+  const lastCameraTargetRef = useRef<{ lat: number; lng: number } | null>(null);
+  // After the route-overview fitBounds runs (on accept), give the user a few
+  // seconds to see it before auto-follow yanks the camera back to the driver.
+  const suppressFollowUntilRef = useRef(0);
   const hasReceivedFirstGpsRef = useRef(false);
   const rawGpsSampleRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
   const passengerLiveLocationRef = useRef(passengerLiveLocation);
