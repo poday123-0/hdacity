@@ -787,18 +787,25 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
 
     // Auto-follow — skip while user is actively interacting (zoom/pan)
     const cameraThrottleMs = navSettings.followSensitivity === "high" ? 200 : navSettings.followSensitivity === "low" ? 600 : 350;
-    if (followDriver && !userInteractingRef.current) {
+    if (followDriver && !userInteractingRef.current && Date.now() >= suppressFollowUntilRef.current) {
       const now = Date.now();
       if (now - lastCameraUpdateAtRef.current > cameraThrottleMs) {
-        lastCameraUpdateAtRef.current = now;
+        let cameraTarget: { lat: number; lng: number };
         if (isNavigating || freeNavTarget) {
           const lookAheadBase = navSettings.lookAheadDistance === "far" ? { slow: 80, mid: 110, fast: 140 } : navSettings.lookAheadDistance === "short" ? { slow: 25, mid: 40, fast: 60 } : { slow: 50, mid: 70, fast: 95 };
           const lookAheadMeters = effectiveSpeed > 40 ? lookAheadBase.fast : effectiveSpeed > 20 ? lookAheadBase.mid : lookAheadBase.slow;
-          const cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
-          map.panTo([cameraTarget.lat, cameraTarget.lng], { animate: true, duration: 0.3 });
-          // Don't force zoom — respect driver's manual zoom level
+          cameraTarget = getPointAhead(displayPos, heading, lookAheadMeters);
         } else {
-          map.panTo([displayPos.lat, displayPos.lng], { animate: true, duration: 0.3 });
+          cameraTarget = displayPos;
+        }
+        // Skip micro-jitter: don't pan if the new target is essentially the
+        // same spot as the last camera target (< 3 m). Keeps the map rock
+        // steady when the driver is stopped or barely moving.
+        const lastTarget = lastCameraTargetRef.current;
+        if (!lastTarget || getDistanceMeters(lastTarget, cameraTarget) > 3) {
+          lastCameraUpdateAtRef.current = now;
+          lastCameraTargetRef.current = cameraTarget;
+          map.panTo([cameraTarget.lat, cameraTarget.lng], { animate: true, duration: 0.3 });
         }
       }
     }
