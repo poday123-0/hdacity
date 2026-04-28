@@ -628,6 +628,10 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       if (bounds.isValid()) {
         programmaticZoomRef.current = true;
         map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+        // Hold the route overview for 4s before auto-follow takes over,
+        // otherwise the next GPS tick pans straight back to the driver
+        // and the map appears to "jump" right after acceptance.
+        suppressFollowUntilRef.current = Date.now() + 4000;
       } else {
         programmaticZoomRef.current = true; map.setZoom(16);
       }
