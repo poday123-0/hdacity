@@ -268,9 +268,10 @@ Deno.serve(async (req) => {
         const defaultRadius = defaultSetting?.value != null ? Number(defaultSetting.value) : 10;
         const radiusByDriver = new Map<string, number>();
         for (const p of profiles || []) {
-          const dbDefault = 10;
+          // Always honor the driver's saved personal radius. Only fall back
+          // to the system default when trip_radius_km is NULL.
           const r = (p as any).trip_radius_km;
-          radiusByDriver.set((p as any).id, r === dbDefault || r == null ? defaultRadius : Number(r));
+          radiusByDriver.set((p as any).id, r == null ? defaultRadius : Number(r));
         }
 
         filteredUserIds = onlineFiltered
