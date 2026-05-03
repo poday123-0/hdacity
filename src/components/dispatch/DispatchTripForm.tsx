@@ -974,21 +974,13 @@ const DispatchTripForm = ({
         const [driversRes, timeoutRes, defaultRes] = broadcastData as any;
         let allDrivers = (driversRes?.data || []) as any[];
 
-        // Vehicle-type filter: include drivers whose currently active vehicle
-        // matches OR who are approved for the requested type via
-        // driver_vehicle_types. This lets multi-type center drivers (Car + Van)
-        // receive both kinds of broadcast requests.
+        // STRICT vehicle-type match: only drivers currently online with the
+        // SAME active vehicle type as the requested trip. Drivers approved for
+        // the type via driver_vehicle_types but currently online as a different
+        // vehicle (e.g. online as Car while approved as Pickup) are excluded.
         if (selectedVehicleType && allDrivers.length > 0) {
-          const driverIds = allDrivers.map((d: any) => d.driver_id);
-          const { data: approved } = await supabase
-            .from("driver_vehicle_types")
-            .select("driver_id")
-            .eq("vehicle_type_id", selectedVehicleType)
-            .eq("status", "approved")
-            .in("driver_id", driverIds);
-          const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
           allDrivers = allDrivers.filter(
-            (d: any) => d.vehicle_type_id === selectedVehicleType || approvedSet.has(d.driver_id)
+            (d: any) => d.vehicle_type_id === selectedVehicleType
           );
         }
 
