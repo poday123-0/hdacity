@@ -817,15 +817,30 @@ const Index = () => {
         try {
           const { data: locData } = await supabase
             .from("driver_locations")
-            .select("driver_id, lat, lng, vehicle_type_id")
+            .select("driver_id, lat, lng, vehicle_type_id, vehicle_id")
             .eq("is_online", true);
           let eligible = (locData || []) as any[];
-          // STRICT vehicle-type match: only drivers currently online with the
-          // SAME active vehicle type as the trip. Drivers approved for the
-          // type but online as a different vehicle are excluded.
+          // Vehicle-type match scoped to the driver's currently active vehicle:
+          // direct vehicle_type_id match OR same vehicle approved for the type
+          // (one car registered as Car + Van).
           if (eligible.length > 0 && selectedVehicleType.id) {
+            const activeVehicleIds = eligible.map((d: any) => d.vehicle_id).filter(Boolean);
+            let approvedVehicleSet = new Set<string>();
+            if (activeVehicleIds.length > 0) {
+              const { data: approved } = await supabase
+                .from("driver_vehicle_types")
+                .select("vehicle_id")
+                .eq("vehicle_type_id", selectedVehicleType.id)
+                .eq("status", "approved")
+                .in("vehicle_id", activeVehicleIds);
+              approvedVehicleSet = new Set(
+                (approved || []).map((r: any) => r.vehicle_id).filter(Boolean)
+              );
+            }
             eligible = eligible.filter(
-              (d: any) => d.vehicle_type_id === selectedVehicleType.id
+              (d: any) =>
+                d.vehicle_type_id === selectedVehicleType.id ||
+                (d.vehicle_id && approvedVehicleSet.has(d.vehicle_id))
             );
           }
           if (eligible.length > 0) {
