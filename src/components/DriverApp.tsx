@@ -1259,18 +1259,21 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       }
     }
 
-    // Skip trips that don't match the driver's currently selected vehicle type
-    if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) {
-      console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} does not match active vehicle type ${activeVehicleTypeIdRef.current} — skipping`);
-      debugLog({ event: "handleNewTrip:reject_vehicle_type_mismatch", driver_id: userProfile?.id, trip_id: trip.id, details: { trip_vt: trip.vehicle_type_id, active_vt: activeVehicleTypeIdRef.current } });
-      handlingTripRef.current = null;
-      return;
-    }
-    if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) {
-      console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} vehicle_type ${trip.vehicle_type_id} not in driver's eligible types — skipping`);
-      debugLog({ event: "handleNewTrip:reject_vehicle_type_ineligible", driver_id: userProfile?.id, trip_id: trip.id, details: { trip_vt: trip.vehicle_type_id, eligible: Array.from(eligibleVehicleTypeIdsRef.current) } });
-      handlingTripRef.current = null;
-      return;
+    // Match on the driver's CURRENT vehicle: accept if the trip type equals
+    // the active vehicle_type, OR the trip type is in the eligible set
+    // (which is scoped to the current vehicle and includes all
+    // driver_vehicle_types approvals for the SAME vehicle — e.g. one car
+    // registered as Car + Van).
+    if (trip.vehicle_type_id) {
+      const activeMatches = activeVehicleTypeIdRef.current === trip.vehicle_type_id;
+      const eligibleMatches = eligibleVehicleTypeIdsRef.current.size > 0
+        && eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id);
+      if (!activeMatches && !eligibleMatches) {
+        console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} type ${trip.vehicle_type_id} not allowed for active vehicle (active=${activeVehicleTypeIdRef.current}, eligible=${Array.from(eligibleVehicleTypeIdsRef.current).join(",")})`);
+        debugLog({ event: "handleNewTrip:reject_vehicle_type_mismatch", driver_id: userProfile?.id, trip_id: trip.id, details: { trip_vt: trip.vehicle_type_id, active_vt: activeVehicleTypeIdRef.current, eligible: Array.from(eligibleVehicleTypeIdsRef.current) } });
+        handlingTripRef.current = null;
+        return;
+      }
     }
 
     // Skip trips outside driver's radius — use cached GPS, then localStorage,
