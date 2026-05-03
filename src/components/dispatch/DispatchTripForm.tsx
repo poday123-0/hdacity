@@ -953,7 +953,7 @@ const DispatchTripForm = ({
       // so that drivers approved for the requested type via driver_vehicle_types
       // (multi-type center drivers, e.g. Car + Van) also receive the broadcast,
       // not just those whose currently active vehicle matches.
-      const driverLocQuery = supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false);
+      const driverLocQuery = supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id, vehicle_id").eq("is_online", true).eq("is_on_trip", false);
 
       // Pre-fetch system default radius in parallel — drivers' personal radii
       // are fetched right after we know who's online, but we kick off the
