@@ -225,18 +225,37 @@ Deno.serve(async (req) => {
       // This ensures multi-type drivers (Car + Van) receive both request kinds.
       const { data: onlineDrivers } = await supabase
         .from("driver_locations")
-        .select("driver_id, lat, lng, vehicle_type_id")
+        .select("driver_id, lat, lng, vehicle_type_id, vehicle_id")
         .in("driver_id", user_ids)
         .eq("is_online", true);
 
       let typeMatchedOnline = (onlineDrivers || []) as any[];
-      // STRICT vehicle-type match: only drivers whose CURRENTLY ACTIVE
-      // vehicle_type_id (from driver_locations) equals the trip's vehicle_type_id.
-      // This prevents Pickup trips from reaching drivers currently online as Cars
-      // (even if they are also approved for Pickup via driver_vehicle_types).
+      // Vehicle-type match scoped to the driver's CURRENTLY ACTIVE vehicle:
+      //  • direct match on driver_locations.vehicle_type_id, OR
+      //  • the active vehicle (vehicle_id) is approved for the trip's type
+      //    via driver_vehicle_types (e.g. one car registered as Car + Van).
+      // Drivers approved for the type on a DIFFERENT vehicle they are not
+      // currently online with are excluded.
       if (data?.vehicle_type_id && typeMatchedOnline.length > 0) {
+        const activeVehicleIds = typeMatchedOnline
+          .map((d: any) => d.vehicle_id)
+          .filter(Boolean);
+        let approvedVehicleSet = new Set<string>();
+        if (activeVehicleIds.length > 0) {
+          const { data: approved } = await supabase
+            .from("driver_vehicle_types")
+            .select("vehicle_id")
+            .eq("vehicle_type_id", data.vehicle_type_id)
+            .eq("status", "approved")
+            .in("vehicle_id", activeVehicleIds);
+          approvedVehicleSet = new Set(
+            (approved || []).map((r: any) => r.vehicle_id).filter(Boolean)
+          );
+        }
         typeMatchedOnline = typeMatchedOnline.filter(
-          (d: any) => d.vehicle_type_id === data.vehicle_type_id
+          (d: any) =>
+            d.vehicle_type_id === data.vehicle_type_id ||
+            (d.vehicle_id && approvedVehicleSet.has(d.vehicle_id))
         );
       }
       // Replace local var name used below

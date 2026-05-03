@@ -953,7 +953,7 @@ const DispatchTripForm = ({
       // so that drivers approved for the requested type via driver_vehicle_types
       // (multi-type center drivers, e.g. Car + Van) also receive the broadcast,
       // not just those whose currently active vehicle matches.
-      const driverLocQuery = supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id").eq("is_online", true).eq("is_on_trip", false);
+      const driverLocQuery = supabase.from("driver_locations").select("driver_id, lat, lng, vehicle_type_id, vehicle_id").eq("is_online", true).eq("is_on_trip", false);
 
       // Pre-fetch system default radius in parallel — drivers' personal radii
       // are fetched right after we know who's online, but we kick off the
@@ -974,13 +974,29 @@ const DispatchTripForm = ({
         const [driversRes, timeoutRes, defaultRes] = broadcastData as any;
         let allDrivers = (driversRes?.data || []) as any[];
 
-        // STRICT vehicle-type match: only drivers currently online with the
-        // SAME active vehicle type as the requested trip. Drivers approved for
-        // the type via driver_vehicle_types but currently online as a different
-        // vehicle (e.g. online as Car while approved as Pickup) are excluded.
+        // Match on driver's CURRENTLY ACTIVE vehicle: direct vehicle_type_id
+        // match, OR the same vehicle is approved for the requested type via
+        // driver_vehicle_types (e.g. one car registered as Car + Van). Drivers
+        // approved for the type on a different vehicle they're not online with
+        // are excluded.
         if (selectedVehicleType && allDrivers.length > 0) {
+          const activeVehicleIds = allDrivers.map((d: any) => d.vehicle_id).filter(Boolean);
+          let approvedVehicleSet = new Set<string>();
+          if (activeVehicleIds.length > 0) {
+            const { data: approved } = await supabase
+              .from("driver_vehicle_types")
+              .select("vehicle_id")
+              .eq("vehicle_type_id", selectedVehicleType)
+              .eq("status", "approved")
+              .in("vehicle_id", activeVehicleIds);
+            approvedVehicleSet = new Set(
+              (approved || []).map((r: any) => r.vehicle_id).filter(Boolean)
+            );
+          }
           allDrivers = allDrivers.filter(
-            (d: any) => d.vehicle_type_id === selectedVehicleType
+            (d: any) =>
+              d.vehicle_type_id === selectedVehicleType ||
+              (d.vehicle_id && approvedVehicleSet.has(d.vehicle_id))
           );
         }
 
