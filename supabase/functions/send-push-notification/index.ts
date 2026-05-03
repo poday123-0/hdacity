@@ -230,17 +230,13 @@ Deno.serve(async (req) => {
         .eq("is_online", true);
 
       let typeMatchedOnline = (onlineDrivers || []) as any[];
+      // STRICT vehicle-type match: only drivers whose CURRENTLY ACTIVE
+      // vehicle_type_id (from driver_locations) equals the trip's vehicle_type_id.
+      // This prevents Pickup trips from reaching drivers currently online as Cars
+      // (even if they are also approved for Pickup via driver_vehicle_types).
       if (data?.vehicle_type_id && typeMatchedOnline.length > 0) {
-        const driverIds = typeMatchedOnline.map((d: any) => d.driver_id);
-        const { data: approved } = await supabase
-          .from("driver_vehicle_types")
-          .select("driver_id")
-          .eq("vehicle_type_id", data.vehicle_type_id)
-          .eq("status", "approved")
-          .in("driver_id", driverIds);
-        const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
         typeMatchedOnline = typeMatchedOnline.filter(
-          (d: any) => d.vehicle_type_id === data.vehicle_type_id || approvedSet.has(d.driver_id)
+          (d: any) => d.vehicle_type_id === data.vehicle_type_id
         );
       }
       // Replace local var name used below
