@@ -820,17 +820,12 @@ const Index = () => {
             .select("driver_id, lat, lng, vehicle_type_id")
             .eq("is_online", true);
           let eligible = (locData || []) as any[];
+          // STRICT vehicle-type match: only drivers currently online with the
+          // SAME active vehicle type as the trip. Drivers approved for the
+          // type but online as a different vehicle are excluded.
           if (eligible.length > 0 && selectedVehicleType.id) {
-            const driverIdsAll = eligible.map((d: any) => d.driver_id);
-            const { data: approved } = await supabase
-              .from("driver_vehicle_types")
-              .select("driver_id")
-              .eq("vehicle_type_id", selectedVehicleType.id)
-              .eq("status", "approved")
-              .in("driver_id", driverIdsAll);
-            const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
             eligible = eligible.filter(
-              (d: any) => d.vehicle_type_id === selectedVehicleType.id || approvedSet.has(d.driver_id)
+              (d: any) => d.vehicle_type_id === selectedVehicleType.id
             );
           }
           if (eligible.length > 0) {
@@ -891,17 +886,10 @@ const Index = () => {
               .eq("is_online", true)
               .eq("is_on_trip", false);
             let eligible = (locData || []) as any[];
+            // STRICT vehicle-type match — see scheduled-broadcast block above.
             if (eligible.length > 0 && selectedVehicleType.id) {
-              const driverIdsAll = eligible.map((d: any) => d.driver_id);
-              const { data: approved } = await supabase
-                .from("driver_vehicle_types")
-                .select("driver_id")
-                .eq("vehicle_type_id", selectedVehicleType.id)
-                .eq("status", "approved")
-                .in("driver_id", driverIdsAll);
-              const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
               eligible = eligible.filter(
-                (d: any) => d.vehicle_type_id === selectedVehicleType.id || approvedSet.has(d.driver_id)
+                (d: any) => d.vehicle_type_id === selectedVehicleType.id
               );
             }
             if (eligible.length > 0) {

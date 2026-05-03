@@ -153,19 +153,12 @@ Deno.serve(async (req) => {
       .eq("is_on_trip", false);
     let eligible = (locs || []) as any[];
 
-    // Vehicle-type filter (active OR approved via driver_vehicle_types)
+    // STRICT vehicle-type filter: only drivers whose currently active
+    // vehicle (driver_locations.vehicle_type_id) equals the trip's type.
+    // Drivers approved for the type but currently online with a different
+    // vehicle (e.g. online as Car while also approved as Pickup) are excluded.
     if (trip.vehicle_type_id && eligible.length > 0) {
-      const driverIds = eligible.map((d) => d.driver_id);
-      const { data: approved } = await supabase
-        .from("driver_vehicle_types")
-        .select("driver_id")
-        .eq("vehicle_type_id", trip.vehicle_type_id)
-        .eq("status", "approved")
-        .in("driver_id", driverIds);
-      const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
-      eligible = eligible.filter(
-        (d) => d.vehicle_type_id === trip.vehicle_type_id || approvedSet.has(d.driver_id)
-      );
+      eligible = eligible.filter((d) => d.vehicle_type_id === trip.vehicle_type_id);
     }
 
     if (eligible.length === 0) {

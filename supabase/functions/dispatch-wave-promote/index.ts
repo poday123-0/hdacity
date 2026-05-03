@@ -141,17 +141,10 @@ Deno.serve(async (req) => {
         .eq("is_on_trip", false);
 
       let typeMatched = (locs || []) as any[];
+      // STRICT vehicle-type match — must equal driver's currently active type.
       if (trip.vehicle_type_id && typeMatched.length > 0) {
-        const driverIds = typeMatched.map((d: any) => d.driver_id);
-        const { data: approved } = await supabase
-          .from("driver_vehicle_types")
-          .select("driver_id")
-          .eq("vehicle_type_id", trip.vehicle_type_id)
-          .eq("status", "approved")
-          .in("driver_id", driverIds);
-        const approvedSet = new Set((approved || []).map((r: any) => r.driver_id));
         typeMatched = typeMatched.filter(
-          (d: any) => d.vehicle_type_id === trip.vehicle_type_id || approvedSet.has(d.driver_id)
+          (d: any) => d.vehicle_type_id === trip.vehicle_type_id
         );
       }
 
