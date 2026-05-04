@@ -50,7 +50,8 @@ const pushTripRequested = async (driverIds: string[], trip: any) => {
   try {
     await supabase.functions.invoke("send-push-notification", {
       body: {
-        userIds: driverIds,
+        user_ids: driverIds,
+        target_user_type: "driver",
         title: "🚖 New Trip Request",
         body: trip.pickup_address || "New ride request",
         data: {

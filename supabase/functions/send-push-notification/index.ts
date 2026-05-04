@@ -154,7 +154,11 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { user_ids, title, body, data, topic, target_user_type } = await req.json();
+    const requestBody = await req.json();
+    const { title, body, data, topic, target_user_type } = requestBody;
+    // Accept both payload spellings so older edge functions cannot bypass the
+    // targeted-driver validation by sending `userIds` instead of `user_ids`.
+    const user_ids = requestBody.user_ids || requestBody.userIds;
 
     // Fetch ALL default sounds (one per category) in a single query
     const soundMap: Record<string, string> = {};
@@ -227,7 +231,8 @@ Deno.serve(async (req) => {
         .from("driver_locations")
         .select("driver_id, lat, lng, vehicle_type_id, vehicle_id")
         .in("driver_id", user_ids)
-        .eq("is_online", true);
+          .eq("is_online", true)
+          .eq("is_on_trip", false);
 
       let typeMatchedOnline = (onlineDrivers || []) as any[];
       // Vehicle-type match scoped to the driver's CURRENTLY ACTIVE vehicle:
@@ -264,16 +269,17 @@ Deno.serve(async (req) => {
       const pickupLng = data?.pickup_lng != null ? Number(data.pickup_lng) : null;
 
       const onlineFiltered = onlineDriversFiltered.filter((d: any) => {
+        if (data?.type === "trip_taken") return true;
         if (pickupLat == null || pickupLng == null || typeof d.lat !== "number" || typeof d.lng !== "number") {
-          return true;
+          return false;
         }
-        return haversineKm(pickupLat, pickupLng, Number(d.lat), Number(d.lng)) <= 50;
+        return true;
       });
 
       const onlineSet = new Set(onlineFiltered.map((d: any) => d.driver_id));
       filteredUserIds = user_ids.filter((id: string) => onlineSet.has(id));
 
-      if (pickupLat != null && pickupLng != null && onlineFiltered.length > 0) {
+      if (isTripRequestType && pickupLat != null && pickupLng != null && onlineFiltered.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, trip_radius_km")
@@ -294,8 +300,14 @@ Deno.serve(async (req) => {
         }
 
         filteredUserIds = onlineFiltered
-          .filter((d: any) => haversineKm(pickupLat, pickupLng, Number(d.lat), Number(d.lng)) <= (radiusByDriver.get(d.driver_id) ?? defaultRadius))
+          .filter((d: any) => {
+            const radius = radiusByDriver.get(d.driver_id) ?? defaultRadius;
+            const dist = haversineKm(pickupLat, pickupLng, Number(d.lat), Number(d.lng));
+            return dist <= radius;
+          })
           .map((d: any) => d.driver_id);
+      } else if (isTripRequestType) {
+        filteredUserIds = [];
       }
 
       if (filteredUserIds.length === 0) {

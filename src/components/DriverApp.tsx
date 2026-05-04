@@ -1241,8 +1241,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .maybeSingle();
         if (latestWave) {
           const allowList: string[] = (latestWave as any).driver_ids || [];
-          const isFinal = !!(latestWave as any).is_final_broadcast;
-          if (!isFinal && !allowList.includes(userProfile.id)) {
+          if (!allowList.includes(userProfile.id)) {
             debugLog({
               event: "handleNewTrip:reject_not_in_wave",
               driver_id: userProfile.id,
@@ -1252,10 +1251,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             handlingTripRef.current = null;
             return;
           }
+        } else {
+          debugLog({ event: "handleNewTrip:reject_waiting_for_wave", driver_id: userProfile.id, trip_id: trip.id });
+          handlingTripRef.current = null;
+          return;
         }
-        // If no wave row exists yet, fall through (might be a non-wave broadcast trip)
       } catch (waveErr) {
-        console.warn("[WAVE CHECK] lookup failed, allowing trip:", waveErr);
+        console.warn("[WAVE CHECK] lookup failed, blocking trip until wave row exists:", waveErr);
+        handlingTripRef.current = null;
+        return;
       }
     }
 
@@ -1670,7 +1674,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (dispatchModeRef.current !== "wave_broadcast") return;
         const wave = payload.new as any;
         const inAllowList = (wave.driver_ids || []).includes(userProfile.id);
-        if (!inAllowList && !wave.is_final_broadcast) return;
+        if (!inAllowList) return;
         // Fetch the trip and dispatch through the normal handler
         const { data: trip } = await supabase
           .from("trips")
@@ -1680,7 +1684,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .is("driver_id", null)
           .maybeSingle();
         if (!trip) return;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip as any);
         }
