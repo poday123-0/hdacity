@@ -1674,7 +1674,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (dispatchModeRef.current !== "wave_broadcast") return;
         const wave = payload.new as any;
         const inAllowList = (wave.driver_ids || []).includes(userProfile.id);
-        if (!inAllowList && !wave.is_final_broadcast) return;
+        if (!inAllowList) return;
         // Fetch the trip and dispatch through the normal handler
         const { data: trip } = await supabase
           .from("trips")
@@ -1684,7 +1684,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .is("driver_id", null)
           .maybeSingle();
         if (!trip) return;
-        if (trip.id !== lastSeenTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
+        if (trip.id !== handlingTripRef.current && !declinedTripIdsRef.current.has(trip.id)) {
           lastSeenTripRef.current = trip.id;
           handleNewTrip(trip as any);
         }
