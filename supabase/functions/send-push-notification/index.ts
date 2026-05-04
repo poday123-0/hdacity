@@ -154,7 +154,11 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { user_ids, title, body, data, topic, target_user_type } = await req.json();
+    const requestBody = await req.json();
+    const { title, body, data, topic, target_user_type } = requestBody;
+    // Accept both payload spellings so older edge functions cannot bypass the
+    // targeted-driver validation by sending `userIds` instead of `user_ids`.
+    const user_ids = requestBody.user_ids || requestBody.userIds;
 
     // Fetch ALL default sounds (one per category) in a single query
     const soundMap: Record<string, string> = {};
