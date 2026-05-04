@@ -1241,8 +1241,7 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .maybeSingle();
         if (latestWave) {
           const allowList: string[] = (latestWave as any).driver_ids || [];
-          const isFinal = !!(latestWave as any).is_final_broadcast;
-          if (!isFinal && !allowList.includes(userProfile.id)) {
+          if (!allowList.includes(userProfile.id)) {
             debugLog({
               event: "handleNewTrip:reject_not_in_wave",
               driver_id: userProfile.id,
@@ -1252,10 +1251,15 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             handlingTripRef.current = null;
             return;
           }
+        } else {
+          debugLog({ event: "handleNewTrip:reject_waiting_for_wave", driver_id: userProfile.id, trip_id: trip.id });
+          handlingTripRef.current = null;
+          return;
         }
-        // If no wave row exists yet, fall through (might be a non-wave broadcast trip)
       } catch (waveErr) {
-        console.warn("[WAVE CHECK] lookup failed, allowing trip:", waveErr);
+        console.warn("[WAVE CHECK] lookup failed, blocking trip until wave row exists:", waveErr);
+        handlingTripRef.current = null;
+        return;
       }
     }
 
