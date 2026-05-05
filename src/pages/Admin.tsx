@@ -429,35 +429,44 @@ const Admin = () => {
 
         {/* Page content */}
         <div className="flex-1 p-4 lg:p-6 xl:p-8 max-w-7xl w-full mx-auto">
-          {activeTab === "dashboard" && <AdminDashboard />}
-          {activeTab === "passengers" && <AdminPassengers />}
-          {activeTab === "drivers" && <AdminDrivers />}
-          {activeTab === "vehicles" && <AdminVehicles />}
-          {activeTab === "vehicle_types" && <AdminVehicleTypes />}
-          {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
-          {activeTab === "fares" && <AdminFares />}
-          {activeTab === "billing" && <AdminBilling />}
-          {activeTab === "wallets" && <AdminWallets />}
-          {activeTab === "topup_cards" && <AdminTopupCards />}
-          {activeTab === "watermelons" && <AdminWatermelons />}
-          {activeTab === "competitions" && <AdminCompetitions />}
-          {activeTab === "banks" && <AdminBanks />}
-          {activeTab === "companies" && <AdminCompanies />}
-          {activeTab === "locations" && <AdminLocations />}
-          {activeTab === "named_locations" && <AdminNamedLocations />}
-          {activeTab === "trips" && <AdminTrips />}
-          {activeTab === "lost_items" && <AdminLostItems />}
-          {activeTab === "sos_history" && <AdminSOSHistory />}
-          {activeTab === "users" && <AdminUsers />}
-          {activeTab === "notifications" && <AdminNotifications />}
-          {activeTab === "sms" && <AdminSMS />}
-          {activeTab === "device_tokens" && <AdminDeviceTokens />}
-          {activeTab === "duty_hours" && <AdminDutyHours />}
-          {activeTab === "ad_banners" && <AdminAdBanners />}
-          {activeTab === "driver_invoices" && <AdminDriverInvoice />}
-          {activeTab === "storage" && <AdminStorage />}
-          {activeTab === "debug_logs" && <AdminDebugLogs />}
-          {activeTab === "settings" && <AdminSettings />}
+          {!permLoading && !canViewTab(activeTab) ? (
+            <div className="bg-card border border-border rounded-2xl p-8 text-center">
+              <h3 className="text-base font-semibold text-foreground mb-1">No access</h3>
+              <p className="text-sm text-muted-foreground">You don't have permission to view this section.</p>
+            </div>
+          ) : (
+            <>
+              {activeTab === "dashboard" && <AdminDashboard />}
+              {activeTab === "passengers" && <AdminPassengers />}
+              {activeTab === "drivers" && <AdminDrivers />}
+              {activeTab === "vehicles" && <AdminVehicles />}
+              {activeTab === "vehicle_types" && <AdminVehicleTypes />}
+              {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
+              {activeTab === "fares" && <AdminFares />}
+              {activeTab === "billing" && <AdminBilling />}
+              {activeTab === "wallets" && <AdminWallets />}
+              {activeTab === "topup_cards" && <AdminTopupCards />}
+              {activeTab === "watermelons" && <AdminWatermelons />}
+              {activeTab === "competitions" && <AdminCompetitions />}
+              {activeTab === "banks" && <AdminBanks />}
+              {activeTab === "companies" && <AdminCompanies />}
+              {activeTab === "locations" && <AdminLocations />}
+              {activeTab === "named_locations" && <AdminNamedLocations />}
+              {activeTab === "trips" && <AdminTrips />}
+              {activeTab === "lost_items" && <AdminLostItems />}
+              {activeTab === "sos_history" && <AdminSOSHistory />}
+              {activeTab === "users" && <AdminUsers />}
+              {activeTab === "notifications" && <AdminNotifications />}
+              {activeTab === "sms" && <AdminSMS />}
+              {activeTab === "device_tokens" && <AdminDeviceTokens />}
+              {activeTab === "duty_hours" && <AdminDutyHours />}
+              {activeTab === "ad_banners" && <AdminAdBanners />}
+              {activeTab === "driver_invoices" && <AdminDriverInvoice />}
+              {activeTab === "storage" && <AdminStorage />}
+              {activeTab === "debug_logs" && <AdminDebugLogs />}
+              {activeTab === "settings" && <AdminSettings />}
+            </>
+          )}
         </div>
       </main>
     </div>
