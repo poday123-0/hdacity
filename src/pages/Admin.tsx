@@ -40,8 +40,36 @@ import AdminAdBanners from "@/components/admin/AdminAdBanners";
 import AdminDriverInvoice from "@/components/admin/AdminDriverInvoice";
 import AdminStorage from "@/components/admin/AdminStorage";
 import AdminDebugLogs from "@/components/admin/AdminDebugLogs";
+import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
 type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "debug_logs" | "settings";
+
+// Map each tab to the permission key required to view it.
+// Tabs not listed here are admin-only (always visible to legacy/unrestricted admins,
+// hidden from any admin/dispatcher that has explicit permissions configured).
+const TAB_PERMISSION: Partial<Record<Tab, string>> = {
+  dashboard: "view_dashboard",
+  passengers: "manage_passengers",
+  drivers: "manage_drivers",
+  vehicles: "manage_vehicles",
+  vehicle_types: "manage_vehicles",
+  vehicle_makes: "manage_vehicles",
+  fares: "manage_fares",
+  billing: "manage_billing",
+  driver_invoices: "manage_billing",
+  wallets: "manage_wallets",
+  topup_cards: "manage_wallets",
+  banks: "manage_banks",
+  companies: "manage_companies",
+  locations: "manage_locations",
+  named_locations: "manage_locations",
+  trips: "manage_trips",
+  lost_items: "manage_lost_items",
+  sos_history: "manage_sos",
+  notifications: "manage_notifications",
+  sms: "manage_notifications",
+  settings: "manage_settings",
+};
 
 type NavGroup = {
   label: string;
