@@ -3213,7 +3213,9 @@ const Dispatch = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            {(() => {
+            {appRequestsLoading && appRequestsTripsAll.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Loading...</p>
+            ) : (() => {
               const q = appRequestsSearch.toLowerCase().trim();
               const now = new Date();
               let dateStart: Date | null = null;
