@@ -3229,7 +3229,10 @@ const Dispatch = () => {
                   default: break;
                 }
               }
-              const filtered = appRequestTrips.filter((t: any) => {
+              const sourceTrips = appRequestsLoading && appRequestsTripsAll.length === 0
+                ? appRequestTrips
+                : appRequestsTripsAll;
+              const filtered = sourceTrips.filter((t: any) => {
                 // Date filter
                 if (dateStart && dateEnd) {
                   const created = new Date(t.created_at);
