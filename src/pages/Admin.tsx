@@ -40,8 +40,36 @@ import AdminAdBanners from "@/components/admin/AdminAdBanners";
 import AdminDriverInvoice from "@/components/admin/AdminDriverInvoice";
 import AdminStorage from "@/components/admin/AdminStorage";
 import AdminDebugLogs from "@/components/admin/AdminDebugLogs";
+import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
 type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "debug_logs" | "settings";
+
+// Map each tab to the permission key required to view it.
+// Tabs not listed here are admin-only (always visible to legacy/unrestricted admins,
+// hidden from any admin/dispatcher that has explicit permissions configured).
+const TAB_PERMISSION: Partial<Record<Tab, string>> = {
+  dashboard: "view_dashboard",
+  passengers: "manage_passengers",
+  drivers: "manage_drivers",
+  vehicles: "manage_vehicles",
+  vehicle_types: "manage_vehicles",
+  vehicle_makes: "manage_vehicles",
+  fares: "manage_fares",
+  billing: "manage_billing",
+  driver_invoices: "manage_billing",
+  wallets: "manage_wallets",
+  topup_cards: "manage_wallets",
+  banks: "manage_banks",
+  companies: "manage_companies",
+  locations: "manage_locations",
+  named_locations: "manage_locations",
+  trips: "manage_trips",
+  lost_items: "manage_lost_items",
+  sos_history: "manage_sos",
+  notifications: "manage_notifications",
+  sms: "manage_notifications",
+  settings: "manage_settings",
+};
 
 type NavGroup = {
   label: string;
@@ -165,6 +193,28 @@ const Admin = () => {
     }
     setLoading(false);
   }, []);
+
+  const { role: permRole, permissions: permList, loading: permLoading, hasPermission } = useAdminPermissions();
+  // Unrestricted = admin with no explicit permissions configured.
+  const isUnrestricted = permRole === "admin" && permList.length === 0;
+
+  const canViewTab = (id: Tab): boolean => {
+    if (isUnrestricted) return true;
+    const key = TAB_PERMISSION[id];
+    // Tabs without a permission mapping are admin-only — hide for restricted users.
+    if (!key) return false;
+    return hasPermission(key);
+  };
+
+  // If the persisted active tab is no longer allowed, fall back to the first allowed tab.
+  useEffect(() => {
+    if (permLoading) return;
+    if (!canViewTab(activeTab)) {
+      const firstAllowed = navGroups.flatMap(g => g.items).find(i => canViewTab(i.id));
+      if (firstAllowed) setActiveTab(firstAllowed.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permLoading, permRole, permList.join(",")]);
 
   const handleAdminLogin = async (phone: string) => {
     const { data: profiles } = await supabase
@@ -291,8 +341,9 @@ const Admin = () => {
         {/* Navigation - grouped */}
         <nav className="flex-1 py-2 overflow-y-auto min-h-0">
           {navGroups.map((group) => {
+            const visibleItems = group.items.filter(i => canViewTab(i.id));
+            if (visibleItems.length === 0) return null;
             const isCollapsed = collapsedGroups.has(group.label);
-            const hasActiveItem = group.items.some(i => i.id === activeTab);
 
             return (
               <div key={group.label} className="mb-1">
@@ -309,10 +360,9 @@ const Admin = () => {
                   )}
                 </button>
 
-                {/* Group items */}
                 {!isCollapsed && (
                   <div className="px-2 space-y-0.5">
-                    {group.items.map((tab) => (
+                    {visibleItems.map((tab) => (
                       <button
                         key={tab.id}
                         onClick={() => handleTabClick(tab.id)}
@@ -379,35 +429,44 @@ const Admin = () => {
 
         {/* Page content */}
         <div className="flex-1 p-4 lg:p-6 xl:p-8 max-w-7xl w-full mx-auto">
-          {activeTab === "dashboard" && <AdminDashboard />}
-          {activeTab === "passengers" && <AdminPassengers />}
-          {activeTab === "drivers" && <AdminDrivers />}
-          {activeTab === "vehicles" && <AdminVehicles />}
-          {activeTab === "vehicle_types" && <AdminVehicleTypes />}
-          {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
-          {activeTab === "fares" && <AdminFares />}
-          {activeTab === "billing" && <AdminBilling />}
-          {activeTab === "wallets" && <AdminWallets />}
-          {activeTab === "topup_cards" && <AdminTopupCards />}
-          {activeTab === "watermelons" && <AdminWatermelons />}
-          {activeTab === "competitions" && <AdminCompetitions />}
-          {activeTab === "banks" && <AdminBanks />}
-          {activeTab === "companies" && <AdminCompanies />}
-          {activeTab === "locations" && <AdminLocations />}
-          {activeTab === "named_locations" && <AdminNamedLocations />}
-          {activeTab === "trips" && <AdminTrips />}
-          {activeTab === "lost_items" && <AdminLostItems />}
-          {activeTab === "sos_history" && <AdminSOSHistory />}
-          {activeTab === "users" && <AdminUsers />}
-          {activeTab === "notifications" && <AdminNotifications />}
-          {activeTab === "sms" && <AdminSMS />}
-          {activeTab === "device_tokens" && <AdminDeviceTokens />}
-          {activeTab === "duty_hours" && <AdminDutyHours />}
-          {activeTab === "ad_banners" && <AdminAdBanners />}
-          {activeTab === "driver_invoices" && <AdminDriverInvoice />}
-          {activeTab === "storage" && <AdminStorage />}
-          {activeTab === "debug_logs" && <AdminDebugLogs />}
-          {activeTab === "settings" && <AdminSettings />}
+          {!permLoading && !canViewTab(activeTab) ? (
+            <div className="bg-card border border-border rounded-2xl p-8 text-center">
+              <h3 className="text-base font-semibold text-foreground mb-1">No access</h3>
+              <p className="text-sm text-muted-foreground">You don't have permission to view this section.</p>
+            </div>
+          ) : (
+            <>
+              {activeTab === "dashboard" && <AdminDashboard />}
+              {activeTab === "passengers" && <AdminPassengers />}
+              {activeTab === "drivers" && <AdminDrivers />}
+              {activeTab === "vehicles" && <AdminVehicles />}
+              {activeTab === "vehicle_types" && <AdminVehicleTypes />}
+              {activeTab === "vehicle_makes" && <AdminVehicleMakes />}
+              {activeTab === "fares" && <AdminFares />}
+              {activeTab === "billing" && <AdminBilling />}
+              {activeTab === "wallets" && <AdminWallets />}
+              {activeTab === "topup_cards" && <AdminTopupCards />}
+              {activeTab === "watermelons" && <AdminWatermelons />}
+              {activeTab === "competitions" && <AdminCompetitions />}
+              {activeTab === "banks" && <AdminBanks />}
+              {activeTab === "companies" && <AdminCompanies />}
+              {activeTab === "locations" && <AdminLocations />}
+              {activeTab === "named_locations" && <AdminNamedLocations />}
+              {activeTab === "trips" && <AdminTrips />}
+              {activeTab === "lost_items" && <AdminLostItems />}
+              {activeTab === "sos_history" && <AdminSOSHistory />}
+              {activeTab === "users" && <AdminUsers />}
+              {activeTab === "notifications" && <AdminNotifications />}
+              {activeTab === "sms" && <AdminSMS />}
+              {activeTab === "device_tokens" && <AdminDeviceTokens />}
+              {activeTab === "duty_hours" && <AdminDutyHours />}
+              {activeTab === "ad_banners" && <AdminAdBanners />}
+              {activeTab === "driver_invoices" && <AdminDriverInvoice />}
+              {activeTab === "storage" && <AdminStorage />}
+              {activeTab === "debug_logs" && <AdminDebugLogs />}
+              {activeTab === "settings" && <AdminSettings />}
+            </>
+          )}
         </div>
       </main>
     </div>
