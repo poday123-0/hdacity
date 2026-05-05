@@ -191,8 +191,27 @@ const Admin = () => {
         setIsAdmin(true);
       } catch {}
     }
-    setLoading(false);
-  }, []);
+  const { role: permRole, permissions: permList, loading: permLoading, hasPermission } = useAdminPermissions();
+  // Unrestricted = admin with no explicit permissions configured.
+  const isUnrestricted = permRole === "admin" && permList.length === 0;
+
+  const canViewTab = (id: Tab): boolean => {
+    if (isUnrestricted) return true;
+    const key = TAB_PERMISSION[id];
+    // Tabs without a permission mapping are admin-only — hide for restricted users.
+    if (!key) return false;
+    return hasPermission(key);
+  };
+
+  // If the persisted active tab is no longer allowed, fall back to the first allowed tab.
+  useEffect(() => {
+    if (permLoading) return;
+    if (!canViewTab(activeTab)) {
+      const firstAllowed = navGroups.flatMap(g => g.items).find(i => canViewTab(i.id));
+      if (firstAllowed) setActiveTab(firstAllowed.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permLoading, permRole, permList.join(",")]);
 
   const handleAdminLogin = async (phone: string) => {
     const { data: profiles } = await supabase
