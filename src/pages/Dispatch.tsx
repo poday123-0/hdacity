@@ -1163,6 +1163,57 @@ const Dispatch = () => {
     fetchAllBookings();
   }, [fetchAllBookings]);
 
+  // Fetch app/passenger requests for the All App Requests dialog
+  // (server-side date filtering so week/month/custom show the right data,
+  // not just whatever happens to be in the live cache).
+  const fetchAllAppRequests = useCallback(async () => {
+    if (!showAllAppRequests) return;
+    setAppRequestsLoading(true);
+    try {
+      const tripSelect =
+        "id, status, pickup_address, dropoff_address, customer_name, customer_phone, created_at, updated_at, dispatch_type, driver_id, estimated_fare, actual_fare, accepted_at, cancel_reason, passenger:profiles!trips_passenger_id_fkey(first_name, last_name, phone_number), driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number, avatar_url, company_name), vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
+
+      const now = new Date();
+      let dateStart: Date | null = null;
+      let dateEnd: Date | null = null;
+      if (appRequestsCustomDate) {
+        dateStart = startOfDay(appRequestsCustomDate);
+        dateEnd = endOfDay(appRequestsCustomDate);
+      } else {
+        switch (appRequestsDateFilter) {
+          case "today":
+            dateStart = startOfDay(now); dateEnd = endOfDay(now); break;
+          case "week":
+            dateStart = startOfWeek(now, { weekStartsOn: 1 }); dateEnd = endOfDay(now); break;
+          case "month":
+            dateStart = startOfMonth(now); dateEnd = endOfDay(now); break;
+          default:
+            break;
+        }
+      }
+
+      let query = supabase
+        .from("trips")
+        .select(tripSelect)
+        .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+        .order("created_at", { ascending: false })
+        .limit(1000);
+
+      if (dateStart) query = query.gte("created_at", dateStart.toISOString());
+      if (dateEnd) query = query.lte("created_at", dateEnd.toISOString());
+
+      const { data } = await query;
+      setAppRequestsTripsAll(data || []);
+    } catch {
+      // keep existing
+    } finally {
+      setAppRequestsLoading(false);
+    }
+  }, [showAllAppRequests, appRequestsDateFilter, appRequestsCustomDate]);
+
+  useEffect(() => {
+    fetchAllAppRequests();
+  }, [fetchAllAppRequests]);
 
   const handlePhoneSubmit = async () => {
     if (phone.length < 7) return;
