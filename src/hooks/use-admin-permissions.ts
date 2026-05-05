@@ -61,10 +61,15 @@ export function useAdminPermissions(): AdminPermissions {
     };
   }, []);
 
+  // An admin/dispatcher with NO permissions set is treated as a full-access
+  // legacy admin (no restrictions). As soon as ANY permission is configured,
+  // they are restricted to ONLY the areas matching those permission keys.
+  const isUnrestricted = role === "admin" && permissions.length === 0;
+
   const hasPermission = (key: string) => {
-    // Admins have all permissions implicitly UNLESS the key is an opt-IN
-    // restriction (like hide_phone_numbers, which is the OPPOSITE flag).
-    if (role === "admin") return true;
+    // Opt-in restriction flags (e.g. hide_phone_numbers) are NOT auto-granted.
+    if (key === "hide_phone_numbers") return permissions.includes(key);
+    if (isUnrestricted) return true;
     return permissions.includes(key);
   };
 
