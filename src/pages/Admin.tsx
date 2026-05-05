@@ -341,8 +341,9 @@ const Admin = () => {
         {/* Navigation - grouped */}
         <nav className="flex-1 py-2 overflow-y-auto min-h-0">
           {navGroups.map((group) => {
+            const visibleItems = group.items.filter(i => canViewTab(i.id));
+            if (visibleItems.length === 0) return null;
             const isCollapsed = collapsedGroups.has(group.label);
-            const hasActiveItem = group.items.some(i => i.id === activeTab);
 
             return (
               <div key={group.label} className="mb-1">
@@ -359,10 +360,9 @@ const Admin = () => {
                   )}
                 </button>
 
-                {/* Group items */}
                 {!isCollapsed && (
                   <div className="px-2 space-y-0.5">
-                    {group.items.map((tab) => (
+                    {visibleItems.map((tab) => (
                       <button
                         key={tab.id}
                         onClick={() => handleTabClick(tab.id)}
