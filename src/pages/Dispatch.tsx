@@ -3423,7 +3423,6 @@ const Dispatch = () => {
               );
             })()}
           </div>
-          </div>
         </DialogContent>
       </Dialog>
       {/* Duty History Dialog */}
