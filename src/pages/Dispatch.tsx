@@ -3422,7 +3422,7 @@ const Dispatch = () => {
                 </>
               );
             })()}
-          </div>)}
+          </div>
           </div>
         </DialogContent>
       </Dialog>
