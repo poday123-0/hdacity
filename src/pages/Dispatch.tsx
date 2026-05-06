@@ -554,9 +554,14 @@ const Dispatch = () => {
           vehicleIds.length
             ? supabase
                 .from("trips")
-                .select("vehicle_id, created_at, booking_notes")
+                .select("vehicle_id, created_at, booking_notes, driver_id, target_driver_id, status")
                 .in("vehicle_id", vehicleIds)
                 .eq("dispatch_type", "operator")
+                // Only count trips actually ASSIGNED to this vehicle's driver (accepted/worked),
+                // not broadcasts that were merely sent to the app. This is what determines
+                // "least recent trip" for fair dispatch rotation.
+                .not("driver_id", "is", null)
+                .in("status", ["accepted", "arrived", "started", "completed"])
                 .order("created_at", { ascending: false })
                 .limit(2000)
             : Promise.resolve({ data: [] as any[] }),
