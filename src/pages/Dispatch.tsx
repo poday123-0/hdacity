@@ -1200,18 +1200,26 @@ const Dispatch = () => {
         }
       }
 
-      let query = supabase
-        .from("trips")
-        .select(tripSelect)
-        .in("dispatch_type", ["dispatch_broadcast", "passenger"])
-        .order("created_at", { ascending: false })
-        .limit(1000);
-
-      if (dateStart) query = query.gte("created_at", dateStart.toISOString());
-      if (dateEnd) query = query.lte("created_at", dateEnd.toISOString());
-
-      const { data } = await query;
-      setAppRequestsTripsAll(data || []);
+      // Paginate so weekly/monthly totals are not capped at 1000
+      const all: any[] = [];
+      const batchSize = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("trips")
+          .select(tripSelect)
+          .in("dispatch_type", ["dispatch_broadcast", "passenger"])
+          .order("created_at", { ascending: false })
+          .range(from, from + batchSize - 1);
+        if (dateStart) q = q.gte("created_at", dateStart.toISOString());
+        if (dateEnd) q = q.lte("created_at", dateEnd.toISOString());
+        const { data } = await q;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < batchSize) break;
+        from += batchSize;
+      }
+      setAppRequestsTripsAll(all);
     } catch {
       // keep existing
     } finally {
