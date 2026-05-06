@@ -43,28 +43,40 @@ export function DriverTripsModal({ driverId, driverName, onClose }: Props) {
     const load = async () => {
       setLoading(true);
       try {
-        let q = supabase
-          .from("trips")
-          .select(
-            "id, status, is_loss, dispatch_type, pickup_address, dropoff_address, customer_name, customer_phone, " +
-            "driver_id, target_driver_id, vehicle_id, booking_notes, created_at, accepted_at, completed_at, cancelled_at, " +
-            "estimated_fare, actual_fare, cancel_reason, cancelled_by, cancelled_by_type, cancelled_by_name, " +
-            "vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
-          )
-          .eq("driver_id", driverId)
-          .order("created_at", { ascending: false })
-          .limit(500);
+        const tripSelect =
+          "id, status, is_loss, dispatch_type, pickup_address, dropoff_address, customer_name, customer_phone, " +
+          "driver_id, target_driver_id, vehicle_id, booking_notes, created_at, accepted_at, completed_at, cancelled_at, " +
+          "estimated_fare, actual_fare, cancel_reason, cancelled_by, cancelled_by_type, cancelled_by_name, " +
+          "vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
 
+        let sinceISO: string | null = null;
         if (scope !== "all") {
           const days = scope === "today" ? 1 : 7;
           const since = new Date();
           since.setDate(since.getDate() - days);
-          q = q.gte("created_at", since.toISOString());
+          sinceISO = since.toISOString();
         }
 
-        const { data } = await q;
+        // Paginate — full history, no row cap
+        const all: any[] = [];
+        const batchSize = 1000;
+        let from = 0;
+        while (true) {
+          let q = supabase
+            .from("trips")
+            .select(tripSelect)
+            .eq("driver_id", driverId)
+            .order("created_at", { ascending: false })
+            .range(from, from + batchSize - 1);
+          if (sinceISO) q = q.gte("created_at", sinceISO);
+          const { data } = await q;
+          if (!data || data.length === 0) break;
+          all.push(...data);
+          if (data.length < batchSize) break;
+          from += batchSize;
+        }
         if (cancelled) return;
-        setTrips(data || []);
+        setTrips(all);
       } finally {
         if (!cancelled) setLoading(false);
       }
