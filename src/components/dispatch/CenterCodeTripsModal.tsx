@@ -49,31 +49,43 @@ export function CenterCodeTripsModal({ centerCode, vehicleIds, onClose }: Props)
           return;
         }
 
-        let q = supabase
-          .from("trips")
-          .select(
-            "id, status, is_loss, dispatch_type, pickup_address, dropoff_address, customer_name, customer_phone, " +
-            "driver_id, target_driver_id, vehicle_id, booking_notes, created_at, accepted_at, started_at, completed_at, cancelled_at, " +
-            "estimated_fare, actual_fare, cancel_reason, cancelled_by, cancelled_by_type, cancelled_by_name, passenger_id, " +
-            "driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), " +
-            "vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)"
-          )
-          .in("vehicle_id", vehicleIds)
-          .order("created_at", { ascending: false })
-          .limit(500);
+        const baseSelect =
+          "id, status, is_loss, dispatch_type, pickup_address, dropoff_address, customer_name, customer_phone, " +
+          "driver_id, target_driver_id, vehicle_id, booking_notes, created_at, accepted_at, started_at, completed_at, cancelled_at, " +
+          "estimated_fare, actual_fare, cancel_reason, cancelled_by, cancelled_by_type, cancelled_by_name, passenger_id, " +
+          "driver:profiles!trips_driver_id_fkey(first_name, last_name, phone_number), " +
+          "vehicle:vehicles!trips_vehicle_id_fkey(plate_number, center_code, color)";
 
+        let dateGte: string | null = null;
         if (scope === "today") {
           const nowUtc = Date.now();
           const mald = new Date(nowUtc + 5 * 3600000);
           const yy = mald.getUTCFullYear();
           const mm = String(mald.getUTCMonth() + 1).padStart(2, "0");
           const dd = String(mald.getUTCDate()).padStart(2, "0");
-          q = q.gte("created_at", `${yy}-${mm}-${dd}T00:00:00+05:00`);
+          dateGte = `${yy}-${mm}-${dd}T00:00:00+05:00`;
         }
 
-        const { data } = await q;
+        // Paginate to avoid 1000-row cap so center-code totals/history are accurate
+        const all: any[] = [];
+        const batchSize = 1000;
+        let from = 0;
+        while (true) {
+          let q = supabase
+            .from("trips")
+            .select(baseSelect)
+            .in("vehicle_id", vehicleIds)
+            .order("created_at", { ascending: false })
+            .range(from, from + batchSize - 1);
+          if (dateGte) q = q.gte("created_at", dateGte);
+          const { data } = await q;
+          if (!data || data.length === 0) break;
+          all.push(...data);
+          if (data.length < batchSize) break;
+          from += batchSize;
+        }
         if (cancelled) return;
-        setTrips(data || []);
+        setTrips(all);
       } finally {
         if (!cancelled) setLoading(false);
       }
