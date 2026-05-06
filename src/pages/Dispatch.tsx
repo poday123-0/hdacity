@@ -538,33 +538,61 @@ const Dispatch = () => {
         const todayStartUTC = new Date(todayStart.getTime() - (maldivesOffset * 60000));
         const todayISO = todayStartUTC.toISOString();
 
-        const [profilesRes, todayTripsRes, completedTripsRes] = await Promise.all([
+        // Helper: paginate a trips query past Supabase's 1000-row cap
+        const fetchAllTrips = async (build: (from: number, to: number) => any) => {
+          const all: any[] = [];
+          const batch = 1000;
+          let from = 0;
+          while (true) {
+            const { data, error } = await build(from, from + batch - 1);
+            if (error || !data || data.length === 0) break;
+            all.push(...data);
+            if (data.length < batch) break;
+            from += batch;
+          }
+          return all;
+        };
+
+        const [profilesRes, todayTripsData, completedTripsData, lossTripsData] = await Promise.all([
           driverIds.length
             ? supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", driverIds)
             : Promise.resolve({ data: [] as any[] }),
           vehicleIds.length
-            ? supabase
-                .from("trips")
-                .select("vehicle_id, booking_notes")
-                .in("vehicle_id", vehicleIds)
-                .gte("created_at", todayISO)
-.in("status", ["requested", "accepted", "arrived", "started", "completed"])
-                 .eq("dispatch_type", "operator")
-            : Promise.resolve({ data: [] as any[] }),
+            ? fetchAllTrips((f, t) =>
+                supabase
+                  .from("trips")
+                  .select("vehicle_id, booking_notes")
+                  .in("vehicle_id", vehicleIds)
+                  .gte("created_at", todayISO)
+                  .in("status", ["requested", "accepted", "arrived", "started", "completed"])
+                  .eq("dispatch_type", "operator")
+                  .range(f, t)
+              )
+            : Promise.resolve([] as any[]),
           vehicleIds.length
-            ? supabase
-                .from("trips")
-                .select("vehicle_id, created_at, booking_notes, driver_id, target_driver_id, status")
-                .in("vehicle_id", vehicleIds)
-                .eq("dispatch_type", "operator")
-                // Only count trips actually ASSIGNED to this vehicle's driver (accepted/worked),
-                // not broadcasts that were merely sent to the app. This is what determines
-                // "least recent trip" for fair dispatch rotation.
-                .not("driver_id", "is", null)
-                .in("status", ["accepted", "arrived", "started", "completed"])
-                .order("created_at", { ascending: false })
-                .limit(2000)
-            : Promise.resolve({ data: [] as any[] }),
+            ? fetchAllTrips((f, t) =>
+                supabase
+                  .from("trips")
+                  .select("vehicle_id, created_at, booking_notes, driver_id, target_driver_id, status")
+                  .in("vehicle_id", vehicleIds)
+                  .eq("dispatch_type", "operator")
+                  // Only count trips actually ASSIGNED to this vehicle's driver (accepted/worked),
+                  // not broadcasts that were merely sent to the app. This is what determines
+                  // "least recent trip" for fair dispatch rotation.
+                  .not("driver_id", "is", null)
+                  .in("status", ["accepted", "arrived", "started", "completed"])
+                  .order("created_at", { ascending: false })
+                  .range(f, t)
+              )
+            : Promise.resolve([] as any[]),
+          fetchAllTrips((f, t) =>
+            supabase
+              .from("trips")
+              .select("vehicle_id, booking_notes")
+              .eq("is_loss", true)
+              .eq("dispatch_type", "operator")
+              .range(f, t)
+          ),
         ]);
 
         const profileMap = new Map<string, any>();
@@ -581,7 +609,7 @@ const Dispatch = () => {
 
         // Per-center-code last trip date (all-time, any status from dispatch)
         const lastTripMap = new Map<string, string>();
-        (completedTripsRes.data || []).forEach((t: any) => {
+        (completedTripsData || []).forEach((t: any) => {
           const tripCode = resolveTripCode(t);
           if (tripCode && t?.created_at && !lastTripMap.has(tripCode)) {
             lastTripMap.set(tripCode, t.created_at);
@@ -590,19 +618,13 @@ const Dispatch = () => {
 
         // Per-center-code today trip counts
         const todayCounts = new Map<string, number>();
-        (todayTripsRes.data || []).forEach((t: any) => {
+        (todayTripsData || []).forEach((t: any) => {
           const tripCode = resolveTripCode(t);
           if (!tripCode) return;
           todayCounts.set(tripCode, (todayCounts.get(tripCode) || 0) + 1);
         });
 
-        // Fetch loss center codes (prefer vehicle_id, fall back to saved center code in notes)
-        const { data: lossTrips } = await supabase
-          .from("trips")
-          .select("vehicle_id, booking_notes")
-          .eq("is_loss", true)
-          .eq("dispatch_type", "operator");
-        const lossCenterCodes = new Set((lossTrips || []).map((t: any) => resolveTripCode(t)).filter(Boolean));
+        const lossCenterCodes = new Set((lossTripsData || []).map((t: any) => resolveTripCode(t)).filter(Boolean));
 
         const index: Record<string, any> = {};
         (vehicles || []).forEach((v: any) => {
