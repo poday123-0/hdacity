@@ -65,32 +65,40 @@ const AdminTrips = () => {
     const defaultFrom = new Date();
     defaultFrom.setDate(defaultFrom.getDate() - 7);
 
-    // Cap at 5000 rows per fetch. With the new index on created_at this
-    // returns in a single round-trip and is far more than what fits on screen.
-    const HARD_LIMIT = 5000;
+    // No row cap — paginate to fetch the full history matching the filters.
+    const buildQuery = (fromIdx: number, toIdx: number) => {
+      let q = supabase
+        .from("trips")
+        .select(TRIP_COLUMNS)
+        .order("created_at", { ascending: false })
+        .range(fromIdx, toIdx);
+      if (filter !== "all") q = q.eq("status", filter);
+      if (bookingFilter !== "all") q = q.eq("booking_type", bookingFilter);
+      if (dispatchFilter !== "all") q = q.eq("dispatch_type", dispatchFilter);
+      if (dateFrom) {
+        q = q.gte("created_at", new Date(dateFrom).toISOString());
+      } else if (!hasDateRange) {
+        q = q.gte("created_at", defaultFrom.toISOString());
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        q = q.lte("created_at", endDate.toISOString());
+      }
+      return q;
+    };
 
-    let query = supabase
-      .from("trips")
-      .select(TRIP_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(HARD_LIMIT);
-
-    if (filter !== "all") query = query.eq("status", filter);
-    if (bookingFilter !== "all") query = query.eq("booking_type", bookingFilter);
-    if (dispatchFilter !== "all") query = query.eq("dispatch_type", dispatchFilter);
-    if (dateFrom) {
-      query = query.gte("created_at", new Date(dateFrom).toISOString());
-    } else if (!hasDateRange) {
-      query = query.gte("created_at", defaultFrom.toISOString());
+    const all: any[] = [];
+    const batchSize = 1000;
+    let from = 0;
+    while (true) {
+      const { data } = await buildQuery(from, from + batchSize - 1);
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < batchSize) break;
+      from += batchSize;
     }
-    if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      query = query.lte("created_at", endDate.toISOString());
-    }
-
-    const { data } = await query;
-    setTrips((data as any[]) || []);
+    setTrips(all as any[]);
     if (!opts.silent) setLoading(false);
   };
 
