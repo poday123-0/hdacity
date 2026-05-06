@@ -1140,18 +1140,26 @@ const Dispatch = () => {
         }
       }
 
-      let query = supabase
-        .from("trips")
-        .select(tripSelect)
-        .eq("dispatch_type", "operator")
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (dateStart) query = query.gte("created_at", dateStart.toISOString());
-      if (dateEnd) query = query.lte("created_at", dateEnd.toISOString());
-
-      const { data } = await query;
-      setAllBookingsTrips(data || []);
+      // Paginate to avoid Supabase's 1000-row cap so totals are accurate
+      const all: any[] = [];
+      const batchSize = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("trips")
+          .select(tripSelect)
+          .eq("dispatch_type", "operator")
+          .order("created_at", { ascending: false })
+          .range(from, from + batchSize - 1);
+        if (dateStart) q = q.gte("created_at", dateStart.toISOString());
+        if (dateEnd) q = q.lte("created_at", dateEnd.toISOString());
+        const { data } = await q;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < batchSize) break;
+        from += batchSize;
+      }
+      setAllBookingsTrips(all);
     } catch {
       // keep existing
     } finally {
