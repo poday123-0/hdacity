@@ -91,13 +91,19 @@ const AdminTrips = () => {
     const all: any[] = [];
     const batchSize = 1000;
     let from = 0;
-    while (true) {
-      const { data } = await buildQuery(from, from + batchSize - 1);
+    let safety = 0;
+    while (safety++ < 200) {
+      const { data, error } = await buildQuery(from, from + batchSize - 1);
+      if (error) {
+        console.error("[AdminTrips] page fetch error at offset", from, error);
+        break;
+      }
       if (!data || data.length === 0) break;
       all.push(...data);
       if (data.length < batchSize) break;
       from += batchSize;
     }
+    console.log("[AdminTrips] loaded", all.length, "trips");
     setTrips(all as any[]);
     if (!opts.silent) setLoading(false);
   };
