@@ -2578,6 +2578,18 @@ const Dispatch = () => {
                                   CANCEL
                                 </button>
                               )}
+                              {t.status === "cancelled" && !wasAccepted && t.dispatch_type !== "passenger" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleResendTrip(t.id);
+                                  }}
+                                  className="text-[9px] font-bold text-primary shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors"
+                                  title="Resend this trip to drivers without re-entering info"
+                                >
+                                  RESEND
+                                </button>
+                              )}
                             </div>
 
                             {/* Expanded: driver card + trip details */}
