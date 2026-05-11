@@ -6,7 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useTheme } from "@/hooks/use-theme";
 import { broadcastLossActor, actorNameFromProfile } from "@/lib/loss-audit-broadcast";
-import { notifyTripCancelled } from "@/lib/push-notifications";
+import { notifyTripCancelled, notifyTripRequested } from "@/lib/push-notifications";
+import { filterDriversByPersonalRadius } from "@/lib/driver-radius-filter";
 import {
   Phone,
   MapPin,
@@ -1433,8 +1434,134 @@ const Dispatch = () => {
       actor_role: "dispatcher",
       ts: Date.now(),
     });
-    toast({ title: "Trip Cancelled" });
-    refreshTrips();
+  };
+
+  /**
+   * Resend a previously-cancelled-no-driver trip: clone the original trip
+   * row as a new `requested` broadcast and push to nearby eligible drivers.
+   * Saves the dispatcher from re-entering pickup/dropoff/customer info.
+   */
+  const handleResendTrip = async (originalTripId: string) => {
+    try {
+      const { data: orig, error: fetchErr } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("id", originalTripId)
+        .maybeSingle();
+      if (fetchErr || !orig) {
+        toast({ title: "Resend failed", description: "Original trip not found", variant: "destructive" });
+        return;
+      }
+
+      const pickupLat = Number((orig as any).pickup_lat);
+      const pickupLng = Number((orig as any).pickup_lng);
+
+      // Build a fresh trip payload from the original
+      const payload: any = {
+        pickup_address: (orig as any).pickup_address,
+        pickup_lat: pickupLat,
+        pickup_lng: pickupLng,
+        dropoff_address: (orig as any).dropoff_address,
+        dropoff_lat: (orig as any).dropoff_lat,
+        dropoff_lng: (orig as any).dropoff_lng,
+        passenger_count: (orig as any).passenger_count || 1,
+        luggage_count: (orig as any).luggage_count || 0,
+        customer_name: (orig as any).customer_name || "Dispatch",
+        customer_phone: (orig as any).customer_phone || "3352020",
+        created_by: dispatcherProfile?.id || null,
+        dispatch_type: "dispatch_broadcast",
+        vehicle_type_id: (orig as any).vehicle_type_id || null,
+        status: "requested",
+        fare_type: (orig as any).fare_type || "distance",
+        estimated_fare: (orig as any).estimated_fare || null,
+        booking_notes: `Resent from ${originalTripId.slice(0, 8)}`,
+      };
+
+      const { data: newTrip, error: insErr } = await supabase
+        .from("trips")
+        .insert(payload)
+        .select("*")
+        .single();
+      if (insErr || !newTrip) {
+        toast({ title: "Resend failed", description: insErr?.message || "Could not create trip", variant: "destructive" });
+        return;
+      }
+
+      // Find online idle drivers for this vehicle type
+      let dq = supabase
+        .from("driver_locations")
+        .select("driver_id, lat, lng, vehicle_type_id, vehicle_id")
+        .eq("is_online", true)
+        .eq("is_on_trip", false);
+      if (payload.vehicle_type_id) dq = dq.eq("vehicle_type_id", payload.vehicle_type_id);
+      const { data: drivers } = await dq;
+
+      if (!drivers || drivers.length === 0) {
+        await supabase.from("trips").update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          cancel_reason: "No drivers available",
+        }).eq("id", newTrip.id);
+        toast({ title: "No online drivers", description: "Trip resent but no drivers online", variant: "destructive" });
+        refreshTrips();
+        return;
+      }
+
+      const eligibleIds = await filterDriversByPersonalRadius(drivers as any, pickupLat, pickupLng);
+      if (eligibleIds.length === 0) {
+        await supabase.from("trips").update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          cancel_reason: "No drivers within personal radius",
+        }).eq("id", newTrip.id);
+        toast({ title: "No drivers in range", variant: "destructive" });
+        refreshTrips();
+        return;
+      }
+
+      // Vehicle type name for the push body
+      let vtName: string | null = null;
+      if (payload.vehicle_type_id) {
+        const { data: vt } = await supabase
+          .from("vehicle_types")
+          .select("name")
+          .eq("id", payload.vehicle_type_id)
+          .maybeSingle();
+        vtName = (vt as any)?.name || null;
+      }
+
+      notifyTripRequested(
+        eligibleIds,
+        newTrip.id,
+        payload.pickup_address,
+        payload.vehicle_type_id || undefined,
+        payload.estimated_fare,
+        vtName,
+        pickupLat,
+        pickupLng,
+      ).catch(console.warn);
+
+      toast({ title: `Resent to ${eligibleIds.length} driver(s)`, description: `Auto-cancel in ${broadcastTimeoutSec}s if no one accepts` });
+
+      // Auto-cancel after timeout
+      const timeoutMs = broadcastTimeoutSec * 1000;
+      setTimeout(async () => {
+        const { data: check } = await supabase.from("trips").select("status").eq("id", newTrip.id).single();
+        if (check && check.status === "requested") {
+          await supabase.from("trips").update({
+            status: "cancelled",
+            cancelled_at: new Date().toISOString(),
+            cancel_reason: "No driver available - auto cancelled",
+          }).eq("id", newTrip.id);
+          refreshTrips();
+        }
+      }, timeoutMs);
+
+      refreshTrips();
+    } catch (err: any) {
+      console.error("Resend trip failed:", err);
+      toast({ title: "Resend failed", description: err?.message || "Unknown error", variant: "destructive" });
+    }
   };
 
   const handleLogout = async () => {
@@ -2449,6 +2576,18 @@ const Dispatch = () => {
                                   className="text-[9px] font-bold text-warning shrink-0 px-1.5 py-0.5 rounded bg-warning/15 hover:bg-warning/25 transition-colors"
                                 >
                                   CANCEL
+                                </button>
+                              )}
+                              {t.status === "cancelled" && !wasAccepted && t.dispatch_type !== "passenger" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleResendTrip(t.id);
+                                  }}
+                                  className="text-[9px] font-bold text-primary shrink-0 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors"
+                                  title="Resend this trip to drivers without re-entering info"
+                                >
+                                  RESEND
                                 </button>
                               )}
                             </div>
