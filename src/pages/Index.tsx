@@ -276,6 +276,36 @@ const Index = () => {
     }
   }, [driverProfile, userProfile, checkDriverProfile]);
 
+  // Deep-link: ?signup=driver (or #signup=driver) → jump straight to driver registration.
+  // If not logged in, remember the intent and resume after auth.
+  const DRIVER_INTENT_KEY = "hda_pending_driver_signup";
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const wants =
+        url.searchParams.get("signup") === "driver" ||
+        url.searchParams.get("become") === "driver" ||
+        window.location.hash.replace("#", "") === "signup=driver";
+      if (wants) {
+        localStorage.setItem(DRIVER_INTENT_KEY, "1");
+        url.searchParams.delete("signup");
+        url.searchParams.delete("become");
+        window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(DRIVER_INTENT_KEY) !== "1") return;
+      // Wait until we're past splash/onboarding/auth/register
+      if (phase === "splash" || phase === "onboarding" || phase === "auth" || phase === "register") return;
+      if (!userProfile) return;
+      localStorage.removeItem(DRIVER_INTENT_KEY);
+      handleSwitchMode("driver");
+    } catch {}
+  }, [phase, userProfile, handleSwitchMode]);
+
   // Restore ongoing trip on app load
   useEffect(() => {
     if (!userProfile?.id || phase !== "passenger") return;
