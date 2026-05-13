@@ -14,6 +14,11 @@ interface AdminPermissions {
   maskPhone: (phone: string | null | undefined) => string;
 }
 
+type RoleRow = {
+  role: string | null;
+  permissions: unknown;
+};
+
 /**
  * Loads the current admin's role + permissions from user_roles using the
  * profile id stored in localStorage by Admin.tsx (`hda_admin`).
@@ -45,11 +50,12 @@ export function useAdminPermissions(adminId?: string | null): AdminPermissions {
           .eq("user_id", profileId)
           .order("role", { ascending: true });
         if (cancelled) return;
-        const adminRow = (data || []).find((r: any) => r.role === "admin");
-        const dispatcherRow = (data || []).find((r: any) => r.role === "dispatcher");
+        const rows = (data || []) as RoleRow[];
+        const adminRow = rows.find((r) => r.role === "admin");
+        const dispatcherRow = rows.find((r) => r.role === "dispatcher");
         const row = adminRow || dispatcherRow || null;
         setRole(row?.role || null);
-        setPermissions(((row?.permissions as string[]) || []) as string[]);
+        setPermissions(Array.isArray(row?.permissions) ? row.permissions.filter((p): p is string => typeof p === "string") : []);
       } catch {
         // ignore — defaults to no permissions
       } finally {
