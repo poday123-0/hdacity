@@ -19,7 +19,7 @@ interface AdminPermissions {
  * profile id stored in localStorage by Admin.tsx (`hda_admin`).
  * Exposes a maskPhone helper for hiding numbers from restricted admins.
  */
-export function useAdminPermissions(): AdminPermissions {
+export function useAdminPermissions(adminId?: string | null): AdminPermissions {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,19 +29,20 @@ export function useAdminPermissions(): AdminPermissions {
     const load = async () => {
       try {
         const stored = localStorage.getItem("hda_admin") || localStorage.getItem("hda_dispatcher");
-        if (!stored) {
+        if (!stored && !adminId) {
           if (!cancelled) setLoading(false);
           return;
         }
-        const parsed = JSON.parse(stored);
-        if (!parsed?.id) {
+        const parsed = stored ? JSON.parse(stored) : null;
+        const profileId = adminId || parsed?.id || parsed?.profile?.id;
+        if (!profileId) {
           if (!cancelled) setLoading(false);
           return;
         }
         const { data } = await supabase
           .from("user_roles")
           .select("role, permissions")
-          .eq("user_id", parsed.id)
+          .eq("user_id", profileId)
           .order("role", { ascending: true });
         if (cancelled) return;
         const adminRow = (data || []).find((r: any) => r.role === "admin");
@@ -59,7 +60,7 @@ export function useAdminPermissions(): AdminPermissions {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [adminId]);
 
   // An admin/dispatcher with NO permissions set is treated as a full-access
   // legacy admin (no restrictions). As soon as ANY permission is configured,
