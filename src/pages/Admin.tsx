@@ -195,7 +195,7 @@ const Admin = () => {
     setLoading(false);
   }, []);
 
-  const { role: permRole, permissions: permList, loading: permLoading, hasPermission } = useAdminPermissions();
+  const { role: permRole, permissions: permList, loading: permLoading, hasPermission } = useAdminPermissions(adminProfile?.id);
   // Unrestricted = admin with no explicit permissions configured.
   const isUnrestricted = permRole === "admin" && permList.length === 0;
 
