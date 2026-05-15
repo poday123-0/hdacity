@@ -571,6 +571,24 @@ const AdminWallets = () => {
                   </div>
                 </div>
                 {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
+                {w.payout_accounts && w.payout_accounts.length > 0 ? (
+                  <div className="rounded-lg bg-surface border border-border p-2 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Payout accounts</p>
+                    {w.payout_accounts.map((a, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="font-semibold text-foreground">{a.label}</span>
+                        <span className="font-mono text-foreground truncate">{a.number}</span>
+                        {a.holder && <span className="text-muted-foreground truncate">{a.holder}</span>}
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(a.number); toast({ title: "Copied", description: a.number }); }}
+                          className="text-primary hover:underline shrink-0"
+                        >Copy</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-600">No payout account on file for this driver.</p>
+                )}
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
                   <span>Requested: {new Date(w.created_at).toLocaleString()}</span>
                   {w.processed_at && (
