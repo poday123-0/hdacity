@@ -39,6 +39,13 @@ interface TransactionRow {
   processed_at?: string | null;
 }
 
+interface PayoutAccount {
+  type: "bank" | "favara" | "swipe";
+  label: string;
+  number: string;
+  holder: string;
+}
+
 interface WithdrawalRow {
   id: string;
   wallet_id: string;
@@ -51,6 +58,7 @@ interface WithdrawalRow {
   processed_by?: string | null;
   processed_at?: string | null;
   profile?: { first_name: string; last_name: string; phone_number: string };
+  payout_accounts?: PayoutAccount[];
 }
 
 const AdminWallets = () => {
