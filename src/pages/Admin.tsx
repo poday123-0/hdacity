@@ -201,6 +201,9 @@ const Admin = () => {
 
   const canViewTab = (id: Tab): boolean => {
     if (isUnrestricted) return true;
+    // "Admins & Dispatch" management is always visible to anyone with the admin role,
+    // regardless of restricted permissions. Dispatchers never see it.
+    if (id === "users") return permRole === "admin";
     const key = TAB_PERMISSION[id];
     // Tabs without a permission mapping are admin-only — hide for restricted users.
     if (!key) return false;

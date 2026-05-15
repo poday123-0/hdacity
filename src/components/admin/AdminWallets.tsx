@@ -39,6 +39,13 @@ interface TransactionRow {
   processed_at?: string | null;
 }
 
+interface PayoutAccount {
+  type: "bank" | "favara" | "swipe";
+  label: string;
+  number: string;
+  holder: string;
+}
+
 interface WithdrawalRow {
   id: string;
   wallet_id: string;
@@ -51,6 +58,7 @@ interface WithdrawalRow {
   processed_by?: string | null;
   processed_at?: string | null;
   profile?: { first_name: string; last_name: string; phone_number: string };
+  payout_accounts?: PayoutAccount[];
 }
 
 const AdminWallets = () => {
@@ -100,9 +108,13 @@ const AdminWallets = () => {
     const userIds = [...new Set(data.map(w => w.user_id))];
     const adminIds = [...new Set(data.map(w => w.processed_by).filter(Boolean) as string[])];
     const allIds = [...new Set([...userIds, ...adminIds])];
-    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds);
-    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-    // Merge admin profiles into shared adminProfiles map for unified lookup
+    const [profilesRes, banksRes, favaraRes, swipeRes] = await Promise.all([
+      supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds),
+      supabase.from("driver_bank_accounts").select("driver_id, bank_name, account_number, account_name, is_primary, is_active").in("driver_id", userIds),
+      supabase.from("driver_favara_accounts").select("driver_id, favara_id, favara_name, is_primary, is_active").in("driver_id", userIds),
+      supabase.from("driver_swipe_accounts").select("driver_id, swipe_username, swipe_name, is_primary, is_active").in("driver_id", userIds),
+    ]);
+    const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p]));
     if (adminIds.length > 0) {
       setAdminProfiles(prev => {
         const next = new Map(prev);
@@ -113,7 +125,29 @@ const AdminWallets = () => {
         return next;
       });
     }
-    setWithdrawals(data.map(w => ({ ...w, amount: Number(w.amount), profile: profileMap.get(w.user_id) })));
+
+    const accountsByUser = new Map<string, PayoutAccount[]>();
+    const pushAcc = (uid: string, acc: PayoutAccount, primary: boolean) => {
+      const list = accountsByUser.get(uid) || [];
+      if (primary) list.unshift(acc); else list.push(acc);
+      accountsByUser.set(uid, list);
+    };
+    (banksRes.data || []).filter(b => b.is_active).forEach(b => pushAcc(b.driver_id, {
+      type: "bank", label: b.bank_name || "Bank", number: b.account_number, holder: b.account_name || "",
+    }, !!b.is_primary));
+    (favaraRes.data || []).filter(f => f.is_active).forEach(f => pushAcc(f.driver_id, {
+      type: "favara", label: "Favara", number: f.favara_id, holder: f.favara_name || "",
+    }, !!f.is_primary));
+    (swipeRes.data || []).filter(s => s.is_active).forEach(s => pushAcc(s.driver_id, {
+      type: "swipe", label: "Swipe", number: s.swipe_username, holder: s.swipe_name || "",
+    }, !!s.is_primary));
+
+    setWithdrawals(data.map(w => ({
+      ...w,
+      amount: Number(w.amount),
+      profile: profileMap.get(w.user_id),
+      payout_accounts: accountsByUser.get(w.user_id) || [],
+    })));
   };
 
   const fetchPendingTopUps = async () => {
@@ -537,6 +571,24 @@ const AdminWallets = () => {
                   </div>
                 </div>
                 {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
+                {w.payout_accounts && w.payout_accounts.length > 0 ? (
+                  <div className="rounded-lg bg-surface border border-border p-2 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Payout accounts</p>
+                    {w.payout_accounts.map((a, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="font-semibold text-foreground">{a.label}</span>
+                        <span className="font-mono text-foreground truncate">{a.number}</span>
+                        {a.holder && <span className="text-muted-foreground truncate">{a.holder}</span>}
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(a.number); toast({ title: "Copied", description: a.number }); }}
+                          className="text-primary hover:underline shrink-0"
+                        >Copy</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-600">No payout account on file for this driver.</p>
+                )}
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
                   <span>Requested: {new Date(w.created_at).toLocaleString()}</span>
                   {w.processed_at && (
