@@ -108,9 +108,13 @@ const AdminWallets = () => {
     const userIds = [...new Set(data.map(w => w.user_id))];
     const adminIds = [...new Set(data.map(w => w.processed_by).filter(Boolean) as string[])];
     const allIds = [...new Set([...userIds, ...adminIds])];
-    const { data: profiles } = await supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds);
-    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-    // Merge admin profiles into shared adminProfiles map for unified lookup
+    const [profilesRes, banksRes, favaraRes, swipeRes] = await Promise.all([
+      supabase.from("profiles").select("id, first_name, last_name, phone_number").in("id", allIds),
+      supabase.from("driver_bank_accounts").select("driver_id, bank_name, account_number, account_name, is_primary, is_active").in("driver_id", userIds),
+      supabase.from("driver_favara_accounts").select("driver_id, favara_id, favara_name, is_primary, is_active").in("driver_id", userIds),
+      supabase.from("driver_swipe_accounts").select("driver_id, swipe_username, swipe_name, is_primary, is_active").in("driver_id", userIds),
+    ]);
+    const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p]));
     if (adminIds.length > 0) {
       setAdminProfiles(prev => {
         const next = new Map(prev);
@@ -121,7 +125,29 @@ const AdminWallets = () => {
         return next;
       });
     }
-    setWithdrawals(data.map(w => ({ ...w, amount: Number(w.amount), profile: profileMap.get(w.user_id) })));
+
+    const accountsByUser = new Map<string, PayoutAccount[]>();
+    const pushAcc = (uid: string, acc: PayoutAccount, primary: boolean) => {
+      const list = accountsByUser.get(uid) || [];
+      if (primary) list.unshift(acc); else list.push(acc);
+      accountsByUser.set(uid, list);
+    };
+    (banksRes.data || []).filter(b => b.is_active).forEach(b => pushAcc(b.driver_id, {
+      type: "bank", label: b.bank_name || "Bank", number: b.account_number, holder: b.account_name || "",
+    }, !!b.is_primary));
+    (favaraRes.data || []).filter(f => f.is_active).forEach(f => pushAcc(f.driver_id, {
+      type: "favara", label: "Favara", number: f.favara_id, holder: f.favara_name || "",
+    }, !!f.is_primary));
+    (swipeRes.data || []).filter(s => s.is_active).forEach(s => pushAcc(s.driver_id, {
+      type: "swipe", label: "Swipe", number: s.swipe_username, holder: s.swipe_name || "",
+    }, !!s.is_primary));
+
+    setWithdrawals(data.map(w => ({
+      ...w,
+      amount: Number(w.amount),
+      profile: profileMap.get(w.user_id),
+      payout_accounts: accountsByUser.get(w.user_id) || [],
+    })));
   };
 
   const fetchPendingTopUps = async () => {
