@@ -68,7 +68,6 @@ const TAB_PERMISSION: Partial<Record<Tab, string>> = {
   sos_history: "manage_sos",
   notifications: "manage_notifications",
   sms: "manage_notifications",
-  ad_banners: "manage_ad_banners",
   settings: "manage_settings",
 };
 
