@@ -205,8 +205,9 @@ const Admin = () => {
     // regardless of restricted permissions. Dispatchers never see it.
     if (id === "users") return permRole === "admin";
     const key = TAB_PERMISSION[id];
-    // Tabs without a permission mapping are admin-only — hide for restricted users.
-    if (!key) return false;
+    // Tabs without a permission mapping are admin-only — visible to any admin,
+    // hidden for dispatchers.
+    if (!key) return permRole === "admin";
     return hasPermission(key);
   };
 
