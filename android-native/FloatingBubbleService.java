@@ -238,12 +238,15 @@ public class FloatingBubbleService extends Service {
             ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             : WindowManager.LayoutParams.TYPE_PHONE;
 
-        // FLAG_NOT_FOCUSABLE removed → buttons receive touches.
+        // FLAG_NOT_FOCUSABLE → don't steal input/IME focus from underlying app.
+        // FLAG_NOT_TOUCH_MODAL → touches outside this window pass through.
+        // Buttons inside still receive their own taps.
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
             cardWidth,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         );
