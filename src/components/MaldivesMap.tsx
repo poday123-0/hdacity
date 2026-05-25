@@ -73,16 +73,16 @@ const vehicleIcon = (imageUrl?: string, heading?: number | null) => {
   if (imageUrl) {
     return L.divIcon({
       className: "",
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      html: `<img src="${imageUrl}" style="width:22px;height:22px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));${rotation}" crossorigin="anonymous" />`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+      html: `<img src="${imageUrl}" style="width:18px;height:18px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));${rotation}" crossorigin="anonymous" />`,
     });
   }
   return L.divIcon({
     className: "",
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-    html: `<div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:15px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));${rotation}">🚗</div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    html: `<div style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:13px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));${rotation}">🚗</div>`,
   });
 };
 
@@ -97,9 +97,9 @@ const driverIcon = (iconUrl?: string | null) => {
   }
   return L.divIcon({
     className: "",
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-    html: `<div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:16px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚕</div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    html: `<div style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:14px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚕</div>`,
   });
 };
 

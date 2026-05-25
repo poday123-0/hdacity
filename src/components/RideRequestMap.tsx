@@ -59,9 +59,9 @@ const RideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLng, sto
       const icon = passengerMapIconUrl
         ? L.divIcon({
             className: "",
-            iconSize: [24, 24],
+            iconSize: [18, 18],
             iconAnchor: [12, 12],
-            html: `<img src="${passengerMapIconUrl}" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" />`,
+            html: `<img src="${passengerMapIconUrl}" style="width:18px;height:18px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" />`,
           })
         : circleIcon("#22c55e", "P");
       L.marker([pickupLat!, pickupLng!], { icon, zIndexOffset: 1000 }).addTo(map);

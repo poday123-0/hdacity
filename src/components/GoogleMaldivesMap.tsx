@@ -154,7 +154,7 @@ const GoogleMaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, o
         position: { lat: driverLat, lng: driverLng },
         map,
         icon: rideData.driverIconUrl
-          ? { url: rideData.driverIconUrl, scaledSize: new google.maps.Size(28, 28), anchor: new google.maps.Point(14, 14) }
+          ? { url: rideData.driverIconUrl, scaledSize: new google.maps.Size(22, 22), anchor: new google.maps.Point(11, 11) }
           : { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: 0 },
         zIndex: 1100,
       });
@@ -232,7 +232,7 @@ const GoogleMaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, o
           position: { lat: v.lat, lng: v.lng },
           map,
           icon: v.imageUrl
-            ? { url: v.imageUrl, scaledSize: new google.maps.Size(22, 22), anchor: new google.maps.Point(11, 11) }
+            ? { url: v.imageUrl, scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 9) }
             : { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: v.isOnTrip ? "#f59e0b" : "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
           zIndex: 500,
         });
