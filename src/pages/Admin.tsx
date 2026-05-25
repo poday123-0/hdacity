@@ -459,6 +459,7 @@ const Admin = () => {
               {activeTab === "companies" && <AdminCompanies />}
               {activeTab === "locations" && <AdminLocations />}
               {activeTab === "named_locations" && <AdminNamedLocations />}
+              {activeTab === "road_closures" && <AdminRoadClosures />}
               {activeTab === "trips" && <AdminTrips />}
               {activeTab === "lost_items" && <AdminLostItems />}
               {activeTab === "sos_history" && <AdminSOSHistory />}
