@@ -1,16 +1,23 @@
 package com.hdataxi.passenger.plugins;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+
+import androidx.core.app.NotificationCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import com.hdataxi.passenger.R;
 
 @CapacitorPlugin(name = "FloatingBubble")
 public class FloatingBubblePlugin extends Plugin {
@@ -178,5 +185,149 @@ public class FloatingBubblePlugin extends Plugin {
 
     public void notifyBubbleDismissed() {
         notifyListeners("bubbleDismissed", new JSObject());
+    }
+
+    // ───────────────────────────────────────────────────────────────
+    //  Heads-up incoming-trip notification with Accept / Decline
+    //  action buttons. Works WITHOUT overlay permission and shows on
+    //  the lock screen / over other apps.
+    // ───────────────────────────────────────────────────────────────
+    private static final String HEADS_UP_CHANNEL = "trip_requests_v2";
+    private static final int HEADS_UP_NOTIFICATION_ID = 10001;
+
+    @PluginMethod
+    public void showHeadsUp(PluginCall call) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            call.reject("No context");
+            return;
+        }
+
+        String tripId = call.getString("tripId", "");
+        String pickup = call.getString("pickupAddress", "Pickup");
+        String dropoff = call.getString("dropoffAddress", "Dropoff");
+        String vehicleType = call.getString("vehicleType", "");
+        double fare = call.getDouble("estimatedFare", 0d);
+
+        // Ensure the channel exists (MainActivity also creates it, but be safe)
+        ensureChannel(ctx);
+
+        // Tap (content) intent → opens the app
+        Intent contentIntent = ctx.getPackageManager()
+            .getLaunchIntentForPackage(ctx.getPackageName());
+        if (contentIntent != null) {
+            contentIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            contentIntent.putExtra("tripId", tripId);
+            contentIntent.setAction("TRIP_OPEN");
+        }
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT
+            | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
+        PendingIntent contentPi = contentIntent != null
+            ? PendingIntent.getActivity(ctx, 1001, contentIntent, piFlags)
+            : null;
+
+        // Accept action
+        Intent acceptIntent = new Intent(ctx, TripActionReceiver.class);
+        acceptIntent.setAction(TripActionReceiver.ACTION_ACCEPT);
+        acceptIntent.putExtra(TripActionReceiver.EXTRA_TRIP_ID, tripId);
+        acceptIntent.putExtra(TripActionReceiver.EXTRA_NOTIFICATION_ID, HEADS_UP_NOTIFICATION_ID);
+        PendingIntent acceptPi = PendingIntent.getBroadcast(
+            ctx, 2001, acceptIntent, piFlags);
+
+        // Decline action
+        Intent declineIntent = new Intent(ctx, TripActionReceiver.class);
+        declineIntent.setAction(TripActionReceiver.ACTION_DECLINE);
+        declineIntent.putExtra(TripActionReceiver.EXTRA_TRIP_ID, tripId);
+        declineIntent.putExtra(TripActionReceiver.EXTRA_NOTIFICATION_ID, HEADS_UP_NOTIFICATION_ID);
+        PendingIntent declinePi = PendingIntent.getBroadcast(
+            ctx, 2002, declineIntent, piFlags);
+
+        StringBuilder body = new StringBuilder();
+        body.append("📍 ").append(pickup).append("\n");
+        body.append("🏁 ").append(dropoff);
+        if (fare > 0) body.append("\n💰 ").append((int) fare).append(" MVR");
+        if (vehicleType != null && !vehicleType.isEmpty()) {
+            body.append("   •  ").append(vehicleType);
+        }
+
+        int smallIcon = R.mipmap.ic_launcher;
+        try {
+            int stat = ctx.getResources().getIdentifier(
+                "ic_stat_notification", "mipmap", ctx.getPackageName());
+            if (stat != 0) smallIcon = stat;
+        } catch (Exception ignored) {}
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, HEADS_UP_CHANNEL)
+            .setSmallIcon(smallIcon)
+            .setContentTitle("🚗 New Trip Request")
+            .setContentText(pickup + " → " + dropoff)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(body.toString()))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setOngoing(false)
+            .setDefaults(NotificationCompat.DEFAULT_VIBRATE | NotificationCompat.DEFAULT_LIGHTS)
+            .addAction(0, "✓ Accept", acceptPi)
+            .addAction(0, "✕ Decline", declinePi);
+
+        if (contentPi != null) {
+            builder.setContentIntent(contentPi);
+            // Full-screen intent wakes the screen / shows over lock screen
+            builder.setFullScreenIntent(contentPi, true);
+        }
+
+        try {
+            NotificationManager nm =
+                (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.notify(HEADS_UP_NOTIFICATION_ID, builder.build());
+            }
+        } catch (Exception e) {
+            call.reject("Failed to post notification: " + e.getMessage());
+            return;
+        }
+
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void hideHeadsUp(PluginCall call) {
+        Context ctx = getContext();
+        if (ctx != null) {
+            try {
+                NotificationManager nm =
+                    (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) nm.cancel(HEADS_UP_NOTIFICATION_ID);
+            } catch (Exception ignored) {}
+        }
+        call.resolve();
+    }
+
+    private void ensureChannel(Context ctx) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        try {
+            NotificationManager nm =
+                (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            if (nm.getNotificationChannel(HEADS_UP_CHANNEL) != null) return;
+
+            Uri soundUri = Uri.parse("android.resource://" + ctx.getPackageName() + "/raw/trip_request");
+            AudioAttributes audioAttr = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build();
+
+            android.app.NotificationChannel ch = new android.app.NotificationChannel(
+                HEADS_UP_CHANNEL,
+                "Trip Requests",
+                NotificationManager.IMPORTANCE_MAX);
+            ch.setDescription("Incoming trip request alerts");
+            ch.enableVibration(true);
+            ch.setShowBadge(true);
+            ch.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+            try { ch.setSound(soundUri, audioAttr); } catch (Exception ignored) {}
+            nm.createNotificationChannel(ch);
+        } catch (Exception ignored) {}
     }
 }

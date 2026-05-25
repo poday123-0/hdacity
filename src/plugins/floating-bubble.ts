@@ -11,6 +11,22 @@ export interface FloatingBubblePlugin {
 
   showIdle(): Promise<void>;
   hide(): Promise<void>;
+
+  /**
+   * Posts a heads-up Android system notification for an incoming trip with
+   * Accept and Decline action buttons. Works without overlay permission and
+   * shows even on the lock screen / over other apps.
+   */
+  showHeadsUp(options: {
+    tripId: string;
+    pickupAddress: string;
+    dropoffAddress: string;
+    vehicleType?: string;
+    estimatedFare?: number;
+  }): Promise<void>;
+
+  hideHeadsUp(): Promise<void>;
+
   checkPermission(): Promise<{ granted: boolean }>;
   requestPermission(): Promise<void>;
 
