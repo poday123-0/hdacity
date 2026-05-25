@@ -380,6 +380,7 @@ function copyNativePluginFiles() {
   const filesToCopy = [
     { src: 'FloatingBubblePlugin.java', dest: path.join(pluginsDir, 'FloatingBubblePlugin.java') },
     { src: 'FloatingBubbleService.java', dest: path.join(pluginsDir, 'FloatingBubbleService.java') },
+    { src: 'TripActionReceiver.java', dest: path.join(pluginsDir, 'TripActionReceiver.java') },
     { src: 'bubble_bg.xml', dest: path.join(drawableDir, 'bubble_bg.xml') },
   ];
   
