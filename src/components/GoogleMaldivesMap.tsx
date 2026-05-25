@@ -154,7 +154,7 @@ const GoogleMaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, o
         position: { lat: driverLat, lng: driverLng },
         map,
         icon: rideData.driverIconUrl
-          ? { url: rideData.driverIconUrl, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) }
+          ? { url: rideData.driverIconUrl, scaledSize: new google.maps.Size(28, 28), anchor: new google.maps.Point(14, 14) }
           : { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: 0 },
         zIndex: 1100,
       });
