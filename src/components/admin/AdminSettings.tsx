@@ -476,6 +476,7 @@ const AdminSettings = () => {
             {renderSettingField('Wave Timeout (sec)', 'wave_timeout_seconds', 'number', '15')}
             {renderSettingField('Max Targeted Waves Before All-Broadcast', 'max_waves', 'number', '2')}
             {renderSettingField("Min Scheduled Lead Time (min)", "min_scheduled_lead_minutes", "number", "30")}
+            {renderSettingField("Incoming Trip Popup Auto-Dismiss (sec)", "floating_bubble_auto_dismiss_seconds", "number", "5")}
           </div>
         </div>
       </SectionCard>
