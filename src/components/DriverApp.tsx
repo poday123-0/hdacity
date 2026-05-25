@@ -2504,6 +2504,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         if (typeof mode === "string") dispatchModeRef.current = mode;
       } catch {}
 
+      // Chained-trip eligibility radius (metres). Default 50m.
+      try {
+        const { data: chainedRow } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "chained_trip_radius_m")
+          .maybeSingle();
+        const raw = (chainedRow as any)?.value;
+        const n =
+          typeof raw === "number" ? raw :
+          typeof raw === "string" ? parseFloat(raw) :
+          raw && typeof raw === "object" && raw.value != null ? parseFloat(raw.value) :
+          NaN;
+        if (Number.isFinite(n) && n > 0) chainedTripRadiusMRef.current = n;
+      } catch {}
+
       if (userProfile?.id) {
         const { data } = await supabase.from("profiles").select("trip_radius_km, avatar_url, id_card_front_url, id_card_back_url, license_front_url, license_back_url, taxi_permit_front_url, taxi_permit_back_url, status, rejection_reason, fee_free_until").eq("id", userProfile.id).single();
         // Always honor the driver's saved personal radius. Only fall back to
