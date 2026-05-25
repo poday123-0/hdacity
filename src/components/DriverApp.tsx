@@ -2096,6 +2096,67 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     };
   }, [screen, floatingBubbleEnabled]);
 
+  // ── Drain native pending Accept/Decline from the floating bubble ──────
+  //   When the driver taps Accept/Decline on the overlay or the heads-up
+  //   notification while the WebView is paused (or completely cold), the
+  //   action is queued natively. We pull it on mount + every app resume and
+  //   apply it as soon as the matching trip lands in state.
+  const pendingNativeActionRef = useRef<{ action: "accept" | "decline"; tripId: string } | null>(null);
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== "android") return;
+    let resumeSub: { remove: () => void } | undefined;
+    let cancelled = false;
+
+    const drain = async () => {
+      try {
+        const { default: FloatingBubble } = await import("@/plugins/floating-bubble");
+        const res = await FloatingBubble.getPendingAction();
+        if (cancelled || !res?.action || !res?.tripId) return;
+        if (res.action === "accept" || res.action === "decline") {
+          pendingNativeActionRef.current = { action: res.action, tripId: res.tripId };
+        }
+      } catch {}
+    };
+
+    drain();
+    (async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        resumeSub = await App.addListener("resume", drain);
+      } catch {}
+    })();
+
+    return () => {
+      cancelled = true;
+      if (resumeSub) resumeSub.remove();
+    };
+  }, []);
+
+  // Apply the queued native action as soon as currentTrip matches.
+  useEffect(() => {
+    const queued = pendingNativeActionRef.current;
+    if (!queued || !currentTrip?.id || queued.tripId !== currentTrip.id) return;
+    pendingNativeActionRef.current = null;
+    if (queued.action === "accept") {
+      setBubbleDismissedTripId(null);
+      setScreen("ride-request");
+    } else if (queued.action === "decline") {
+      if (userProfile?.id) {
+        declinedTripIdsRef.current.add(currentTrip.id);
+        supabase
+          .from("trip_declines")
+          .upsert(
+            { driver_id: userProfile.id, trip_id: currentTrip.id },
+            { onConflict: "driver_id,trip_id" }
+          )
+          .then(() => {});
+      }
+      setBubbleDismissedTripId(currentTrip.id);
+    }
+  }, [currentTrip?.id, userProfile?.id]);
+
+
+
 
   const handleTripCancelledOrTaken = useCallback(async (updated: any) => {
     // Dedup: ignore repeated signals for the same (trip, status) within 10s.
