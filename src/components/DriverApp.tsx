@@ -3189,8 +3189,27 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
             setBubbleDismissedTripId(null);
             setScreen("ride-request");
           }}
+          onAccept={() => {
+            // Accept from the overlay → open the in-app accept screen.
+            // The user lands on the trip request screen where the existing
+            // Accept button immediately confirms the trip.
+            setBubbleDismissedTripId(null);
+            setScreen("ride-request");
+          }}
+          onDecline={() => {
+            // Decline from the overlay → record decline + dismiss the bubble.
+            if (currentTrip?.id && userProfile?.id) {
+              declinedTripIdsRef.current.add(currentTrip.id);
+              supabase.from("trip_declines").upsert(
+                { driver_id: userProfile.id, trip_id: currentTrip.id },
+                { onConflict: "driver_id,trip_id" }
+              );
+            }
+            setBubbleDismissedTripId(currentTrip.id);
+          }}
           onDismiss={() => setBubbleDismissedTripId(currentTrip.id)}
         />
+
       )}
 
       {/* Session conflict full-screen alert */}

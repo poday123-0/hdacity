@@ -13,12 +13,15 @@ interface FloatingTripBubbleProps {
   estimatedFare?: number | null;
   onTap: () => void;
   onDismiss: () => void;
+  onAccept?: () => void;
+  onDecline?: () => void;
 }
 
 /**
  * Floating in-app bubble that appears at the top of the screen when a trip
  * request comes in.  On native Android it also shows a system-level overlay
- * (chat-head style) so the driver sees it even while using other apps.
+ * (chat-head style) with Accept / Decline buttons so the driver can act on
+ * the trip without bringing the app to the foreground first.
  */
 const FloatingTripBubble = ({
   tripId,
@@ -28,6 +31,8 @@ const FloatingTripBubble = ({
   estimatedFare,
   onTap,
   onDismiss,
+  onAccept,
+  onDecline,
 }: FloatingTripBubbleProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const pulseRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -64,27 +69,31 @@ const FloatingTripBubble = ({
           estimatedFare: estimatedFare ?? 0,
         });
 
-        // Listen for tap from native side
+        // Listen for events from native side
         const tapListener = await FloatingBubble.addListener(
           "bubbleTapped",
-          () => {
-            onTap();
-          }
+          () => { onTap(); }
+        );
+        const acceptListener = await FloatingBubble.addListener(
+          "bubbleAccepted",
+          () => { (onAccept ?? onTap)(); }
+        );
+        const declineListener = await FloatingBubble.addListener(
+          "bubbleDeclined",
+          () => { (onDecline ?? onDismiss)(); }
         );
         const dismissListener = await FloatingBubble.addListener(
           "bubbleDismissed",
-          () => {
-            onDismiss();
-          }
+          () => { onDismiss(); }
         );
 
-        // Cleanup listeners on unmount
         return () => {
           tapListener.remove();
+          acceptListener.remove();
+          declineListener.remove();
           dismissListener.remove();
         };
       } catch (e) {
-        // Plugin not available (web or missing native code) — fall through to in-app bubble
         console.log("[FloatingBubble] Native plugin not available:", e);
       }
     })();

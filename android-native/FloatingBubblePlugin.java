@@ -164,6 +164,18 @@ public class FloatingBubblePlugin extends Plugin {
         notifyListeners("bubbleTapped", data);
     }
 
+    public void notifyBubbleAccepted(String tripId) {
+        JSObject data = new JSObject();
+        data.put("tripId", tripId);
+        notifyListeners("bubbleAccepted", data);
+    }
+
+    public void notifyBubbleDeclined(String tripId) {
+        JSObject data = new JSObject();
+        data.put("tripId", tripId);
+        notifyListeners("bubbleDeclined", data);
+    }
+
     public void notifyBubbleDismissed() {
         notifyListeners("bubbleDismissed", new JSObject());
     }
