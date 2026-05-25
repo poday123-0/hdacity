@@ -27,6 +27,13 @@ export interface FloatingBubblePlugin {
 
   hideHeadsUp(): Promise<void>;
 
+  /**
+   * Drains any pending Accept/Decline action queued by the native side
+   * (notification action button or overlay button press) while the WebView
+   * was not running. Returns `{ action: "", tripId: "" }` when nothing is queued.
+   */
+  getPendingAction(): Promise<{ action: "" | "accept" | "decline" | "open"; tripId: string }>;
+
   checkPermission(): Promise<{ granted: boolean }>;
   requestPermission(): Promise<void>;
 
