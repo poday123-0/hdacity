@@ -52,25 +52,34 @@ const FloatingTripBubble = ({
           "@/plugins/floating-bubble"
         );
 
-        // Check overlay permission
-        const { granted } = await FloatingBubble.checkPermission();
-        if (!granted) {
-          // Silently skip — user hasn't granted overlay permission
-          console.log("[FloatingBubble] Overlay permission not granted — falling back to in-app bubble");
-          return;
+        // 1) Always post the heads-up notification (no overlay permission needed)
+        try {
+          await FloatingBubble.showHeadsUp({
+            tripId,
+            pickupAddress,
+            dropoffAddress,
+            vehicleType: vehicleType || "",
+            estimatedFare: estimatedFare ?? 0,
+          });
+        } catch (e) {
+          console.log("[FloatingBubble] showHeadsUp failed:", e);
         }
 
-        if (cleanup) return;
+        // 2) Overlay bubble — only if user granted "Display over other apps"
+        const { granted } = await FloatingBubble.checkPermission();
+        if (granted && !cleanup) {
+          await FloatingBubble.show({
+            tripId,
+            pickupAddress,
+            dropoffAddress,
+            vehicleType: vehicleType || "",
+            estimatedFare: estimatedFare ?? 0,
+          });
+        } else {
+          console.log("[FloatingBubble] Overlay permission not granted — heads-up notification only");
+        }
 
-        await FloatingBubble.show({
-          tripId,
-          pickupAddress,
-          dropoffAddress,
-          vehicleType: vehicleType || "",
-          estimatedFare: estimatedFare ?? 0,
-        });
-
-        // Listen for events from native side
+        // 3) Listen for events from native side (works for both overlay + notification actions)
         const tapListener = await FloatingBubble.addListener(
           "bubbleTapped",
           () => { onTap(); }
@@ -101,13 +110,14 @@ const FloatingTripBubble = ({
 
     return () => {
       cleanup = true;
-      // Try to hide native bubble on cleanup
+      // Hide both the overlay bubble and the heads-up notification
       (async () => {
         try {
           const { default: FloatingBubble } = await import(
             "@/plugins/floating-bubble"
           );
           await FloatingBubble.hide();
+          await FloatingBubble.hideHeadsUp();
         } catch {}
       })();
     };
