@@ -212,7 +212,7 @@ interface DriverMapProps {
 
 const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, externalHeading, startFreeNavRef, onFreeNavChange }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
-  const { provider: mapProvider } = useMapProvider();
+  const { provider: mapProvider, loading: mapProviderLoading } = useMapProvider();
   const LIGHT_TILES = mapProvider === "google" ? GOOGLE_LIGHT_TILES : OSM_LIGHT_TILES;
   const DARK_TILES = mapProvider === "google" ? GOOGLE_DARK_TILES : OSM_DARK_TILES;
   const tileSubdomains = mapProvider === "google" ? ["0", "1", "2", "3"] : ["a", "b", "c"];
@@ -473,9 +473,9 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       DEFAULT_MAP_CENTER;
   }
 
-  // Init map — only once
+  // Init map — only once, after the admin-selected provider is loaded
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
+    if (!mapRef.current || mapInstance.current || mapProviderLoading) return;
     const center = initialCenterRef.current || DEFAULT_MAP_CENTER;
 
     const isDark = document.documentElement.classList.contains("dark");
@@ -554,7 +554,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       map.remove();
       mapInstance.current = null;
     };
-  }, []);
+  }, [mapProviderLoading, mapProvider]);
 
   // Named location labels on driver map
   const namedLabelsRef = useRef<L.Marker[]>([]);
@@ -606,6 +606,14 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     if (mapInstance.current && !mapReady) setMapReady(true);
   });
 
+  // Apply admin map provider/theme changes to the existing native driver map
+  useEffect(() => {
+    if (!mapReady || !tileLayerRef.current) return;
+    const isDark = document.documentElement.classList.contains("dark");
+    (tileLayerRef.current.options as any).subdomains = tileSubdomains;
+    tileLayerRef.current.setUrl(isDark ? DARK_TILES : LIGHT_TILES);
+  }, [mapReady, mapProvider, LIGHT_TILES, DARK_TILES, tileSubdomains]);
+
   // Theme observer
   useEffect(() => {
     if (!mapReady || !mapInstance.current) return;
@@ -618,7 +626,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
-  }, [mapReady]);
+  }, [mapReady, LIGHT_TILES, DARK_TILES]);
 
   // Navigation mode zoom — fit bounds to show full route when trip starts
   useEffect(() => {
