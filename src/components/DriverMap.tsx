@@ -490,7 +490,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       bearing: 0,
     } as any);
 
-    const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { attribution: "", maxZoom: 19 }).addTo(map);
+    const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { attribution: "", maxZoom: 19, subdomains: tileSubdomains }).addTo(map);
     tileLayerRef.current = tileLayer;
 
     // Driver marker — always use a clean directional car icon so the driver
