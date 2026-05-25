@@ -718,7 +718,50 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setQueuedPassengerProfile(null);
     setQueuedTripStops([]);
     queuedTripRef.current = null;
+    setPendingNextTrip(null);
+    setPendingNextPassenger(null);
+    setPendingNextStops([]);
+    pendingNextTripRef.current = null;
   }, []);
+
+  // Auto-decline the pending chained trip after the same accept-timeout used
+  // for primary requests, so unanswered chained offers don't block dispatch.
+  useEffect(() => {
+    if (!pendingNextTrip?.id) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    (async () => {
+      let secs = 20;
+      try {
+        const { data } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "driver_accept_timeout_seconds")
+          .maybeSingle();
+        const v = (data as any)?.value;
+        const n = typeof v === "number" ? v : typeof v === "string" ? parseFloat(v) : (v && typeof v === "object" && v.value != null) ? parseFloat(v.value) : NaN;
+        if (Number.isFinite(n) && n > 0) secs = n;
+      } catch {}
+      if (cancelled) return;
+      timer = setTimeout(() => {
+        const t = pendingNextTripRef.current;
+        if (!t) return;
+        try { stopAllSounds(); } catch {}
+        declinedTripIdsRef.current.add(t);
+        if (userProfile?.id) {
+          supabase.from("trip_declines").upsert(
+            { driver_id: userProfile.id, trip_id: t },
+            { onConflict: "driver_id,trip_id" }
+          ).then(() => {});
+        }
+        setPendingNextTrip(null);
+        setPendingNextPassenger(null);
+        setPendingNextStops([]);
+        pendingNextTripRef.current = null;
+      }, secs * 1000);
+    })();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [pendingNextTrip?.id, userProfile?.id]);
 
   const goOfflineNow = useCallback(async () => {
     clearQueuedTrip();
