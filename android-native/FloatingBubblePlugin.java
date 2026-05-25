@@ -1,16 +1,23 @@
 package com.hdataxi.passenger.plugins;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+
+import androidx.core.app.NotificationCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import com.hdataxi.passenger.R;
 
 @CapacitorPlugin(name = "FloatingBubble")
 public class FloatingBubblePlugin extends Plugin {
