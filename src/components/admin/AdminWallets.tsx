@@ -482,9 +482,9 @@ const AdminWallets = () => {
                       {tx.proof_url && (
                         <div className="space-y-1">
                           <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
-                          <button onClick={() => setProofPreview(tx.proof_url)} className="block">
-                            <img
-                              src={tx.proof_url}
+                          <button onClick={async () => { const u = await getSignedSlipUrl(tx.proof_url); if (u) setProofPreview(u); else toast({ title: "Could not load slip", variant: "destructive" }); }} className="block w-full">
+                            <SignedSlipImage
+                              url={tx.proof_url}
                               alt="Transfer slip"
                               className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
                             />
