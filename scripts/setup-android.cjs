@@ -166,13 +166,18 @@ function updateManifest() {
   }
 
   // Add FloatingBubbleService inside <application>
+  // Add FloatingBubbleService inside <application> (with required Android 14+ <property>)
   if (!content.includes('FloatingBubbleService')) {
     content = content.replace(
       '</application>',
       `\n        <service
             android:name=".plugins.FloatingBubbleService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />\n    </application>`
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating trip-request overlay for driver app" />
+        </service>\n    </application>`
     );
     added++;
     logDone('Added FloatingBubbleService to manifest');
