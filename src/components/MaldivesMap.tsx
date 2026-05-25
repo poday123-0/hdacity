@@ -73,16 +73,16 @@ const vehicleIcon = (imageUrl?: string, heading?: number | null) => {
   if (imageUrl) {
     return L.divIcon({
       className: "",
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-      html: `<img src="${imageUrl}" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));${rotation}" crossorigin="anonymous" />`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      html: `<img src="${imageUrl}" style="width:22px;height:22px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));${rotation}" crossorigin="anonymous" />`,
     });
   }
   return L.divIcon({
     className: "",
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));${rotation}">🚗</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    html: `<div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:15px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));${rotation}">🚗</div>`,
   });
 };
 
@@ -90,16 +90,16 @@ const driverIcon = (iconUrl?: string | null) => {
   if (iconUrl) {
     return L.divIcon({
       className: "",
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-      html: `<img src="${iconUrl}" style="width:36px;height:36px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" crossorigin="anonymous" />`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      html: `<img src="${iconUrl}" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" crossorigin="anonymous" />`,
     });
   }
   return L.divIcon({
     className: "",
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚕</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    html: `<div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:16px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚕</div>`,
   });
 };
 
