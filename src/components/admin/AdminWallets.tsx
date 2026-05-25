@@ -15,6 +15,36 @@ const getCurrentAdmin = (): { id: string | null; name: string } => {
   return { id: null, name: "Admin" };
 };
 
+// Storage helpers — payment-slips bucket is private, so we sign URLs on demand
+const extractSlipPath = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  const m = url.match(/\/payment-slips\/(.+?)(\?|$)/);
+  if (m) return decodeURIComponent(m[1]);
+  // Already a path (no http)
+  if (!url.startsWith("http")) return url;
+  return null;
+};
+
+const getSignedSlipUrl = async (url: string | null | undefined): Promise<string | null> => {
+  const path = extractSlipPath(url);
+  if (!path) return url || null;
+  const { data } = await supabase.storage.from("payment-slips").createSignedUrl(path, 3600);
+  return data?.signedUrl || null;
+};
+
+const SignedSlipImage = ({ url, className, alt }: { url: string | null; className?: string; alt?: string }) => {
+  const [signed, setSigned] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getSignedSlipUrl(url).then(u => { if (!cancelled) setSigned(u); });
+    return () => { cancelled = true; };
+  }, [url]);
+  if (!signed) {
+    return <div className={`${className || ""} flex items-center justify-center bg-surface text-[10px] text-muted-foreground`}>Loading slip…</div>;
+  }
+  return <img src={signed} alt={alt || "Transfer slip"} className={className} />;
+};
+
 interface WalletRow {
   id: string;
   user_id: string;
