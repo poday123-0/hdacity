@@ -212,6 +212,10 @@ interface DriverMapProps {
 
 const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, externalHeading, startFreeNavRef, onFreeNavChange }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
+  const { provider: mapProvider } = useMapProvider();
+  const LIGHT_TILES = mapProvider === "google" ? GOOGLE_LIGHT_TILES : OSM_LIGHT_TILES;
+  const DARK_TILES = mapProvider === "google" ? GOOGLE_DARK_TILES : OSM_DARK_TILES;
+  const tileSubdomains = mapProvider === "google" ? ["0", "1", "2", "3"] : ["a", "b", "c"];
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const driverMarkerRef = useRef<L.Marker | null>(null);
