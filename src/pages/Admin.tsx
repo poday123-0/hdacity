@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronDown, ChevronRight, Pin, PinOff,
   LayoutDashboard, Users, Car, DollarSign, Settings, MapPin, Navigation, LogOut,
   Layers, Building2, Building, UserCheck, Receipt, ShieldCheck, Moon, Sun,
-  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy, Clock, HardDrive, Bug,
+  PackageX, Siren, BellRing, Wallet, CreditCard, Cherry, Smartphone, MessageSquare, Trophy, Clock, HardDrive, Bug, AlertTriangle,
 } from "lucide-react";
 import AdminLocations from "@/components/admin/AdminLocations";
 import { toast } from "@/hooks/use-toast";
@@ -40,9 +40,10 @@ import AdminAdBanners from "@/components/admin/AdminAdBanners";
 import AdminDriverInvoice from "@/components/admin/AdminDriverInvoice";
 import AdminStorage from "@/components/admin/AdminStorage";
 import AdminDebugLogs from "@/components/admin/AdminDebugLogs";
+import AdminRoadClosures from "@/components/admin/AdminRoadClosures";
 import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "debug_logs" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "road_closures" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "debug_logs" | "settings";
 
 // Map each tab to the permission key required to view it.
 // Tabs not listed here are admin-only (always visible to legacy/unrestricted admins,
@@ -63,6 +64,7 @@ const TAB_PERMISSION: Partial<Record<Tab, string>> = {
   companies: "manage_companies",
   locations: "manage_locations",
   named_locations: "manage_locations",
+  road_closures: "manage_locations",
   trips: "manage_trips",
   lost_items: "manage_lost_items",
   sos_history: "manage_sos",
@@ -125,6 +127,7 @@ const navGroups: NavGroup[] = [
       { id: "trips", label: "Trips", icon: MapPin },
       { id: "locations", label: "Service Areas", icon: Navigation },
       { id: "named_locations", label: "Named Locations", icon: MapPin },
+      { id: "road_closures", label: "Road Closures", icon: AlertTriangle },
       { id: "duty_hours", label: "Duty Hours", icon: Clock },
       { id: "lost_items", label: "Lost Items", icon: PackageX },
       { id: "sos_history", label: "SOS Alerts", icon: Siren },
@@ -456,6 +459,7 @@ const Admin = () => {
               {activeTab === "companies" && <AdminCompanies />}
               {activeTab === "locations" && <AdminLocations />}
               {activeTab === "named_locations" && <AdminNamedLocations />}
+              {activeTab === "road_closures" && <AdminRoadClosures />}
               {activeTab === "trips" && <AdminTrips />}
               {activeTab === "lost_items" && <AdminLostItems />}
               {activeTab === "sos_history" && <AdminSOSHistory />}
