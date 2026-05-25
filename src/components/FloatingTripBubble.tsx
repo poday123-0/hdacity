@@ -69,27 +69,31 @@ const FloatingTripBubble = ({
           estimatedFare: estimatedFare ?? 0,
         });
 
-        // Listen for tap from native side
+        // Listen for events from native side
         const tapListener = await FloatingBubble.addListener(
           "bubbleTapped",
-          () => {
-            onTap();
-          }
+          () => { onTap(); }
+        );
+        const acceptListener = await FloatingBubble.addListener(
+          "bubbleAccepted",
+          () => { (onAccept ?? onTap)(); }
+        );
+        const declineListener = await FloatingBubble.addListener(
+          "bubbleDeclined",
+          () => { (onDecline ?? onDismiss)(); }
         );
         const dismissListener = await FloatingBubble.addListener(
           "bubbleDismissed",
-          () => {
-            onDismiss();
-          }
+          () => { onDismiss(); }
         );
 
-        // Cleanup listeners on unmount
         return () => {
           tapListener.remove();
+          acceptListener.remove();
+          declineListener.remove();
           dismissListener.remove();
         };
       } catch (e) {
-        // Plugin not available (web or missing native code) — fall through to in-app bubble
         console.log("[FloatingBubble] Native plugin not available:", e);
       }
     })();
