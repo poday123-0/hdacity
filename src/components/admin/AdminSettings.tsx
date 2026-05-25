@@ -477,6 +477,7 @@ const AdminSettings = () => {
             {renderSettingField('Max Targeted Waves Before All-Broadcast', 'max_waves', 'number', '2')}
             {renderSettingField("Min Scheduled Lead Time (min)", "min_scheduled_lead_minutes", "number", "30")}
             {renderSettingField("Incoming Trip Popup Auto-Dismiss (sec)", "floating_bubble_auto_dismiss_seconds", "number", "5")}
+            {renderSettingField("Chained Trip Radius (meters)", "chained_trip_radius_m", "number", "50")}
           </div>
         </div>
       </SectionCard>
