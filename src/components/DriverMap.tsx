@@ -506,24 +506,26 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
     const pauseAutoFollow = () => {
       if (programmaticZoomRef.current) return; // ignore programmatic zoom/pan
+      // Briefly mark as interacting so the next GPS tick doesn't fight the
+      // user's gesture, but DO NOT turn off followDriver — safety first:
+      // the camera must always return to the driver as they move.
       userInteractingRef.current = true;
-      setUserPannedAway(true);
-      setFollowDriver(false);
+      if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
+      autoResumeTimeout = setTimeout(() => {
+        userInteractingRef.current = false;
+        setUserPannedAway(false);
+      }, 1500);
     };
     const scheduleResume = () => {
       if (programmaticZoomRef.current) { programmaticZoomRef.current = false; return; }
       if (!userInteractingRef.current) return;
       if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
-      // Resume auto-follow after a short idle period regardless of nav state,
-      // so the camera always tracks the moving driver. Shorter during active
-      // turn-by-turn (15s feels right), a bit longer when just driving online
-      // so the driver has time to inspect the area before being snapped back.
-      const resumeDelayMs = isNavigatingRef.current ? 15000 : 8000;
+      // Snap back to following the driver within ~1.5s of releasing the map.
       autoResumeTimeout = setTimeout(() => {
         setFollowDriver(true);
         userInteractingRef.current = false;
         setUserPannedAway(false);
-      }, resumeDelayMs);
+      }, 1500);
     };
     map.on("dragstart", pauseAutoFollow);
     map.on("zoomstart", pauseAutoFollow);
