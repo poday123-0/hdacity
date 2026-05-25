@@ -113,6 +113,34 @@ const FloatingTripBubble = ({
     };
   }, [tripId]);
 
+  // ── Auto-dismiss after admin-configured timeout (default 5s) ──
+  useEffect(() => {
+    if (!tripId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    (async () => {
+      let secs = 5;
+      try {
+        const { data } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "floating_bubble_auto_dismiss_seconds")
+          .maybeSingle();
+        const v = (data as any)?.value;
+        const n = typeof v === "number" ? v : typeof v === "string" ? parseFloat(v) : (v && typeof v === "object" && v.value) ? parseFloat(v.value) : NaN;
+        if (Number.isFinite(n) && n > 0) secs = n;
+      } catch {}
+      if (cancelled) return;
+      timer = setTimeout(() => {
+        (onDecline ?? onDismiss)();
+      }, secs * 1000);
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [tripId]);
+
   // ── In-app bubble (web + fallback) ────────────────────────────
   useEffect(() => {
     if (tripId) {
