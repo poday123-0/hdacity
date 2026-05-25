@@ -34,10 +34,12 @@ public class TripActionReceiver extends BroadcastReceiver {
         FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
 
         if (ACTION_ACCEPT.equals(intent.getAction())) {
+            // Queue for cold-start JS pickup, then fire live event (no-op if no listener).
+            FloatingBubblePlugin.queuePendingAction("accept", tripId);
             if (plugin != null) {
                 try { plugin.notifyBubbleAccepted(tripId); } catch (Exception ignored) {}
             }
-            // Bring the app to the foreground so the driver lands on the trip
+            // Bring the app to the foreground so the driver lands on the trip.
             try {
                 Intent launch = context.getPackageManager()
                     .getLaunchIntentForPackage(context.getPackageName());
@@ -51,6 +53,7 @@ public class TripActionReceiver extends BroadcastReceiver {
                 }
             } catch (Exception ignored) {}
         } else if (ACTION_DECLINE.equals(intent.getAction())) {
+            FloatingBubblePlugin.queuePendingAction("decline", tripId);
             if (plugin != null) {
                 try { plugin.notifyBubbleDeclined(tripId); } catch (Exception ignored) {}
             }

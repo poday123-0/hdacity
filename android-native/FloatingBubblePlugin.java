@@ -23,13 +23,35 @@ import com.hdataxi.passenger.R;
 public class FloatingBubblePlugin extends Plugin {
     private static FloatingBubblePlugin instance;
 
+    // Pending action queued by the native side (notification action or overlay
+    // button press) when the WebView isn't alive yet. JS calls getPendingAction()
+    // on boot to drain it.
+    private static volatile String pendingAction;   // "accept" | "decline" | "open"
+    private static volatile String pendingTripId;
+
     public static FloatingBubblePlugin getInstance() {
         return instance;
+    }
+
+    public static void queuePendingAction(String action, String tripId) {
+        pendingAction = action;
+        pendingTripId = tripId == null ? "" : tripId;
     }
 
     @Override
     public void load() {
         instance = this;
+    }
+
+    @PluginMethod
+    public void getPendingAction(PluginCall call) {
+        JSObject data = new JSObject();
+        data.put("action", pendingAction == null ? "" : pendingAction);
+        data.put("tripId", pendingTripId == null ? "" : pendingTripId);
+        // Drain after read
+        pendingAction = null;
+        pendingTripId = null;
+        call.resolve(data);
     }
 
     @PluginMethod

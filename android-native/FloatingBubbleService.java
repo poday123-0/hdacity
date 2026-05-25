@@ -238,12 +238,15 @@ public class FloatingBubbleService extends Service {
             ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             : WindowManager.LayoutParams.TYPE_PHONE;
 
-        // FLAG_NOT_FOCUSABLE removed → buttons receive touches.
+        // FLAG_NOT_FOCUSABLE → don't steal input/IME focus from underlying app.
+        // FLAG_NOT_TOUCH_MODAL → touches outside this window pass through.
+        // Buttons inside still receive their own taps.
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
             cardWidth,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         );
@@ -374,10 +377,14 @@ public class FloatingBubbleService extends Service {
         declineBg.setCornerRadius(dpToPx(12));
         declineBtn.setBackground(declineBg);
         declineBtn.setOnClickListener(v -> {
-            FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
-            if (plugin != null) {
-                try { plugin.notifyBubbleDeclined(currentTripId); } catch (Exception ignored) {}
-            }
+            // Broadcast through TripActionReceiver so the decline is handled
+            // even if the WebView is paused (mirrors the heads-up notification path).
+            try {
+                Intent declineIntent = new Intent(this, TripActionReceiver.class);
+                declineIntent.setAction(TripActionReceiver.ACTION_DECLINE);
+                declineIntent.putExtra(TripActionReceiver.EXTRA_TRIP_ID, currentTripId);
+                sendBroadcast(declineIntent);
+            } catch (Exception ignored) {}
             cleanupAndStop();
         });
         LinearLayout.LayoutParams declineParams = new LinearLayout.LayoutParams(
@@ -396,11 +403,16 @@ public class FloatingBubbleService extends Service {
         acceptBg.setCornerRadius(dpToPx(12));
         acceptBtn.setBackground(acceptBg);
         acceptBtn.setOnClickListener(v -> {
-            FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
-            if (plugin != null) {
-                try { plugin.notifyBubbleAccepted(currentTripId); } catch (Exception ignored) {}
-            }
-            openApp("BUBBLE_ACCEPT");
+            // Broadcast through TripActionReceiver — it fires the JS event AND
+            // launches the app with action=TRIP_ACCEPT so accept always works,
+            // even from a cold start when no WebView is alive yet.
+            try {
+                Intent acceptIntent = new Intent(this, TripActionReceiver.class);
+                acceptIntent.setAction(TripActionReceiver.ACTION_ACCEPT);
+                acceptIntent.putExtra(TripActionReceiver.EXTRA_TRIP_ID, currentTripId);
+                sendBroadcast(acceptIntent);
+            } catch (Exception ignored) {}
+            cleanupAndStop();
         });
         LinearLayout.LayoutParams acceptParams = new LinearLayout.LayoutParams(
             0, dpToPx(48), 1f);
