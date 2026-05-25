@@ -1204,33 +1204,75 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
         return;
       }
       const activeTrip = currentTripRef.current!;
-      // Check if new trip's pickup is near current trip's dropoff
+    if (currentScreen !== "online" && currentScreen !== "offline") {
+      // Only allow chained/queued trips during navigating phase.
+      // Block if no active trip OR a pending/queued one already exists.
+      if (
+        currentScreen !== "navigating" ||
+        !currentTripRef.current ||
+        queuedTripRef.current ||
+        pendingNextTripRef.current
+      ) {
+        debugLog({
+          event: "handleNewTrip:reject_screen",
+          driver_id: userProfile?.id,
+          trip_id: trip.id,
+          details: {
+            screen: currentScreen,
+            hasCurrentTrip: !!currentTripRef.current,
+            hasQueuedTrip: !!queuedTripRef.current,
+            hasPendingNext: !!pendingNextTripRef.current,
+          },
+        });
+        return;
+      }
+      const activeTrip = currentTripRef.current!;
+      // Use admin-configurable CHAINED radius (default 50m), NOT the driver's
+      // general request radius. This is what "drop point within 50m" means.
+      const chainedRadiusKm = Math.max(0, chainedTripRadiusMRef.current / 1000);
       if (activeTrip.dropoff_lat && activeTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
         const distToDropoff = haversineKm(
           Number(activeTrip.dropoff_lat), Number(activeTrip.dropoff_lng),
           Number(trip.pickup_lat), Number(trip.pickup_lng)
         );
-        console.log(`[CHAINED TRIP] Pickup distance from current dropoff: ${distToDropoff.toFixed(2)}km | Radius: ${tripRadiusRef.current}km`);
-        if (distToDropoff > tripRadiusRef.current) return;
+        const distM = distToDropoff * 1000;
+        console.log(`[CHAINED TRIP] Pickup ${distM.toFixed(0)}m from current dropoff (limit ${chainedTripRadiusMRef.current}m)`);
+        if (distToDropoff > chainedRadiusKm) {
+          debugLog({
+            event: "handleNewTrip:reject_chained_out_of_range",
+            driver_id: userProfile?.id,
+            trip_id: trip.id,
+            details: { dist_m: Math.round(distM), limit_m: chainedTripRadiusMRef.current },
+          });
+          return;
+        }
       } else {
-        return; // Can't verify proximity without coords
+        return; // can't verify proximity without coords
       }
       // Vehicle type must match
       if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) return;
       if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) return;
 
-      // Queue the trip
-      queuedTripRef.current = trip.id;
-      setQueuedTrip(trip);
+      // Driver must explicitly Accept. Show as PENDING + play the trip sound
+      // so the driver actually notices it. Auto-decline after the standard
+      // accept timeout (same one used for primary requests).
+      pendingNextTripRef.current = trip.id;
+      setPendingNextTrip(trip);
       try { navigator.vibrate?.([200, 100, 200]); } catch {}
-      toast({ title: "🔗 Next Trip Available!", description: `${trip.pickup_address} → ${trip.dropoff_address}` });
-      // Fetch passenger profile for queued trip
+      try {
+        if (tripRequestSoundUrl) {
+          stopAllSounds();
+          tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
+        }
+      } catch {}
+      toast({ title: "🔗 Next Trip Nearby!", description: `${trip.pickup_address} → ${trip.dropoff_address}` });
+      // Fetch passenger profile + stops for the pending trip
       const [pRes, stopsRes] = await Promise.all([
         trip.passenger_id ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single() : Promise.resolve({ data: null }),
         supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
       ]);
-      setQueuedPassengerProfile(pRes.data);
-      setQueuedTripStops(stopsRes.data as any[] || []);
+      setPendingNextPassenger(pRes.data as any);
+      setPendingNextStops((stopsRes.data as any[]) || []);
       return;
     }
     // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
