@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 
 const formatMonth = (m: string) => {
   if (!m) return m;
