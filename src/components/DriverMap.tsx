@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-rotate";
 import { fetchOsrmRoute, pickShortestOsrmRoute, type OsrmRoute, type OsrmStep } from "@/lib/osrm-routing";
 import { useRoadClosures } from "@/hooks/use-road-closures";
+import { useMapProvider } from "@/hooks/use-map-provider";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle, MapPin, Construction, Car, TriangleAlert } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
