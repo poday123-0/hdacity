@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-rotate";
 import { fetchOsrmRoute, pickShortestOsrmRoute, type OsrmRoute, type OsrmStep } from "@/lib/osrm-routing";
 import { useRoadClosures } from "@/hooks/use-road-closures";
+import { useMapProvider } from "@/hooks/use-map-provider";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigation, ChevronUp, ChevronDown, Locate, Route, Crosshair, X, AlertTriangle, MapPin, Construction, Car, TriangleAlert } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -135,8 +136,11 @@ const customImgIcon = (url: string, size = 36) =>
     html: `<img src="${url}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" />`,
   });
 
-const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const OSM_LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+// Google raster tiles (roadmap). Subdomains mt0-3.
+const GOOGLE_LIGHT_TILES = "https://mt{s}.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}";
+const GOOGLE_DARK_TILES = OSM_DARK_TILES; // Google has no public dark raster; keep carto dark
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 
@@ -208,6 +212,10 @@ interface DriverMapProps {
 
 const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gpsEnabled, pickupCoords, dropoffCoords, pickupLabel, dropoffLabel, mapIconUrl, passengerMapIconUrl, passengerLiveLocation, onRecenterAvailableChange, recenterRef, onNavUpdate, onFollowDriverChange, followToggleRef, onSpeedChange, tripPanelOpen, onNavStepChange, navSettings: navSettingsProp, onMapHeadingChange, resetNorthRef, onMapReady, externalPosition, externalHeading, startFreeNavRef, onFreeNavChange }: DriverMapProps) => {
   const navSettings = navSettingsProp || DEFAULT_NAV_SETTINGS;
+  const { provider: mapProvider } = useMapProvider();
+  const LIGHT_TILES = mapProvider === "google" ? GOOGLE_LIGHT_TILES : OSM_LIGHT_TILES;
+  const DARK_TILES = mapProvider === "google" ? GOOGLE_DARK_TILES : OSM_DARK_TILES;
+  const tileSubdomains = mapProvider === "google" ? ["0", "1", "2", "3"] : ["a", "b", "c"];
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const driverMarkerRef = useRef<L.Marker | null>(null);
@@ -482,7 +490,7 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
       bearing: 0,
     } as any);
 
-    const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { attribution: "", maxZoom: 19 }).addTo(map);
+    const tileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, { attribution: "", maxZoom: 19, subdomains: tileSubdomains }).addTo(map);
     tileLayerRef.current = tileLayer;
 
     // Driver marker — always use a clean directional car icon so the driver
