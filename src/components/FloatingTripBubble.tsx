@@ -13,12 +13,15 @@ interface FloatingTripBubbleProps {
   estimatedFare?: number | null;
   onTap: () => void;
   onDismiss: () => void;
+  onAccept?: () => void;
+  onDecline?: () => void;
 }
 
 /**
  * Floating in-app bubble that appears at the top of the screen when a trip
  * request comes in.  On native Android it also shows a system-level overlay
- * (chat-head style) so the driver sees it even while using other apps.
+ * (chat-head style) with Accept / Decline buttons so the driver can act on
+ * the trip without bringing the app to the foreground first.
  */
 const FloatingTripBubble = ({
   tripId,
@@ -28,6 +31,8 @@ const FloatingTripBubble = ({
   estimatedFare,
   onTap,
   onDismiss,
+  onAccept,
+  onDecline,
 }: FloatingTripBubbleProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const pulseRef = useRef<ReturnType<typeof setInterval> | null>(null);
