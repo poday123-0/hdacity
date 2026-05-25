@@ -173,6 +173,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [queuedPassengerProfile, setQueuedPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [queuedTripStops, setQueuedTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
   const queuedTripRef = useRef<string | null>(null);
+  // Pending chained trip: driver is still navigating, a new eligible trip
+  // arrived (pickup within chained_trip_radius_m of current dropoff). The
+  // driver must Accept it before it becomes the committed `queuedTrip`.
+  const [pendingNextTrip, setPendingNextTrip] = useState<TripRequest | null>(null);
+  const pendingNextTripRef = useRef<string | null>(null);
+  const [pendingNextPassenger, setPendingNextPassenger] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
+  const [pendingNextStops, setPendingNextStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  useEffect(() => { pendingNextTripRef.current = pendingNextTrip?.id ?? null; }, [pendingNextTrip]);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
   const getStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at") => {
     if (!tripId) return null;
@@ -320,6 +328,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const foregroundGpsCleanupRef = useRef<(() => void) | null>(null);
   const tripRadiusRef = useRef(10);
+  // Max distance (METRES) between the active trip's drop-off and a new
+  // trip's pick-up for the new trip to be offered as a "chained next trip"
+  // while the driver is still navigating. Admin-tunable in System Settings
+  // under key `chained_trip_radius_m` (default 50m).
+  const chainedTripRadiusMRef = useRef(50);
   const dispatchModeRef = useRef<string>("broadcast");
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
@@ -705,7 +718,50 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     setQueuedPassengerProfile(null);
     setQueuedTripStops([]);
     queuedTripRef.current = null;
+    setPendingNextTrip(null);
+    setPendingNextPassenger(null);
+    setPendingNextStops([]);
+    pendingNextTripRef.current = null;
   }, []);
+
+  // Auto-decline the pending chained trip after the same accept-timeout used
+  // for primary requests, so unanswered chained offers don't block dispatch.
+  useEffect(() => {
+    if (!pendingNextTrip?.id) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    (async () => {
+      let secs = 20;
+      try {
+        const { data } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "driver_accept_timeout_seconds")
+          .maybeSingle();
+        const v = (data as any)?.value;
+        const n = typeof v === "number" ? v : typeof v === "string" ? parseFloat(v) : (v && typeof v === "object" && v.value != null) ? parseFloat(v.value) : NaN;
+        if (Number.isFinite(n) && n > 0) secs = n;
+      } catch {}
+      if (cancelled) return;
+      timer = setTimeout(() => {
+        const t = pendingNextTripRef.current;
+        if (!t) return;
+        try { stopAllSounds(); } catch {}
+        declinedTripIdsRef.current.add(t);
+        if (userProfile?.id) {
+          supabase.from("trip_declines").upsert(
+            { driver_id: userProfile.id, trip_id: t },
+            { onConflict: "driver_id,trip_id" }
+          ).then(() => {});
+        }
+        setPendingNextTrip(null);
+        setPendingNextPassenger(null);
+        setPendingNextStops([]);
+        pendingNextTripRef.current = null;
+      }, secs * 1000);
+    })();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [pendingNextTrip?.id, userProfile?.id]);
 
   const goOfflineNow = useCallback(async () => {
     clearQueuedTrip();
@@ -1185,39 +1241,74 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const currentScreen = screenRef.current;
     debugLog({ event: "handleNewTrip:enter", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, status: (trip as any).status, target_driver_id: (trip as any).target_driver_id, vehicle_type_id: trip.vehicle_type_id } });
     if (currentScreen !== "online" && currentScreen !== "offline") {
-      // Only allow chained/queued trips during navigating phase
-      if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) {
-        debugLog({ event: "handleNewTrip:reject_screen", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, hasCurrentTrip: !!currentTripRef.current, hasQueuedTrip: !!queuedTripRef.current } });
+      // Only allow chained/queued trips during navigating phase.
+      // Block if no active trip OR a pending/queued one already exists.
+      if (
+        currentScreen !== "navigating" ||
+        !currentTripRef.current ||
+        queuedTripRef.current ||
+        pendingNextTripRef.current
+      ) {
+        debugLog({
+          event: "handleNewTrip:reject_screen",
+          driver_id: userProfile?.id,
+          trip_id: trip.id,
+          details: {
+            screen: currentScreen,
+            hasCurrentTrip: !!currentTripRef.current,
+            hasQueuedTrip: !!queuedTripRef.current,
+            hasPendingNext: !!pendingNextTripRef.current,
+          },
+        });
         return;
       }
       const activeTrip = currentTripRef.current!;
-      // Check if new trip's pickup is near current trip's dropoff
+      // Use admin-configurable CHAINED radius (default 50m), NOT the driver's
+      // general request radius. This is what "drop point within 50m" means.
+      const chainedRadiusKm = Math.max(0, chainedTripRadiusMRef.current / 1000);
       if (activeTrip.dropoff_lat && activeTrip.dropoff_lng && trip.pickup_lat && trip.pickup_lng) {
         const distToDropoff = haversineKm(
           Number(activeTrip.dropoff_lat), Number(activeTrip.dropoff_lng),
           Number(trip.pickup_lat), Number(trip.pickup_lng)
         );
-        console.log(`[CHAINED TRIP] Pickup distance from current dropoff: ${distToDropoff.toFixed(2)}km | Radius: ${tripRadiusRef.current}km`);
-        if (distToDropoff > tripRadiusRef.current) return;
+        const distM = distToDropoff * 1000;
+        console.log(`[CHAINED TRIP] Pickup ${distM.toFixed(0)}m from current dropoff (limit ${chainedTripRadiusMRef.current}m)`);
+        if (distToDropoff > chainedRadiusKm) {
+          debugLog({
+            event: "handleNewTrip:reject_chained_out_of_range",
+            driver_id: userProfile?.id,
+            trip_id: trip.id,
+            details: { dist_m: Math.round(distM), limit_m: chainedTripRadiusMRef.current },
+          });
+          return;
+        }
       } else {
-        return; // Can't verify proximity without coords
+        return; // can't verify proximity without coords
       }
       // Vehicle type must match
       if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) return;
       if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) return;
 
-      // Queue the trip
-      queuedTripRef.current = trip.id;
-      setQueuedTrip(trip);
+      // Driver must explicitly Accept. Show as PENDING + play the trip sound
+      // so the driver actually notices it. Auto-decline after the standard
+      // accept timeout (same one used for primary requests).
+      pendingNextTripRef.current = trip.id;
+      setPendingNextTrip(trip);
       try { navigator.vibrate?.([200, 100, 200]); } catch {}
-      toast({ title: "🔗 Next Trip Available!", description: `${trip.pickup_address} → ${trip.dropoff_address}` });
-      // Fetch passenger profile for queued trip
+      try {
+        if (tripRequestSoundUrl) {
+          stopAllSounds();
+          tripSoundRef.current = playTrackedSound(tripRequestSoundUrl, true);
+        }
+      } catch {}
+      toast({ title: "🔗 Next Trip Nearby!", description: `${trip.pickup_address} → ${trip.dropoff_address}` });
+      // Fetch passenger profile + stops for the pending trip
       const [pRes, stopsRes] = await Promise.all([
         trip.passenger_id ? supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url, country_code").eq("id", trip.passenger_id).single() : Promise.resolve({ data: null }),
         supabase.from("trip_stops").select("id, stop_order, address, lat, lng, completed_at").eq("trip_id", trip.id).order("stop_order"),
       ]);
-      setQueuedPassengerProfile(pRes.data);
-      setQueuedTripStops(stopsRes.data as any[] || []);
+      setPendingNextPassenger(pRes.data as any);
+      setPendingNextStops((stopsRes.data as any[]) || []);
       return;
     }
     // Synchronous ref guard: prevent duplicate concurrent calls for the same trip
@@ -2497,6 +2588,22 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
           .maybeSingle();
         const mode = dispatchModeRow?.value as any;
         if (typeof mode === "string") dispatchModeRef.current = mode;
+      } catch {}
+
+      // Chained-trip eligibility radius (metres). Default 50m.
+      try {
+        const { data: chainedRow } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "chained_trip_radius_m")
+          .maybeSingle();
+        const raw = (chainedRow as any)?.value;
+        const n =
+          typeof raw === "number" ? raw :
+          typeof raw === "string" ? parseFloat(raw) :
+          raw && typeof raw === "object" && raw.value != null ? parseFloat(raw.value) :
+          NaN;
+        if (Number.isFinite(n) && n > 0) chainedTripRadiusMRef.current = n;
       } catch {}
 
       if (userProfile?.id) {
@@ -4834,6 +4941,78 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
                 variant="badge"
               />
             </div>
+
+            {/* Pending chained trip — driver must Accept/Decline */}
+            {pendingNextTrip && !queuedTrip && (
+              <div className="px-4 pb-2">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-primary/10 border-2 border-primary rounded-xl p-3"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                      <Route className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wide">Next Trip Nearby</p>
+                      <p className="text-xs text-foreground truncate">{pendingNextTrip.pickup_address || "Pickup"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">→ {pendingNextTrip.dropoff_address || "Dropoff"}</p>
+                    </div>
+                    {pendingNextTrip.estimated_fare != null && pendingNextTrip.estimated_fare > 0 && (
+                      <div className="bg-primary/15 px-2 py-1 rounded-lg shrink-0">
+                        <p className="text-[11px] font-bold text-primary">{pendingNextTrip.estimated_fare} MVR</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const t = pendingNextTrip;
+                        if (!t) return;
+                        try { stopAllSounds(); } catch {}
+                        // Record decline so dispatch can re-broadcast to others.
+                        if (t.id) declinedTripIdsRef.current.add(t.id);
+                        if (userProfile?.id && t.id) {
+                          supabase.from("trip_declines").upsert(
+                            { driver_id: userProfile.id, trip_id: t.id },
+                            { onConflict: "driver_id,trip_id" }
+                          ).then(() => {});
+                        }
+                        setPendingNextTrip(null);
+                        setPendingNextPassenger(null);
+                        setPendingNextStops([]);
+                        pendingNextTripRef.current = null;
+                      }}
+                      className="flex-1 h-10 rounded-lg bg-muted/60 text-foreground font-semibold text-sm active:scale-95 transition-all"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => {
+                        const t = pendingNextTrip;
+                        if (!t) return;
+                        try { stopAllSounds(); } catch {}
+                        // Commit it as the queued trip — handled by the existing
+                        // queue flow that auto-loads it when current trip ends.
+                        queuedTripRef.current = t.id;
+                        setQueuedTrip(t);
+                        setQueuedPassengerProfile(pendingNextPassenger);
+                        setQueuedTripStops(pendingNextStops);
+                        setPendingNextTrip(null);
+                        setPendingNextPassenger(null);
+                        setPendingNextStops([]);
+                        pendingNextTripRef.current = null;
+                        toast({ title: "✅ Next trip queued", description: "Will start after current drop-off" });
+                      }}
+                      className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-all shadow-lg shadow-primary/30"
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
             {/* Queued/chained trip preview */}
             {queuedTrip && (
