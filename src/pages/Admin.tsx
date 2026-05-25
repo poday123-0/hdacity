@@ -43,7 +43,7 @@ import AdminDebugLogs from "@/components/admin/AdminDebugLogs";
 import AdminRoadClosures from "@/components/admin/AdminRoadClosures";
 import { useAdminPermissions } from "@/hooks/use-admin-permissions";
 
-type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "debug_logs" | "settings";
+type Tab = "dashboard" | "passengers" | "drivers" | "vehicles" | "vehicle_types" | "vehicle_makes" | "fares" | "billing" | "wallets" | "topup_cards" | "watermelons" | "competitions" | "locations" | "named_locations" | "road_closures" | "trips" | "lost_items" | "sos_history" | "banks" | "companies" | "users" | "notifications" | "sms" | "device_tokens" | "duty_hours" | "ad_banners" | "driver_invoices" | "storage" | "debug_logs" | "settings";
 
 // Map each tab to the permission key required to view it.
 // Tabs not listed here are admin-only (always visible to legacy/unrestricted admins,
