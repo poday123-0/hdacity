@@ -320,6 +320,11 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const lastPosRef = useRef<{lat: number;lng: number;} | null>(null);
   const foregroundGpsCleanupRef = useRef<(() => void) | null>(null);
   const tripRadiusRef = useRef(10);
+  // Max distance (METRES) between the active trip's drop-off and a new
+  // trip's pick-up for the new trip to be offered as a "chained next trip"
+  // while the driver is still navigating. Admin-tunable in System Settings
+  // under key `chained_trip_radius_m` (default 50m).
+  const chainedTripRadiusMRef = useRef(50);
   const dispatchModeRef = useRef<string>("broadcast");
   const deviceSessionId = useRef<string>(crypto.randomUUID());
   const takeoverWindowUntilRef = useRef(0);
