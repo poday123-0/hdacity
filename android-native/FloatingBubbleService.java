@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Typeface;
@@ -22,6 +23,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -43,7 +45,6 @@ public class FloatingBubbleService extends Service {
     private View expandedView;
     private String currentTripId = "";
     private Handler mainHandler;
-    private Runnable expandedDismissRunnable;
     private boolean isDestroyed = false;
 
     @Override
@@ -59,6 +60,24 @@ public class FloatingBubbleService extends Service {
         createNotificationChannel();
     }
 
+    /** Android 14+ requires specifying the foreground service type when starting. */
+    private void safeStartForeground() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildForegroundNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                );
+            } else {
+                startForeground(NOTIFICATION_ID, buildForegroundNotification());
+            }
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "startForeground failed", e);
+            throw e;
+        }
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || intent.getAction() == null) {
@@ -68,7 +87,7 @@ public class FloatingBubbleService extends Service {
 
         if (ACTION_SHOW.equals(intent.getAction())) {
             try {
-                startForeground(NOTIFICATION_ID, buildForegroundNotification());
+                safeStartForeground();
             } catch (Exception e) {
                 stopSelf();
                 return START_NOT_STICKY;
@@ -89,16 +108,13 @@ public class FloatingBubbleService extends Service {
                 fare
             );
         } else if (ACTION_SHOW_IDLE.equals(intent.getAction())) {
-            // Idle/persistent bubble — just the logo, no expanded card
             try {
-                startForeground(NOTIFICATION_ID, buildForegroundNotification());
+                safeStartForeground();
             } catch (Exception e) {
                 stopSelf();
                 return START_NOT_STICKY;
             }
             currentTripId = "";
-            // If a card is already showing (e.g. from a previous trip), keep it.
-            // Otherwise just show the bubble logo.
             if (bubbleView == null) {
                 showBubble();
             }
@@ -112,18 +128,12 @@ public class FloatingBubbleService extends Service {
     @Override
     public void onDestroy() {
         isDestroyed = true;
-        if (mainHandler != null && expandedDismissRunnable != null) {
-            mainHandler.removeCallbacks(expandedDismissRunnable);
-        }
         removeExpanded();
         removeBubble();
         super.onDestroy();
     }
 
     private void cleanupAndStop() {
-        if (mainHandler != null && expandedDismissRunnable != null) {
-            mainHandler.removeCallbacks(expandedDismissRunnable);
-        }
         removeExpanded();
         removeBubble();
         try {
@@ -191,7 +201,7 @@ public class FloatingBubbleService extends Service {
                         return true;
                     case MotionEvent.ACTION_UP:
                         if (!moved) {
-                            openApp();
+                            openApp("BUBBLE_TAP");
                         }
                         return true;
                     default:
@@ -213,6 +223,7 @@ public class FloatingBubbleService extends Service {
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
         } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "addView bubble failed", e);
             bubbleView = null;
         }
     }
@@ -222,20 +233,22 @@ public class FloatingBubbleService extends Service {
         removeExpanded();
 
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        int cardWidth = (int) (screenWidth * 0.85f);
+        int cardWidth = (int) (screenWidth * 0.9f);
         int overlayType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             : WindowManager.LayoutParams.TYPE_PHONE;
 
+        // FLAG_NOT_FOCUSABLE removed → buttons receive touches.
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
             cardWidth,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         );
         params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        params.y = dpToPx(150);
+        params.y = dpToPx(80);
 
         expandedView = buildExpandedLayout(pickup, dropoff, vehicleType, fare);
 
@@ -250,20 +263,10 @@ public class FloatingBubbleService extends Service {
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
         } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "addView expanded failed", e);
             expandedView = null;
-            return;
         }
-
-        // Cancel any previous dismiss runnable
-        if (expandedDismissRunnable != null) {
-            mainHandler.removeCallbacks(expandedDismissRunnable);
-        }
-        expandedDismissRunnable = () -> {
-            if (!isDestroyed) {
-                removeExpanded();
-            }
-        };
-        mainHandler.postDelayed(expandedDismissRunnable, 8000);
+        // No auto-dismiss — buttons control lifecycle.
     }
 
     private View buildExpandedLayout(String pickup, String dropoff, String vehicleType, double fare) {
@@ -272,11 +275,13 @@ public class FloatingBubbleService extends Service {
         container.setPadding(dpToPx(16), dpToPx(14), dpToPx(16), dpToPx(14));
 
         GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(Color.parseColor("#1E293B"));
-        cardBg.setCornerRadius(dpToPx(16));
+        cardBg.setColor(Color.parseColor("#0F172A"));
+        cardBg.setStroke(dpToPx(2), Color.parseColor("#38BDF8"));
+        cardBg.setCornerRadius(dpToPx(18));
         container.setBackground(cardBg);
-        container.setElevation(dpToPx(8));
+        container.setElevation(dpToPx(12));
 
+        // ── Header ──────────────────────────────
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -286,7 +291,9 @@ public class FloatingBubbleService extends Service {
         title.setTextColor(Color.parseColor("#38BDF8"));
         title.setTextSize(14f);
         title.setTypeface(null, Typeface.BOLD);
-        header.addView(title);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        header.addView(title, titleParams);
 
         if (!vehicleType.isEmpty()) {
             TextView badge = new TextView(this);
@@ -299,97 +306,123 @@ public class FloatingBubbleService extends Service {
             badgeBg.setColor(Color.parseColor("#1E3A5F"));
             badgeBg.setCornerRadius(dpToPx(10));
             badge.setBackground(badgeBg);
-
-            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            badgeParams.setMarginStart(dpToPx(8));
-            header.addView(badge, badgeParams);
+            header.addView(badge);
         }
-
         container.addView(header);
 
+        // ── Pickup ──────────────────────────────
         TextView pickupText = new TextView(this);
         pickupText.setText("📍 " + pickup);
         pickupText.setTextColor(Color.WHITE);
         pickupText.setTextSize(13f);
-        pickupText.setMaxLines(1);
-        pickupText.setSingleLine(true);
+        pickupText.setMaxLines(2);
         pickupText.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams pickupParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        pickupParams.topMargin = dpToPx(8);
+        pickupParams.topMargin = dpToPx(10);
         container.addView(pickupText, pickupParams);
 
+        // ── Dropoff ─────────────────────────────
         TextView dropoffText = new TextView(this);
-        dropoffText.setText("→ " + dropoff);
-        dropoffText.setTextColor(Color.parseColor("#94A3B8"));
+        dropoffText.setText("🏁 " + dropoff);
+        dropoffText.setTextColor(Color.parseColor("#CBD5E1"));
         dropoffText.setTextSize(12f);
-        dropoffText.setMaxLines(1);
-        dropoffText.setSingleLine(true);
+        dropoffText.setMaxLines(2);
         dropoffText.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams dropoffParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        dropoffParams.topMargin = dpToPx(3);
+        dropoffParams.topMargin = dpToPx(4);
         container.addView(dropoffText, dropoffParams);
 
+        // ── Fare ────────────────────────────────
         if (fare > 0) {
-            LinearLayout fareRow = new LinearLayout(this);
-            fareRow.setOrientation(LinearLayout.HORIZONTAL);
-            fareRow.setGravity(Gravity.CENTER_VERTICAL);
-
             TextView fareText = new TextView(this);
-            fareText.setText(((int) fare) + " MVR");
-            fareText.setTextColor(Color.parseColor("#38BDF8"));
-            fareText.setTextSize(15f);
+            fareText.setText("💰 " + ((int) fare) + " MVR");
+            fareText.setTextColor(Color.parseColor("#FBBF24"));
+            fareText.setTextSize(17f);
             fareText.setTypeface(null, Typeface.BOLD);
-            fareRow.addView(fareText);
-
-            TextView tapHint = new TextView(this);
-            tapHint.setText("Tap to view →");
-            tapHint.setTextColor(Color.parseColor("#64748B"));
-            tapHint.setTextSize(11f);
-            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
-            );
-            hintParams.setMarginStart(dpToPx(12));
-            fareRow.addView(tapHint, hintParams);
-
-            LinearLayout.LayoutParams fareRowParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams fareParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             );
-            fareRowParams.topMargin = dpToPx(10);
-            container.addView(fareRow, fareRowParams);
+            fareParams.topMargin = dpToPx(10);
+            container.addView(fareText, fareParams);
         }
 
-        container.setOnClickListener(v -> openApp());
+        // ── Accept / Decline buttons ────────────
+        LinearLayout buttonRow = new LinearLayout(this);
+        buttonRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        rowParams.topMargin = dpToPx(14);
+        container.addView(buttonRow, rowParams);
+
+        Button declineBtn = new Button(this);
+        declineBtn.setText("Decline");
+        declineBtn.setTextColor(Color.WHITE);
+        declineBtn.setAllCaps(false);
+        declineBtn.setTextSize(14f);
+        declineBtn.setTypeface(null, Typeface.BOLD);
+        GradientDrawable declineBg = new GradientDrawable();
+        declineBg.setColor(Color.parseColor("#374151"));
+        declineBg.setCornerRadius(dpToPx(12));
+        declineBtn.setBackground(declineBg);
+        declineBtn.setOnClickListener(v -> {
+            FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
+            if (plugin != null) {
+                try { plugin.notifyBubbleDeclined(currentTripId); } catch (Exception ignored) {}
+            }
+            cleanupAndStop();
+        });
+        LinearLayout.LayoutParams declineParams = new LinearLayout.LayoutParams(
+            0, dpToPx(48), 1f);
+        declineParams.setMarginEnd(dpToPx(6));
+        buttonRow.addView(declineBtn, declineParams);
+
+        Button acceptBtn = new Button(this);
+        acceptBtn.setText("Accept");
+        acceptBtn.setTextColor(Color.WHITE);
+        acceptBtn.setAllCaps(false);
+        acceptBtn.setTextSize(14f);
+        acceptBtn.setTypeface(null, Typeface.BOLD);
+        GradientDrawable acceptBg = new GradientDrawable();
+        acceptBg.setColor(Color.parseColor("#16A34A"));
+        acceptBg.setCornerRadius(dpToPx(12));
+        acceptBtn.setBackground(acceptBg);
+        acceptBtn.setOnClickListener(v -> {
+            FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
+            if (plugin != null) {
+                try { plugin.notifyBubbleAccepted(currentTripId); } catch (Exception ignored) {}
+            }
+            openApp("BUBBLE_ACCEPT");
+        });
+        LinearLayout.LayoutParams acceptParams = new LinearLayout.LayoutParams(
+            0, dpToPx(48), 1f);
+        acceptParams.setMarginStart(dpToPx(6));
+        buttonRow.addView(acceptBtn, acceptParams);
+
         return container;
     }
 
-    private void openApp() {
+    private void openApp(String action) {
         try {
             Intent intent = new Intent(this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             intent.putExtra("tripId", currentTripId);
-            intent.setAction("BUBBLE_TAP");
+            intent.setAction(action);
             startActivity(intent);
         } catch (Exception ignored) {}
 
         FloatingBubblePlugin plugin = FloatingBubblePlugin.getInstance();
         if (plugin != null) {
-            try {
-                plugin.notifyBubbleTapped(currentTripId);
-            } catch (Exception ignored) {}
+            try { plugin.notifyBubbleTapped(currentTripId); } catch (Exception ignored) {}
         }
-
         cleanupAndStop();
     }
 
@@ -399,8 +432,7 @@ public class FloatingBubbleService extends Service {
                 if (bubbleView.isAttachedToWindow()) {
                     windowManager.removeView(bubbleView);
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
         bubbleView = null;
     }
@@ -411,8 +443,7 @@ public class FloatingBubbleService extends Service {
                 if (expandedView.isAttachedToWindow()) {
                     windowManager.removeView(expandedView);
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
         expandedView = null;
     }
@@ -442,8 +473,8 @@ public class FloatingBubbleService extends Service {
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Trip Request")
-            .setContentText("You have a pending trip request")
+            .setContentTitle("HDA Driver")
+            .setContentText("Trip overlay active")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
