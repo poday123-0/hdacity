@@ -768,7 +768,7 @@ const AdminWallets = () => {
                           Bal: {runningBalances[idx]?.toFixed(2) ?? "—"}
                         </p>
                         {t.proof_url && (
-                          <button onClick={() => setProofPreview(t.proof_url)} className="mt-0.5 text-[9px] text-primary underline">
+                          <button onClick={async () => { const u = await getSignedSlipUrl(t.proof_url); if (u) setProofPreview(u); else toast({ title: "Could not load slip", variant: "destructive" }); }} className="mt-0.5 text-[9px] text-primary underline">
                             View slip
                           </button>
                         )}
