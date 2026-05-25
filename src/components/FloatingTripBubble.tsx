@@ -44,15 +44,20 @@ const FloatingTripBubble = ({
     if (!tripId) return;
     if (Capacitor.getPlatform() !== "android") return;
 
-    let cleanup = false;
+    let cancelled = false;
+    const listeners: Array<{ remove: () => void }> = [];
+    let pluginRef: typeof import("@/plugins/floating-bubble").default | null = null;
 
     (async () => {
       try {
         const { default: FloatingBubble } = await import(
           "@/plugins/floating-bubble"
         );
+        if (cancelled) return;
+        pluginRef = FloatingBubble;
 
-        // 1) Always post the heads-up notification (no overlay permission needed)
+        // 1) Heads-up notification (no overlay permission needed,
+        //    works on lock-screen via full-screen intent).
         try {
           await FloatingBubble.showHeadsUp({
             tripId,
@@ -64,60 +69,49 @@ const FloatingTripBubble = ({
         } catch (e) {
           console.log("[FloatingBubble] showHeadsUp failed:", e);
         }
+        if (cancelled) return;
 
-        // 2) Overlay bubble — only if user granted "Display over other apps"
-        const { granted } = await FloatingBubble.checkPermission();
-        if (granted && !cleanup) {
-          await FloatingBubble.show({
-            tripId,
-            pickupAddress,
-            dropoffAddress,
-            vehicleType: vehicleType || "",
-            estimatedFare: estimatedFare ?? 0,
-          });
-        } else {
-          console.log("[FloatingBubble] Overlay permission not granted — heads-up notification only");
+        // 2) System overlay bubble — only when permission granted.
+        try {
+          const { granted } = await FloatingBubble.checkPermission();
+          if (granted && !cancelled) {
+            await FloatingBubble.show({
+              tripId,
+              pickupAddress,
+              dropoffAddress,
+              vehicleType: vehicleType || "",
+              estimatedFare: estimatedFare ?? 0,
+            });
+          } else {
+            console.log("[FloatingBubble] Overlay permission not granted — heads-up only");
+          }
+        } catch (e) {
+          console.log("[FloatingBubble] overlay show failed:", e);
         }
+        if (cancelled) return;
 
-        // 3) Listen for events from native side (works for both overlay + notification actions)
-        const tapListener = await FloatingBubble.addListener(
-          "bubbleTapped",
-          () => { onTap(); }
+        // 3) Subscribe to native events (overlay buttons + notification actions).
+        listeners.push(
+          await FloatingBubble.addListener("bubbleTapped", () => { onTap(); }),
+          await FloatingBubble.addListener("bubbleAccepted", () => { (onAccept ?? onTap)(); }),
+          await FloatingBubble.addListener("bubbleDeclined", () => { (onDecline ?? onDismiss)(); }),
+          await FloatingBubble.addListener("bubbleDismissed", () => { onDismiss(); }),
         );
-        const acceptListener = await FloatingBubble.addListener(
-          "bubbleAccepted",
-          () => { (onAccept ?? onTap)(); }
-        );
-        const declineListener = await FloatingBubble.addListener(
-          "bubbleDeclined",
-          () => { (onDecline ?? onDismiss)(); }
-        );
-        const dismissListener = await FloatingBubble.addListener(
-          "bubbleDismissed",
-          () => { onDismiss(); }
-        );
-
-        return () => {
-          tapListener.remove();
-          acceptListener.remove();
-          declineListener.remove();
-          dismissListener.remove();
-        };
       } catch (e) {
         console.log("[FloatingBubble] Native plugin not available:", e);
       }
     })();
 
     return () => {
-      cleanup = true;
-      // Hide both the overlay bubble and the heads-up notification
+      cancelled = true;
+      listeners.forEach((l) => { try { l.remove(); } catch {} });
       (async () => {
         try {
-          const { default: FloatingBubble } = await import(
-            "@/plugins/floating-bubble"
-          );
-          await FloatingBubble.hide();
-          await FloatingBubble.hideHeadsUp();
+          const plugin =
+            pluginRef ??
+            (await import("@/plugins/floating-bubble")).default;
+          await plugin.hide();
+          await plugin.hideHeadsUp();
         } catch {}
       })();
     };
