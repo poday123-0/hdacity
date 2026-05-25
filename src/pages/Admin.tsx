@@ -64,6 +64,7 @@ const TAB_PERMISSION: Partial<Record<Tab, string>> = {
   companies: "manage_companies",
   locations: "manage_locations",
   named_locations: "manage_locations",
+  road_closures: "manage_locations",
   trips: "manage_trips",
   lost_items: "manage_lost_items",
   sos_history: "manage_sos",
