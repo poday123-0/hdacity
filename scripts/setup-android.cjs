@@ -183,6 +183,23 @@ function updateManifest() {
     logDone('Added FloatingBubbleService to manifest');
   }
 
+  // Add TripActionReceiver for heads-up notification Accept/Decline buttons
+  if (!content.includes('TripActionReceiver')) {
+    content = content.replace(
+      '</application>',
+      `\n        <receiver
+            android:name=".plugins.TripActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.hdataxi.passenger.TRIP_ACCEPT" />
+                <action android:name="com.hdataxi.passenger.TRIP_DECLINE" />
+            </intent-filter>
+        </receiver>\n    </application>`
+    );
+    added++;
+    logDone('Added TripActionReceiver to manifest');
+  }
+
   fs.writeFileSync(manifestPath, content, 'utf8');
   if (added > 0) {
     logDone(`Added ${added} permissions/meta-data/service entries`);
