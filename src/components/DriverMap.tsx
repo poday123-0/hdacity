@@ -502,35 +502,53 @@ const DriverMap = ({ isNavigating, tripPhase = "heading_to_pickup", radiusKm, gp
     mapInstance.current = map;
     onMapReady?.(map);
 
-    // Detect user interaction (drag AND zoom)
+    // Detect user interaction. Distinguish accidental touches (tiny pan —
+    // snap back in 1.5s) vs intentional gestures (real pan or any zoom —
+    // keep that view until the driver taps the recenter button).
     let autoResumeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let dragStartCenter: L.LatLng | null = null;
+    const ACCIDENTAL_PAN_METERS = 80;
     const pauseAutoFollow = () => {
-      if (programmaticZoomRef.current) return; // ignore programmatic zoom/pan
-      // Briefly mark as interacting so the next GPS tick doesn't fight the
-      // user's gesture, but DO NOT turn off followDriver — safety first:
-      // the camera must always return to the driver as they move.
+      if (programmaticZoomRef.current) return;
       userInteractingRef.current = true;
-      if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
-      autoResumeTimeout = setTimeout(() => {
-        userInteractingRef.current = false;
-        setUserPannedAway(false);
-      }, 1500);
+      if (autoResumeTimeout) { clearTimeout(autoResumeTimeout); autoResumeTimeout = null; }
     };
-    const scheduleResume = () => {
+    const onDragStart = () => {
+      if (programmaticZoomRef.current) return;
+      dragStartCenter = map.getCenter();
+      pauseAutoFollow();
+    };
+    const onZoomStart = () => {
+      if (programmaticZoomRef.current) return;
+      pauseAutoFollow();
+      // Any pinch/zoom is intentional — stop following immediately.
+      setFollowDriver(false);
+      setUserPannedAway(true);
+    };
+    const onDragEnd = () => {
       if (programmaticZoomRef.current) { programmaticZoomRef.current = false; return; }
-      if (!userInteractingRef.current) return;
+      const start = dragStartCenter;
+      dragStartCenter = null;
+      const end = map.getCenter();
+      const moved = start ? start.distanceTo(end) : 0;
       if (autoResumeTimeout) clearTimeout(autoResumeTimeout);
-      // Snap back to following the driver within ~1.5s of releasing the map.
-      autoResumeTimeout = setTimeout(() => {
-        setFollowDriver(true);
+      if (moved < ACCIDENTAL_PAN_METERS) {
+        // Accidental — snap back within 1.5s.
+        autoResumeTimeout = setTimeout(() => {
+          setFollowDriver(true);
+          userInteractingRef.current = false;
+          setUserPannedAway(false);
+        }, 1500);
+      } else {
+        // Intentional — keep the user's view; require manual recenter.
+        setFollowDriver(false);
+        setUserPannedAway(true);
         userInteractingRef.current = false;
-        setUserPannedAway(false);
-      }, 1500);
+      }
     };
-    map.on("dragstart", pauseAutoFollow);
-    map.on("zoomstart", pauseAutoFollow);
-    map.on("moveend", scheduleResume);
-    map.on("zoomend", scheduleResume);
+    map.on("dragstart", onDragStart);
+    map.on("zoomstart", onZoomStart);
+    map.on("dragend", onDragEnd);
 
     // Long-press context menu for road closure reporting
     let lpTimer: ReturnType<typeof setTimeout> | null = null;
