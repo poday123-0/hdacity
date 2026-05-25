@@ -136,8 +136,11 @@ const customImgIcon = (url: string, size = 36) =>
     html: `<img src="${url}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))" />`,
   });
 
-const LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const OSM_LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+// Google raster tiles (roadmap). Subdomains mt0-3.
+const GOOGLE_LIGHT_TILES = "https://mt{s}.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}";
+const GOOGLE_DARK_TILES = OSM_DARK_TILES; // Google has no public dark raster; keep carto dark
 
 type TripPhase = "heading_to_pickup" | "arrived" | "in_progress";
 
