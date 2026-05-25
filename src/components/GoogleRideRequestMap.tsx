@@ -45,7 +45,7 @@ const GoogleRideRequestMap = memo(({ pickupLat, pickupLng, dropoffLat, dropoffLn
         map,
         label: { text: "P", color: "white", fontWeight: "bold" },
         icon: passengerMapIconUrl
-          ? { url: passengerMapIconUrl, scaledSize: new google.maps.Size(24, 24), anchor: new google.maps.Point(12, 12) }
+          ? { url: passengerMapIconUrl, scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 9) }
           : { path: google.maps.SymbolPath.CIRCLE, scale: 14, fillColor: "#22c55e", fillOpacity: 1, strokeColor: "white", strokeWeight: 3 },
         zIndex: 1000,
       });
