@@ -15,6 +15,36 @@ const getCurrentAdmin = (): { id: string | null; name: string } => {
   return { id: null, name: "Admin" };
 };
 
+// Storage helpers — payment-slips bucket is private, so we sign URLs on demand
+const extractSlipPath = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  const m = url.match(/\/payment-slips\/(.+?)(\?|$)/);
+  if (m) return decodeURIComponent(m[1]);
+  // Already a path (no http)
+  if (!url.startsWith("http")) return url;
+  return null;
+};
+
+const getSignedSlipUrl = async (url: string | null | undefined): Promise<string | null> => {
+  const path = extractSlipPath(url);
+  if (!path) return url || null;
+  const { data } = await supabase.storage.from("payment-slips").createSignedUrl(path, 3600);
+  return data?.signedUrl || null;
+};
+
+const SignedSlipImage = ({ url, className, alt }: { url: string | null; className?: string; alt?: string }) => {
+  const [signed, setSigned] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getSignedSlipUrl(url).then(u => { if (!cancelled) setSigned(u); });
+    return () => { cancelled = true; };
+  }, [url]);
+  if (!signed) {
+    return <div className={`${className || ""} flex items-center justify-center bg-surface text-[10px] text-muted-foreground`}>Loading slip…</div>;
+  }
+  return <img src={signed} alt={alt || "Transfer slip"} className={className} />;
+};
+
 interface WalletRow {
   id: string;
   user_id: string;
@@ -452,9 +482,9 @@ const AdminWallets = () => {
                       {tx.proof_url && (
                         <div className="space-y-1">
                           <p className="text-[10px] text-muted-foreground font-semibold uppercase">Transfer Proof</p>
-                          <button onClick={() => setProofPreview(tx.proof_url)} className="block">
-                            <img
-                              src={tx.proof_url}
+                          <button onClick={async () => { const u = await getSignedSlipUrl(tx.proof_url); if (u) setProofPreview(u); else toast({ title: "Could not load slip", variant: "destructive" }); }} className="block w-full">
+                            <SignedSlipImage
+                              url={tx.proof_url}
                               alt="Transfer slip"
                               className="w-full max-h-40 object-contain rounded-lg border border-border bg-surface cursor-pointer hover:opacity-80 transition-opacity"
                             />
@@ -533,7 +563,7 @@ const AdminWallets = () => {
                       </div>
 
                       {tx.proof_url && (
-                        <button onClick={() => setProofPreview(tx.proof_url)} className="text-[10px] text-primary underline">
+                        <button onClick={async () => { const u = await getSignedSlipUrl(tx.proof_url); if (u) setProofPreview(u); else toast({ title: "Could not load slip", variant: "destructive" }); }} className="text-[10px] text-primary underline">
                           View transfer slip
                         </button>
                       )}
@@ -738,7 +768,7 @@ const AdminWallets = () => {
                           Bal: {runningBalances[idx]?.toFixed(2) ?? "—"}
                         </p>
                         {t.proof_url && (
-                          <button onClick={() => setProofPreview(t.proof_url)} className="mt-0.5 text-[9px] text-primary underline">
+                          <button onClick={async () => { const u = await getSignedSlipUrl(t.proof_url); if (u) setProofPreview(u); else toast({ title: "Could not load slip", variant: "destructive" }); }} className="mt-0.5 text-[9px] text-primary underline">
                             View slip
                           </button>
                         )}
