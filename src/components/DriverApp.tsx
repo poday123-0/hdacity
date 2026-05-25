@@ -1198,13 +1198,6 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     const currentScreen = screenRef.current;
     debugLog({ event: "handleNewTrip:enter", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, status: (trip as any).status, target_driver_id: (trip as any).target_driver_id, vehicle_type_id: trip.vehicle_type_id } });
     if (currentScreen !== "online" && currentScreen !== "offline") {
-      // Only allow chained/queued trips during navigating phase
-      if (currentScreen !== "navigating" || !currentTripRef.current || queuedTripRef.current) {
-        debugLog({ event: "handleNewTrip:reject_screen", driver_id: userProfile?.id, trip_id: trip.id, details: { screen: currentScreen, hasCurrentTrip: !!currentTripRef.current, hasQueuedTrip: !!queuedTripRef.current } });
-        return;
-      }
-      const activeTrip = currentTripRef.current!;
-    if (currentScreen !== "online" && currentScreen !== "offline") {
       // Only allow chained/queued trips during navigating phase.
       // Block if no active trip OR a pending/queued one already exists.
       if (
