@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, X } from "lucide-react";
 import SystemLogo from "./SystemLogo";
 import { Capacitor } from "@capacitor/core";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FloatingTripBubbleProps {
   tripId: string | null;
