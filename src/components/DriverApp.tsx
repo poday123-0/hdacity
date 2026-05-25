@@ -4899,6 +4899,78 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
               />
             </div>
 
+            {/* Pending chained trip — driver must Accept/Decline */}
+            {pendingNextTrip && !queuedTrip && (
+              <div className="px-4 pb-2">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-primary/10 border-2 border-primary rounded-xl p-3"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                      <Route className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wide">Next Trip Nearby</p>
+                      <p className="text-xs text-foreground truncate">{pendingNextTrip.pickup_address || "Pickup"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">→ {pendingNextTrip.dropoff_address || "Dropoff"}</p>
+                    </div>
+                    {pendingNextTrip.estimated_fare != null && pendingNextTrip.estimated_fare > 0 && (
+                      <div className="bg-primary/15 px-2 py-1 rounded-lg shrink-0">
+                        <p className="text-[11px] font-bold text-primary">{pendingNextTrip.estimated_fare} MVR</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const t = pendingNextTrip;
+                        if (!t) return;
+                        try { stopAllSounds(); } catch {}
+                        // Record decline so dispatch can re-broadcast to others.
+                        if (t.id) declinedTripIdsRef.current.add(t.id);
+                        if (userProfile?.id && t.id) {
+                          supabase.from("trip_declines").upsert(
+                            { driver_id: userProfile.id, trip_id: t.id },
+                            { onConflict: "driver_id,trip_id" }
+                          ).then(() => {});
+                        }
+                        setPendingNextTrip(null);
+                        setPendingNextPassenger(null);
+                        setPendingNextStops([]);
+                        pendingNextTripRef.current = null;
+                      }}
+                      className="flex-1 h-10 rounded-lg bg-muted/60 text-foreground font-semibold text-sm active:scale-95 transition-all"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => {
+                        const t = pendingNextTrip;
+                        if (!t) return;
+                        try { stopAllSounds(); } catch {}
+                        // Commit it as the queued trip — handled by the existing
+                        // queue flow that auto-loads it when current trip ends.
+                        queuedTripRef.current = t.id;
+                        setQueuedTrip(t);
+                        setQueuedPassengerProfile(pendingNextPassenger);
+                        setQueuedTripStops(pendingNextStops);
+                        setPendingNextTrip(null);
+                        setPendingNextPassenger(null);
+                        setPendingNextStops([]);
+                        pendingNextTripRef.current = null;
+                        toast({ title: "✅ Next trip queued", description: "Will start after current drop-off" });
+                      }}
+                      className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-all shadow-lg shadow-primary/30"
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
             {/* Queued/chained trip preview */}
             {queuedTrip && (
               <div className="px-4 pb-2">
