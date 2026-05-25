@@ -173,6 +173,14 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
   const [queuedPassengerProfile, setQueuedPassengerProfile] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
   const [queuedTripStops, setQueuedTripStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
   const queuedTripRef = useRef<string | null>(null);
+  // Pending chained trip: driver is still navigating, a new eligible trip
+  // arrived (pickup within chained_trip_radius_m of current dropoff). The
+  // driver must Accept it before it becomes the committed `queuedTrip`.
+  const [pendingNextTrip, setPendingNextTrip] = useState<TripRequest | null>(null);
+  const pendingNextTripRef = useRef<string | null>(null);
+  const [pendingNextPassenger, setPendingNextPassenger] = useState<{first_name: string;last_name: string;phone_number?: string;avatar_url?: string | null;country_code?: string;} | null>(null);
+  const [pendingNextStops, setPendingNextStops] = useState<Array<{id: string;stop_order: number;address: string;completed_at: string | null;}>>([]);
+  useEffect(() => { pendingNextTripRef.current = pendingNextTrip?.id ?? null; }, [pendingNextTrip]);
   const [passengerLiveLocation, setPassengerLiveLocation] = useState<{lat: number;lng: number;} | null>(null);
   const getStoredTripTimer = (tripId: string | undefined, field: "accepted_at" | "arrived_at" | "started_at") => {
     if (!tripId) return null;
