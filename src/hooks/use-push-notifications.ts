@@ -326,7 +326,9 @@ export const usePushNotifications = (
             }
           }
 
-          await PushNotifications.register();
+          // NOTE: register() is called AFTER all listeners are attached below
+          // (attaching after register() causes the token event to be missed on
+          // fresh installs — drivers then never receive trip pushes).
 
           if (Capacitor.getPlatform() === "ios") {
             // iOS: Capacitor returns APNs hex token which FCM can't use.
@@ -529,6 +531,17 @@ export const usePushNotifications = (
           });
         } catch (err) {
           console.error("Native push setup failed:", err);
+          return;
+        }
+
+        // All listeners are attached above — NOW kick off registration so the
+        // "registration" event with the FCM token isn't missed.
+        try {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+          await PushNotifications.register();
+          console.log("PushNotifications.register() called");
+        } catch (e) {
+          console.error("PushNotifications.register() failed:", e);
         }
       };
       setupNative();
