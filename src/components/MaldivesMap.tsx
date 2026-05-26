@@ -414,10 +414,10 @@ const MaldivesMap = ({ rideData, vehicleMarkers, tripRoutes, onMapClick, onMapRe
 
       if (existing) {
         existing.setLatLng([v.lat, v.lng]);
-        existing.setIcon(vehicleIcon(v.imageUrl, v.heading));
+        existing.setIcon(vehicleIcon(v.imageUrl, v.heading, v.isOnTrip));
       } else {
         const marker = L.marker([v.lat, v.lng], {
-          icon: vehicleIcon(v.imageUrl, v.heading),
+          icon: vehicleIcon(v.imageUrl, v.heading, v.isOnTrip),
           zIndexOffset: 500,
         }).addTo(map);
 
