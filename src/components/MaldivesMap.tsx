@@ -68,21 +68,33 @@ const userDotIcon = L.divIcon({
   html: `<div style="width:16px;height:16px;border-radius:50%;background:#4285F4;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
 });
 
-const vehicleIcon = (imageUrl?: string, heading?: number | null) => {
-  const rotation = typeof heading === "number" ? `transform:rotate(${heading}deg)` : "";
-  if (imageUrl) {
-    return L.divIcon({
-      className: "",
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-      html: `<img src="${imageUrl}" style="width:18px;height:18px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));${rotation}" crossorigin="anonymous" />`,
-    });
-  }
+const vehicleIcon = (imageUrl?: string, heading?: number | null, isOnTrip?: boolean) => {
+  const color = isOnTrip ? "#f59e0b" : "#22c55e";
+  const hasHeading = typeof heading === "number" && !isNaN(heading);
+  const cone = hasHeading
+    ? `<div style="position:absolute;left:50%;top:50%;width:44px;height:44px;margin-left:-22px;margin-top:-22px;transform:rotate(${heading}deg);pointer-events:none">
+         <svg viewBox="0 0 44 44" width="44" height="44">
+           <defs><radialGradient id="vcone-${color.replace('#','')}" cx="50%" cy="100%" r="80%">
+             <stop offset="0%" stop-color="${color}" stop-opacity="0.55"/>
+             <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+           </radialGradient></defs>
+           <path d="M22 22 L8 24 L22 2 L36 24 Z" fill="url(#vcone-${color.replace('#','')})"/>
+         </svg>
+       </div>`
+    : "";
+  const inner = imageUrl
+    ? `<img src="${imageUrl}" style="width:20px;height:20px;object-fit:contain" crossorigin="anonymous" />`
+    : `<svg viewBox="0 0 24 24" width="18" height="18" fill="${color}"><path d="M5 11l1.5-4.5A2 2 0 018.4 5h7.2a2 2 0 011.9 1.5L19 11h.5a1 1 0 011 1v4a1 1 0 01-1 1H19v1a1 1 0 01-1 1h-1a1 1 0 01-1-1v-1H8v1a1 1 0 01-1 1H6a1 1 0 01-1-1v-1h-.5a1 1 0 01-1-1v-4a1 1 0 011-1H5zm2.2 0h9.6l-1-3H8.2l-1 3zM7 14a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2z"/></svg>`;
   return L.divIcon({
     className: "",
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-    html: `<div style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:13px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));${rotation}">🚗</div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    html: `<div style="position:relative;width:44px;height:44px">
+      ${cone}
+      <div style="position:absolute;left:50%;top:50%;width:30px;height:30px;margin-left:-15px;margin-top:-15px;border-radius:50%;background:white;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.25)">
+        ${inner}
+      </div>
+    </div>`,
   });
 };
 
