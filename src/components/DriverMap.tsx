@@ -90,43 +90,37 @@ const driverDotIcon = (color = "#4285F4") =>
     html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
   });
 
-// Car-shaped directional icon that rotates with driver heading
+// Google Maps style navigation chevron — blue dot with directional cone
 const driverCarIcon = (heading: number, color = "#4285F4") =>
   L.divIcon({
     className: "",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;transform:rotate(${heading}deg);transition:transform 0.3s ease-out">
-      <svg viewBox="0 0 40 40" width="40" height="40">
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    html: `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;transform:rotate(${heading}deg);transition:transform 0.3s ease-out">
+      <svg viewBox="0 0 44 44" width="44" height="44">
         <defs>
-          <filter id="carShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.4"/>
+          <radialGradient id="navCone" cx="50%" cy="100%" r="80%">
+            <stop offset="0%" stop-color="${color}" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="navShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.35"/>
           </filter>
         </defs>
-        <g filter="url(#carShadow)">
-          <!-- Car body -->
-          <rect x="12" y="6" width="16" height="28" rx="6" ry="6" fill="${color}"/>
-          <!-- Windshield -->
-          <rect x="14" y="9" width="12" height="7" rx="3" ry="2" fill="white" opacity="0.85"/>
-          <!-- Rear window -->
-          <rect x="14" y="26" width="12" height="5" rx="2" ry="2" fill="white" opacity="0.5"/>
-          <!-- Direction arrow -->
-          <polygon points="20,4 16,10 24,10" fill="white" opacity="0.9"/>
-          <!-- Side mirrors -->
-          <rect x="9" y="14" width="3" height="4" rx="1" fill="${color}"/>
-          <rect x="28" y="14" width="3" height="4" rx="1" fill="${color}"/>
+        <!-- Directional cone -->
+        <path d="M22 22 L6 24 L22 0 L38 24 Z" fill="url(#navCone)"/>
+        <!-- Blue dot -->
+        <g filter="url(#navShadow)">
+          <circle cx="22" cy="22" r="9" fill="white"/>
+          <circle cx="22" cy="22" r="7" fill="${color}"/>
         </g>
       </svg>
     </div>`,
   });
 
+// Same chevron, slightly smaller, used during turn-by-turn navigation
 const driverArrowIcon = (heading: number, color = "#4285F4") =>
-  L.divIcon({
-    className: "",
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;transform:rotate(${heading}deg)"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L4 20h16L12 2z" fill="${color}" stroke="white" stroke-width="2"/></svg></div>`,
-  });
+  driverCarIcon(heading, color);
 
 const customImgIcon = (url: string, size = 36) =>
   L.divIcon({

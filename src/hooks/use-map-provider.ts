@@ -18,8 +18,7 @@ export const useMapProvider = () => {
   const [loading, setLoading] = useState(!cachedProvider);
 
   useEffect(() => {
-    if (cachedProvider) { setProvider(cachedProvider); setLoading(false); return; }
-
+    // Always re-fetch from server so admin changes propagate without reinstall.
     const load = async () => {
       try {
         const { data } = await supabase
@@ -32,9 +31,13 @@ export const useMapProvider = () => {
           (typeof val === "string" && val === "google") ? "google" :
           (typeof val === "object" && val && (val as any).provider === "google") ? "google" :
           "leaflet";
-        cachedProvider = p;
-        try { localStorage.setItem(CACHE_KEY, p); } catch {}
-        setProvider(p);
+        if (p !== cachedProvider) {
+          cachedProvider = p;
+          try { localStorage.setItem(CACHE_KEY, p); } catch {}
+          setProvider(p);
+        } else {
+          cachedProvider = p;
+        }
       } catch {}
       setLoading(false);
     };
