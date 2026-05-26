@@ -326,7 +326,9 @@ export const usePushNotifications = (
             }
           }
 
-          await PushNotifications.register();
+          // NOTE: register() is called AFTER all listeners are attached below
+          // (attaching after register() causes the token event to be missed on
+          // fresh installs — drivers then never receive trip pushes).
 
           if (Capacitor.getPlatform() === "ios") {
             // iOS: Capacitor returns APNs hex token which FCM can't use.
