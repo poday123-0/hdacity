@@ -54,7 +54,7 @@ const AdBanner = ({ className = "", audience = "passengers" }: AdBannerProps) =>
   );
 
   return (
-    <div className={`overflow-hidden rounded-xl shadow-md border border-border/30 ${className}`}>
+    <div className={`overflow-hidden rounded-xl shadow-md border border-border/30 py-[9px] ${className}`}>
       <AnimatePresence mode="wait">
         {banner.link_url ? (
           <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
