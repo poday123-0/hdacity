@@ -531,6 +531,17 @@ export const usePushNotifications = (
           });
         } catch (err) {
           console.error("Native push setup failed:", err);
+          return;
+        }
+
+        // All listeners are attached above — NOW kick off registration so the
+        // "registration" event with the FCM token isn't missed.
+        try {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+          await PushNotifications.register();
+          console.log("PushNotifications.register() called");
+        } catch (e) {
+          console.error("PushNotifications.register() failed:", e);
         }
       };
       setupNative();
