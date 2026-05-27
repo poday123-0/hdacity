@@ -109,6 +109,9 @@ export const notifyTripRequested = async (
   vehicleTypeName?: string | null,
   pickupLat?: number | null,
   pickupLng?: number | null,
+  dropoffAddress?: string | null,
+  dropoffLat?: number | null,
+  dropoffLng?: number | null,
 ) => {
   const fareNum = typeof estimatedFare === "number" && !isNaN(estimatedFare) ? estimatedFare : null;
   const farePart = fareNum != null && fareNum > 0 ? `Fare: ${Math.round(fareNum)} MVR` : "Tap to view";
@@ -121,11 +124,15 @@ export const notifyTripRequested = async (
     {
       trip_id: tripId,
       type: "trip_requested",
+      pickup_address: pickupAddress || "Pickup",
+      ...(dropoffAddress ? { dropoff_address: dropoffAddress } : {}),
       ...(vehicleTypeId ? { vehicle_type_id: vehicleTypeId } : {}),
       ...(vehicleTypeName ? { vehicle_type_name: vehicleTypeName } : {}),
       ...(fareNum != null ? { estimated_fare: String(fareNum) } : {}),
       ...(typeof pickupLat === "number" ? { pickup_lat: String(pickupLat) } : {}),
       ...(typeof pickupLng === "number" ? { pickup_lng: String(pickupLng) } : {}),
+      ...(typeof dropoffLat === "number" ? { dropoff_lat: String(dropoffLat) } : {}),
+      ...(typeof dropoffLng === "number" ? { dropoff_lng: String(dropoffLng) } : {}),
     }
   );
 };
@@ -133,12 +140,27 @@ export const notifyTripRequested = async (
 /** Notify a single driver that a dispatcher has DIRECTLY assigned a trip to them.
  *  Uses a different type than `trip_requested` so the receiver shows it as
  *  "Dispatch Trip Assigned" — not as a regular "New Ride Request" popup. */
-export const notifyTripAssigned = async (driverId: string, tripId: string, pickupAddress: string) => {
+export const notifyTripAssigned = async (
+  driverId: string,
+  tripId: string,
+  pickupAddress: string,
+  dropoffAddress?: string | null,
+  estimatedFare?: number | null,
+  vehicleTypeName?: string | null,
+) => {
+  const fareNum = typeof estimatedFare === "number" && !isNaN(estimatedFare) ? estimatedFare : null;
   await sendPushNotification(
     [driverId],
     "📋 Dispatch Trip Assigned",
-    `Pickup: ${pickupAddress}`,
-    { trip_id: tripId, type: "trip_assigned" }
+    dropoffAddress ? `${pickupAddress} → ${dropoffAddress}` : `Pickup: ${pickupAddress}`,
+    {
+      trip_id: tripId,
+      type: "trip_assigned",
+      pickup_address: pickupAddress || "Pickup",
+      ...(dropoffAddress ? { dropoff_address: dropoffAddress } : {}),
+      ...(vehicleTypeName ? { vehicle_type_name: vehicleTypeName } : {}),
+      ...(fareNum != null ? { estimated_fare: String(fareNum) } : {}),
+    }
   );
 };
 
