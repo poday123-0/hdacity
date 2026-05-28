@@ -27,7 +27,7 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { phone, vehicle_id } = await req.json();
+    const { phone, vehicle_id, trip_id } = await req.json();
     if (!phone) {
       return new Response(JSON.stringify({ error: "phone is required" }), {
         status: 400,
