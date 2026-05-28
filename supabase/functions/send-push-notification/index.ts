@@ -443,12 +443,17 @@ Deno.serve(async (req) => {
 
         // For web devices, send data-only messages so the service worker's
         // onBackgroundMessage handler fires and plays custom sounds.
-        // For native devices, include the notification payload for OS-level display.
+        // For Android trip-request / trip-assigned, ALSO send data-only so our
+        // HdaFirebaseMessagingService can build a native heads-up notification
+        // with Accept / Decline action buttons even when the app is killed.
+        // (If FCM payload contains a `notification` field, Android system
+        // handles it itself and onMessageReceived is never called when the
+        // app is in background/killed.)
         const isWebDevice = t.device_type === "web";
+        const isAndroid = t.device_type === "android";
+        const useDataOnly = isWebDevice || (isAndroid && (isTripRequest || isTripAssigned));
 
         // For native: play the custom bundled sound if available.
-        // Android expects the raw resource name, iOS expects the bundled .caf file name.
-        // Always fall back to "default" so iOS plays at least the system sound.
         const nativeBackgroundSound = isNative && nativeSoundName !== "default" ? nativeSoundName : "default";
         const iosBackgroundSound =
           isNative && nativeSoundName !== "default"
@@ -457,8 +462,8 @@ Deno.serve(async (req) => {
 
         const fcmMessage: any = {
           token: t.token,
-          // Native devices: top-level notification for OS display
-          ...(isWebDevice ? {} : {
+          // Top-level notification — omit for data-only payloads.
+          ...(useDataOnly ? {} : {
             notification: {
               title: title || "Notification",
               body: body || "",
@@ -473,24 +478,28 @@ Deno.serve(async (req) => {
           android: {
             priority: "high",
             ttl: isUrgent ? "0s" : "86400s",
-            notification: {
-              sound: nativeBackgroundSound || undefined,
-              default_sound: !isTripRequest && !isTripAssigned,
-              channel_id: isTripRequest
-                ? "trip_requests_v2"
-                : isTripAssigned
-                ? "trip_assigned_v2"
-                : isSOS
-                ? "sos_alerts_v2"
-                : "general_v2",
-              notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
-              vibrate_timings: isTripRequest
-                ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
-                : isTripAssigned
-                ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
-                : ["0.2s", "0.1s", "0.2s"],
-              default_vibrate_timings: false,
-            },
+            // Omit android.notification for data-only Android trip pushes so
+            // FCM does NOT auto-display a notification (our native service does).
+            ...(useDataOnly ? {} : {
+              notification: {
+                sound: nativeBackgroundSound || undefined,
+                default_sound: !isTripRequest && !isTripAssigned,
+                channel_id: isTripRequest
+                  ? "trip_requests_v2"
+                  : isTripAssigned
+                  ? "trip_assigned_v2"
+                  : isSOS
+                  ? "sos_alerts_v2"
+                  : "general_v2",
+                notification_priority: isUrgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
+                vibrate_timings: isTripRequest
+                  ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
+                  : isTripAssigned
+                  ? ["0.3s", "0.1s", "0.3s", "0.1s", "0.3s"]
+                  : ["0.2s", "0.1s", "0.2s"],
+                default_vibrate_timings: false,
+              },
+            }),
           },
           apns: {
             headers: {
@@ -513,10 +522,6 @@ Deno.serve(async (req) => {
           },
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
-            // Data-only for web: no webpush.notification block.
-            // This ensures only the SW's onBackgroundMessage handler fires,
-            // preventing duplicate notifications (browser auto-display + SW display).
-            // The SW will show the notification AND play the custom admin sound.
             fcm_options: { link: (isTripRequest || isTripAssigned) ? "/driver" : isSOS ? "/admin" : "/" },
           },
         };
