@@ -200,6 +200,23 @@ function updateManifest() {
     logDone('Added TripActionReceiver to manifest');
   }
 
+  // Add HdaFirebaseMessagingService — intercepts FCM data messages so trip
+  // requests show an Accept/Decline heads-up even when the app is killed.
+  if (!content.includes('HdaFirebaseMessagingService')) {
+    content = content.replace(
+      '</application>',
+      `\n        <service
+            android:name=".plugins.HdaFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>\n    </application>`
+    );
+    added++;
+    logDone('Added HdaFirebaseMessagingService to manifest');
+  }
+
   fs.writeFileSync(manifestPath, content, 'utf8');
   if (added > 0) {
     logDone(`Added ${added} permissions/meta-data/service entries`);
