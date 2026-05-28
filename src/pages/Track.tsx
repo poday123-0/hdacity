@@ -217,16 +217,27 @@ const Track = () => {
         <SystemLogo className="w-10 h-10" />
         <div>
           <h3 className="font-bold text-foreground text-sm">Get the HDA App</h3>
-          <p className="text-xs text-muted-foreground">Book rides faster with the app</p>
+          <p className="text-xs text-muted-foreground">Book rides faster on iOS & Android</p>
         </div>
       </div>
       <div className="flex gap-2">
         <a
-          href="https://hda.taxi"
-          className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold"
+          href="https://apps.apple.com/app/hda-taxi/id0000000000"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-2 bg-foreground text-background py-2.5 rounded-xl text-xs font-semibold"
         >
           <Download className="w-4 h-4" />
-          Install App
+          App Store
+        </a>
+        <a
+          href="https://play.google.com/store/apps/details?id=app.lovable.2395a37356b54f26bbd1d3b6b03e71bd"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-xl text-xs font-semibold"
+        >
+          <Download className="w-4 h-4" />
+          Google Play
         </a>
       </div>
     </div>
