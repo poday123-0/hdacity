@@ -87,10 +87,25 @@ serve(async (req) => {
       if (val.trim()) template = val;
     }
 
+    // Build tracking URL from configured base URL
+    let baseUrl = "https://app.hda.taxi";
+    const { data: urlSetting } = await supabaseAdmin
+      .from("system_settings")
+      .select("value")
+      .eq("key", "app_base_url")
+      .maybeSingle();
+    if (urlSetting?.value) {
+      baseUrl = typeof urlSetting.value === "string" ? urlSetting.value : String(urlSetting.value);
+    }
+    const trackingUrl = trip_id ? `${baseUrl}/track/${trip_id}` : baseUrl;
+
     const smsBody = template
       .replace(/\{plate\}/g, plate)
       .replace(/\{color\}/g, color)
-      .replace(/\{type\}/g, type);
+      .replace(/\{type\}/g, type)
+      .replace(/\{track\}/g, trackingUrl)
+      // Backward compat: replace legacy install link with live tracking link
+      .replace(/https:\/\/hda\.taxi/g, trackingUrl);
 
     const cleanPhone = phone.replace(/\D/g, "");
     const recipient = cleanPhone.startsWith("960") ? cleanPhone : `960${cleanPhone}`;
