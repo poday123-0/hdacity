@@ -40,27 +40,55 @@ const Track = () => {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone;
 
   useEffect(() => {
-    if (!tripId) { setError("Invalid tracking link"); setLoading(false); return; }
+    if (!tripId) {
+      setError("Invalid tracking link");
+      setLoading(false);
+      return;
+    }
 
     const loadTrip = async () => {
       const { data: tripData, error: tripErr } = await supabase
         .from("trips")
-        .select("id, status, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, driver_id, vehicle_id, estimated_fare, actual_fare, accepted_at, started_at, completed_at")
+        .select(
+          "id, status, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, driver_id, vehicle_id, estimated_fare, actual_fare, accepted_at, started_at, completed_at",
+        )
         .eq("id", tripId)
         .single();
 
-      if (tripErr || !tripData) { setError("Trip not found"); setLoading(false); return; }
+      if (tripErr || !tripData) {
+        setError("Trip not found");
+        setLoading(false);
+        return;
+      }
       setTrip(tripData);
 
       if (tripData.driver_id) {
         const [{ data: driverData }, { data: vehicleData }, { data: locData }] = await Promise.all([
-          supabase.from("profiles").select("first_name, last_name, phone_number, avatar_url").eq("id", tripData.driver_id).single(),
+          supabase
+            .from("profiles")
+            .select("first_name, last_name, phone_number, avatar_url")
+            .eq("id", tripData.driver_id)
+            .single(),
           tripData.vehicle_id
-            ? supabase.from("vehicles").select("plate_number, make, model, color, center_code").eq("id", tripData.vehicle_id).single()
-            : supabase.from("driver_locations").select("vehicle_id").eq("driver_id", tripData.driver_id).single().then(async ({ data }) => {
-                if (data?.vehicle_id) return supabase.from("vehicles").select("plate_number, make, model, color, center_code").eq("id", data.vehicle_id).single();
-                return { data: null };
-              }),
+            ? supabase
+                .from("vehicles")
+                .select("plate_number, make, model, color, center_code")
+                .eq("id", tripData.vehicle_id)
+                .single()
+            : supabase
+                .from("driver_locations")
+                .select("vehicle_id")
+                .eq("driver_id", tripData.driver_id)
+                .single()
+                .then(async ({ data }) => {
+                  if (data?.vehicle_id)
+                    return supabase
+                      .from("vehicles")
+                      .select("plate_number, make, model, color, center_code")
+                      .eq("id", data.vehicle_id)
+                      .single();
+                  return { data: null };
+                }),
           supabase.from("driver_locations").select("lat, lng").eq("driver_id", tripData.driver_id).single(),
         ]);
         setDriver(driverData);
@@ -79,17 +107,25 @@ const Track = () => {
 
     const tripChannel = supabase
       .channel(`track-trip-${tripId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "trips", filter: `id=eq.${tripId}` }, (payload) => {
-        setTrip((prev: any) => ({ ...prev, ...payload.new }));
-      })
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "trips", filter: `id=eq.${tripId}` },
+        (payload) => {
+          setTrip((prev: any) => ({ ...prev, ...payload.new }));
+        },
+      )
       .subscribe();
 
     const locChannel = supabase
       .channel(`track-driver-loc-${trip.driver_id}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "driver_locations", filter: `driver_id=eq.${trip.driver_id}` }, (payload) => {
-        const loc = payload.new as any;
-        setDriverLocation({ lat: loc.lat, lng: loc.lng });
-      })
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "driver_locations", filter: `driver_id=eq.${trip.driver_id}` },
+        (payload) => {
+          const loc = payload.new as any;
+          setDriverLocation({ lat: loc.lat, lng: loc.lng });
+        },
+      )
       .subscribe();
 
     return () => {
@@ -126,22 +162,32 @@ const Track = () => {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     // Pickup marker
-    L.marker([Number(trip.pickup_lat), Number(trip.pickup_lng)], { icon: circleIcon("#22c55e"), zIndexOffset: 1000 }).addTo(map);
+    L.marker([Number(trip.pickup_lat), Number(trip.pickup_lng)], {
+      icon: circleIcon("#22c55e"),
+      zIndexOffset: 1000,
+    }).addTo(map);
 
     // Dropoff marker + route
     if (trip.dropoff_lat && trip.dropoff_lng) {
-      L.marker([Number(trip.dropoff_lat), Number(trip.dropoff_lng)], { icon: circleIcon("#ef4444"), zIndexOffset: 999 }).addTo(map);
+      L.marker([Number(trip.dropoff_lat), Number(trip.dropoff_lng)], {
+        icon: circleIcon("#ef4444"),
+        zIndexOffset: 999,
+      }).addTo(map);
 
       // Draw route via OSRM
       fetchOsrmRoute(
         { lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng) },
-        { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) }
-      ).then(routes => {
-        if (!mapInstanceRef.current) return;
-        const best = pickShortestOsrmRoute(routes);
-        const latlngs = best.coordinates.map(c => [c[0], c[1]] as [number, number]);
-        routePolylineRef.current = L.polyline(latlngs, { color: "#4285F4", weight: 4, opacity: 0.8 }).addTo(mapInstanceRef.current);
-      }).catch(() => {});
+        { lat: Number(trip.dropoff_lat), lng: Number(trip.dropoff_lng) },
+      )
+        .then((routes) => {
+          if (!mapInstanceRef.current) return;
+          const best = pickShortestOsrmRoute(routes);
+          const latlngs = best.coordinates.map((c) => [c[0], c[1]] as [number, number]);
+          routePolylineRef.current = L.polyline(latlngs, { color: "#4285F4", weight: 4, opacity: 0.8 }).addTo(
+            mapInstanceRef.current,
+          );
+        })
+        .catch(() => {});
 
       // Fit bounds
       const bounds = L.latLngBounds([
@@ -181,14 +227,25 @@ const Track = () => {
     }
   }, [driverLocation]);
 
-  const statusLabel = trip?.status === "accepted" ? "Driver on the way" :
-    trip?.status === "arrived" ? "Driver arrived" :
-    trip?.status === "in_progress" || trip?.status === "started" ? "Trip in progress" :
-    trip?.status === "completed" ? "Trip completed" :
-    trip?.status === "cancelled" ? "Trip cancelled" : "Loading...";
+  const statusLabel =
+    trip?.status === "accepted"
+      ? "Driver on the way"
+      : trip?.status === "arrived"
+        ? "Driver arrived"
+        : trip?.status === "in_progress" || trip?.status === "started"
+          ? "Trip in progress"
+          : trip?.status === "completed"
+            ? "Trip completed"
+            : trip?.status === "cancelled"
+              ? "Trip cancelled"
+              : "Loading...";
 
-  const statusColor = trip?.status === "completed" ? "text-green-500" :
-    trip?.status === "cancelled" ? "text-destructive" : "text-primary";
+  const statusColor =
+    trip?.status === "completed"
+      ? "text-green-500"
+      : trip?.status === "cancelled"
+        ? "text-destructive"
+        : "text-primary";
 
   if (loading) {
     return (
@@ -222,7 +279,7 @@ const Track = () => {
       </div>
       <div className="flex gap-2">
         <a
-          href="https://apps.apple.com/app/hda-taxi/id0000000000"
+          href="https://apps.apple.com/mv/app/hda-app/id6477861913"
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 flex items-center justify-center gap-2 bg-foreground text-background py-2.5 rounded-xl text-xs font-semibold"
@@ -231,7 +288,7 @@ const Track = () => {
           App Store
         </a>
         <a
-          href="https://play.google.com/store/apps/details?id=app.lovable.2395a37356b54f26bbd1d3b6b03e71bd"
+          href="https://play.google.com/store/apps/details?id=com.hdataxi.passenger"
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-xl text-xs font-semibold"
@@ -253,9 +310,7 @@ const Track = () => {
               <CheckCircle className="w-5 h-5" />
               <span className="font-bold text-lg">{statusLabel}</span>
             </div>
-            {trip.actual_fare && (
-              <p className="text-2xl font-bold text-foreground">{trip.actual_fare} MVR</p>
-            )}
+            {trip.actual_fare && <p className="text-2xl font-bold text-foreground">{trip.actual_fare} MVR</p>}
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
@@ -296,19 +351,27 @@ const Track = () => {
                 return (
                   <div key={step} className="flex items-center flex-1">
                     <div className="flex flex-col items-center gap-1">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
-                        isCurrent ? "bg-primary text-primary-foreground border-primary scale-110" :
-                        done ? "bg-primary/20 text-primary border-primary/40" :
-                        "bg-muted text-muted-foreground border-border"
-                      }`}>
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                          isCurrent
+                            ? "bg-primary text-primary-foreground border-primary scale-110"
+                            : done
+                              ? "bg-primary/20 text-primary border-primary/40"
+                              : "bg-muted text-muted-foreground border-border"
+                        }`}
+                      >
                         {done && !isCurrent ? <CheckCircle className="w-4 h-4" /> : i + 1}
                       </div>
-                      <span className={`text-[10px] font-medium ${isCurrent ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>
+                      <span
+                        className={`text-[10px] font-medium ${isCurrent ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}
+                      >
                         {label}
                       </span>
                     </div>
                     {i < steps.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-1 mt-[-16px] ${currentIdx > i ? "bg-primary/40" : "bg-border"}`} />
+                      <div
+                        className={`flex-1 h-0.5 mx-1 mt-[-16px] ${currentIdx > i ? "bg-primary/40" : "bg-border"}`}
+                      />
                     )}
                   </div>
                 );
@@ -321,7 +384,11 @@ const Track = () => {
           <SystemLogo className="w-8 h-8" />
           <div>
             <p className={`font-bold text-sm ${statusColor}`}>{statusLabel}</p>
-            {driver && <p className="text-xs text-muted-foreground">{driver.first_name} {driver.last_name}</p>}
+            {driver && (
+              <p className="text-xs text-muted-foreground">
+                {driver.first_name} {driver.last_name}
+              </p>
+            )}
           </div>
         </div>
 
@@ -330,7 +397,8 @@ const Track = () => {
             <Car className="w-5 h-5 text-foreground" />
             <div>
               <p className="text-sm font-semibold text-foreground">
-                {vehicle.color && `${vehicle.color} `}{vehicle.make} {vehicle.model}
+                {vehicle.color && `${vehicle.color} `}
+                {vehicle.make} {vehicle.model}
               </p>
               <p className="text-xs text-muted-foreground font-mono">{vehicle.plate_number}</p>
             </div>
