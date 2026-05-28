@@ -1090,6 +1090,7 @@ const DispatchTripForm = ({
             body: {
               phone: customerPhone.trim(),
               vehicle_id: assignedEntry?.vehicle_id || null,
+              trip_id: trip.id,
             },
           }).catch(console.warn);
         }

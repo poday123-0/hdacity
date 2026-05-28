@@ -12,9 +12,7 @@ Our vehicle is on the way to pick you up,
 
 {plate} . {color} {type}
 
-Install Hda App to view the realtime trip status.
-
-Install- https://hda.taxi`;
+Track your ride live: {track}`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -29,7 +27,7 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { phone, vehicle_id } = await req.json();
+    const { phone, vehicle_id, trip_id } = await req.json();
     if (!phone) {
       return new Response(JSON.stringify({ error: "phone is required" }), {
         status: 400,
@@ -89,10 +87,25 @@ serve(async (req) => {
       if (val.trim()) template = val;
     }
 
+    // Build tracking URL from configured base URL
+    let baseUrl = "https://app.hda.taxi";
+    const { data: urlSetting } = await supabaseAdmin
+      .from("system_settings")
+      .select("value")
+      .eq("key", "app_base_url")
+      .maybeSingle();
+    if (urlSetting?.value) {
+      baseUrl = typeof urlSetting.value === "string" ? urlSetting.value : String(urlSetting.value);
+    }
+    const trackingUrl = trip_id ? `${baseUrl}/track/${trip_id}` : baseUrl;
+
     const smsBody = template
       .replace(/\{plate\}/g, plate)
       .replace(/\{color\}/g, color)
-      .replace(/\{type\}/g, type);
+      .replace(/\{type\}/g, type)
+      .replace(/\{track\}/g, trackingUrl)
+      // Backward compat: replace legacy install link with live tracking link
+      .replace(/https:\/\/hda\.taxi/g, trackingUrl);
 
     const cleanPhone = phone.replace(/\D/g, "");
     const recipient = cleanPhone.startsWith("960") ? cleanPhone : `960${cleanPhone}`;
