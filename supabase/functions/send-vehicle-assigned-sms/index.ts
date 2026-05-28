@@ -12,9 +12,7 @@ Our vehicle is on the way to pick you up,
 
 {plate} . {color} {type}
 
-Install Hda App to view the realtime trip status.
-
-Install- https://hda.taxi`;
+Track your ride live: {track}`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
