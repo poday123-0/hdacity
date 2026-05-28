@@ -348,6 +348,8 @@ const Track = () => {
             <p className="text-xs text-foreground">{trip.dropoff_address}</p>
           </div>
         </div>
+
+        {!isStandalone && appInstallSection}
       </div>
     </div>
   );
