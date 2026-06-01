@@ -768,19 +768,18 @@ const Index = () => {
 
     // For scheduled rides, skip driver availability check (drivers will be notified immediately)
     if (bookingType !== "scheduled" && bookingType !== "hourly") {
-      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       const { count } = await supabase
         .from("driver_locations")
         .select("id", { count: "exact", head: true })
         .eq("is_online", true)
-        .eq("is_on_trip", false)
-        .gte("updated_at", twoMinAgo);
+        .eq("is_on_trip", false);
 
       if (!count || count === 0) {
         toast({ title: "No drivers available", description: "There are no drivers online right now. Please try again later.", variant: "destructive" });
         return;
       }
     }
+
 
     try {
       if (userProfile?.id) {
