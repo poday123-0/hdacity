@@ -332,12 +332,13 @@ const Track = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 min-h-[50vh] relative">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
+      <div className="h-[55vh] flex-shrink-0 relative">
         <div ref={mapRef} className="absolute inset-0" />
       </div>
 
-      <div className="bg-card border-t border-border p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto bg-card border-t border-border p-4 space-y-4">
+
         {(() => {
           const steps = ["accepted", "arrived", "started", "completed"] as const;
           const normalizedStatus = trip?.status === "in_progress" ? "started" : trip?.status;

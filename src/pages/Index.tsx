@@ -768,19 +768,18 @@ const Index = () => {
 
     // For scheduled rides, skip driver availability check (drivers will be notified immediately)
     if (bookingType !== "scheduled" && bookingType !== "hourly") {
-      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       const { count } = await supabase
         .from("driver_locations")
         .select("id", { count: "exact", head: true })
         .eq("is_online", true)
-        .eq("is_on_trip", false)
-        .gte("updated_at", twoMinAgo);
+        .eq("is_on_trip", false);
 
       if (!count || count === 0) {
         toast({ title: "No drivers available", description: "There are no drivers online right now. Please try again later.", variant: "destructive" });
         return;
       }
     }
+
 
     try {
       if (userProfile?.id) {
@@ -854,25 +853,29 @@ const Index = () => {
           // direct vehicle_type_id match OR same vehicle approved for the type
           // (one car registered as Car + Van).
           if (eligible.length > 0 && selectedVehicleType.id) {
-            const activeVehicleIds = eligible.map((d: any) => d.vehicle_id).filter(Boolean);
-            let approvedVehicleSet = new Set<string>();
-            if (activeVehicleIds.length > 0) {
+            const driverIds = eligible.map((d: any) => d.driver_id).filter(Boolean);
+            const approvedDriverSet = new Set<string>();
+            const approvedVehicleSet = new Set<string>();
+            if (driverIds.length > 0) {
               const { data: approved } = await supabase
                 .from("driver_vehicle_types")
-                .select("vehicle_id")
+                .select("driver_id, vehicle_id")
                 .eq("vehicle_type_id", selectedVehicleType.id)
                 .eq("status", "approved")
-                .in("vehicle_id", activeVehicleIds);
-              approvedVehicleSet = new Set(
-                (approved || []).map((r: any) => r.vehicle_id).filter(Boolean)
-              );
+                .in("driver_id", driverIds);
+              (approved || []).forEach((r: any) => {
+                if (r.driver_id) approvedDriverSet.add(r.driver_id);
+                if (r.vehicle_id) approvedVehicleSet.add(r.vehicle_id);
+              });
             }
             eligible = eligible.filter(
               (d: any) =>
                 d.vehicle_type_id === selectedVehicleType.id ||
+                approvedDriverSet.has(d.driver_id) ||
                 (d.vehicle_id && approvedVehicleSet.has(d.vehicle_id))
             );
           }
+
           if (eligible.length > 0) {
             const driverIds = await filterDriversByPersonalRadius(eligible, pickup.lat, pickup.lng);
             if (driverIds.length > 0) {

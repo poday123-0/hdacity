@@ -159,25 +159,33 @@ Deno.serve(async (req) => {
     //  • the active vehicle is approved for the trip's type via
     //    driver_vehicle_types (e.g. same car registered as Car + Van).
     if (trip.vehicle_type_id && eligible.length > 0) {
+      const driverIds = eligible.map((d) => d.driver_id).filter(Boolean);
       const activeVehicleIds = eligible.map((d) => d.vehicle_id).filter(Boolean);
-      let approvedVehicleSet = new Set<string>();
-      if (activeVehicleIds.length > 0) {
+      // Match by driver_id (any approved vehicle for the driver) OR by active vehicle_id.
+      // This lets a driver approved for Car + Van receive trips of both types regardless
+      // of which vehicle is currently active.
+      const approvedDriverSet = new Set<string>();
+      const approvedVehicleSet = new Set<string>();
+      if (driverIds.length > 0) {
         const { data: approved } = await supabase
           .from("driver_vehicle_types")
-          .select("vehicle_id")
+          .select("driver_id, vehicle_id")
           .eq("vehicle_type_id", trip.vehicle_type_id)
           .eq("status", "approved")
-          .in("vehicle_id", activeVehicleIds);
-        approvedVehicleSet = new Set(
-          (approved || []).map((r: any) => r.vehicle_id).filter(Boolean)
-        );
+          .in("driver_id", driverIds);
+        (approved || []).forEach((r: any) => {
+          if (r.driver_id) approvedDriverSet.add(r.driver_id);
+          if (r.vehicle_id) approvedVehicleSet.add(r.vehicle_id);
+        });
       }
       eligible = eligible.filter(
         (d) =>
           d.vehicle_type_id === trip.vehicle_type_id ||
+          approvedDriverSet.has(d.driver_id) ||
           (d.vehicle_id && approvedVehicleSet.has(d.vehicle_id))
       );
     }
+
 
     if (eligible.length === 0) {
       // Insert empty wave 1 so the promoter can advance to wave 2 quickly
