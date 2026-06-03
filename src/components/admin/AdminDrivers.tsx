@@ -65,6 +65,45 @@ const AdminDrivers = () => {
   const [smsMessage, setSmsMessage] = useState("");
   const [smsSending, setSmsSending] = useState(false);
   const [smsAddSearch, setSmsAddSearch] = useState("");
+  const [showAddDriver, setShowAddDriver] = useState(false);
+  const [addDriverSaving, setAddDriverSaving] = useState(false);
+  const emptyAddDriver = { first_name: "", last_name: "", phone_number: "", country_code: "960", email: "", company_id: "", gender: "1", status: "Active" as "Active" | "Pending" };
+  const [addDriverForm, setAddDriverForm] = useState(emptyAddDriver);
+
+  const submitAddDriver = async () => {
+    const phone = (addDriverForm.phone_number || "").replace(/\D/g, "");
+    if (!addDriverForm.first_name.trim()) { toast({ title: "First name required", variant: "destructive" }); return; }
+    if (!phone) { toast({ title: "Phone number required", variant: "destructive" }); return; }
+    setAddDriverSaving(true);
+    // Check duplicate Driver profile for this phone
+    const { data: existing } = await supabase
+      .from("profiles").select("id").eq("phone_number", phone).ilike("user_type", "%Driver%").maybeSingle();
+    if (existing) {
+      toast({ title: "Driver already exists", description: `A driver with phone +${addDriverForm.country_code} ${phone} already exists`, variant: "destructive" });
+      setAddDriverSaving(false);
+      return;
+    }
+    const company = companies.find(c => c.id === addDriverForm.company_id);
+    const { error } = await supabase.from("profiles").insert({
+      first_name: addDriverForm.first_name.trim(),
+      last_name: addDriverForm.last_name.trim(),
+      phone_number: phone,
+      country_code: addDriverForm.country_code || "960",
+      email: addDriverForm.email.trim() || null,
+      gender: addDriverForm.gender || "1",
+      user_type: "Driver",
+      status: addDriverForm.status,
+      company_id: addDriverForm.company_id || defaultCompanyId || null,
+      company_name: company?.name || "",
+      monthly_fee: company?.monthly_fee || 0,
+    });
+    setAddDriverSaving(false);
+    if (error) { toast({ title: "Failed to add driver", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Driver added", description: `${addDriverForm.first_name} can now log in with +${addDriverForm.country_code} ${phone}` });
+    setShowAddDriver(false);
+    setAddDriverForm(emptyAddDriver);
+    fetchAll();
+  };
 
   const fetchAll = async () => {
     setLoading(true);
@@ -839,11 +878,75 @@ const AdminDrivers = () => {
           <p className="text-sm text-muted-foreground">{filteredDrivers.length} of {drivers.length} drivers · {allVehicles.length} vehicles</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowAddDriver(true)} className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity">
+            <Plus className="w-3.5 h-3.5" />Add Driver
+          </button>
           <button onClick={() => setShowImport(!showImport)} className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-muted transition-colors">
             <FileUp className="w-3.5 h-3.5" />Import CSV
           </button>
         </div>
       </div>
+
+      {showAddDriver && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !addDriverSaving && setShowAddDriver(false)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2"><Plus className="w-4 h-4 text-primary" />Add New Driver</h3>
+              <button onClick={() => !addDriverSaving && setShowAddDriver(false)} disabled={addDriverSaving} className="w-8 h-8 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">First Name *</label>
+                  <input type="text" value={addDriverForm.first_name} onChange={(e) => setAddDriverForm({ ...addDriverForm, first_name: e.target.value })} disabled={addDriverSaving} className="w-full mt-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Last Name</label>
+                  <input type="text" value={addDriverForm.last_name} onChange={(e) => setAddDriverForm({ ...addDriverForm, last_name: e.target.value })} disabled={addDriverSaving} className="w-full mt-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Phone Number *</label>
+                <div className="flex gap-2 mt-1.5">
+                  <input type="text" value={addDriverForm.country_code} onChange={(e) => setAddDriverForm({ ...addDriverForm, country_code: e.target.value.replace(/\D/g, "") })} disabled={addDriverSaving} className="w-16 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  <input type="tel" placeholder="7XXXXXX" value={addDriverForm.phone_number} onChange={(e) => setAddDriverForm({ ...addDriverForm, phone_number: e.target.value.replace(/\D/g, "") })} disabled={addDriverSaving} className="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Driver will log in using this number via OTP.</p>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Email (optional)</label>
+                <input type="email" value={addDriverForm.email} onChange={(e) => setAddDriverForm({ ...addDriverForm, email: e.target.value })} disabled={addDriverSaving} className="w-full mt-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Company</label>
+                  <select value={addDriverForm.company_id} onChange={(e) => setAddDriverForm({ ...addDriverForm, company_id: e.target.value })} disabled={addDriverSaving} className="w-full mt-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="">— None —</option>
+                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Status</label>
+                  <select value={addDriverForm.status} onChange={(e) => setAddDriverForm({ ...addDriverForm, status: e.target.value as "Active" | "Pending" })} disabled={addDriverSaving} className="w-full mt-1.5 px-3 py-2 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground">The driver can immediately log in to the driver app with this phone number. Add their vehicle and documents after creating the account.</p>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-border flex items-center justify-end gap-2">
+              <button onClick={() => setShowAddDriver(false)} disabled={addDriverSaving} className="px-4 py-2 rounded-xl text-sm font-semibold bg-surface text-foreground hover:bg-muted">Cancel</button>
+              <button onClick={submitAddDriver} disabled={addDriverSaving} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40">
+                {addDriverSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Plus className="w-4 h-4" /> Add Driver</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Statistics Grid ── */}
       {!loading && (
