@@ -971,9 +971,13 @@ const DispatchTripForm = ({
       if (error) throw error;
 
       let defaultRadiusCache = 10;
+      let dispatchModeCache = "broadcast";
       if (broadcastData) {
-        const [driversRes, timeoutRes, defaultRes] = broadcastData as any;
+        const [driversRes, timeoutRes, defaultRes, modeRes] = broadcastData as any;
         let allDrivers = (driversRes?.data || []) as any[];
+        if (modeRes?.data?.value) {
+          dispatchModeCache = typeof modeRes.data.value === "string" ? modeRes.data.value : String(modeRes.data.value);
+        }
 
         // Match on driver's CURRENTLY ACTIVE vehicle: direct vehicle_type_id
         // match, OR the same vehicle is approved for the requested type via
