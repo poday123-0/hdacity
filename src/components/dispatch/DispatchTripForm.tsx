@@ -962,6 +962,7 @@ const DispatchTripForm = ({
         driverLocQuery,
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single()).catch(() => ({ data: null })),
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").maybeSingle()).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_mode").maybeSingle()).catch(() => ({ data: null })),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
@@ -970,9 +971,13 @@ const DispatchTripForm = ({
       if (error) throw error;
 
       let defaultRadiusCache = 10;
+      let dispatchModeCache = "broadcast";
       if (broadcastData) {
-        const [driversRes, timeoutRes, defaultRes] = broadcastData as any;
+        const [driversRes, timeoutRes, defaultRes, modeRes] = broadcastData as any;
         let allDrivers = (driversRes?.data || []) as any[];
+        if (modeRes?.data?.value) {
+          dispatchModeCache = typeof modeRes.data.value === "string" ? modeRes.data.value : String(modeRes.data.value);
+        }
 
         // Match on driver's CURRENTLY ACTIVE vehicle: direct vehicle_type_id
         // match, OR the same vehicle is approved for the requested type via
@@ -1151,16 +1156,26 @@ const DispatchTripForm = ({
 
             // 🚀 FIRE PUSH IMMEDIATELY — only to drivers whose personal radius covers the pickup
             const selectedVtName = vehicleTypes.find(v => v.id === selectedVehicleType)?.name || null;
-            notifyTripRequested(
-              eligibleIds,
-              trip.id,
-              tripPayload.pickup_address,
-              selectedVehicleType || undefined,
-              estimatedFare,
-              selectedVtName,
-              pickup.lat,
-              pickup.lng,
-            ).catch(console.warn);
+
+            if (dispatchModeCache === "wave_broadcast") {
+              // Wave mode: dispatch-wave-init writes the wave row AND fires FCM.
+              // Without the wave row the DriverApp gates the trip with
+              // "reject_waiting_for_wave" and the request never appears.
+              supabase.functions
+                .invoke("dispatch-wave-init", { body: { trip_id: trip.id } })
+                .catch((err) => console.warn("[dispatch] wave-init failed:", err));
+            } else {
+              notifyTripRequested(
+                eligibleIds,
+                trip.id,
+                tripPayload.pickup_address,
+                selectedVehicleType || undefined,
+                estimatedFare,
+                selectedVtName,
+                pickup.lat,
+                pickup.lng,
+              ).catch(console.warn);
+            }
 
             toast({ title: `Sent to ${eligibleIds.length} nearby driver(s)`, description: `Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
