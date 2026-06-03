@@ -962,6 +962,7 @@ const DispatchTripForm = ({
         driverLocQuery,
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single()).catch(() => ({ data: null })),
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").maybeSingle()).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_mode").maybeSingle()).catch(() => ({ data: null })),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
