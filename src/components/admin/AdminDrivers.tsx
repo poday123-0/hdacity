@@ -65,6 +65,45 @@ const AdminDrivers = () => {
   const [smsMessage, setSmsMessage] = useState("");
   const [smsSending, setSmsSending] = useState(false);
   const [smsAddSearch, setSmsAddSearch] = useState("");
+  const [showAddDriver, setShowAddDriver] = useState(false);
+  const [addDriverSaving, setAddDriverSaving] = useState(false);
+  const emptyAddDriver = { first_name: "", last_name: "", phone_number: "", country_code: "960", email: "", company_id: "", gender: "1", status: "Active" as "Active" | "Pending" };
+  const [addDriverForm, setAddDriverForm] = useState(emptyAddDriver);
+
+  const submitAddDriver = async () => {
+    const phone = (addDriverForm.phone_number || "").replace(/\D/g, "");
+    if (!addDriverForm.first_name.trim()) { toast({ title: "First name required", variant: "destructive" }); return; }
+    if (!phone) { toast({ title: "Phone number required", variant: "destructive" }); return; }
+    setAddDriverSaving(true);
+    // Check duplicate Driver profile for this phone
+    const { data: existing } = await supabase
+      .from("profiles").select("id").eq("phone_number", phone).ilike("user_type", "%Driver%").maybeSingle();
+    if (existing) {
+      toast({ title: "Driver already exists", description: `A driver with phone +${addDriverForm.country_code} ${phone} already exists`, variant: "destructive" });
+      setAddDriverSaving(false);
+      return;
+    }
+    const company = companies.find(c => c.id === addDriverForm.company_id);
+    const { error } = await supabase.from("profiles").insert({
+      first_name: addDriverForm.first_name.trim(),
+      last_name: addDriverForm.last_name.trim(),
+      phone_number: phone,
+      country_code: addDriverForm.country_code || "960",
+      email: addDriverForm.email.trim() || null,
+      gender: addDriverForm.gender || "1",
+      user_type: "Driver",
+      status: addDriverForm.status,
+      company_id: addDriverForm.company_id || defaultCompanyId || null,
+      company_name: company?.name || "",
+      monthly_fee: company?.monthly_fee || 0,
+    });
+    setAddDriverSaving(false);
+    if (error) { toast({ title: "Failed to add driver", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Driver added", description: `${addDriverForm.first_name} can now log in with +${addDriverForm.country_code} ${phone}` });
+    setShowAddDriver(false);
+    setAddDriverForm(emptyAddDriver);
+    fetchAll();
+  };
 
   const fetchAll = async () => {
     setLoading(true);
