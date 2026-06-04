@@ -829,6 +829,53 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const vehicleTypeId = vehicle?.vehicle_type_id || null;
       activeVehicleTypeIdRef.current = vehicleTypeId;
 
+      // Mark the driver online immediately using the last known coordinate while
+      // the native GPS/background plugin warms up. Without this, a fresh Android
+      // install can show "online" locally but remain offline in dispatch until
+      // the first GPS callback arrives.
+      try {
+        let warmLat = driverLat;
+        let warmLng = driverLng;
+        if (warmLat == null || warmLng == null) {
+          const cachedLat = localStorage.getItem("hda_driver_last_lat");
+          const cachedLng = localStorage.getItem("hda_driver_last_lng");
+          if (cachedLat && cachedLng) {
+            warmLat = parseFloat(cachedLat);
+            warmLng = parseFloat(cachedLng);
+          }
+        }
+        if ((warmLat == null || warmLng == null) && userProfile.id) {
+          const { data: existingLoc } = await supabase
+            .from("driver_locations")
+            .select("lat, lng")
+            .eq("driver_id", userProfile.id)
+            .maybeSingle();
+          if (typeof existingLoc?.lat === "number" && typeof existingLoc?.lng === "number") {
+            warmLat = Number(existingLoc.lat);
+            warmLng = Number(existingLoc.lng);
+          }
+        }
+        if (typeof warmLat === "number" && typeof warmLng === "number" && !Number.isNaN(warmLat) && !Number.isNaN(warmLng)) {
+          setDriverLat((prev) => prev ?? warmLat!);
+          setDriverLng((prev) => prev ?? warmLng!);
+          lastPosRef.current = { lat: warmLat, lng: warmLng };
+          await supabase.from("driver_locations").upsert({
+            driver_id: userProfile.id,
+            vehicle_id: vehicleId,
+            vehicle_type_id: vehicleTypeId,
+            lat: warmLat,
+            lng: warmLng,
+            heading: driverHeading ?? 0,
+            is_online: true,
+            is_on_trip: screen === "online" ? false : undefined,
+            updated_at: new Date().toISOString(),
+            session_id: deviceSessionId.current,
+          } as any, { onConflict: "driver_id" });
+        }
+      } catch (warmErr) {
+        console.warn("Initial online warm-up failed:", warmErr);
+      }
+
       // Distance threshold — skip DB writes if driver hasn't moved enough
       // Native bg-location uses this as the OS distanceFilter (lower = more responsive marker, slightly higher battery use)
       const MIN_MOVE_METERS = 3;
