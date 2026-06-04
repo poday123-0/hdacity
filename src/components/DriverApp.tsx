@@ -829,6 +829,53 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       const vehicleTypeId = vehicle?.vehicle_type_id || null;
       activeVehicleTypeIdRef.current = vehicleTypeId;
 
+      // Mark the driver online immediately using the last known coordinate while
+      // the native GPS/background plugin warms up. Without this, a fresh Android
+      // install can show "online" locally but remain offline in dispatch until
+      // the first GPS callback arrives.
+      try {
+        let warmLat = driverLat;
+        let warmLng = driverLng;
+        if (warmLat == null || warmLng == null) {
+          const cachedLat = localStorage.getItem("hda_driver_last_lat");
+          const cachedLng = localStorage.getItem("hda_driver_last_lng");
+          if (cachedLat && cachedLng) {
+            warmLat = parseFloat(cachedLat);
+            warmLng = parseFloat(cachedLng);
+          }
+        }
+        if ((warmLat == null || warmLng == null) && userProfile.id) {
+          const { data: existingLoc } = await supabase
+            .from("driver_locations")
+            .select("lat, lng")
+            .eq("driver_id", userProfile.id)
+            .maybeSingle();
+          if (typeof existingLoc?.lat === "number" && typeof existingLoc?.lng === "number") {
+            warmLat = Number(existingLoc.lat);
+            warmLng = Number(existingLoc.lng);
+          }
+        }
+        if (typeof warmLat === "number" && typeof warmLng === "number" && !Number.isNaN(warmLat) && !Number.isNaN(warmLng)) {
+          setDriverLat((prev) => prev ?? warmLat!);
+          setDriverLng((prev) => prev ?? warmLng!);
+          lastPosRef.current = { lat: warmLat, lng: warmLng };
+          await supabase.from("driver_locations").upsert({
+            driver_id: userProfile.id,
+            vehicle_id: vehicleId,
+            vehicle_type_id: vehicleTypeId,
+            lat: warmLat,
+            lng: warmLng,
+            heading: driverHeading ?? 0,
+            is_online: true,
+            is_on_trip: screen === "online" ? false : undefined,
+            updated_at: new Date().toISOString(),
+            session_id: deviceSessionId.current,
+          } as any, { onConflict: "driver_id" });
+        }
+      } catch (warmErr) {
+        console.warn("Initial online warm-up failed:", warmErr);
+      }
+
       // Distance threshold — skip DB writes if driver hasn't moved enough
       // Native bg-location uses this as the OS distanceFilter (lower = more responsive marker, slightly higher battery use)
       const MIN_MOVE_METERS = 3;
@@ -1229,6 +1276,37 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
+  const isVehicleTypeAllowedForCurrentVehicle = async (vehicleTypeId: string): Promise<boolean> => {
+    if (activeVehicleTypeIdRef.current === vehicleTypeId) return true;
+    if (eligibleVehicleTypeIdsRef.current.has(vehicleTypeId)) return true;
+    if (!userProfile?.id) return false;
+
+    let vehicleId = selectedVehicleId;
+    if (!vehicleId) {
+      try {
+        const { data: loc } = await supabase
+          .from("driver_locations")
+          .select("vehicle_id")
+          .eq("driver_id", userProfile.id)
+          .maybeSingle();
+        vehicleId = (loc as any)?.vehicle_id || null;
+      } catch {}
+    }
+
+    const { data: approved } = await supabase
+      .from("driver_vehicle_types")
+      .select("vehicle_type_id, vehicle_id")
+      .eq("driver_id", userProfile.id)
+      .eq("vehicle_type_id", vehicleTypeId)
+      .eq("status", "approved");
+
+    const allowed = ((approved as any[]) || []).some((row) =>
+      !vehicleId || !row.vehicle_id || row.vehicle_id === vehicleId
+    );
+    if (allowed) eligibleVehicleTypeIdsRef.current.add(vehicleTypeId);
+    return allowed;
+  };
+
   // Ref-based guard to prevent concurrent handleNewTrip calls (state is stale in async closures)
   const handlingTripRef = useRef<string | null>(null);
   // Dedup guard: prevents duplicate "Trip Taken/Cancelled" toasts + sounds when FCM,
@@ -1285,9 +1363,9 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
       } else {
         return; // can't verify proximity without coords
       }
-      // Vehicle type must match
-      if (trip.vehicle_type_id && activeVehicleTypeIdRef.current && trip.vehicle_type_id !== activeVehicleTypeIdRef.current) return;
-      if (trip.vehicle_type_id && !activeVehicleTypeIdRef.current && eligibleVehicleTypeIdsRef.current.size > 0 && !eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id)) return;
+      // Vehicle type must match the active vehicle OR one of that vehicle's
+      // approved extra types (for example T7988 = Van + Car).
+      if (trip.vehicle_type_id && !(await isVehicleTypeAllowedForCurrentVehicle(trip.vehicle_type_id))) return;
 
       // Driver must explicitly Accept. Show as PENDING + play the trip sound
       // so the driver actually notices it. Auto-decline after the standard
@@ -1361,10 +1439,8 @@ const DriverApp = ({ onSwitchToPassenger, userProfile, onLogout }: DriverAppProp
     // driver_vehicle_types approvals for the SAME vehicle — e.g. one car
     // registered as Car + Van).
     if (trip.vehicle_type_id) {
-      const activeMatches = activeVehicleTypeIdRef.current === trip.vehicle_type_id;
-      const eligibleMatches = eligibleVehicleTypeIdsRef.current.size > 0
-        && eligibleVehicleTypeIdsRef.current.has(trip.vehicle_type_id);
-      if (!activeMatches && !eligibleMatches) {
+      const allowedVehicleType = await isVehicleTypeAllowedForCurrentVehicle(trip.vehicle_type_id);
+      if (!allowedVehicleType) {
         console.log(`[VEHICLE TYPE CHECK] Trip ${trip.id} type ${trip.vehicle_type_id} not allowed for active vehicle (active=${activeVehicleTypeIdRef.current}, eligible=${Array.from(eligibleVehicleTypeIdsRef.current).join(",")})`);
         debugLog({ event: "handleNewTrip:reject_vehicle_type_mismatch", driver_id: userProfile?.id, trip_id: trip.id, details: { trip_vt: trip.vehicle_type_id, active_vt: activeVehicleTypeIdRef.current, eligible: Array.from(eligibleVehicleTypeIdsRef.current) } });
         handlingTripRef.current = null;

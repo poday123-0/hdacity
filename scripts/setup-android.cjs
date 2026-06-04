@@ -126,6 +126,13 @@ function updateManifest() {
   }
 
   let content = fs.readFileSync(manifestPath, 'utf8');
+  let added = 0;
+
+  if (!content.includes('xmlns:tools=')) {
+    content = content.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ');
+    added++;
+    logDone('Added Android manifest tools namespace');
+  }
 
   const permissions = [
     'android.permission.ACCESS_FINE_LOCATION',
@@ -144,7 +151,6 @@ function updateManifest() {
     'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
   ];
 
-  let added = 0;
   for (const perm of permissions) {
     if (!content.includes(perm)) {
       content = content.replace(
@@ -202,6 +208,18 @@ function updateManifest() {
 
   // Add HdaFirebaseMessagingService — intercepts FCM data messages so trip
   // requests show an Accept/Decline heads-up even when the app is killed.
+  // Remove Capacitor's default MessagingService from the merged manifest so
+  // Android has exactly one MESSAGING_EVENT handler: our subclass below.
+  if (!content.includes('com.capacitorjs.plugins.pushnotifications.MessagingService')) {
+    content = content.replace(
+      '</application>',
+      `\n        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />\n    </application>`
+    );
+    added++;
+    logDone('Added manifest merge removal for default Capacitor MessagingService');
+  }
   if (!content.includes('HdaFirebaseMessagingService')) {
     content = content.replace(
       '</application>',
