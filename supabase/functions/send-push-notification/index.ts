@@ -477,7 +477,10 @@ Deno.serve(async (req) => {
           },
           android: {
             priority: "high",
-            ttl: isUrgent ? "0s" : "86400s",
+            // Trip requests should not be stale, but ttl=0 can be dropped on
+            // fresh/backgrounded Android installs before the native service is
+            // woken. A short TTL keeps requests live only for the accept window.
+            ttl: isTripRequest ? "60s" : isUrgent ? "300s" : "86400s",
             // Omit android.notification for data-only Android trip pushes so
             // FCM does NOT auto-display a notification (our native service does).
             ...(useDataOnly ? {} : {
