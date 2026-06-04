@@ -126,6 +126,7 @@ function updateManifest() {
   }
 
   let content = fs.readFileSync(manifestPath, 'utf8');
+  let added = 0;
 
   if (!content.includes('xmlns:tools=')) {
     content = content.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ');
@@ -150,7 +151,6 @@ function updateManifest() {
     'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
   ];
 
-  let added = 0;
   for (const perm of permissions) {
     if (!content.includes(perm)) {
       content = content.replace(
