@@ -70,18 +70,26 @@ const pushTripRequested = async (
 ) => {
   if (driverIds.length === 0) return;
   try {
+    const vehicleTypeName = trip.vehicle_types?.name || trip.vehicle_type_name || "";
+    const fareNum = typeof trip.estimated_fare === "number" ? trip.estimated_fare : Number(trip.estimated_fare || 0);
     await supabase.functions.invoke("send-push-notification", {
       body: {
         user_ids: driverIds,
         target_user_type: "driver",
         title: "🚖 New Trip Request",
-        body: trip.pickup_address || "New ride request",
+        body: `${vehicleTypeName ? `${vehicleTypeName} · ` : ""}${fareNum > 0 ? `Fare: ${Math.round(fareNum)} MVR` : (trip.pickup_address || "New ride request")}`,
         data: {
           type: "trip_requested",
           trip_id: trip.id,
           vehicle_type_id: trip.vehicle_type_id || "",
+          vehicle_type_name: vehicleTypeName,
+          pickup_address: trip.pickup_address || "Pickup",
+          dropoff_address: trip.dropoff_address || "",
+          estimated_fare: fareNum > 0 ? String(fareNum) : "",
           pickup_lat: String(trip.pickup_lat || ""),
           pickup_lng: String(trip.pickup_lng || ""),
+          dropoff_lat: String(trip.dropoff_lat || ""),
+          dropoff_lng: String(trip.dropoff_lng || ""),
         },
       },
     });
@@ -130,7 +138,7 @@ Deno.serve(async (req) => {
 
     const { data: trip, error: tripErr } = await supabase
       .from("trips")
-      .select("id, status, pickup_lat, pickup_lng, pickup_address, vehicle_type_id")
+      .select("id, status, pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, estimated_fare, vehicle_type_id, vehicle_types:vehicle_type_id(name)")
       .eq("id", trip_id)
       .single();
     if (tripErr || !trip) {
