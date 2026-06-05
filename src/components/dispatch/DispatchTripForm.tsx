@@ -1173,6 +1173,22 @@ const DispatchTripForm = ({
               supabase.functions
                 .invoke("dispatch-wave-init", { body: { trip_id: trip.id } })
                 .catch((err) => console.warn("[dispatch] wave-init failed:", err));
+              const promoteIfStillOpen = (delayMs: number) => {
+                window.setTimeout(async () => {
+                  const { data: check } = await supabase
+                    .from("trips")
+                    .select("status, driver_id")
+                    .eq("id", trip.id)
+                    .maybeSingle();
+                  if (check?.status === "requested" && !check.driver_id) {
+                    supabase.functions
+                      .invoke("dispatch-wave-promote", { body: { trip_id: trip.id } })
+                      .catch((err) => console.warn("[dispatch] wave-promote failed:", err));
+                  }
+                }, delayMs);
+              };
+              promoteIfStillOpen(waveTimeoutMsCache + 1_000);
+              promoteIfStillOpen(waveTimeoutMsCache * 2 + 2_000);
             } else {
               notifyTripRequested(
                 eligibleIds,
