@@ -944,6 +944,7 @@ const DispatchTripForm = ({
       // Pre-fetch broadcast data in parallel with trip insert for zero-delay notifications
       let broadcastDriversCache: any[] | null = null;
       let broadcastTimeoutMsCache = 60_000;
+      let waveTimeoutMsCache = 15_000;
 
 
       // Fire trip insert + broadcast pre-fetch in parallel
@@ -963,6 +964,7 @@ const DispatchTripForm = ({
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_broadcast_timeout_seconds").single()).catch(() => ({ data: null })),
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "default_trip_radius_km").maybeSingle()).catch(() => ({ data: null })),
         Promise.resolve(supabase.from("system_settings").select("value").eq("key", "dispatch_mode").maybeSingle()).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from("system_settings").select("value").eq("key", "wave_timeout_seconds").maybeSingle()).catch(() => ({ data: null })),
       ]) : Promise.resolve(null);
 
       const [tripResult, broadcastData] = await Promise.all([tripInsertPromise, broadcastPreFetchPromise]);
@@ -973,10 +975,14 @@ const DispatchTripForm = ({
       let defaultRadiusCache = 10;
       let dispatchModeCache = "broadcast";
       if (broadcastData) {
-        const [driversRes, timeoutRes, defaultRes, modeRes] = broadcastData as any;
+        const [driversRes, timeoutRes, defaultRes, modeRes, waveTimeoutRes] = broadcastData as any;
         let allDrivers = (driversRes?.data || []) as any[];
         if (modeRes?.data?.value) {
           dispatchModeCache = typeof modeRes.data.value === "string" ? modeRes.data.value : String(modeRes.data.value);
+        }
+        if (waveTimeoutRes?.data?.value) {
+          const secs = typeof waveTimeoutRes.data.value === "number" ? waveTimeoutRes.data.value : parseInt(String(waveTimeoutRes.data.value)) || 15;
+          waveTimeoutMsCache = secs * 1000;
         }
 
         // Match on driver's CURRENTLY ACTIVE vehicle: direct vehicle_type_id
@@ -1009,6 +1015,9 @@ const DispatchTripForm = ({
         if (timeoutRes?.data?.value) {
           const secs = typeof timeoutRes.data.value === "number" ? timeoutRes.data.value : parseInt(String(timeoutRes.data.value)) || 60;
           broadcastTimeoutMsCache = secs * 1000;
+        }
+        if (dispatchModeCache === "wave_broadcast") {
+          broadcastTimeoutMsCache = Math.max(broadcastTimeoutMsCache, waveTimeoutMsCache * 3 + 5_000);
         }
         if (defaultRes?.data?.value != null) {
           defaultRadiusCache = Number(defaultRes.data.value) || 10;
