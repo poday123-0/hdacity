@@ -149,6 +149,7 @@ Deno.serve(async (req) => {
         .eq("is_online", true)
         .eq("is_on_trip", false);
 
+      let typeMatched = (locs || []) as any[];
       // Vehicle-type match scoped STRICTLY to driver's CURRENTLY ACTIVE vehicle:
       // direct vehicle_type_id match, OR active vehicle_id approved for the type.
       // Other vehicles the driver owns are NOT matched.
