@@ -923,6 +923,31 @@ const Index = () => {
         if (mode === "wave_broadcast") {
           try {
             await supabase.functions.invoke("dispatch-wave-init", { body: { trip_id: data.id } });
+            const [{ data: waveTimeoutRow }, { data: driverAcceptRow }] = await Promise.all([
+              supabase.from("system_settings").select("value").eq("key", "wave_timeout_seconds").maybeSingle(),
+              supabase.from("system_settings").select("value").eq("key", "driver_accept_timeout_seconds").maybeSingle(),
+            ]);
+            const parseSeconds = (value: any, fallback: number) => {
+              const n = typeof value === "number" ? value : parseInt(String(value || ""), 10);
+              return Number.isFinite(n) && n > 0 ? n : fallback;
+            };
+            const waveTimeoutMs = parseSeconds((waveTimeoutRow as any)?.value, 15) * 1000;
+            const driverAcceptMs = parseSeconds((driverAcceptRow as any)?.value, 30) * 1000;
+            const promoteIfStillOpen = (delayMs: number) => {
+              window.setTimeout(async () => {
+                const { data: check } = await supabase
+                  .from("trips")
+                  .select("status, driver_id")
+                  .eq("id", data.id)
+                  .maybeSingle();
+                if (check?.status === "requested" && !check.driver_id) {
+                  supabase.functions.invoke("dispatch-wave-promote", { body: { trip_id: data.id } }).catch(console.warn);
+                }
+              }, delayMs);
+            };
+            promoteIfStillOpen(waveTimeoutMs + 1_000);
+            promoteIfStillOpen(waveTimeoutMs * 2 + 2_000);
+            promoteIfStillOpen(waveTimeoutMs * 3 + driverAcceptMs + 3_000);
           } catch (waveErr) {
             console.warn("Wave init failed:", waveErr);
           }
