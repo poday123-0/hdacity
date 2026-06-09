@@ -234,13 +234,16 @@ Deno.serve(async (req) => {
       // For vehicle-type filtering: a driver matches if EITHER their current
       // active vehicle matches OR they are approved for that vehicle type.
       // This ensures multi-type drivers (Car + Van) receive both request kinds.
-      const { data: onlineDrivers } = await supabase
+      let onlineDriverQuery = supabase
         .from("driver_locations")
         .select("driver_id, lat, lng, vehicle_type_id, vehicle_id, updated_at")
         .in("driver_id", user_ids)
-          .eq("is_online", true)
-          .eq("is_on_trip", false)
-          .gte("updated_at", freshOnlineSince);
+        .eq("is_online", true)
+        .gte("updated_at", freshOnlineSince);
+      if (data?.type !== "trip_cancelled") {
+        onlineDriverQuery = onlineDriverQuery.eq("is_on_trip", false);
+      }
+      const { data: onlineDrivers } = await onlineDriverQuery;
 
       let typeMatchedOnline = (onlineDrivers || []) as any[];
       // Vehicle-type match scoped to the driver's CURRENTLY ACTIVE vehicle:
