@@ -60,11 +60,12 @@ export const sendPushNotification = async (
   userIds: string[],
   title: string,
   body: string,
-  data?: Record<string, string>
+  data?: Record<string, string>,
+  targetUserType?: "driver" | "passenger" | "admin" | "dispatcher"
 ) => {
   try {
     const { error } = await supabase.functions.invoke("send-push-notification", {
-      body: { user_ids: userIds, title, body, data },
+      body: { user_ids: userIds, title, body, data, ...(targetUserType ? { target_user_type: targetUserType } : {}) },
     });
     if (error) console.error("Push notification error:", error);
   } catch (err) {
@@ -206,11 +207,13 @@ export const notifyTripCompleted = async (passengerId: string, fare: string, tri
 
 /** Notify user(s) that trip was cancelled */
 export const notifyTripCancelled = async (userIds: string[], cancelledBy: string, tripId: string) => {
+  const targetUserType = cancelledBy === "driver" ? "passenger" : "driver";
   await sendPushNotification(
     userIds,
     "❌ Trip Cancelled",
     `The trip was cancelled by ${cancelledBy}`,
-    { trip_id: tripId, type: "trip_cancelled" }
+    { trip_id: tripId, type: "trip_cancelled" },
+    targetUserType
   );
 };
 

@@ -218,21 +218,32 @@ Deno.serve(async (req) => {
       throw new Error("user_ids array is required");
     }
 
-    // For trip_requested notifications, filter out drivers who are offline or not in driver mode
+    // For driver trip lifecycle pushes, only target fresh online drivers. This
+    // prevents stale/killed apps from receiving a late "trip cancelled" before
+    // they ever saw the request.
     const isTripRequestType = data?.type === "trip_requested";
+    const isDriverFreshOnlyType =
+      isTripRequestType ||
+      data?.type === "trip_taken" ||
+      (target_user_type === "driver" && data?.type === "trip_cancelled");
     let filteredUserIds = user_ids;
 
-    if ((isTripRequestType || data?.type === "trip_taken") && user_ids.length > 0) {
+    if (isDriverFreshOnlyType && user_ids.length > 0) {
+      const freshOnlineSince = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       // Check driver_locations to see who is actually online.
       // For vehicle-type filtering: a driver matches if EITHER their current
       // active vehicle matches OR they are approved for that vehicle type.
       // This ensures multi-type drivers (Car + Van) receive both request kinds.
-      const { data: onlineDrivers } = await supabase
+      let onlineDriverQuery = supabase
         .from("driver_locations")
-        .select("driver_id, lat, lng, vehicle_type_id, vehicle_id")
+        .select("driver_id, lat, lng, vehicle_type_id, vehicle_id, updated_at")
         .in("driver_id", user_ids)
-          .eq("is_online", true)
-          .eq("is_on_trip", false);
+        .eq("is_online", true)
+        .gte("updated_at", freshOnlineSince);
+      if (data?.type !== "trip_cancelled") {
+        onlineDriverQuery = onlineDriverQuery.eq("is_on_trip", false);
+      }
+      const { data: onlineDrivers } = await onlineDriverQuery;
 
       let typeMatchedOnline = (onlineDrivers || []) as any[];
       // Vehicle-type match scoped to the driver's CURRENTLY ACTIVE vehicle:
@@ -269,7 +280,7 @@ Deno.serve(async (req) => {
       const pickupLng = data?.pickup_lng != null ? Number(data.pickup_lng) : null;
 
       const onlineFiltered = onlineDriversFiltered.filter((d: any) => {
-        if (data?.type === "trip_taken") return true;
+        if (data?.type === "trip_taken" || data?.type === "trip_cancelled") return true;
         if (pickupLat == null || pickupLng == null || typeof d.lat !== "number" || typeof d.lng !== "number") {
           return false;
         }

@@ -25,25 +25,19 @@ async function sendSMS(phone: string, message: string) {
 }
 
 async function sendPushToDrivers(supabase: any, driverIds: string[], title: string, body: string, data: Record<string, string>) {
-  const fcmKey = Deno.env.get("FCM_SERVER_KEY");
-  if (!fcmKey || driverIds.length === 0) return;
-
-  const { data: tokens } = await supabase
-    .from("device_tokens")
-    .select("token")
-    .in("user_id", driverIds)
-    .eq("is_active", true);
-
-  if (!tokens || tokens.length === 0) return;
-
-  for (const t of tokens) {
-    try {
-      await fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `key=${fcmKey}` },
-        body: JSON.stringify({ to: t.token, notification: { title, body }, data }),
-      });
-    } catch {}
+  if (driverIds.length === 0) return;
+  try {
+    await supabase.functions.invoke("send-push-notification", {
+      body: {
+        user_ids: driverIds,
+        target_user_type: "driver",
+        title,
+        body,
+        data: { ...data, type: data.type === "trip_request" ? "trip_requested" : data.type },
+      },
+    });
+  } catch (err) {
+    console.warn("Scheduled driver push failed:", err);
   }
 }
 
@@ -113,7 +107,7 @@ Deno.serve(async (req) => {
 
     const { data: tripsToPing } = await supabase
       .from("trips")
-      .select("id, pickup_address, vehicle_type_id, scheduled_at")
+      .select("id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, estimated_fare, vehicle_type_id, scheduled_at")
       .eq("status", "scheduled")
       .is("driver_id", null)
       .gt("scheduled_at", fifteenMinFromNow) // still more than 15 min away
@@ -142,7 +136,18 @@ Deno.serve(async (req) => {
           await sendPushToDrivers(supabase, driverIds,
             "🚗 Scheduled Ride Available!",
             `Pickup: ${trip.pickup_address} at ${scheduledTime}`,
-            { trip_id: trip.id, type: "trip_request" }
+            {
+              trip_id: trip.id,
+              type: "trip_requested",
+              pickup_address: trip.pickup_address || "Pickup",
+              dropoff_address: trip.dropoff_address || "",
+              vehicle_type_id: trip.vehicle_type_id || "",
+              estimated_fare: trip.estimated_fare != null ? String(trip.estimated_fare) : "",
+              pickup_lat: trip.pickup_lat != null ? String(trip.pickup_lat) : "",
+              pickup_lng: trip.pickup_lng != null ? String(trip.pickup_lng) : "",
+              dropoff_lat: trip.dropoff_lat != null ? String(trip.dropoff_lat) : "",
+              dropoff_lng: trip.dropoff_lng != null ? String(trip.dropoff_lng) : "",
+            }
           );
           pingedCount++;
         }
@@ -154,7 +159,7 @@ Deno.serve(async (req) => {
 
     const { data: upcomingTrips } = await supabase
       .from("trips")
-      .select("id, driver_id, pickup_address, scheduled_at, vehicle_type_id")
+      .select("id, driver_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, estimated_fare, scheduled_at, vehicle_type_id")
       .eq("status", "accepted")
       .eq("booking_type", "scheduled")
       .not("driver_id", "is", null)
@@ -178,7 +183,18 @@ Deno.serve(async (req) => {
           await sendPushToDrivers(supabase, [trip.driver_id],
             "⏰ Scheduled Ride Starting Soon!",
             `Pickup in ~10 min: ${trip.pickup_address}`,
-            { trip_id: trip.id, type: "trip_request" }
+            {
+              trip_id: trip.id,
+              type: "trip_requested",
+              pickup_address: trip.pickup_address || "Pickup",
+              dropoff_address: trip.dropoff_address || "",
+              vehicle_type_id: trip.vehicle_type_id || "",
+              estimated_fare: trip.estimated_fare != null ? String(trip.estimated_fare) : "",
+              pickup_lat: trip.pickup_lat != null ? String(trip.pickup_lat) : "",
+              pickup_lng: trip.pickup_lng != null ? String(trip.pickup_lng) : "",
+              dropoff_lat: trip.dropoff_lat != null ? String(trip.dropoff_lat) : "",
+              dropoff_lng: trip.dropoff_lng != null ? String(trip.dropoff_lng) : "",
+            }
           );
         }
       }
