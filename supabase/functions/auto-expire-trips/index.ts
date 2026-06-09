@@ -25,25 +25,19 @@ async function sendSMS(phone: string, message: string) {
 }
 
 async function sendPushToDrivers(supabase: any, driverIds: string[], title: string, body: string, data: Record<string, string>) {
-  const fcmKey = Deno.env.get("FCM_SERVER_KEY");
-  if (!fcmKey || driverIds.length === 0) return;
-
-  const { data: tokens } = await supabase
-    .from("device_tokens")
-    .select("token")
-    .in("user_id", driverIds)
-    .eq("is_active", true);
-
-  if (!tokens || tokens.length === 0) return;
-
-  for (const t of tokens) {
-    try {
-      await fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `key=${fcmKey}` },
-        body: JSON.stringify({ to: t.token, notification: { title, body }, data }),
-      });
-    } catch {}
+  if (driverIds.length === 0) return;
+  try {
+    await supabase.functions.invoke("send-push-notification", {
+      body: {
+        user_ids: driverIds,
+        target_user_type: "driver",
+        title,
+        body,
+        data: { ...data, type: data.type === "trip_request" ? "trip_requested" : data.type },
+      },
+    });
+  } catch (err) {
+    console.warn("Scheduled driver push failed:", err);
   }
 }
 
@@ -142,7 +136,7 @@ Deno.serve(async (req) => {
           await sendPushToDrivers(supabase, driverIds,
             "🚗 Scheduled Ride Available!",
             `Pickup: ${trip.pickup_address} at ${scheduledTime}`,
-            { trip_id: trip.id, type: "trip_request" }
+            { trip_id: trip.id, type: "trip_requested" }
           );
           pingedCount++;
         }
@@ -178,7 +172,7 @@ Deno.serve(async (req) => {
           await sendPushToDrivers(supabase, [trip.driver_id],
             "⏰ Scheduled Ride Starting Soon!",
             `Pickup in ~10 min: ${trip.pickup_address}`,
-            { trip_id: trip.id, type: "trip_request" }
+            { trip_id: trip.id, type: "trip_requested" }
           );
         }
       }
