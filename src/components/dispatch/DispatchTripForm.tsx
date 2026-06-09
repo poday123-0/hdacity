@@ -1145,6 +1145,8 @@ const DispatchTripForm = ({
           };
           promoteIfStillOpen(waveTimeoutMsCache + 1_000);
           promoteIfStillOpen(waveTimeoutMsCache * 2 + 2_000);
+          promoteIfStillOpen(waveTimeoutMsCache * 2 + 8_000);
+          promoteIfStillOpen(waveTimeoutMsCache * 3 + 10_000);
 
           toast({ title: "Sent to app", description: `Broadcasting in waves. Auto-cancel in ${Math.round(broadcastTimeoutMsCache / 1000)}s if no one accepts` });
 
