@@ -462,7 +462,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
   return (
     <div className="space-y-6">
       {/* IP Restriction Settings — admin only */}
-      {!isSelfView && (
+      {(!isSelfView || isAdmin) && (
       <div className="bg-card border border-border rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
