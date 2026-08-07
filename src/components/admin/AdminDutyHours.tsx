@@ -202,7 +202,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
       .from("system_settings")
       .select("value")
       .eq("key", "dispatch_allowed_ips")
-      .single();
+      .maybeSingle();
     if (data?.value) {
       const config = data.value as any;
       setIpEnabled(config?.enabled === true);
