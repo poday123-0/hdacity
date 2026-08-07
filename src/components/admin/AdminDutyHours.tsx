@@ -20,6 +20,9 @@ interface AdminDutyHoursProps {
 
 const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) => {
   const isSelfView = !!restrictToDispatcherId;
+  // Independently verify admin rights so the IP allowlist stays reachable
+  // even if the caller passed a stale/incorrect dispatcher restriction.
+  const [isAdmin, setIsAdmin] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("month");
