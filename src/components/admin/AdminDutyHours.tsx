@@ -275,28 +275,41 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
 
   const saveIpSettings = async () => {
     setIpLoading(true);
-    const value = { enabled: ipEnabled, ips: allowedIps };
+    // Commit any IP still typed in the box so a forgotten "Add" click doesn't lose it
+    const typed = newIp.trim();
+    const ips = typed && !allowedIps.includes(typed) ? [...allowedIps, typed] : allowedIps;
+    if (typed) setNewIp("");
+    if (ips !== allowedIps) setAllowedIps(ips);
+
+    const value = { enabled: ipEnabled, ips };
     const { data: existing } = await supabase
       .from("system_settings")
       .select("id")
       .eq("key", "dispatch_allowed_ips")
-      .single();
+      .maybeSingle();
 
+    let error: any = null;
     if (existing) {
-      await supabase
+      ({ error } = await supabase
         .from("system_settings")
         .update({ value: value as any, updated_at: new Date().toISOString() })
-        .eq("key", "dispatch_allowed_ips");
+        .eq("key", "dispatch_allowed_ips"));
     } else {
-      await supabase.from("system_settings").insert({
+      ({ error } = await supabase.from("system_settings").insert({
         key: "dispatch_allowed_ips",
         value: value as any,
         description: "Allowed IP addresses for dispatch dashboard access",
-      });
+      }));
     }
-    toast({ title: "IP settings saved" });
     setIpLoading(false);
+    if (error) {
+      toast({ title: "Could not save IP settings", description: error.message, variant: "destructive" });
+      return;
+    }
+    await fetchIpSettings();
+    toast({ title: "IP settings saved" });
   };
+
 
   const addIp = () => {
     const ip = newIp.trim();
