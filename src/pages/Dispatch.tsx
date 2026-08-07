@@ -1306,9 +1306,11 @@ const Dispatch = () => {
         .select("user_id, role, permissions")
         .in("user_id", profileIds);
 
-      const matchedRole = allRoles?.find(
+      const eligibleRoles = (allRoles || []).filter(
         (r: any) => (r.role === "dispatcher" || r.role === "admin") && profiles.some((p) => p.id === r.user_id),
       );
+      // Prefer the admin row so admins keep admin-only controls
+      const matchedRole = eligibleRoles.find((r: any) => r.role === "admin") || eligibleRoles[0];
 
       if (!matchedRole) throw new Error("You don't have dispatcher access");
 
