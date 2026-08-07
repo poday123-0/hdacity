@@ -482,7 +482,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
           </button>
         </div>
 
-        {ipEnabled && (
+        {(
           <div className="space-y-3">
             <div className="flex gap-2">
               <input
