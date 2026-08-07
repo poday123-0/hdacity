@@ -249,6 +249,30 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
     fetchDispatchers();
   }, [dateFilter, customStart, customEnd]);
 
+  // Resolve admin rights from the DB (works for both the Admin page and the Dispatch page)
+  useEffect(() => {
+    (async () => {
+      const ids: string[] = [];
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id) ids.push(authData.user.id);
+      try {
+        const stored = localStorage.getItem("hda_dispatcher");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const pid = parsed?.profile?.id || parsed?.id;
+          if (pid) ids.push(pid);
+        }
+      } catch {}
+      if (ids.length === 0) return;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .in("user_id", [...new Set(ids)]);
+      setIsAdmin((data || []).some((r: any) => r.role === "admin"));
+    })();
+  }, []);
+
+
   const saveIpSettings = async () => {
     setIpLoading(true);
     const value = { enabled: ipEnabled, ips: allowedIps };
