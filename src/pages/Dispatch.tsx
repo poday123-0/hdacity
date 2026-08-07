@@ -460,11 +460,13 @@ const Dispatch = () => {
             .from("user_roles")
             .select("role, permissions")
             .eq("user_id", profile.id)
-            .single()
             .then(({ data }) => {
-              if (data) {
-                const freshPerms = Array.isArray(data.permissions) ? (data.permissions as string[]) : [];
-                const freshRole = data.role as string;
+              const rows = (data || []) as any[];
+              if (rows.length > 0) {
+                // Prefer the admin row when a user holds several roles
+                const best = rows.find((r) => r.role === "admin") || rows[0];
+                const freshPerms = Array.isArray(best.permissions) ? (best.permissions as string[]) : [];
+                const freshRole = best.role as string;
                 setDispatcherPermissions(freshPerms);
                 setDispatcherRole(freshRole);
                 localStorage.setItem(
@@ -1304,9 +1306,11 @@ const Dispatch = () => {
         .select("user_id, role, permissions")
         .in("user_id", profileIds);
 
-      const matchedRole = allRoles?.find(
+      const eligibleRoles = (allRoles || []).filter(
         (r: any) => (r.role === "dispatcher" || r.role === "admin") && profiles.some((p) => p.id === r.user_id),
       );
+      // Prefer the admin row so admins keep admin-only controls
+      const matchedRole = eligibleRoles.find((r: any) => r.role === "admin") || eligibleRoles[0];
 
       if (!matchedRole) throw new Error("You don't have dispatcher access");
 

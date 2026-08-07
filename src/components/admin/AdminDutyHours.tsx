@@ -20,6 +20,9 @@ interface AdminDutyHoursProps {
 
 const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) => {
   const isSelfView = !!restrictToDispatcherId;
+  // Independently verify admin rights so the IP allowlist stays reachable
+  // even if the caller passed a stale/incorrect dispatcher restriction.
+  const [isAdmin, setIsAdmin] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("month");
@@ -199,7 +202,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
       .from("system_settings")
       .select("value")
       .eq("key", "dispatch_allowed_ips")
-      .single();
+      .maybeSingle();
     if (data?.value) {
       const config = data.value as any;
       setIpEnabled(config?.enabled === true);
@@ -246,30 +249,67 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
     fetchDispatchers();
   }, [dateFilter, customStart, customEnd]);
 
+  // Resolve admin rights from the DB (works for both the Admin page and the Dispatch page)
+  useEffect(() => {
+    (async () => {
+      const ids: string[] = [];
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id) ids.push(authData.user.id);
+      try {
+        const stored = localStorage.getItem("hda_dispatcher");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const pid = parsed?.profile?.id || parsed?.id;
+          if (pid) ids.push(pid);
+        }
+      } catch {}
+      if (ids.length === 0) return;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .in("user_id", [...new Set(ids)]);
+      setIsAdmin((data || []).some((r: any) => r.role === "admin"));
+    })();
+  }, []);
+
+
   const saveIpSettings = async () => {
     setIpLoading(true);
-    const value = { enabled: ipEnabled, ips: allowedIps };
+    // Commit any IP still typed in the box so a forgotten "Add" click doesn't lose it
+    const typed = newIp.trim();
+    const ips = typed && !allowedIps.includes(typed) ? [...allowedIps, typed] : allowedIps;
+    if (typed) setNewIp("");
+    if (ips !== allowedIps) setAllowedIps(ips);
+
+    const value = { enabled: ipEnabled, ips };
     const { data: existing } = await supabase
       .from("system_settings")
       .select("id")
       .eq("key", "dispatch_allowed_ips")
-      .single();
+      .maybeSingle();
 
+    let error: any = null;
     if (existing) {
-      await supabase
+      ({ error } = await supabase
         .from("system_settings")
         .update({ value: value as any, updated_at: new Date().toISOString() })
-        .eq("key", "dispatch_allowed_ips");
+        .eq("key", "dispatch_allowed_ips"));
     } else {
-      await supabase.from("system_settings").insert({
+      ({ error } = await supabase.from("system_settings").insert({
         key: "dispatch_allowed_ips",
         value: value as any,
         description: "Allowed IP addresses for dispatch dashboard access",
-      });
+      }));
     }
-    toast({ title: "IP settings saved" });
     setIpLoading(false);
+    if (error) {
+      toast({ title: "Could not save IP settings", description: error.message, variant: "destructive" });
+      return;
+    }
+    await fetchIpSettings();
+    toast({ title: "IP settings saved" });
   };
+
 
   const addIp = () => {
     const ip = newIp.trim();
@@ -422,7 +462,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
   return (
     <div className="space-y-6">
       {/* IP Restriction Settings — admin only */}
-      {!isSelfView && (
+      {(!isSelfView || isAdmin) && (
       <div className="bg-card border border-border rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -442,7 +482,7 @@ const AdminDutyHours = ({ restrictToDispatcherId }: AdminDutyHoursProps = {}) =>
           </button>
         </div>
 
-        {ipEnabled && (
+        {(
           <div className="space-y-3">
             <div className="flex gap-2">
               <input
